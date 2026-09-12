@@ -65,23 +65,40 @@ export function useDocuments() {
 
   const updateDossierMutation = useMutation({
     mutationFn: apiUpdateDossier,
-    onSuccess: (_, variables) => {
-      queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
-        prev.map((d) => (d.id === variables.documentId ? { ...d, content: variables.dossier } : d))
-      );
+    onMutate: async (newVariables) => {
+      // Laufende Refetches abbrechen, damit sie das optimistische Update nicht überschreiben
+      await queryClient.cancelQueries({ queryKey: DOCUMENTS_QUERY_KEY });
+
+      // Vorherigen Cache-Zustand für Snapshot sichern
+      const previousDocuments = queryClient.getQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY);
+
+      // Optimistisches Update im Query-Cache anwenden
+      if (previousDocuments) {
+        queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
+          prev.map((d) =>
+            d.id === newVariables.documentId ? { ...d, content: newVariables.dossier } : d
+          )
+        );
+      }
+
+      return { previousDocuments };
+    },
+    onError: (_err, _variables, context) => {
+      // Bei Fehler: Auf vorherigen Zustand zurückrollen
+      if (context?.previousDocuments) {
+        queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, context.previousDocuments);
+      }
+    },
+    onSettled: () => {
+      // Nach Abschluss oder Fehler sicherheitshalber im Hintergrund synchronisieren
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
     },
   });
 
-  const setDocuments = (
-    updater: DocumentRecord[] | ((prev: DocumentRecord[]) => DocumentRecord[])
-  ) => {
-    queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (old = []) => {
-      if (typeof updater === 'function') {
-        return updater(old);
-      }
-      return updater;
-    });
+  const setOptimisticDossier = (documentId: string, dossier: Dossier) => {
+    queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
+      prev.map((d) => (d.id === documentId ? { ...d, content: dossier } : d))
+    );
   };
 
   const deleteDocument = async (id: string) => {
@@ -96,7 +113,7 @@ export function useDocuments() {
 
   return {
     documents,
-    setDocuments,
+    setOptimisticDossier,
     isLoadingDocs,
     loadDocuments,
     loadError,

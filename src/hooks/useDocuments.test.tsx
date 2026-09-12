@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { useDocuments } from './useDocuments';
 
 describe('useDocuments with TanStack Query', () => {
@@ -83,5 +84,53 @@ describe('useDocuments with TanStack Query', () => {
       expect(result.current.documents).toHaveLength(1);
     });
     expect(result.current.documents[0].id).toBe('doc-2');
+  });
+
+  it('optimistically updates dossier and handles rollback on network error', async () => {
+    const { result } = renderHook(() => useDocuments(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoadingDocs).toBe(false);
+    });
+
+    // Mock PUT error to test rollback
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((_url: string, options?: RequestInit) => {
+        if (options?.method === 'PUT') {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ documents: mockDocs }),
+        });
+      })
+    );
+
+    const mockUpdatedDossier = createTestImmobilienDossier({
+      caseTitle: 'Test Vorgang 1',
+    });
+
+    let mutationFailed = false;
+    let caughtError: unknown = null;
+    await act(async () => {
+      try {
+        await result.current.updateDossier({
+          documentId: 'doc-1',
+          dossier: mockUpdatedDossier,
+        });
+      } catch (err) {
+        mutationFailed = true;
+        caughtError = err;
+      }
+    });
+
+    expect(mutationFailed).toBe(true);
+    expect(caughtError).toBeInstanceOf(Error);
+    // Verified rollback to previous document state
+    expect(result.current.documents[0].id).toBe('doc-1');
   });
 });

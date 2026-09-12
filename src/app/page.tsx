@@ -11,7 +11,7 @@ import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
-import { DocumentRecord, computeDocumentStatus } from '@/lib/supabase/server';
+import { DocumentRecord } from '@/lib/supabase/server';
 import { FieldStatus, updateDossierFieldStatus } from '@/types/dossier';
 
 export const VIEW_MODE = {
@@ -28,9 +28,14 @@ function HomeContent() {
   const vorgangParam = searchParams.get('vorgang');
   const viewParam = searchParams.get('view');
 
-  // Custom Hooks für isolierte Zustände
-  const { documents, setDocuments, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } =
-    useDocuments();
+  const {
+    documents,
+    setOptimisticDossier,
+    isLoadingDocs,
+    loadDocuments,
+    deleteDocument,
+    updateDossier,
+  } = useDocuments();
   const {
     isAnalyzing,
     activeStep,
@@ -111,12 +116,7 @@ function HomeContent() {
           actions.resetAppend();
           const docId = session.activeDocumentId || vorgangParam;
           if (docId) {
-            const computedStatus = computeDocumentStatus(result.dossier);
-            setDocuments((prev) =>
-              prev.map((d) =>
-                d.id === docId ? { ...d, status: computedStatus, content: result.dossier } : d
-              )
-            );
+            setOptimisticDossier(docId, result.dossier);
           }
         }
       );
@@ -145,13 +145,6 @@ function HomeContent() {
 
     const docId = session.activeDocumentId || vorgangParam;
     if (docId) {
-      const computedStatus = computeDocumentStatus(updatedDossier);
-      setDocuments((prev) =>
-        prev.map((d) =>
-          d.id === docId ? { ...d, status: computedStatus, content: updatedDossier } : d
-        )
-      );
-
       updateDossier({ documentId: docId, dossier: updatedDossier }).catch((err) => {
         console.warn('Hintergrund-Update fehlgeschlagen:', err);
       });
@@ -209,8 +202,6 @@ function HomeContent() {
           <NewVorgangUploadView
             files={session.files}
             onFilesChange={actions.setFiles}
-            caseType={session.caseType}
-            onCaseTypeChange={actions.setCaseType}
             notes={session.notes}
             onNotesChange={actions.setNotes}
             isAnalyzing={isAnalyzing}

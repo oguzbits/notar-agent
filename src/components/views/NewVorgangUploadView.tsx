@@ -5,13 +5,10 @@ import React from 'react';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { Button } from '@/components/ui/Button';
 import { UploadZone, PreparedFile } from '@/components/UploadZone';
-import { CaseType } from '@/types/dossier';
 
 interface NewVorgangUploadViewProps {
   files: PreparedFile[];
   onFilesChange: (files: PreparedFile[]) => void;
-  caseType: CaseType;
-  onCaseTypeChange: (type: CaseType) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
   isAnalyzing: boolean;
@@ -25,8 +22,6 @@ interface NewVorgangUploadViewProps {
 export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
   files,
   onFilesChange,
-  caseType,
-  onCaseTypeChange,
   notes,
   onNotesChange,
   isAnalyzing,
