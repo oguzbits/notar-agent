@@ -8,7 +8,6 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ['src/**/*.{ts,tsx}'],
     plugins: {
       'unused-imports': unusedImports,
       import: importPlugin,
@@ -25,6 +24,8 @@ const eslintConfig = defineConfig([
           varsIgnorePattern: '^_',
           args: 'after-used',
           argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
         },
       ],
 
@@ -49,18 +50,34 @@ const eslintConfig = defineConfig([
         },
       ],
 
+      // Strikte Fehlerbehandlung & Type Safety aus AGENTS.md
+      'no-empty': ['error', { allowEmptyCatch: false }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-ignore': true,
+          'ts-nocheck': true,
+        },
+      ],
+
       // Deterministische Durchsetzung von Design-Tokens & Best Practices
       'no-restricted-syntax': [
         'error',
+        {
+          selector: 'CatchClause[param=null]',
+          message:
+            'Zero silent error swallowing: catch clauses must declare an error parameter and provide actionable context or logging.',
+        },
         {
           selector: 'Literal[value=/#(?:[0-9a-fA-F]{3,8})\\b/]',
           message:
             'Hardcoded hex colors are forbidden. Use semantic tokens defined in globals.css instead.',
         },
         {
-          selector: 'Literal[value=/(?:text|bg|border)-\\[[^\\]]+\\]/]',
+          selector: 'Literal[value=/(?:text|bg|border|p|m|gap|w|h)-\\[[^\\]]+\\]/]',
           message:
-            'Ad-hoc Tailwind bracket notation (e.g. text-[10px], bg-[#...]) is forbidden. Use semantic tokens (text-3xs, text-2xs) or standard Tailwind utility classes.',
+            'Ad-hoc Tailwind bracket notation is forbidden. Use semantic tokens (text-3xs, text-2xs) or standard Tailwind utility classes.',
         },
         {
           selector:

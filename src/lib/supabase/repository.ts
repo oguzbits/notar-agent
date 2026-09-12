@@ -185,7 +185,8 @@ export class SupabaseDossierRepository implements IDossierRepository {
           ? normalizeDossier({ ...doc.content, caseTitle: uniformTitle })
           : doc.content,
       };
-    } catch {
+    } catch (err) {
+      console.warn('Supabase findById fehlgeschlagen, wechsle zu Fallback:', err);
       return this.fallbackRepo.findById(id);
     }
   }
@@ -297,7 +298,8 @@ export class SupabaseDossierRepository implements IDossierRepository {
       return merged.sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-    } catch {
+    } catch (err) {
+      console.warn('Supabase list fehlgeschlagen, wechsle zu Fallback:', err);
       return this.fallbackRepo.list();
     }
   }

@@ -19,7 +19,7 @@ export function createSseStream(executor: (emitter: SseEmitter) => Promise<void>
           if (isClosed) return;
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-          } catch {
+          } catch (_streamClosedErr) {
             // Stream bereits abgebrochen
           }
         },
@@ -28,8 +28,8 @@ export function createSseStream(executor: (emitter: SseEmitter) => Promise<void>
             isClosed = true;
             try {
               controller.close();
-            } catch {
-              // Ignore
+            } catch (_closeErr) {
+              // Controller bereits geschlossen
             }
           }
         },

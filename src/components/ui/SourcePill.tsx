@@ -20,7 +20,7 @@ export const SourcePill: React.FC<SourcePillProps> = ({ fileName, pageNumber, cl
       ) : (
         <FileText className="text-notar-900 h-3 w-3 shrink-0" />
       )}
-      <span className="max-w-[200px] truncate">{fileName}</span>
+      <span className="max-w-48 truncate">{fileName}</span>
       {pageNumber ? (
         <span className="text-muted-foreground shrink-0 font-normal">(S. {pageNumber})</span>
       ) : null}

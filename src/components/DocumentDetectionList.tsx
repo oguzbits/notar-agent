@@ -48,24 +48,22 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
         <thead className="text-muted-foreground border-border border-b bg-slate-50/80 text-sm font-semibold dark:bg-slate-900/50">
           <tr>
             {/* 1. Index */}
-            <th className="w-[40px] min-w-[40px] px-2 py-3 text-center">#</th>
+            <th className="w-10 min-w-10 px-2 py-3 text-center">#</th>
 
             {/* 2. Dokument (Dateiname) */}
-            <th className="w-[210px] min-w-[210px] px-3 py-3 leading-tight">Dokument</th>
+            <th className="w-52 min-w-52 px-3 py-3 leading-tight">Dokument</th>
 
             {/* 3. Dokumenttyp & Relevanz */}
-            <th className="w-[150px] min-w-[150px] px-3 py-3 whitespace-nowrap">Dokumenttyp</th>
+            <th className="w-36 min-w-36 px-3 py-3 whitespace-nowrap">Dokumenttyp</th>
 
             {/* 4. Flexible Hauptspalte: Maximale Breite für Inhalt / Zusammenfassung */}
-            <th className="min-w-[340px] px-3.5 py-3">Inhalt / Zusammenfassung</th>
+            <th className="min-w-80 px-3.5 py-3">Inhalt / Zusammenfassung</th>
 
             {/* 5. Stand / Umfang */}
-            <th className="w-[140px] min-w-[140px] px-3 py-3 text-right whitespace-nowrap">
-              Stand / Umfang
-            </th>
+            <th className="w-36 min-w-36 px-3 py-3 text-right whitespace-nowrap">Stand / Umfang</th>
 
             {/* 6. Kompakter Klick-Header zum globalen Togglen */}
-            <th className="w-[40px] min-w-[40px] px-2 py-3 text-center">
+            <th className="w-10 min-w-10 px-2 py-3 text-center">
               <button
                 type="button"
                 onClick={toggleAllSummaries}
@@ -134,14 +132,14 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 )}
               >
                 {/* 1. Index */}
-                <td className="w-[36px] min-w-[36px] px-1.5 py-2.5 text-center">
+                <td className="w-9 min-w-9 px-1.5 py-2.5 text-center">
                   <span className="bg-muted text-muted-foreground text-3xs inline-flex h-5 w-5 items-center justify-center rounded font-bold">
                     {idx + 1}
                   </span>
                 </td>
 
                 {/* 2. Dokument / Dateiname: kein Truncate, sondern sauberes Wrapping */}
-                <td className="w-[200px] min-w-[200px] px-2.5 py-2.5 leading-snug break-words">
+                <td className="w-48 min-w-48 px-2.5 py-2.5 leading-snug break-words">
                   <div className="flex items-start gap-1.5">
                     {isNote ? (
                       <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
@@ -155,7 +153,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 </td>
 
                 {/* 3. Dokumenttyp & Status */}
-                <td className="w-[140px] min-w-[140px] px-2.5 py-2.5 whitespace-nowrap">
+                <td className="w-36 min-w-36 px-2.5 py-2.5 whitespace-nowrap">
                   <div className="flex flex-col items-start gap-1">
                     <span
                       className={cn(
@@ -229,7 +227,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 </td>
 
                 {/* 5. Stand / Umfang */}
-                <td className="w-[130px] min-w-[130px] px-2.5 py-2.5 text-right text-xs whitespace-nowrap">
+                <td className="w-32 min-w-32 px-2.5 py-2.5 text-right text-xs whitespace-nowrap">
                   <div className="inline-flex items-center justify-end gap-1">
                     <Calendar
                       className="text-muted-foreground h-3.5 w-3.5 shrink-0"
@@ -243,7 +241,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 </td>
 
                 {/* 6. Einzelzeilen-Chevron / Toggle */}
-                <td className="w-[36px] min-w-[36px] px-2 py-2.5 text-center">
+                <td className="w-9 min-w-9 px-2 py-2.5 text-center">
                   {isLongText || isNote ? (
                     <button
                       type="button"

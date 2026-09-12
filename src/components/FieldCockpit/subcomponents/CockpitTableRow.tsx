@@ -71,19 +71,19 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
         }`}
       >
         {/* Index */}
-        <td className="w-[36px] min-w-[36px] px-1.5 py-2.5 text-center">
+        <td className="w-9 min-w-9 px-1.5 py-2.5 text-center">
           <span className="bg-muted text-muted-foreground text-3xs inline-flex h-5 w-5 items-center justify-center rounded font-bold">
             {row.fieldIndex}
           </span>
         </td>
 
         {/* Pflichtfeld Name */}
-        <td className="w-[140px] min-w-[140px] px-2 py-2.5 leading-snug break-words">
+        <td className="w-36 min-w-36 px-2 py-2.5 leading-snug break-words">
           <span className="text-foreground block font-semibold">{row.fieldTitle}</span>
         </td>
 
         {/* Status mit direkt anklickbarem Dropdown */}
-        <td className="w-[160px] min-w-[160px] px-4 py-2.5 whitespace-nowrap">
+        <td className="w-40 min-w-40 px-4 py-2.5 whitespace-nowrap">
           {onOverrideFieldStatus ? (
             <StatusOverrideDropdown
               status={row.status}
@@ -138,7 +138,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
         </td>
 
         {/* Quellen / Nachweise */}
-        <td className="w-[170px] px-3 py-2.5">
+        <td className="w-44 px-3 py-2.5">
           {hasSources ? (
             <div className="flex w-full flex-col gap-1.5">
               {row.sources.map((src, sIdx) => (
@@ -160,7 +160,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
         </td>
 
         {/* Aufklapp-Button */}
-        <td className="w-[36px] min-w-[36px] px-2 py-2.5 text-center">
+        <td className="w-9 min-w-9 px-2 py-2.5 text-center">
           <button
             type="button"
             onClick={(e) => {

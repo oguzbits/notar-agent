@@ -67,7 +67,8 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     try {
       const prepared = await prepareFiles(files);
       onFilesReady(prepared);
-    } catch {
+    } catch (err) {
+      console.warn('Fehler beim Einlesen einzelner Dateien:', err);
       setParseError('Fehler beim Einlesen einzelner Dateien.');
     } finally {
       setIsPreparing(false);

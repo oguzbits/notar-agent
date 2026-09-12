@@ -13,12 +13,12 @@ export const CockpitTableHeader: React.FC<CockpitTableHeaderProps> = ({
   return (
     <thead className="text-muted-foreground border-border border-b bg-slate-50/80 text-sm font-semibold dark:bg-slate-900/50">
       <tr>
-        <th className="w-[40px] min-w-[40px] px-2 py-3 text-center">#</th>
-        <th className="w-[145px] min-w-[145px] px-3 py-3 leading-tight">Pflichtfeld</th>
-        <th className="w-[160px] min-w-[160px] px-4 py-3 whitespace-nowrap">Status</th>
-        <th className="min-w-[280px] px-4 py-3">Befund &amp; Prüfungshinweis</th>
-        <th className="w-[170px] px-3 py-3">Quelle / Nachweis</th>
-        <th className="w-[40px] min-w-[40px] px-2 py-3 text-center">
+        <th className="w-10 min-w-10 px-2 py-3 text-center">#</th>
+        <th className="w-36 min-w-36 px-3 py-3 leading-tight">Pflichtfeld</th>
+        <th className="w-40 min-w-40 px-4 py-3 whitespace-nowrap">Status</th>
+        <th className="min-w-72 px-4 py-3">Befund &amp; Prüfungshinweis</th>
+        <th className="w-44 px-3 py-3">Quelle / Nachweis</th>
+        <th className="w-10 min-w-10 px-2 py-3 text-center">
           <button
             type="button"
             onClick={onToggleAll}

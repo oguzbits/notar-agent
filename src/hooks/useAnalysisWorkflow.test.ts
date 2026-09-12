@@ -93,8 +93,8 @@ describe('useAnalysisWorkflow', () => {
           '',
           () => {}
         );
-      } catch {
-        // Expected error
+      } catch (_expectedErr) {
+        // Expected error in test scenario
       }
     });
 

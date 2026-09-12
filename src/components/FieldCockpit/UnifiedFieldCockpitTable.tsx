@@ -154,7 +154,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
 
       {/* 3. DIE ZENTRALE PFLICHTFELDER-TABELLE (Cockpit & Prüfbericht vereint) */}
       <div className="border-border bg-card overflow-x-auto rounded-lg border shadow-xs">
-        <table className="w-full min-w-[740px] table-fixed text-left text-base">
+        <table className="w-full min-w-full table-fixed text-left text-base">
           <CockpitTableHeader isAllExpanded={isAllExpanded} onToggleAll={toggleAllDetails} />
           <tbody className="divide-border/60 divide-y">
             {allRows.map((row) => (

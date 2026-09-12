@@ -54,7 +54,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         hour: '2-digit',
         minute: '2-digit',
       }).format(new Date(dateStr));
-    } catch {
+    } catch (_err) {
       return dateStr;
     }
   };

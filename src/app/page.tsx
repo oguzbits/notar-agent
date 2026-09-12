@@ -81,8 +81,8 @@ function HomeContent() {
         }
       });
       loadDocuments();
-    } catch {
-      // Fehler bereits im Hook verarbeitet
+    } catch (err) {
+      console.error('Analyse-Start fehlgeschlagen:', err);
     }
   };
 
@@ -109,8 +109,8 @@ function HomeContent() {
         }
       );
       loadDocuments();
-    } catch {
-      // Fehler bereits im Hook verarbeitet
+    } catch (err) {
+      console.error('Nachreich-Analyse fehlgeschlagen:', err);
     }
   };
 

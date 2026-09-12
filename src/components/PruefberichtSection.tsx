@@ -32,7 +32,8 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } catch (clipboardErr) {
+      console.warn('Clipboard API fehlgeschlagen, nutze Fallback:', clipboardErr);
       // Fallback
       const textArea = document.createElement('textarea');
       textArea.value = text;
@@ -173,12 +174,12 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
         <table className="w-full table-auto text-left text-xs">
           <thead className="text-muted-foreground border-border text-2xs border-b bg-slate-50/80 font-semibold dark:bg-slate-900/50">
             <tr>
-              <th className="w-[48px] px-3 py-2.5 text-center">#</th>
-              <th className="w-[140px] px-3 py-2.5 whitespace-nowrap">Pflichtfeld</th>
-              <th className="w-[135px] px-3 py-2.5 whitespace-nowrap">Status</th>
+              <th className="w-12 px-3 py-2.5 text-center">#</th>
+              <th className="w-36 px-3 py-2.5 whitespace-nowrap">Pflichtfeld</th>
+              <th className="w-36 px-3 py-2.5 whitespace-nowrap">Status</th>
               {/* Hauptspalte: Maximale Breite / dehnt sich flexibel aus */}
-              <th className="min-w-[320px] px-3 py-2.5">Befund &amp; Prüfungshinweis</th>
-              <th className="w-[200px] px-3 py-2.5 whitespace-nowrap">Quelle / Nachweis</th>
+              <th className="min-w-80 px-3 py-2.5">Befund &amp; Prüfungshinweis</th>
+              <th className="w-48 px-3 py-2.5 whitespace-nowrap">Quelle / Nachweis</th>
             </tr>
           </thead>
           <tbody className="divide-border/60 divide-y">
@@ -259,7 +260,7 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
                                 >
                                   <div className="flex min-w-0 items-center gap-1">
                                     <FileText className="h-2.5 w-2.5 shrink-0 text-slate-500" />
-                                    <span className="max-w-[130px] truncate font-medium">
+                                    <span className="max-w-32 truncate font-medium">
                                       {src.fileName}
                                       {src.pageNumber && src.pageNumber > 0
                                         ? ` (S. ${src.pageNumber})`
