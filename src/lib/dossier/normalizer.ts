@@ -1,4 +1,4 @@
-import { Dossier, GenericFieldDossier } from '@/types/dossier';
+import { Dossier, getDossierFieldsRecord } from '@/types/dossier';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
 /**
@@ -17,10 +17,7 @@ export function normalizeDossier(dossier: Dossier, additionalNoteTexts?: string[
   const referencedNotes = new Map<string, string>(); // noteId -> sample snippet
 
   if (cloned.fields && typeof cloned.fields === 'object') {
-    const fieldsObj = cloned.fields as unknown as Record<
-      string,
-      GenericFieldDossier<Record<string, unknown>>
-    >;
+    const fieldsObj = getDossierFieldsRecord(cloned);
     for (const field of Object.values(fieldsObj)) {
       if (field && field.source && field.source.fileName) {
         const originalName = field.source.fileName;

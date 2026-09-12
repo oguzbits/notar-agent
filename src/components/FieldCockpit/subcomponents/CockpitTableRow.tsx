@@ -66,7 +66,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
             onToggleExpand();
           }
         }}
-        className={`cursor-pointer align-top transition-colors select-text focus-visible:ring-2 focus-visible:ring-[#356611] focus-visible:outline-hidden focus-visible:ring-inset ${
+        className={`focus-visible:ring-notar-900 cursor-pointer align-top transition-colors select-text focus-visible:ring-2 focus-visible:outline-hidden focus-visible:ring-inset ${
           isExpanded ? 'bg-muted/20' : 'hover:bg-muted/30'
         }`}
       >

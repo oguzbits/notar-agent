@@ -440,3 +440,9 @@ export function isImmobilienDossier(dossier: Dossier): dossier is ImmobilienDoss
 export function isGmbhDossier(dossier: Dossier): dossier is GmbhDossier {
   return dossier.caseType === 'GMBH_GRUENDUNG';
 }
+
+export function getDossierFieldsRecord(
+  dossier: Dossier
+): Record<string, GenericFieldDossier<Record<string, unknown>>> {
+  return dossier.fields as unknown as Record<string, GenericFieldDossier<Record<string, unknown>>>;
+}

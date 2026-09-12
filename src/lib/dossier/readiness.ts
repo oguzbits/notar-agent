@@ -1,4 +1,4 @@
-import { Dossier, GenericFieldDossier } from '@/types/dossier';
+import { Dossier, GenericFieldDossier, getDossierFieldsRecord } from '@/types/dossier';
 import { CASE_TYPE_CORE_FIELDS } from './constants';
 
 export type ReadinessStage = 'READY' | 'DRAFTING_POSSIBLE' | 'BLOCKED';
@@ -15,9 +15,7 @@ export interface ReadinessInfo {
 export function isDossierEntwurfsreif(dossier: Dossier): boolean {
   if (!dossier?.fields) return false;
 
-  const fieldValues = Object.values(
-    dossier.fields as unknown as Record<string, GenericFieldDossier<Record<string, unknown>>>
-  );
+  const fieldValues = Object.values(getDossierFieldsRecord(dossier));
   if (fieldValues.length === 0) return false;
 
   const allFieldsVerified = fieldValues.every((f) => f && f.status === 'VERIFIED');
