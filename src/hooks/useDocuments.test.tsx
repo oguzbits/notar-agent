@@ -1,15 +1,38 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { useDocuments } from './useDocuments';
 
-describe('useDocuments with TanStack Query', () => {
+describe('useDocuments with TanStack Query & MSW', () => {
   const mockDocs = [
     { id: 'doc-1', title: 'Vorgang 1', status: 'In Prüfung' },
     { id: 'doc-2', title: 'Vorgang 2', status: 'Entwurfsreif' },
   ];
+
+  let currentDocs = [...mockDocs];
+
+  const server = setupServer(
+    http.get('/api/documents', () => {
+      return HttpResponse.json({ documents: currentDocs });
+    }),
+    http.delete('/api/documents', ({ request }) => {
+      const url = new URL(request.url);
+      const idToDelete = url.searchParams.get('id');
+      currentDocs = currentDocs.filter((d) => d.id !== idToDelete);
+      return HttpResponse.json({ success: true });
+    }),
+    http.put('/api/analyze', () => {
+      return HttpResponse.json({ success: true });
+    })
+  );
+
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
 
   let queryClient: QueryClient;
 
@@ -18,42 +41,13 @@ describe('useDocuments with TanStack Query', () => {
   }
 
   beforeEach(() => {
-    let currentDocs = [...mockDocs];
+    currentDocs = [...mockDocs];
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
         mutations: { retry: false },
       },
     });
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((url: string, options?: RequestInit) => {
-        if (options?.method === 'DELETE') {
-          const urlObj = new URL(url, 'http://localhost');
-          const idToDelete = urlObj.searchParams.get('id');
-          currentDocs = currentDocs.filter((d) => d.id !== idToDelete);
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ success: true }),
-          });
-        }
-        if (options?.method === 'PUT') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ success: true }),
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ documents: currentDocs }),
-        });
-      })
-    );
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('loads documents via useQuery', async () => {
@@ -93,20 +87,10 @@ describe('useDocuments with TanStack Query', () => {
       expect(result.current.isLoadingDocs).toBe(false);
     });
 
-    // Mock PUT error to test rollback
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((_url: string, options?: RequestInit) => {
-        if (options?.method === 'PUT') {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ documents: mockDocs }),
-        });
+    // Mock PUT error to test rollback with MSW
+    server.use(
+      http.put('/api/analyze', () => {
+        return new HttpResponse(null, { status: 500 });
       })
     );
 

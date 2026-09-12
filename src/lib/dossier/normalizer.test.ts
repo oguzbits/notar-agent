@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { ImmobilienDossier, NotaryNumberSchema, KaufpreisDataSchema } from '@/types/dossier';
@@ -172,5 +173,15 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
     const fields = normalized.fields;
     expect(fields.kaeufer.status).toBe('NEEDS_REVIEW');
     expect(fields.kaeufer.note).toContain('Amtlicher Registerauszug der Käufergesellschaft fehlt');
+  });
+
+  it('property-based fuzzing: NotaryNumberSchema never throws unhandled exceptions on arbitrary strings', () => {
+    fc.assert(
+      fc.property(fc.string(), (arbitraryInput: string) => {
+        // NotaryNumberSchema darf niemals ungefangen abstürzen
+        expect(() => NotaryNumberSchema.safeParse(arbitraryInput)).not.toThrow();
+      }),
+      { numRuns: 1000 }
+    );
   });
 });

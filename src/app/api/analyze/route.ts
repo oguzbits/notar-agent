@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fromError } from 'zod-validation-error';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
@@ -17,9 +18,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     const parseResult = AnalyzeRequestSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
-      const issue = parseResult.error.issues[0];
-      const errorMessage = issue?.message || 'Ungültige Anfrage-Parameter.';
-      return NextResponse.json({ error: errorMessage }, { status: 400 });
+      const validationError = fromError(parseResult.error);
+      return NextResponse.json({ error: validationError.toString() }, { status: 400 });
     }
 
     const { files, caseType, notes, documentId, existingDossier } = parseResult.data;
@@ -96,9 +96,8 @@ export async function PUT(req: NextRequest): Promise<Response> {
     const parseResult = UpdateDossierRequestSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
-      const issue = parseResult.error.issues[0];
-      const errorMessage = issue?.message || 'documentId und dossier sind erforderlich.';
-      return NextResponse.json({ error: errorMessage }, { status: 400 });
+      const validationError = fromError(parseResult.error);
+      return NextResponse.json({ error: validationError.toString() }, { status: 400 });
     }
 
     const { documentId, dossier } = parseResult.data;

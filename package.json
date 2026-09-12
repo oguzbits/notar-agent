@@ -11,6 +11,7 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "check": "npm run type-check && npm run lint",
+    "depcruise": "depcruise --config .dependency-cruiser.js src",
     "knip": "knip",
     "knip:files": "knip --dependencies --files",
     "test": "vitest run",
@@ -40,18 +41,23 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.1",
     "babel-plugin-react-compiler": "^1.0.0",
+    "dependency-cruiser": "^18.2.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "eslint-plugin-unused-imports": "^4.4.1",
+    "fast-check": "^4.10.0",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "knip": "^6.35.1",
     "lint-staged": "^17.4.1",
+    "msw": "^2.15.0",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "vitest-axe": "^0.1.0",
+    "zod-validation-error": "^5.0.0"
   }
 }
