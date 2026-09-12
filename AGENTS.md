@@ -22,7 +22,7 @@
 - **Strict Type Safety:** Absolute end-to-end type safety (`strict: true`). Zero `any`, zero unvalidated `as` casts, zero non-null assertions (`!`). Validate untrusted runtime inputs (API payloads, user inputs, forms) strictly via Zod.
 - **Explicit Export Types:** Enforce explicit return types on all exported functions, services, and route handlers.
 - **Immutability & Resilience:** Never mutate state or arguments in-place. Zero silent error swallowing (`catch {}`); provide actionable error context. Wrap route segments and async boundary components in Error Boundaries or `error.tsx`.
-- **Component Sizing & Styling:** Keep components under ~200 lines (excluding declarative configs/schemas and tests). Never use arbitrary hardcoded hex codes or ad-hoc Tailwind values (`text-[11px]`). Use semantic design tokens and existing utility classes. Ensure accessibility (semantic HTML, visible focus states, ARIA states on custom disclosures).
+- **Component Sizing & Styling:** Keep components under ~200 lines (excluding declarative configs/schemas and tests). Never use arbitrary hardcoded hex codes (`#B9ED94`) or ad-hoc Tailwind values (`text-[11px]`, `bg-[#...]`) anywhere in `src/`. Use semantic design tokens from `globals.css` and standard utility classes. Domain modules in `src/lib/` must never contain UI CSS classes or color hexes. Ensure accessibility (semantic HTML, visible focus states, ARIA states on custom disclosures).
 
 ## 4. Guardrails (Zero-Laziness)
 
@@ -39,7 +39,7 @@ Mandatory sequence for code modifications (read-only queries bypass directly):
 
 1. **Targeted Locate:** Find relevant code using exact pattern search. Read only the target lines/files.
 2. **Contract First:** Define interfaces and Zod schemas before writing business logic.
-3. **Fast TDD Cycle:** Write or update a failing test, then iterate against *only* that target test file:
+3. **Fast TDD Cycle:** Write or update a failing test, then iterate against _only_ that target test file:
    `npx vitest run <path-to-test>`
 4. **Surgical Implementation:** Implement the minimal code necessary to satisfy the test and contracts.
 5. **Gatekeeper Check:** Run quick static checks before final validation:

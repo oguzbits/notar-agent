@@ -26,7 +26,7 @@ export const ExportActions: React.FC<ExportActionsProps> = ({ dossier }) => {
       <button
         type="button"
         onClick={downloadJson}
-        className="bg-documenso-500 text-documenso-950 hover:bg-documenso-600 inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-base font-semibold shadow-xs transition-colors"
+        className="bg-notar-500 text-notar-950 hover:bg-notar-600 inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-base font-semibold shadow-xs transition-colors"
       >
         <Download className="h-4 w-4" />
         <span>JSON-Export</span>

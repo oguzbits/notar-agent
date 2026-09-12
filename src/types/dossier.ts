@@ -257,7 +257,84 @@ export const ImmobilienFieldsSchema = z.object({
 export type ImmobilienFields = z.infer<typeof ImmobilienFieldsSchema>;
 
 // ==========================================
-// 2. ALLGEMEINE STRUKTUREN & GESAMTDOSSIER
+// 2. SCHEMATA FÜR GMBH-GRÜNDUNG
+// ==========================================
+
+export const GmbhFirmaDataSchema = z.object({
+  companyName: z
+    .string()
+    .describe('Vollständige Firma der Gesellschaft (z.B. Muster Innovations GmbH)'),
+  hasNameCheckIhk: z.boolean().describe('Liegt eine IHK-Firmenfreigabe bzw. Namensvorprüfung vor?'),
+  seatCity: z.string().describe('Sitz der Gesellschaft (politische Gemeinde)'),
+});
+export const GmbhFirmaFieldSchema = createFieldDossierSchema(GmbhFirmaDataSchema);
+
+export const GmbhGesellschafterPartnerSchema = z.object({
+  name: z.string().describe('Name oder Firma des Gesellschafters'),
+  shareAmount: z.number().describe('Nennbetrag des Geschäftsanteils in Euro'),
+  sharePercent: z.number().describe('Beteiligungsquote in Prozent'),
+});
+
+export const GmbhGesellschafterDataSchema = z.object({
+  partners: z
+    .array(GmbhGesellschafterPartnerSchema)
+    .describe('Liste aller Gründungsgesellschafter'),
+  totalCapital: z.number().describe('Summe aller übernommenen Geschäftsanteile'),
+});
+export const GmbhGesellschafterFieldSchema = createFieldDossierSchema(GmbhGesellschafterDataSchema);
+
+export const GmbhGeschaeftsfuehrerItemSchema = z.object({
+  name: z.string().describe('Vollständiger Name des Geschäftsführers'),
+  powerOfRepresentation: z
+    .enum(['EINZELVERTRETUNG', 'GESAMTVERTRETUNG'])
+    .describe('Vertretungsbefugnis'),
+  exemption181Bgb: z
+    .boolean()
+    .describe('Befreiung von den Beschränkungen des § 181 BGB (Selbstkontrahierungsverbot)'),
+});
+
+export const GmbhGeschaeftsfuehrerDataSchema = z.object({
+  managingDirectors: z.array(GmbhGeschaeftsfuehrerItemSchema).describe('Bestellte Geschäftsführer'),
+  criminalRecordCheckPassed: z
+    .boolean()
+    .describe('Versicherung nach § 6 Abs. 2 GmbHG (keine Verurteilungen/Ausschlüsse) belegt'),
+});
+export const GmbhGeschaeftsfuehrerFieldSchema = createFieldDossierSchema(
+  GmbhGeschaeftsfuehrerDataSchema
+);
+
+export const GmbhStammkapitalDataSchema = z.object({
+  nominalCapital: z
+    .number()
+    .describe('Stammkapital der GmbH in Euro (mind. 25.000 € bzw. 1 € bei UG)'),
+  contributionType: z.enum(['BAREINLAGE', 'SACHEINLAGE', 'GEMISCHT']).describe('Art der Einlage'),
+  minimumDepositPaid: z
+    .boolean()
+    .describe('Gesetzliche Mindesteinzahlung (mind. 12.500 € bei GmbH) nachgewiesen'),
+});
+export const GmbhStammkapitalFieldSchema = createFieldDossierSchema(GmbhStammkapitalDataSchema);
+
+export const GmbhUnternehmensgegenstandDataSchema = z.object({
+  purposeDescription: z.string().describe('Konkreter satzungsmäßiger Gegenstand des Unternehmens'),
+  requiresSpecialPermit: z
+    .boolean()
+    .describe('Erfordert der Gegenstand eine behördliche Erlaubnis (§ 34c GewO, KWG etc.)'),
+});
+export const GmbhUnternehmensgegenstandFieldSchema = createFieldDossierSchema(
+  GmbhUnternehmensgegenstandDataSchema
+);
+
+export const GmbhFieldsSchema = z.object({
+  firma: GmbhFirmaFieldSchema,
+  gesellschafter: GmbhGesellschafterFieldSchema,
+  geschaeftsfuehrer: GmbhGeschaeftsfuehrerFieldSchema,
+  stammkapital: GmbhStammkapitalFieldSchema,
+  unternehmensgegenstand: GmbhUnternehmensgegenstandFieldSchema,
+});
+export type GmbhFields = z.infer<typeof GmbhFieldsSchema>;
+
+// ==========================================
+// 3. ALLGEMEINE STRUKTUREN & GESAMTDOSSIER
 // ==========================================
 
 export const DetectedDocumentSchema = z.object({
@@ -314,27 +391,52 @@ export const ImmobilienDossierSchema = z.object({
 });
 export type ImmobilienDossier = z.infer<typeof ImmobilienDossierSchema>;
 
-export const DossierSchema = z.object({
-  caseType: CaseTypeSchema.describe('Art des notariellen Vorgangs (dynamisch erweiterbar)'),
+export const GmbhDossierSchema = z.object({
+  caseType: z.literal('GMBH_GRUENDUNG').describe('Art des notariellen Vorgangs: GMBH_GRUENDUNG'),
   caseTitle: z.string().describe('Aktenzeichen oder Kurzbeschreibung des Vorgangs'),
   analysisTimestamp: z.string().describe('Zeitpunkt der Analyse im ISO-Format'),
   detectedDocuments: z
     .array(DetectedDocumentSchema)
     .describe('Liste aller im Upload identifizierten Dokumente'),
-  fields: z
-    .union([ImmobilienFieldsSchema, z.record(z.string(), z.unknown())])
-    .describe('Die notariellen Pflichtfelder mit Audit Trail und Status'),
+  fields: GmbhFieldsSchema.describe('Die notariellen Pflichtfelder für eine GmbH-Gründung'),
   inquiries: z
     .array(InquirySchema)
     .describe('Wesentliche Nachforderungen bei echten Hindernissen, sonst leeres Array []'),
   overallStatus: z
     .enum(['READY', 'ACTION_REQUIRED', 'BLOCKED'])
     .describe('Gesamtreife des Vorgangs für die Entwurfserstellung'),
-  executiveSummary: z.string().describe('Maximal 1 prägnanter Satz zum Gesamtstatus'),
+  executiveSummary: z
+    .string()
+    .describe('Maximal 1 prägnanter Satz zum aktuellen Bearbeitungsstand für den Entwurf'),
   userNotes: z
     .array(z.string())
     .optional()
     .describe('Unveränderter Volltext aller vom Sachbearbeiter erfassten Notizen'),
 });
+export type GmbhDossier = z.infer<typeof GmbhDossierSchema>;
+
+/**
+ * Discriminated Union für alle typisierten Vorgangsarten.
+ * Eliminiert unsichere Record<string, unknown> Typen und gewährleistet
+ * vollständige TypeScript-Compiler-Prüfung je caseType.
+ */
+export const DossierSchema = z.discriminatedUnion('caseType', [
+  ImmobilienDossierSchema,
+  GmbhDossierSchema,
+]);
 
 export type Dossier = z.infer<typeof DossierSchema>;
+
+/**
+ * Type-Guard für Immobilienkaufvertrags-Dossiers
+ */
+export function isImmobilienDossier(dossier: Dossier): dossier is ImmobilienDossier {
+  return dossier.caseType === 'IMMOBILIENKAUF';
+}
+
+/**
+ * Type-Guard für GmbH-Gründungs-Dossiers
+ */
+export function isGmbhDossier(dossier: Dossier): dossier is GmbhDossier {
+  return dossier.caseType === 'GMBH_GRUENDUNG';
+}

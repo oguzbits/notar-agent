@@ -527,7 +527,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
               parseResult.error.format()
             );
             dossier = {
-              caseType: caseType || 'IMMOBILIENKAUF',
+              caseType: 'IMMOBILIENKAUF',
               caseTitle: rawCaseTitle || `Immobilienkauf ${new Date().toLocaleDateString('de-DE')}`,
               analysisTimestamp: currentAnalysisTimestamp,
               detectedDocuments: Array.isArray(parsedExtractionRaw.detectedDocuments)
@@ -541,7 +541,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
           } else {
             dossier = {
               ...parseResult.data,
-              caseType: caseType || 'IMMOBILIENKAUF',
+              caseType: 'IMMOBILIENKAUF',
             };
           }
 

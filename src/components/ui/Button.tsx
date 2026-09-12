@@ -24,7 +24,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    'inline-flex items-center justify-center font-semibold transition-all focus:outline-hidden focus-visible:ring-2 focus-visible:ring-documenso-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
+    'inline-flex items-center justify-center font-semibold transition-all focus:outline-hidden focus-visible:ring-2 focus-visible:ring-notar-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
 
   const sizeClasses = {
     sm: 'text-sm px-3.5 py-1.5 rounded-md gap-1.5',
@@ -34,7 +34,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantClasses = {
     primary:
-      'bg-documenso-500 text-documenso-950 hover:bg-documenso-600 active:bg-documenso-700 border border-transparent shadow-xs',
+      'bg-notar-500 text-notar-950 hover:bg-notar-600 active:bg-notar-700 border border-transparent shadow-xs',
     secondary:
       'bg-slate-100 text-slate-800 hover:bg-slate-200 active:bg-slate-300 border border-slate-200',
     outline:

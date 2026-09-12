@@ -24,17 +24,17 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
-  --color-documenso-50: #ffffff;
-  --color-documenso-100: #fdfffd;
-  --color-documenso-200: #e7f9da;
-  --color-documenso-300: #d0f3b7;
-  --color-documenso-400: #b9ed94;
-  --color-documenso-500: #a2e771;
-  --color-documenso-600: #83df41;
-  --color-documenso-700: #66c622;
-  --color-documenso-800: #4d9619;
-  --color-documenso-900: #356611;
-  --color-documenso-950: #284e0d;
+  --color-notar-50: #ffffff;
+  --color-notar-100: #fdfffd;
+  --color-notar-200: #e7f9da;
+  --color-notar-300: #d0f3b7;
+  --color-notar-400: #b9ed94;
+  --color-notar-500: #a2e771;
+  --color-notar-600: #83df41;
+  --color-notar-700: #66c622;
+  --color-notar-800: #4d9619;
+  --color-notar-900: #356611;
+  --color-notar-950: #284e0d;
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);

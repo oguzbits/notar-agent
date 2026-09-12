@@ -168,11 +168,18 @@ function HomeContent() {
     const allVerified = Object.values(currentFields).every((f) => f.status === 'VERIFIED');
     const newOverall = allVerified ? 'READY' : displayedDossier.overallStatus;
 
-    const updatedDossier: Dossier = {
-      ...displayedDossier,
-      fields: currentFields as Dossier['fields'],
-      overallStatus: newOverall,
-    };
+    const updatedDossier: Dossier =
+      displayedDossier.caseType === 'GMBH_GRUENDUNG'
+        ? {
+            ...displayedDossier,
+            fields: currentFields as unknown as typeof displayedDossier.fields,
+            overallStatus: newOverall,
+          }
+        : {
+            ...displayedDossier,
+            fields: currentFields as unknown as typeof displayedDossier.fields,
+            overallStatus: newOverall,
+          };
 
     setDossier(updatedDossier);
 
@@ -192,7 +199,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="bg-background text-foreground selection:bg-documenso-300 flex min-h-screen flex-col font-sans antialiased selection:text-slate-900">
+    <div className="bg-background text-foreground selection:bg-notar-300 flex min-h-screen flex-col font-sans antialiased selection:text-slate-900">
       <Header
         caseNumber={persistenceInfo?.caseNumber || activeRecord?.title}
         storageType={persistenceInfo?.storageType || (activeRecord ? 'supabase' : undefined)}
@@ -294,7 +301,7 @@ export default function Home() {
     <Suspense
       fallback={
         <div className="bg-background flex min-h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#356611]" />
+          <Loader2 className="text-notar-900 h-8 w-8 animate-spin" />
         </div>
       }
     >

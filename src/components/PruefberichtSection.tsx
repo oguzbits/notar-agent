@@ -62,13 +62,13 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold tracking-wider uppercase ${
               isReady
-                ? 'border border-[#B9ED94] bg-[#E7F9DA] text-[#284E0D]'
+                ? 'border-notar-400 bg-notar-200 text-notar-950 border'
                 : 'border border-amber-300 bg-amber-50 text-amber-950'
             }`}
           >
             {isReady ? (
               <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#356611]" />
+                <CheckCircle2 className="text-notar-900 h-3.5 w-3.5" />
                 Entwurfsreif
               </>
             ) : (

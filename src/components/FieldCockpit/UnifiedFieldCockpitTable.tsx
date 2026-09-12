@@ -127,7 +127,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                   „Entwurfsreif“
                 </strong>{' '}
                 wird, müssen folgende {missingOrReviewRows.length} Felder geklärt und auf{' '}
-                <span className="inline-flex items-center rounded border border-[#B9ED94] bg-[#E7F9DA] px-2 py-0.5 text-xs font-semibold text-[#284E0D]">
+                <span className="border-notar-400 bg-notar-200 text-notar-950 inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold">
                   Belegt
                 </span>{' '}
                 gesetzt werden:
@@ -203,7 +203,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                 <button
                   type="button"
                   onClick={toggleAllDetails}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors focus-visible:ring-2 focus-visible:ring-[#356611]"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-notar-900 inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors focus-visible:ring-2"
                   title={isAllExpanded ? 'Alle Details einklappen' : 'Alle Details aufklappen'}
                   aria-label={isAllExpanded ? 'Alle Details einklappen' : 'Alle Details aufklappen'}
                   aria-expanded={isAllExpanded}
@@ -282,7 +282,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                             }
                             className={`cursor-pointer appearance-none rounded-md border py-1.5 pr-6 pl-2.5 text-sm font-semibold transition-all focus:ring-2 focus:ring-offset-1 focus:outline-none ${
                               row.status === 'VERIFIED'
-                                ? 'border-[#B9ED94] bg-[#E7F9DA] text-[#284E0D] focus:ring-[#356611]'
+                                ? 'border-notar-400 bg-notar-200 text-notar-950 focus:ring-notar-900'
                                 : row.status === 'NEEDS_REVIEW'
                                   ? 'border-amber-300 bg-amber-50 text-amber-950 focus:ring-amber-500'
                                   : row.status === 'OUTDATED'
@@ -324,14 +324,14 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                             value={editingNoteValue}
                             onChange={(e) => setEditingNoteValue(e.target.value)}
                             placeholder="Befund / Prüfungshinweis anpassen..."
-                            className="border-border bg-background text-foreground placeholder:text-muted-foreground w-full rounded-md border p-2 text-xs focus:ring-2 focus:ring-[#356611] focus:outline-none"
+                            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-notar-900 w-full rounded-md border p-2 text-xs focus:ring-2 focus:outline-none"
                             autoFocus
                           />
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => handleSaveNote(row.fieldKey, row.status)}
-                              className="inline-flex cursor-pointer items-center gap-1 rounded bg-[#A2E771] px-2.5 py-1 text-[11px] font-semibold text-[#284E0D] shadow-2xs hover:bg-[#83DF41]"
+                              className="bg-notar-500 text-notar-950 hover:bg-notar-600 inline-flex cursor-pointer items-center gap-1 rounded px-2.5 py-1 text-[11px] font-semibold shadow-2xs"
                             >
                               <Check className="h-3 w-3" />
                               Speichern
@@ -383,7 +383,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                               key={sIdx}
                               className="flex w-full min-w-0 items-start gap-1.5 rounded bg-slate-100 p-2 text-sm leading-snug text-slate-800 dark:bg-slate-800/80 dark:text-slate-200"
                             >
-                              <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#356611]" />
+                              <FileText className="text-notar-900 mt-0.5 h-3.5 w-3.5 shrink-0" />
                               <span className="min-w-0 flex-1 font-medium [overflow-wrap:anywhere] break-words">
                                 {src.fileName}
                                 {src.pageNumber && src.pageNumber > 0
@@ -430,7 +430,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                         <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/90 p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-950/80">
                           <div className="flex items-center justify-between border-b border-slate-200/80 pb-2 text-base dark:border-slate-800">
                             <div className="flex items-center gap-2">
-                              <span className="h-2.5 w-2.5 rounded-full bg-[#356611]" />
+                              <span className="bg-notar-900 h-2.5 w-2.5 rounded-full" />
                               <span className="text-foreground font-semibold">
                                 Extrahierte Vertragsdaten ({row.fieldTitle})
                               </span>
@@ -463,7 +463,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                                       className="space-y-1 rounded-md border border-slate-200 bg-white/90 p-3 text-base shadow-2xs dark:border-slate-800 dark:bg-slate-900/90"
                                     >
                                       <div className="text-foreground flex items-center gap-1.5 font-medium">
-                                        <FileText className="h-4 w-4 shrink-0 text-[#356611]" />
+                                        <FileText className="text-notar-900 h-4 w-4 shrink-0" />
                                         <span>{src.fileName}</span>
                                         {src.pageNumber ? (
                                           <span className="text-muted-foreground font-normal">

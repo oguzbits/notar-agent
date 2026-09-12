@@ -53,6 +53,22 @@ const eslintConfig = defineConfig([
           },
         },
       ],
+
+      // Deterministische Durchsetzung von Design-Tokens & Best Practices
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/#(?:[0-9a-fA-F]{3,8})\\b/]",
+          message:
+            "Hardcoded hex colors are forbidden. Use semantic tokens defined in globals.css instead.",
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='JSON'][callee.property.name='parse'] > CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
+          message:
+            "Forbidden poor-man's deep clone: use structuredClone(value) instead of JSON.parse(JSON.stringify(value)).",
+        },
+      ],
     },
   },
   // Override default ignores of eslint-config-next.

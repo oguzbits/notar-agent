@@ -55,47 +55,33 @@ Obwohl das System für den aktuellen Scope (multidokumentarische Immobilienkaufv
 
 # Phase II: Core Domain & Datenmodell (Single Source of Truth)
 
-## 4. Mangelnde fachliche Skalierbarkeit: Case-Strategy-Pattern & Dynamisches Datenmodell
+## 4. [ERLEDIGT] Mangelnde fachliche Skalierbarkeit: Case-Strategy-Pattern & Dynamisches Datenmodell
 
-- **Betroffene Dateien:**
-  - `src/types/dossier.ts` (`CaseTypeSchema = z.enum(['IMMOBILIENKAUF', 'GMBH_GRUENDUNG'])`, `ImmobilienFieldsSchema`, starre Union in `DossierSchema`)
-  - `src/lib/ai/prompts.ts` (`IMMOBILIEN_EXTRACTION_AGENT_PROMPT`, `NOTARY_AUDITOR_RECONCILER_PROMPT`)
-  - `src/app/api/analyze/route.ts` (Hartverdrahtet: `IMMOBILIEN_EXTRACTION_AGENT_PROMPT`)
-  - `src/lib/dossier-helpers.ts` (`CASE_TYPE_CORE_FIELDS`, feste Immobilien-Readiness-Prüfung)
-- **Status Quo:**
-  Das System ist vollständig auf Immobilienkaufverträge festverdrahtet. Bei Auswahl von `GMBH_GRUENDUNG` sendet `route.ts` dennoch Immobilien-Prompts an Anthropic. Das Datenmodell erzwingt starre Keys (`verkaeufer`, `grundbuch`), wodurch GmbH-Felder (Stammkapital, Gesellschafter, Geschäftsführer) weder typisiert noch normalisiert werden können.
-- **Konkretes Problem:**
-  - Um ein neues Rechtsgebiet (z. B. GmbH-Gründung, Erbvertrag) hinzuzufügen, müssen 6 zentrale Dateien quer durch Frontend, Backend, Prompts und Schemata modifiziert werden.
-  - Das Open-Closed-Principle (OCP) wird verletzt: Bestehender Code muss geändert werden, statt ihn modular zu erweitern.
-- **Refactoring-Maßnahme (Evolutionärer Pfad nach YAGNI & Rule-of-Three):**
-  - **Stufe 1 (Aktuell: 1 aktiver CaseType):**
-    Strikte Trennung von generischen Vorgangseigenschaften (`caseTitle`, `detectedDocuments`, `inquiries`, `overallStatus`) und der vertragsspezifischen Payload (`ImmobilienFields`). Die 10 Pflichtfelder behalten ihre 100% statische Typsicherheit (kein generisches `Record<string, unknown>`).
-  - **Stufe 2 (Evolution auf 2 CaseTypes – z. B. GmbH-Gründung):**
-    Einführung einer **TypeScript Discriminated Union** (`type Dossier = ImmobilienDossier | GmbhDossier` mit `caseType: 'IMMOBILIENKAUF' | 'GMBH_GRUENDUNG'`). Sämtliche Prompts und Prüfungen verzweigen deterministisch via typgeprüftem `switch (caseType)` mit Exhaustiveness-Check (`assertNever`).
-  - **Stufe 3 (Evolutionärer Trigger: Ab 3+ CaseTypes):**
-    > **Agent-Direktive / Kriterium für Architektur-Upgrade:**
-    > Sobald ein dritter konkreter Vorgangstyp (z. B. `ERBVERTRAG`) hinzukommt, greift die _Rule of Three_ ([AGENTS.md:L8](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp/AGENTS.md#L8)). Erst hier schlägt der Agent aktiv den Übergang zum **Strategy/Registry-Pattern** (`CaseStrategy<T>`, `src/core/cases/`) vor, um Switch-Verzweigungen zu ablösen.
+- **Status:** Erledigt (Stufe 2 Discriminated Union & GmbH-Schemata implementiert)
+- **Umgesetzte Maßnahmen:**
+  - `src/types/dossier.ts`:
+    - Definition von `GmbhFieldsSchema` mit typisierten Fachdaten (`firma`, `gesellschafter`, `geschaeftsfuehrer`, `stammkapital`, `unternehmensgegenstand`).
+    - Definition von `GmbhDossierSchema` und `GmbhDossier`.
+    - Umstellung von `DossierSchema` auf `z.discriminatedUnion('caseType', [ImmobilienDossierSchema, GmbhDossierSchema])`.
+    - Bereitstellung typsicherer Type-Guards (`isImmobilienDossier`, `isGmbhDossier`).
+    - Beseitigung ungetypter Fluchtluken (`z.record(z.string(), z.unknown())`).
+  - `src/types/dossier.test.ts`: Vollständige Validierungstests für Schema-Parsing, Typ-Diskriminierung und Type-Guards.
 
 ---
 
-## 5. Überladung von Hilfsfunktionen in `dossier-helpers.ts`
+## 5. [ERLEDIGT] Überladung von Hilfsfunktionen in `dossier-helpers.ts`
 
-- **Betroffene Datei:** `src/lib/dossier-helpers.ts` (565 Zeilen)
-- **Status Quo:**
-  Die Datei fungiert als Sammelbecken für vier unterschiedliche Schichten:
-  1. **Fachliche Registry & Metadaten:** `IMMOBILIEN_FIELD_METADATA`, Spalten-Reihenfolgen, Pflichtfeld-Listen.
-  2. **Daten-Sanitizing & Normalisierung:** `normalizeDossier`, URL-/Quellenbereinigung, String-Trimming, Fallback-Generierung.
-  3. **Juristische Notariats-Regeln:** `isDossierEntwurfsreif`, Fristenberechnung nach § 17 Abs. 2a BeurkG, Status-Aggregation.
-  4. **UI-View-Model Transformation:** `extractAllFieldRows`, `formatSourceCitation`, Aggregation von Teilnachweisen (`SubSourceItem[]`).
-- **Konkretes Problem:**
-  - Backend-API-Routen und React-Client-Komponenten importieren dieselbe Datei.
-  - UI-Formatierungsänderungen berühren rechtlich bindende Notariats-Prüfregeln.
-- **Refactoring-Maßnahme:**
-  - **Aufteilung in fokussierte Module:**
-    - `src/lib/dossier/normalizer.ts`: Reine Datenbereinigung und Schemakonformität (Zod).
-    - `src/lib/dossier/readiness.ts`: Reine Geschäfts- und Notariatslogik (Entwurfsreife, Fristen).
-    - `src/lib/dossier/ui-mapper.ts`: Transformation von `Dossier` in Tabellenzeilen (`FieldObservation`).
-    - `src/lib/dossier/constants.ts`: Statische Metadaten und Typ-Registries.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - **Modularisierung in `src/lib/dossier/`:**
+    - `src/lib/dossier/types.ts`: Typdefinitionen für `SubSourceItem`, `FieldObservation`, `CaseTypeCoreConfig`.
+    - `src/lib/dossier/constants.ts`: Statische Feld-Registries (`IMMOBILIEN_FIELD_METADATA`, `CASE_TYPE_METADATA_REGISTRY`, `CASE_TYPE_CORE_FIELDS`, `STATUS_LABELS_DE`).
+    - `src/lib/dossier/ui-mapper.ts`: Reine UI- und Text-Mapping-Funktionen (`cleanSourceFileName`, `parseSourceLocations`, `extractFieldObservations`, `extractAllFieldRows`, `generatePruefberichtText`).
+    - `src/lib/dossier/readiness.ts`: Reine juristische Reifegradprüfungen (`isDossierEntwurfsreif`, `getDossierReadinessStage`).
+    - `src/lib/dossier/normalizer.ts`: Robuste Datenbereinigung und juristische Fach-Guardrails (§ 35 GBO, § 12 HGB).
+    - `src/lib/dossier/index.ts`: Zentraler Barrel-Export.
+  - `src/lib/dossier-helpers.ts`: Vollständig als abwärtskompatible Fassade belassen, sodass alle bestehenden Importe ohne Refactoring-Risiko stabil bleiben.
+  - Dedizierte Unit-Tests für jedes Einzelmodul (`constants.test.ts`, `ui-mapper.test.ts`, `readiness.test.ts`).
 
 ---
 

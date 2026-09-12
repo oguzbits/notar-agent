@@ -55,7 +55,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
       className={`bg-card text-card-foreground border-border flex flex-col justify-between rounded-xl border transition-all ${
         isMissing && !isExpanded
           ? 'bg-slate-50/50 p-2.5 hover:border-slate-300'
-          : 'p-3.5 shadow-xs hover:border-[#B9ED94]'
+          : 'hover:border-notar-400 p-3.5 shadow-xs'
       }`}
     >
       <div>
@@ -144,10 +144,10 @@ export const FieldCard: React.FC<FieldCardProps> = ({
 
         {/* Status-Änderung & Sachbearbeiter-Notiz */}
         {isEditingNote && (
-          <div className="mt-2.5 space-y-2 rounded-lg border border-[#B9ED94] bg-[#E7F9DA]/30 p-2.5 text-xs">
-            <div className="flex items-center justify-between gap-1.5 font-medium text-[#284E0D]">
+          <div className="border-notar-400 bg-notar-200/30 text-notar-950 mt-2.5 space-y-2 rounded-lg border p-2.5 text-xs">
+            <div className="text-notar-950 flex items-center justify-between gap-1.5 font-medium">
               <div className="flex items-center gap-1.5">
-                <CheckCheck className="h-3.5 w-3.5 text-[#4D9619]" />
+                <CheckCheck className="text-notar-800 h-3.5 w-3.5" />
                 <span className="font-semibold">Status manuell anpassen</span>
               </div>
             </div>
@@ -163,7 +163,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
                   onClick={() => setTargetStatus('VERIFIED')}
                   className={`cursor-pointer rounded-md border px-1.5 py-1 text-center text-[11px] font-semibold transition-colors ${
                     targetStatus === 'VERIFIED'
-                      ? 'border-[#B9ED94] bg-[#E7F9DA] text-[#284E0D] ring-1 ring-[#356611]'
+                      ? 'border-notar-400 bg-notar-200 text-notar-950 ring-notar-900 ring-1'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted'
                   }`}
                 >
@@ -229,7 +229,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
               <button
                 type="button"
                 onClick={() => handleSaveStatus()}
-                className="cursor-pointer rounded-md bg-[#A2E771] px-3 py-1 text-[11px] font-semibold text-[#284E0D] shadow-xs hover:bg-[#83DF41]"
+                className="bg-notar-500 text-notar-950 hover:bg-notar-600 cursor-pointer rounded-md px-3 py-1 text-[11px] font-semibold shadow-xs"
               >
                 Status speichern
               </button>

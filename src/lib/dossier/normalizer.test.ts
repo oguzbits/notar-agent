@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeDossier } from './dossier-helpers';
 import {
   Dossier,
   ImmobilienDossier,
   ImmobilienFields,
   NotaryNumberSchema,
   KaufpreisDataSchema,
-} from '../types/dossier';
+} from '@/types/dossier';
+import { normalizeDossier } from './normalizer';
 
 describe('Dossier Normalization & Integrity Guardrails', () => {
   it('should preserve canonical field data and ensure correct document sorting and normalization', () => {
