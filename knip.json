@@ -1,7 +1,0 @@
-{
-  "$schema": "https://unpkg.com/knip@5/overview/schema.json",
-  "entry": ["src/app/**/*.{ts,tsx}", "src/lib/dossier/index.ts"],
-  "project": ["src/**/*.{ts,tsx}"],
-  "ignore": ["src/components/ui/index.ts"],
-  "ignoreDependencies": ["eslint-plugin-import", "tailwindcss"]
-}
