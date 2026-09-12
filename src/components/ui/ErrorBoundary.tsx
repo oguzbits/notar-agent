@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               'Es ist ein unerwarteter Darstellungsfehler aufgetreten. Der restliche Vorgang bleibt intakt.'}
           </p>
           {this.state.error?.message && (
-            <pre className="bg-muted/60 text-muted-foreground mt-2 max-w-full overflow-x-auto rounded px-2.5 py-1 font-mono text-[11px]">
+            <pre className="bg-muted/60 text-muted-foreground text-2xs mt-2 max-w-full overflow-x-auto rounded px-2.5 py-1 font-mono">
               {this.state.error.message}
             </pre>
           )}

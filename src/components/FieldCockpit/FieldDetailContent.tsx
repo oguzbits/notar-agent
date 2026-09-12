@@ -32,7 +32,7 @@ export const FieldDetailContent: React.FC<FieldDetailContentProps> = ({ fieldKey
               {cleanTextValue(fields.verkaeufer.data?.name) || '—'}
             </span>
             {cleanTextValue(fields.verkaeufer.data?.legalForm) && (
-              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px] font-medium">
+              <span className="bg-muted text-muted-foreground text-3xs rounded px-1.5 py-0.5 font-medium">
                 {cleanTextValue(fields.verkaeufer.data?.legalForm)}
               </span>
             )}
@@ -195,7 +195,7 @@ export const FieldDetailContent: React.FC<FieldDetailContentProps> = ({ fieldKey
       return (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Coins className="h-4 w-4 shrink-0 text-[#4D9619]" />
+            <Coins className="text-notar-800 h-4 w-4 shrink-0" />
             <span className="text-foreground text-base font-bold">
               {fields.kaufpreis.data?.amountInFigures
                 ? `${fields.kaufpreis.data.amountInFigures.toLocaleString('de-DE')} EUR`
@@ -208,7 +208,7 @@ export const FieldDetailContent: React.FC<FieldDetailContentProps> = ({ fieldKey
             </p>
             {fields.kaufpreis.data?.priceEvolutionSummary && (
               <div className="bg-muted/60 border-border text-foreground rounded-md border p-2.5 text-base">
-                <strong className="text-[#356611]">Verhandlungshistorie:</strong>{' '}
+                <strong className="text-notar-900">Verhandlungshistorie:</strong>{' '}
                 {fields.kaufpreis.data.priceEvolutionSummary}
               </div>
             )}

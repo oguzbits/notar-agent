@@ -34,7 +34,7 @@ export const SourceAuditDrawer: React.FC<SourceAuditDrawerProps> = ({ source }) 
         className="text-muted-foreground hover:text-foreground focus-visible:ring-primary flex w-full cursor-pointer items-center justify-between rounded p-0.5 text-left text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-hidden"
       >
         <div className="flex flex-wrap items-center gap-1.5 truncate">
-          <FileText className="h-3.5 w-3.5 shrink-0 text-[#66C622]" aria-hidden="true" />
+          <FileText className="text-notar-600 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="text-muted-foreground">Quellen:</span>
           {subSources.map((s, idx) => (
             <SourcePill key={idx} fileName={s.fileName} pageNumber={s.pageNumber} />
@@ -66,9 +66,9 @@ export const SourceAuditDrawer: React.FC<SourceAuditDrawerProps> = ({ source }) 
                   >
                     <div className="text-foreground flex items-center gap-1.5 pb-1 font-semibold">
                       {isNote ? (
-                        <StickyNote className="h-3 w-3 text-[#E08A00]" />
+                        <StickyNote className="h-3 w-3 text-amber-600" />
                       ) : (
-                        <FileText className="h-3 w-3 text-[#4D9619]" />
+                        <FileText className="text-notar-800 h-3 w-3" />
                       )}
                       <span>{s.fileName}</span>
                       {s.pageNumber ? (
@@ -77,7 +77,7 @@ export const SourceAuditDrawer: React.FC<SourceAuditDrawerProps> = ({ source }) 
                         </span>
                       ) : null}
                     </div>
-                    <div className="text-muted-foreground pl-4 font-mono text-[11px] whitespace-pre-wrap italic select-text">
+                    <div className="text-muted-foreground text-2xs pl-4 font-mono whitespace-pre-wrap italic select-text">
                       {s.snippet ? (
                         `"${s.snippet}"`
                       ) : (
@@ -94,11 +94,11 @@ export const SourceAuditDrawer: React.FC<SourceAuditDrawerProps> = ({ source }) 
           ) : (
             <div className="bg-muted/60 border-border text-foreground relative rounded-lg border p-2 pl-6 text-xs">
               <Quote className="text-muted-foreground absolute top-2 left-1.5 h-3 w-3" />
-              <div className="text-foreground flex items-center gap-1.5 pb-1 text-[11px] font-semibold">
+              <div className="text-foreground text-2xs flex items-center gap-1.5 pb-1 font-semibold">
                 {subSources[0].fileName.toLowerCase().startsWith('notiz') ? (
-                  <StickyNote className="h-3 w-3 text-[#E08A00]" />
+                  <StickyNote className="h-3 w-3 text-amber-600" />
                 ) : (
-                  <FileText className="h-3 w-3 text-[#4D9619]" />
+                  <FileText className="text-notar-800 h-3 w-3" />
                 )}
                 <span>{subSources[0].fileName}</span>
                 {subSources[0].pageNumber ? (
@@ -107,7 +107,7 @@ export const SourceAuditDrawer: React.FC<SourceAuditDrawerProps> = ({ source }) 
                   </span>
                 ) : null}
               </div>
-              <p className="font-mono text-[11px] leading-relaxed whitespace-pre-wrap italic select-text">
+              <p className="text-2xs font-mono leading-relaxed whitespace-pre-wrap italic select-text">
                 &quot;{validSource.snippet}&quot;
               </p>
             </div>

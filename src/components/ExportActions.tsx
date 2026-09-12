@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react';
 import React from 'react';
+import { downloadJsonFile } from '@/lib/export/download-helper';
 import { Dossier } from '@/types/dossier';
 
 interface ExportActionsProps {
@@ -8,17 +9,8 @@ interface ExportActionsProps {
 
 export const ExportActions: React.FC<ExportActionsProps> = ({ dossier }) => {
   const downloadJson = () => {
-    const dataStr =
-      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(dossier, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute(
-      'download',
-      `dossier_${dossier.caseTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`
-    );
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    const fileName = `dossier_${dossier.caseTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+    downloadJsonFile(fileName, dossier);
   };
 
   return (

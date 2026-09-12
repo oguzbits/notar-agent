@@ -43,20 +43,20 @@ export const InquiriesPanel: React.FC<InquiriesPanelProps> = ({ inquiries, onTog
     switch (prio) {
       case 'CRITICAL':
         return (
-          <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-800 uppercase">
+          <span className="text-3xs rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 font-bold text-rose-800 uppercase">
             Kritisch
           </span>
         );
       case 'HIGH':
         return (
-          <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-900 uppercase">
+          <span className="text-3xs rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 font-bold text-amber-900 uppercase">
             Hohe Priorität
           </span>
         );
       case 'MEDIUM':
       default:
         return (
-          <span className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800 uppercase">
+          <span className="text-3xs rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-800 uppercase">
             Mittlere Priorität
           </span>
         );
@@ -71,13 +71,13 @@ export const InquiriesPanel: React.FC<InquiriesPanelProps> = ({ inquiries, onTog
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-2 text-left transition-colors"
         >
-          <div className="rounded-md bg-[#E7F9DA] p-1.5 text-[#284E0D]">
+          <div className="bg-notar-100 text-notar-950 rounded-md p-1.5">
             <MailQuestion className="h-4 w-4" />
           </div>
           <div>
             <h3 className="text-foreground flex items-center gap-2 text-base font-semibold">
               Erforderliche Nachforderungen &amp; Unterlagen
-              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
+              <span className="bg-muted text-muted-foreground text-2xs rounded px-1.5 py-0.5 font-mono">
                 {unresolvedCount} offen / {inquiries.length} gesamt
               </span>
             </h3>
@@ -134,7 +134,7 @@ export const InquiriesPanel: React.FC<InquiriesPanelProps> = ({ inquiries, onTog
                       title={inquiry.resolved ? 'Wieder öffnen' : 'Als erledigt markieren'}
                     >
                       {inquiry.resolved ? (
-                        <CheckCircle className="h-4 w-4 text-[#4D9619]" />
+                        <CheckCircle className="text-notar-800 h-4 w-4" />
                       ) : (
                         <Circle className="h-4 w-4" />
                       )}
@@ -147,7 +147,7 @@ export const InquiriesPanel: React.FC<InquiriesPanelProps> = ({ inquiries, onTog
                     Feld: <code className="text-foreground">{inquiry.fieldKey}</code>
                   </span>
                   {inquiry.resolved && (
-                    <span className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
+                    <span className="text-3xs rounded bg-green-100 px-2 py-0.5 font-semibold text-green-800">
                       Erledigt / Abgehakt
                     </span>
                   )}
@@ -181,7 +181,7 @@ export const InquiriesPanel: React.FC<InquiriesPanelProps> = ({ inquiries, onTog
                 {inquiry.message}
               </div>
 
-              <div className="text-muted-foreground mt-2 flex items-start gap-1.5 text-[11px]">
+              <div className="text-muted-foreground text-2xs mt-2 flex items-start gap-1.5">
                 <ArrowUpRight className="text-muted-foreground mt-0.5 h-3 w-3 shrink-0" />
                 <span>
                   <strong className="text-foreground">Begründung:</strong> {inquiry.justification}

@@ -132,7 +132,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
         {isLoading ? (
           <div className="text-muted-foreground flex flex-col items-center justify-center gap-3 p-12">
-            <Loader2 className="h-6 w-6 animate-spin text-[#4D9619]" />
+            <Loader2 className="text-notar-800 h-6 w-6 animate-spin" />
             <span className="text-base font-medium">Vorgänge werden geladen...</span>
           </div>
         ) : filteredDocuments.length === 0 ? (
@@ -154,7 +154,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 onClick={onCreateNew}
                 className="border-border text-foreground hover:bg-muted mt-2 inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-base font-medium transition-colors"
               >
-                <Plus className="h-4 w-4 text-[#4D9619]" />
+                <Plus className="text-notar-800 h-4 w-4" />
                 <span>Erste Akte anlegen</span>
               </button>
             )}
@@ -183,7 +183,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="border-border bg-muted/60 text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border">
-                            <FileText className="h-4 w-4 text-[#4D9619]" />
+                            <FileText className="text-notar-800 h-4 w-4" />
                           </div>
                           <div>
                             <span className="text-foreground block font-semibold">{doc.title}</span>
@@ -220,7 +220,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onSelectDocument(doc)}
-                            className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-7 w-7 items-center justify-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[#356611]"
+                            className="hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-notar-900 flex h-7 w-7 items-center justify-center rounded-md transition-colors focus-visible:ring-2"
                             title="Vorgang öffnen"
                             aria-label={`Vorgang ${doc.title} öffnen`}
                           >

@@ -81,14 +81,14 @@ export const FieldCard: React.FC<FieldCardProps> = ({
               )}
             </button>
 
-            <span className="bg-muted text-muted-foreground flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded text-[10px] font-bold">
+            <span className="bg-muted text-muted-foreground text-3xs flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded font-bold">
               {index}
             </span>
 
             <div className="min-w-0 flex-1">
               <h3 className="text-foreground truncate text-base font-semibold">{title}</h3>
               {isExpanded && (
-                <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-tight break-words">
+                <p className="text-muted-foreground text-2xs mt-0.5 line-clamp-2 leading-tight break-words">
                   {subtitle}
                 </p>
               )}
@@ -154,14 +154,14 @@ export const FieldCard: React.FC<FieldCardProps> = ({
 
             {/* Status-Auswahl */}
             <div>
-              <label className="text-muted-foreground mb-1 block text-[11px] font-medium">
+              <label className="text-muted-foreground text-2xs mb-1 block font-medium">
                 Neuer Status:
               </label>
               <div className="grid grid-cols-4 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setTargetStatus('VERIFIED')}
-                  className={`cursor-pointer rounded-md border px-1.5 py-1 text-center text-[11px] font-semibold transition-colors ${
+                  className={`text-2xs cursor-pointer rounded-md border px-1.5 py-1 text-center font-semibold transition-colors ${
                     targetStatus === 'VERIFIED'
                       ? 'border-notar-400 bg-notar-200 text-notar-950 ring-notar-900 ring-1'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted'
@@ -172,7 +172,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
                 <button
                   type="button"
                   onClick={() => setTargetStatus('NEEDS_REVIEW')}
-                  className={`cursor-pointer rounded-md border px-1.5 py-1 text-center text-[11px] font-semibold transition-colors ${
+                  className={`text-2xs cursor-pointer rounded-md border px-1.5 py-1 text-center font-semibold transition-colors ${
                     targetStatus === 'NEEDS_REVIEW'
                       ? 'border-amber-300 bg-amber-50 text-amber-950 ring-1 ring-amber-600'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted'
@@ -183,7 +183,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
                 <button
                   type="button"
                   onClick={() => setTargetStatus('OUTDATED')}
-                  className={`cursor-pointer rounded-md border px-1.5 py-1 text-center text-[11px] font-semibold transition-colors ${
+                  className={`text-2xs cursor-pointer rounded-md border px-1.5 py-1 text-center font-semibold transition-colors ${
                     targetStatus === 'OUTDATED'
                       ? 'border-orange-300 bg-orange-50 text-orange-950 ring-1 ring-orange-600'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted'
@@ -194,7 +194,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
                 <button
                   type="button"
                   onClick={() => setTargetStatus('MISSING')}
-                  className={`cursor-pointer rounded-md border px-1.5 py-1 text-center text-[11px] font-medium transition-colors ${
+                  className={`text-2xs cursor-pointer rounded-md border px-1.5 py-1 text-center font-medium transition-colors ${
                     targetStatus === 'MISSING'
                       ? 'border-slate-300 bg-slate-200 text-slate-800 ring-1 ring-slate-500'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted'
@@ -206,7 +206,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
             </div>
 
             <div>
-              <label className="text-muted-foreground mb-1 block text-[11px] font-medium">
+              <label className="text-muted-foreground text-2xs mb-1 block font-medium">
                 Optionale Notiz / Begründung:
               </label>
               <input
@@ -222,14 +222,14 @@ export const FieldCard: React.FC<FieldCardProps> = ({
               <button
                 type="button"
                 onClick={() => setIsEditingNote(false)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded px-2.5 py-1 text-[11px]"
+                className="text-muted-foreground hover:text-foreground text-2xs cursor-pointer rounded px-2.5 py-1"
               >
                 Abbrechen
               </button>
               <button
                 type="button"
                 onClick={() => handleSaveStatus()}
-                className="bg-notar-500 text-notar-950 hover:bg-notar-600 cursor-pointer rounded-md px-3 py-1 text-[11px] font-semibold shadow-xs"
+                className="bg-notar-500 text-notar-950 hover:bg-notar-600 text-2xs cursor-pointer rounded-md px-3 py-1 font-semibold shadow-xs"
               >
                 Status speichern
               </button>

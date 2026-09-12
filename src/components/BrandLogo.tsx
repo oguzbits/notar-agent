@@ -10,7 +10,7 @@ interface BrandLogoProps {
 export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', href = '/', onClick }) => {
   const content = (
     <>
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#A2E771] text-base font-bold text-[#284E0D] shadow-xs">
+      <div className="bg-notar-500 text-notar-950 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base font-bold shadow-xs">
         N
       </div>
       <span className="text-foreground text-base font-bold tracking-tight">NotarPartner</span>

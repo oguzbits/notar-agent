@@ -2,17 +2,17 @@
 
 import { Loader2, ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useState, Suspense } from 'react';
+import { Suspense } from 'react';
 import { Header } from '@/components/Header';
-import { PreparedFile } from '@/components/UploadZone';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
 import { VorgangTableView } from '@/components/views/VorgangTableView';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
+import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier-helpers';
 import { DocumentRecord, computeDocumentStatus } from '@/lib/supabase/server';
-import { Dossier, CaseType, FieldStatus, GenericFieldDossier } from '@/types/dossier';
+import { Dossier, FieldStatus, GenericFieldDossier } from '@/types/dossier';
 
 function HomeContent() {
   const router = useRouter();
@@ -32,24 +32,11 @@ function HomeContent() {
     startAnalysis,
     startAppendAnalysis,
   } = useAnalysisWorkflow();
-
-  // Lokale UI-Zustände
-  const [files, setFiles] = useState<PreparedFile[]>([]);
-  const [caseType, setCaseType] = useState<CaseType>('IMMOBILIENKAUF');
-  const [notes, setNotes] = useState('');
-  const [dossier, setDossier] = useState<Dossier | null>(null);
-  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
-  const [isAppending, setIsAppending] = useState(false);
-  const [appendFiles, setAppendFiles] = useState<PreparedFile[]>([]);
-  const [appendNotes, setAppendNotes] = useState('');
-  const [persistenceInfo, setPersistenceInfo] = useState<{
-    storageType: 'supabase' | 'in-memory' | 'none' | 'local-only';
-    caseNumber: string;
-  } | null>(null);
+  const { state: session, actions } = useVorgangSession();
 
   // Selektierten Datensatz auflösen
   const activeRecord = vorgangParam ? documents.find((d) => d.id === vorgangParam) : null;
-  const rawDisplayedDossier = activeRecord?.content || dossier;
+  const rawDisplayedDossier = activeRecord?.content || session.dossier;
   const displayedDossier = rawDisplayedDossier ? normalizeDossier(rawDisplayedDossier) : null;
 
   const effectiveView: 'table' | 'upload' | 'detail' =
@@ -59,35 +46,19 @@ function HomeContent() {
   const handleSelectDocument = (doc: DocumentRecord) => {
     if (doc.content) {
       setErrorMessage(null);
-      setDossier(doc.content);
-      setActiveDocumentId(doc.id);
-      setIsAppending(false);
-      setAppendFiles([]);
-      setAppendNotes('');
-      setFiles([]);
-      setNotes('');
-      setPersistenceInfo({
-        storageType: 'supabase',
-        caseNumber: doc.title,
-      });
+      actions.selectDocument(doc.id, doc.content, doc.title);
       router.push(`/?vorgang=${encodeURIComponent(doc.id)}`);
     }
   };
 
   const handleCreateNew = () => {
-    setDossier(null);
-    setActiveDocumentId(null);
-    setFiles([]);
-    setNotes('');
-    setIsAppending(false);
+    actions.resetNewVorgang();
     setErrorMessage(null);
     router.push('/?view=upload');
   };
 
   const handleBackToTable = () => {
-    setDossier(null);
-    setActiveDocumentId(null);
-    setIsAppending(false);
+    actions.resetNewVorgang();
     setErrorMessage(null);
     router.push('/');
   };
@@ -95,12 +66,12 @@ function HomeContent() {
   // Analyse-Trigger
   const handleStartAnalysis = async () => {
     try {
-      await startAnalysis(files, caseType, notes, (result) => {
-        setDossier(result.dossier);
+      await startAnalysis(session.files, session.caseType, session.notes, (result) => {
+        actions.setDossier(result.dossier);
         if (result.persistence) {
           const newId = result.persistence.id || null;
-          setActiveDocumentId(newId);
-          setPersistenceInfo({
+          actions.setActiveDocumentId(newId);
+          actions.setPersistenceInfo({
             storageType: result.persistence.storageType,
             caseNumber: result.persistence.caseNumber,
           });
@@ -119,16 +90,14 @@ function HomeContent() {
     if (!displayedDossier) return;
     try {
       await startAppendAnalysis(
-        activeDocumentId || vorgangParam,
+        session.activeDocumentId || vorgangParam,
         displayedDossier,
-        appendFiles,
-        appendNotes,
+        session.appendFiles,
+        session.appendNotes,
         (result) => {
-          setDossier(result.dossier);
-          setIsAppending(false);
-          setAppendFiles([]);
-          setAppendNotes('');
-          const docId = activeDocumentId || vorgangParam;
+          actions.setDossier(result.dossier);
+          actions.resetAppend();
+          const docId = session.activeDocumentId || vorgangParam;
           if (docId) {
             const computedStatus = computeDocumentStatus(result.dossier);
             setDocuments((prev) =>
@@ -181,9 +150,9 @@ function HomeContent() {
             overallStatus: newOverall,
           };
 
-    setDossier(updatedDossier);
+    actions.setDossier(updatedDossier);
 
-    const docId = activeDocumentId || vorgangParam;
+    const docId = session.activeDocumentId || vorgangParam;
     if (docId) {
       const computedStatus = computeDocumentStatus(updatedDossier);
       setDocuments((prev) =>
@@ -201,8 +170,10 @@ function HomeContent() {
   return (
     <div className="bg-background text-foreground selection:bg-notar-300 flex min-h-screen flex-col font-sans antialiased selection:text-slate-900">
       <Header
-        caseNumber={persistenceInfo?.caseNumber || activeRecord?.title}
-        storageType={persistenceInfo?.storageType || (activeRecord ? 'supabase' : undefined)}
+        caseNumber={session.persistenceInfo?.caseNumber || activeRecord?.title}
+        storageType={
+          session.persistenceInfo?.storageType || (activeRecord ? 'supabase' : undefined)
+        }
         overallStatus={displayedDossier?.overallStatus}
         onLogoClick={handleBackToTable}
       />
@@ -245,12 +216,12 @@ function HomeContent() {
         {/* Ansicht 2: Upload-Bereich für neue Zuarbeit */}
         {effectiveView === 'upload' && (
           <NewVorgangUploadView
-            files={files}
-            onFilesChange={setFiles}
-            caseType={caseType}
-            onCaseTypeChange={setCaseType}
-            notes={notes}
-            onNotesChange={setNotes}
+            files={session.files}
+            onFilesChange={actions.setFiles}
+            caseType={session.caseType}
+            onCaseTypeChange={actions.setCaseType}
+            notes={session.notes}
+            onNotesChange={actions.setNotes}
             isAnalyzing={isAnalyzing}
             activeStep={activeStep}
             stepDetail={stepDetail}
@@ -266,17 +237,13 @@ function HomeContent() {
             dossier={displayedDossier}
             activeRecord={activeRecord || null}
             onOverrideFieldStatus={handleOverrideFieldStatus}
-            isAppending={isAppending}
-            onToggleAppending={() => setIsAppending(!isAppending)}
-            appendFiles={appendFiles}
-            onAppendFilesChange={setAppendFiles}
-            appendNotes={appendNotes}
-            onAppendNotesChange={setAppendNotes}
-            onCancelAppend={() => {
-              setIsAppending(false);
-              setAppendFiles([]);
-              setAppendNotes('');
-            }}
+            isAppending={session.isAppending}
+            onToggleAppending={() => actions.setIsAppending(!session.isAppending)}
+            appendFiles={session.appendFiles}
+            onAppendFilesChange={actions.setAppendFiles}
+            appendNotes={session.appendNotes}
+            onAppendNotesChange={actions.setAppendNotes}
+            onCancelAppend={actions.resetAppend}
             onSubmitAppend={handleStartAppendAnalysis}
             isAnalyzing={isAnalyzing}
             activeStep={activeStep}

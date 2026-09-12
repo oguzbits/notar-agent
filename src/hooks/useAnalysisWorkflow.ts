@@ -2,10 +2,24 @@
 
 import { useState } from 'react';
 import { PreparedFile } from '@/components/UploadZone';
+import { parseSseStream } from '@/lib/sse/parse-sse-stream';
 import { Dossier, CaseType } from '@/types/dossier';
 
 export interface AnalysisStreamResult {
   dossier: Dossier;
+  persistence?: {
+    id?: string;
+    storageType: 'supabase' | 'in-memory';
+    caseNumber: string;
+  };
+}
+
+interface SSEAnalysisEvent {
+  type: 'step' | 'result' | 'error';
+  step?: number;
+  stepDetail?: string;
+  error?: string;
+  dossier?: Dossier;
   persistence?: {
     id?: string;
     storageType: 'supabase' | 'in-memory';
@@ -27,51 +41,24 @@ export function useAnalysisWorkflow() {
       throw new Error('Kein Response-Body vom Analyse-Dienst erhalten.');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let receivedResult = false;
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          const jsonStr = trimmed.slice(5).trim();
-          if (!jsonStr) continue;
-
-          try {
-            const event = JSON.parse(jsonStr);
-            if (event.type === 'step') {
-              if (event.step === 1 || event.step === 2 || event.step === 3) {
-                setActiveStep(event.step);
-              }
-              if (event.stepDetail) {
-                setStepDetail(event.stepDetail);
-              }
-            } else if (event.type === 'result') {
-              receivedResult = true;
-              onSuccess(event);
-            } else if (event.type === 'error') {
-              throw new Error(event.error || 'Fehler während der Analyse.');
-            }
-          } catch (parseErr) {
-            if (parseErr instanceof Error && parseErr.message.includes('Analyse')) {
-              throw parseErr;
-            }
-            console.warn('Nicht parsbares SSE-Event:', jsonStr, parseErr);
-          }
+    for await (const event of parseSseStream<SSEAnalysisEvent>(response.body)) {
+      if (event.type === 'step') {
+        if (event.step === 1 || event.step === 2 || event.step === 3) {
+          setActiveStep(event.step);
         }
+        if (event.stepDetail) {
+          setStepDetail(event.stepDetail);
+        }
+      } else if (event.type === 'result') {
+        if (event.dossier) {
+          receivedResult = true;
+          onSuccess(event as unknown as AnalysisStreamResult);
+        }
+      } else if (event.type === 'error') {
+        throw new Error(event.error || 'Fehler während der Analyse.');
       }
-    } finally {
-      reader.releaseLock();
     }
 
     if (!receivedResult) {

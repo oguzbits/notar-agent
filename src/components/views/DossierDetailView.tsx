@@ -86,7 +86,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
             onClick={onToggleAppending}
             className={`inline-flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-base font-semibold shadow-xs transition-colors ${
               isAppending
-                ? 'border-[#356611] bg-[#A2E771] text-[#284E0D]'
+                ? 'border-notar-900 bg-notar-500 text-notar-950'
                 : 'border-border bg-background hover:bg-muted text-foreground'
             }`}
           >
@@ -97,7 +97,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
               </>
             ) : (
               <>
-                <PlusCircle className="h-4 w-4 text-[#356611]" />
+                <PlusCircle className="text-notar-900 h-4 w-4" />
                 <span>Unterlagen nachreichen</span>
               </>
             )}
@@ -191,7 +191,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           <div className="border-b border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#356611] text-[11px] font-bold text-white shadow-xs">
+                <span className="bg-notar-900 text-2xs flex h-5 w-5 shrink-0 items-center justify-center rounded font-bold text-white shadow-xs">
                   1
                 </span>
                 <div>
@@ -247,7 +247,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           <div className="border-b border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-700 text-[11px] font-bold text-white shadow-xs">
+                <span className="text-2xs flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-700 font-bold text-white shadow-xs">
                   2
                 </span>
                 <div>

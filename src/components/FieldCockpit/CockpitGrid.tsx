@@ -220,7 +220,7 @@ export const CockpitGrid: React.FC<CockpitGridProps> = ({ dossier, onOverrideFie
                   Flurstück <strong>{p.flurstueckNummer || '—'}</strong> (Flur {p.flur || '—'},{' '}
                   {p.gemarkung || '—'})
                 </span>
-                <div className="text-muted-foreground mt-0.5 text-[11px]">
+                <div className="text-muted-foreground text-2xs mt-0.5">
                   Fläche: {p.sizeM2 ? `${p.sizeM2} m²` : 'unbekannt'} |{' '}
                   {p.wirtschaftsart || 'Wirtschaftsart nicht angegeben'}
                 </div>
@@ -252,7 +252,7 @@ export const CockpitGrid: React.FC<CockpitGridProps> = ({ dossier, onOverrideFie
       >
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Coins className="h-4 w-4 shrink-0 text-[#4D9619]" />
+            <Coins className="text-notar-800 h-4 w-4 shrink-0" />
             <span className="text-foreground text-lg font-bold">
               {fields.kaufpreis.data?.amountInFigures
                 ? `${fields.kaufpreis.data.amountInFigures.toLocaleString('de-DE')} EUR`
@@ -264,8 +264,8 @@ export const CockpitGrid: React.FC<CockpitGridProps> = ({ dossier, onOverrideFie
               In Worten: <strong>{fields.kaufpreis.data?.amountInWords || '—'}</strong>
             </p>
             {fields.kaufpreis.data?.priceEvolutionSummary && (
-              <div className="bg-muted/60 border-border text-foreground rounded-md border p-2.5 text-[11px]">
-                <strong className="text-[#356611]">Verhandlungshistorie:</strong>{' '}
+              <div className="bg-muted/60 border-border text-foreground text-2xs rounded-md border p-2.5">
+                <strong className="text-notar-900">Verhandlungshistorie:</strong>{' '}
                 {fields.kaufpreis.data.priceEvolutionSummary}
               </div>
             )}
@@ -343,11 +343,11 @@ export const CockpitGrid: React.FC<CockpitGridProps> = ({ dossier, onOverrideFie
                   <span className="text-foreground font-semibold">
                     Abt. {b.section} Nr. {b.runningNumber || '—'}
                   </span>
-                  <span className="bg-background border-border text-foreground rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase">
+                  <span className="bg-background border-border text-foreground text-3xs rounded border px-1.5 py-0.5 font-mono uppercase">
                     {b.intendedHandling}
                   </span>
                 </div>
-                <div className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                <div className="text-muted-foreground text-2xs mt-0.5 truncate">
                   {b.description} {b.amount ? `(${b.amount})` : ''}
                 </div>
               </div>
@@ -394,12 +394,12 @@ export const CockpitGrid: React.FC<CockpitGridProps> = ({ dossier, onOverrideFie
                 : '—'}
             </p>
             {fields.mietverhaeltnisse.data?.privacyOrRedactionNotes && (
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-muted-foreground text-2xs">
                 {fields.mietverhaeltnisse.data.privacyOrRedactionNotes}
               </p>
             )}
             {fields.mietverhaeltnisse.data?.tenancyTransferNotes && (
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-muted-foreground text-2xs">
                 <strong className="text-foreground">§ 566 BGB Übergang:</strong>{' '}
                 {fields.mietverhaeltnisse.data.tenancyTransferNotes}
               </p>
@@ -484,7 +484,7 @@ export const CockpitGrid: React.FC<CockpitGridProps> = ({ dossier, onOverrideFie
               {fields.uebergabe.data?.conditionDescription || '—'}
             </p>
             {fields.uebergabe.data?.riskTransferNotes && (
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-muted-foreground text-2xs">
                 {fields.uebergabe.data.riskTransferNotes}
               </p>
             )}

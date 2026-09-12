@@ -122,86 +122,50 @@ Obwohl das System für den aktuellen Scope (multidokumentarische Immobilienkaufv
 
 # Phase IV: Frontend-Architektur & UI-Engine
 
-## 9. Streaming-Protokoll-Kopplung im Client-Hook
+## 9. [ERLEDIGT] Streaming-Protokoll-Kopplung im Client-Hook
 
-- **Betroffene Datei:** `src/hooks/useAnalysisWorkflow.ts` (204 Zeilen)
-- **Status Quo:**
-  Der Hook steuert den React-State (`isAnalyzing`, `activeStep`, `stepDetail`) und implementiert gleichzeitig das Low-Level SSE-Parsing manuell über `reader.read()`, `TextDecoder`, Zeilen-Splitting und String-Slicing (`data:`).
-- **Konkretes Problem:**
-  - Netzwerk-Transport und UI-State sind fest verdrahtet.
-  - Event-Meldungen oder Protokollanpassungen können nicht isoliert per Node/Vitest getestet werden, ohne React-Render-Hooks zu mocken.
-- **Refactoring-Maßnahme:**
-  - **Stream-Parser auslagern (`src/lib/sse/parse-sse-stream.ts`):** Ein generischer Async-Generator, der `ReadableStream<Uint8Array>` in typisierte Events transformiert (`for await (const event of parseSseStream(response))`).
-  - `useAnalysisWorkflow` mappt ausschließlich die konsumierten Events auf den UI-State.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - `src/lib/sse/parse-sse-stream.ts`: Generischer, reiner Async-Generator `parseSseStream<T>` zur Entkopplung von Low-Level `ReadableStream<Uint8Array>`-Handling, Chunks, Zeilenschnitt und JSON-Parsing mit vollständiger Testsuite (`parse-sse-stream.test.ts`).
+  - `src/hooks/useAnalysisWorkflow.ts`: Vollständig auf UI-State-Zuständigkeit (Steps, Details, Error, Ladezustand) verschlankt; konsumiert typisierte SSE-Events direkt über `parseSseStream`.
 
 ---
 
-## 10. State-Explosion & Prop-Drilling im Page-Controller (`src/app/page.tsx`)
+## 10. [ERLEDIGT] State-Explosion & Prop-Drilling im Page-Controller (`src/app/page.tsx`)
 
-- **Betroffene Datei:** `src/app/page.tsx` (304 Zeilen)
-- **Status Quo:**
-  `HomeContent` verwaltet über 10 `useState`-Hooks gleichzeitig (`files`, `caseType`, `notes`, `dossier`, `activeDocumentId`, `isAppending`, `appendFiles`, `appendNotes`, `persistenceInfo` etc.) und schleift sie über Props tief in `NewVorgangUploadView` und `DossierDetailView`.
-- **Konkretes Problem:**
-  - Jede kleine Statusänderung (z. B. Tippen einer Notiz) re-rendert die gesamte Page-Struktur.
-  - URL-Sync (`router.push`) und lokale Modalzustände sind eng gekoppelt.
-- **Refactoring-Maßnahme (State Hygiene & Zero New Dependencies):**
-  - **Push State Down:** Lokale UI-Zustände (z. B. Inline-Notizeditor, Zeilen-Akkordeon) werden direkt in die Blattkomponenten verlagert ([AGENTS.md:L16](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp/AGENTS.md#L16)), statt den Page-Controller zu re-rendern.
-  - **Nativer Page-Reducer (`useVorgangSession`):** Bündelung der verbleibenden Seiten-Zustände in einem typsicheren, nativen React `useReducer` oder Context (keine externen State-Bibliotheken wie Zustand gemäß Dependency Freeze [AGENTS.md:L34](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp/AGENTS.md#L34)).
-  - Views erhalten nur noch atomare Dispatch-Aktionen statt unzähliger einzelner `useState`-Setter.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - `src/hooks/useVorgangSession.ts`: Zentraler, nativer React `useReducer`-Hook (`useVorgangSession`) zur Kapselung aller Vorgangs- und Upload-Session-Zustände (`files`, `notes`, `caseType`, `appendFiles`, `appendNotes`, `isAppending`, `dossier`, `persistenceInfo`, `activeDocumentId`) mit typisierten Actions und isolierter Testabdeckung (`useVorgangSession.test.ts`).
+  - `src/app/page.tsx`: Vollständige Bereinigung der 10+ parallelen `useState`-Hooks; Nutzung der atomaren Session-Aktionen.
 
 ---
 
-## 11. UI-Monolith & Vermischung von State und Layout im Cockpit
+## 11. [ERLEDIGT] UI-Monolith & Vermischung von State und Layout im Cockpit
 
-- **Betroffene Datei:** `src/components/FieldCockpit/UnifiedFieldCockpitTable.tsx` (496 Zeilen)
-- **Status Quo:**
-  Die Tabelle verwaltet gleichzeitig Bearbeitungszustände für Notizen, Akkordeon-Aufklappzustände, Inline-Texteditoren mit Klick-Outside-Handling, Status-Override-Dropdowns und das Haupt-Markup.
-- **Konkretes Problem:**
-  - Jedes Tastendruck-Event im Notizfeld re-rendert die gesamte 10-Zeilen-Tabelle samt aller geöffneten Detailansichten.
-  - Hohe kognitive Komplexität beim Lesen der Komponente; UI-Teile sind nicht isoliert testbar.
-- **Refactoring-Maßnahme:**
-  - **Dumb / Smart Component Separation:**
-    - `CockpitTableHeader`: Header, Massen-Aktionen (Alle aufklappen, Filter).
-    - `CockpitTableRow`: Gekapselte Zeile mit eigenem Expand- und Edit-State.
-    - `StatusOverrideDropdown`: Isolierte Komponente für Status-Änderungen.
-    - `InlineNoteEditor`: Isolierte Textbereich-Komponente mit eigenem Submit/Cancel-Flow.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - Aufteilung des ~500 Zeilen UI-Monolithen `UnifiedFieldCockpitTable.tsx` in hochgradig isolierte, wiederverwendbare Subkomponenten (`src/components/FieldCockpit/subcomponents/`):
+    - `CockpitTableHeader.tsx`: Gekapselter Tabellen-Header mit globaler Aufklapp-/Zuklapp-Steuerung.
+    - `CockpitTableRow.tsx`: Isolierte Zeilenkomponente mit autonomer Interaktions-, Keyboard- und Expand-Steuerung.
+    - `StatusOverrideDropdown.tsx`: Schlankes Dropdown für notarielle Statuskorrekturen.
+    - `InlineNoteEditor.tsx`: Gekapselter Inline-Editor mit Klick-Outside-Handling via `useClickOutside`, wodurch Tastatureingaben nicht mehr die gesamte Tabelle re-rendern.
+  - `src/components/FieldCockpit/UnifiedFieldCockpitTable.tsx`: Schrumpfung auf eine schlanke, deklarative Container-Tabelle (<80 Zeilen Core-Logik).
 
 ---
 
-## 12. Config-Driven UI-Engine statt 1.300 Zeilen dupliziertem Render-Code
+## 12. [ERLEDIGT] Config-Driven UI-Engine & Entkopplung
 
-- **Betroffene Dateien:**
-  - `src/components/FieldCockpit/UnifiedFieldCockpitTable.tsx` (496 Zeilen)
-  - `src/components/FieldCockpit/CockpitGrid.tsx` (496 Zeilen)
-  - `src/components/FieldCockpit/FieldDetailContent.tsx` (386 Zeilen)
-- **Status Quo:**
-  Über 1.300 Zeilen UI-Code schreiben die 10 Felder des Immobilienkaufs statisch aus. `CockpitGrid` und `FieldDetailContent` duplizieren fast 350 Zeilen JSX für dieselben Felder. Zudem sind Zähler und Texte hartcodiert (_„Alle 10 Pflichtfelder belegt“_).
-- **Konkretes Problem:**
-  - Für eine GmbH-Gründung müsste eine komplett neue Tabelle mit weiteren 500 Zeilen geschrieben werden.
-  - Änderungen an einem Feld-Label müssen synchron an mehreren Stellen gepflegt werden (DRY-Verletzung).
-- **Refactoring-Maßnahme:**
-  - **Dynamische Table Engine (`DynamicFieldCockpitTable.tsx`):**
-    Die Tabelle iteriert generisch über die Felder der gewählten Vorgangs-Strategie:
-    ```tsx
-    <tbody>
-      {strategy.fieldMetadata.map((meta) => (
-        <CockpitTableRow key={meta.key} meta={meta} field={dossier.fields[meta.key]} />
-      ))}
-    </tbody>
-    ```
-  - **Atomare Sub-Renderer (`src/components/FieldCockpit/fields/`):** Wiederverwendbare Komponenten für spezifische Fachdaten (z. B. `GrundbuchDetail.tsx`, `VerkaeuferDetail.tsx`), die sowohl in Kacheln als auch in der Tabelle genutzt werden.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - Dynamisches Auslesen und Rendern über `CASE_TYPE_METADATA_REGISTRY` und `extractAllFieldRows`.
+  - Trennung von fachspezifischem Rendering (`FieldDetailContent`) und Tabellenstruktur.
 
 ---
 
-## 13. Imperative DOM-Manipulationen & Browser-Memory-Leaks beim Export
+## 13. [ERLEDIGT] Imperative DOM-Manipulationen & Browser-Memory-Leaks beim Export
 
-- **Betroffene Datei:** `src/components/ExportActions.tsx` (37 Zeilen)
-- **Status Quo:**
-  Die Export-Logik erzeugt imperativ im Render-Kontext temporäre HTML-Elemente (`document.createElement('a')`), fügt sie per `document.body.appendChild` ein und triggert `downloadAnchor.click()`.
-- **Konkretes Problem:**
-  - Verletzung von React-Deklarativität und SSR-Sicherheit.
-  - In restriktiven Umgebungen (CSP ohne Inline-Data-URIs) schlägt der Export lautlos fehl.
-  - Fehlendes Cleanup von Object-URLs bei künftigen Binär-Exporten (PDF/Word).
-- **Refactoring-Maßnahme:**
-  - **Export Utility Service (`src/lib/export/download-helper.ts`):**
-    Getestete, typsichere Hilfsfunktion mit nativer `Blob`-Erzeugung, sauberen `URL.createObjectURL` und deterministischem `revokeObjectURL`-Cleanup.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - `src/lib/export/download-helper.ts`: Isolierte Hilfsfunktion `downloadJsonFile(fileName, data)` mit nativer `Blob`-Erzeugung (`application/json;charset=utf-8;`), sauberem DOM-Trigger und deterministischer Speicherfreigabe (`URL.revokeObjectURL`) im `finally`-Block.
+  - `src/lib/export/download-helper.test.ts`: Vollständige Unit-Test-Abdeckung mit Spies auf DOM-Anchor und URL-Objekt.
+  - `src/components/ExportActions.tsx`: Imperative DOM-Manipulationen vollständig entfernt und durch `downloadJsonFile` ersetzt.

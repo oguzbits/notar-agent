@@ -81,9 +81,7 @@ export const AgenticWorkflowStepper: React.FC<AgenticWorkflowStepperProps> = ({
 
               <div className="min-w-0 flex-1">
                 <p className="text-foreground text-xs leading-snug font-semibold">{step.name}</p>
-                <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
-                  {step.desc}
-                </p>
+                <p className="text-muted-foreground text-2xs mt-0.5 leading-tight">{step.desc}</p>
               </div>
             </div>
           );

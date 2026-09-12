@@ -135,7 +135,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
               >
                 {/* 1. Index */}
                 <td className="w-[36px] min-w-[36px] px-1.5 py-2.5 text-center">
-                  <span className="bg-muted text-muted-foreground inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold">
+                  <span className="bg-muted text-muted-foreground text-3xs inline-flex h-5 w-5 items-center justify-center rounded font-bold">
                     {idx + 1}
                   </span>
                 </td>
@@ -144,9 +144,9 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 <td className="w-[200px] min-w-[200px] px-2.5 py-2.5 leading-snug break-words">
                   <div className="flex items-start gap-1.5">
                     {isNote ? (
-                      <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#E08A00]" />
+                      <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
                     ) : (
-                      <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#356611]" />
+                      <FileText className="text-notar-900 mt-0.5 h-3.5 w-3.5 shrink-0" />
                     )}
                     <span className="text-foreground text-xs font-medium [overflow-wrap:anywhere] sm:text-base">
                       {doc.fileName}
@@ -198,7 +198,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                         <button
                           type="button"
                           onClick={() => toggleRowSummary(idx)}
-                          className="inline-block cursor-pointer text-xs font-medium text-[#356611] hover:underline"
+                          className="text-notar-900 inline-block cursor-pointer text-xs font-medium hover:underline"
                         >
                           Weniger anzeigen
                         </button>
@@ -220,7 +220,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                       <button
                         type="button"
                         onClick={() => toggleRowSummary(idx)}
-                        className="inline-block cursor-pointer text-xs font-medium text-[#356611] hover:underline"
+                        className="text-notar-900 inline-block cursor-pointer text-xs font-medium hover:underline"
                       >
                         Vollständig anzeigen
                       </button>

@@ -124,18 +124,18 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
           <button
             type="button"
             onClick={handleCopyReport}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted border-border bg-background inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium shadow-2xs transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted border-border bg-background text-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 font-medium shadow-2xs transition-colors"
             title="Prüfbericht & Feststellungen in Zwischenablage kopieren"
           >
             {copied ? (
               <>
                 <Check className="h-3.5 w-3.5 text-emerald-600" />
-                <span className="text-[10.5px] font-semibold text-emerald-700">Kopiert</span>
+                <span className="text-2xs font-semibold text-emerald-700">Kopiert</span>
               </>
             ) : (
               <>
                 <Copy className="text-muted-foreground h-3.5 w-3.5" />
-                <span className="text-[11px]">Bericht kopieren</span>
+                <span className="text-2xs">Bericht kopieren</span>
               </>
             )}
           </button>
@@ -157,9 +157,7 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
                 .filter(Boolean)
                 .map((sentence, idx) => (
                   <li key={idx} className="flex items-start gap-1.5 leading-snug">
-                    <span className="text-muted-foreground/60 mt-0.5 text-[10px] select-none">
-                      •
-                    </span>
+                    <span className="text-muted-foreground/60 text-3xs mt-0.5 select-none">•</span>
                     <span className="text-slate-800 dark:text-slate-200">{sentence}</span>
                   </li>
                 ))}
@@ -173,7 +171,7 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
       {/* Tabelle aller Pflichtfelder */}
       <div className="border-border bg-card overflow-x-auto rounded-lg border">
         <table className="w-full table-auto text-left text-xs">
-          <thead className="text-muted-foreground border-border border-b bg-slate-50/80 text-[11px] font-semibold dark:bg-slate-900/50">
+          <thead className="text-muted-foreground border-border text-2xs border-b bg-slate-50/80 font-semibold dark:bg-slate-900/50">
             <tr>
               <th className="w-[48px] px-3 py-2.5 text-center">#</th>
               <th className="w-[140px] px-3 py-2.5 whitespace-nowrap">Pflichtfeld</th>
@@ -200,7 +198,7 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
                     <tr className="hover:bg-muted/30 align-top transition-colors">
                       {/* Nummer */}
                       <td className="px-3 py-2.5 text-center">
-                        <span className="bg-muted text-muted-foreground inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold">
+                        <span className="bg-muted text-muted-foreground text-3xs inline-flex h-5 w-5 items-center justify-center rounded font-bold">
                           {row.fieldIndex}
                         </span>
                       </td>
@@ -229,7 +227,7 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
                           {row.note}
                         </p>
                         {row.actionRequired && (
-                          <div className="inline-flex items-start gap-1.5 rounded border border-emerald-200/60 bg-emerald-50/70 px-2 py-1 text-[11px] text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          <div className="text-2xs inline-flex items-start gap-1.5 rounded border border-emerald-200/60 bg-emerald-50/70 px-2 py-1 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
                             <strong className="shrink-0 font-semibold">Empfehlung:</strong>
                             <span className="leading-snug">{row.actionRequired}</span>
                           </div>
@@ -252,7 +250,7 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
                                   type="button"
                                   disabled={!hasSnippet}
                                   onClick={() => hasSnippet && toggleSnippet(snippetKey)}
-                                  className={`inline-flex items-center justify-between gap-1 rounded px-1.5 py-0.5 text-left text-[10.5px] transition-colors ${
+                                  className={`text-2xs inline-flex items-center justify-between gap-1 rounded px-1.5 py-0.5 text-left transition-colors ${
                                     hasSnippet
                                       ? 'cursor-pointer bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
                                       : 'cursor-default bg-slate-50 text-slate-600 dark:bg-slate-900/40 dark:text-slate-400'
@@ -279,9 +277,7 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
                             })}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-[10.5px] italic">
-                            Kein Beleg
-                          </span>
+                          <span className="text-muted-foreground text-2xs italic">Kein Beleg</span>
                         )}
                       </td>
                     </tr>
@@ -302,15 +298,15 @@ export const PruefberichtSection: React.FC<PruefberichtSectionProps> = ({ dossie
                           className="bg-slate-50/70 dark:bg-slate-900/30"
                         >
                           <td colSpan={5} className="px-4 py-2">
-                            <div className="bg-background flex items-start gap-2 rounded border border-slate-200/80 p-2 text-[11px] text-slate-700 dark:text-slate-300">
+                            <div className="bg-background text-2xs flex items-start gap-2 rounded border border-slate-200/80 p-2 text-slate-700 dark:text-slate-300">
                               <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                               <div className="space-y-0.5">
                                 {row.sources.length > 1 && (
-                                  <span className="block text-[10px] font-semibold text-slate-500">
+                                  <span className="text-3xs block font-semibold text-slate-500">
                                     Nachweis zu {src.fileName}:
                                   </span>
                                 )}
-                                <p className="font-mono text-[11px] leading-relaxed text-slate-800 italic dark:text-slate-200">
+                                <p className="text-2xs font-mono leading-relaxed text-slate-800 italic dark:text-slate-200">
                                   &ldquo;{snippetText}&rdquo;
                                 </p>
                               </div>
