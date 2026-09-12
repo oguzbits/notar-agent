@@ -1,3 +1,3 @@
 export * from './StatusBadge';
 export * from './Button';
-export * from './SourcePill';
+export * from './ErrorBoundary';

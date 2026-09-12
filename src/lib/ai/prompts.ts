@@ -76,7 +76,3 @@ Antworte AUSSCHLIESSLICH mit diesem validen JSON:
   "executiveSummary": "Sachliche Kanzleizusammenfassung des Bearbeitungsstands auf Deutsch (KEINE englischen Status-Begriffe wie ACTION_REQUIRED oder OUTDATED im Fließtext verwenden!)."
 }
 `;
-
-// Rückwärtskompatible Exporte
-export const IMMOBILIEN_AGENT_SYSTEM_PROMPT = IMMOBILIEN_EXTRACTION_AGENT_PROMPT;
-export const NOTARY_AGENT_SYSTEM_PROMPT = IMMOBILIEN_AGENT_SYSTEM_PROMPT;

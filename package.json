@@ -11,6 +11,8 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "check": "npm run type-check && npm run lint",
+    "knip": "knip",
+    "knip:files": "knip --dependencies --files",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"
@@ -43,6 +45,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "knip": "^6.35.1",
     "lint-staged": "^17.4.1",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
