@@ -1,7 +1,7 @@
 'use client';
 
-import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from './Button';
 
 interface ErrorBoundaryProps {

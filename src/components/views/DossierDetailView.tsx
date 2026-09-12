@@ -1,19 +1,19 @@
 'use client';
 
+import { PlusCircle, X, Copy, Check } from 'lucide-react';
 import React, { useState } from 'react';
-import { Dossier, FieldStatus } from '@/types/dossier';
-import { DocumentRecord } from '@/lib/supabase/server';
-import { formatDateTimeGerman } from '@/lib/formatters';
-import { generatePruefberichtText } from '@/lib/dossier-helpers';
+import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
+import { DocumentDetectionList } from '@/components/DocumentDetectionList';
 import { getStatusBadge } from '@/components/DocumentTable/DocumentTable';
 import { ExportActions } from '@/components/ExportActions';
-import { UploadZone, PreparedFile } from '@/components/UploadZone';
-import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { UnifiedFieldCockpitTable } from '@/components/FieldCockpit/UnifiedFieldCockpitTable';
-import { DocumentDetectionList } from '@/components/DocumentDetectionList';
 import { Button } from '@/components/ui/Button';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { PlusCircle, X, Copy, Check } from 'lucide-react';
+import { UploadZone, PreparedFile } from '@/components/UploadZone';
+import { generatePruefberichtText } from '@/lib/dossier-helpers';
+import { formatDateTimeGerman } from '@/lib/formatters';
+import { DocumentRecord } from '@/lib/supabase/server';
+import { Dossier, FieldStatus } from '@/types/dossier';
 
 interface DossierDetailViewProps {
   dossier: Dossier;

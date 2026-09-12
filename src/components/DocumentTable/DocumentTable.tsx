@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { DocumentRecord } from '@/lib/supabase/server';
 import { FileText, Search, Plus, Trash2, ExternalLink, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
+import { DocumentRecord } from '@/lib/supabase/server';
 
 interface DocumentTableProps {
   documents: DocumentRecord[];
@@ -11,8 +12,6 @@ interface DocumentTableProps {
   onCreateNew: () => void;
   onDeleteDocument: (id: string) => Promise<void>;
 }
-
-import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 
 export type FilterStatus = 'Alle' | 'In Prüfung' | 'Entwurfsreif';
 

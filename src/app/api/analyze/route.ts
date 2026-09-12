@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { generateText, type SystemModelMessage } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogle } from '@ai-sdk/google';
+import { generateText, type SystemModelMessage } from 'ai';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  IMMOBILIEN_EXTRACTION_AGENT_PROMPT,
+  NOTARY_AUDITOR_RECONCILER_PROMPT,
+} from '@/lib/ai/prompts';
+import { normalizeDossier } from '@/lib/dossier-helpers';
+import { persistDossierRecord } from '@/lib/supabase/server';
 import {
   CaseType,
   Dossier,
@@ -11,12 +17,6 @@ import {
   ImmobilienFields,
   Inquiry,
 } from '@/types/dossier';
-import {
-  IMMOBILIEN_EXTRACTION_AGENT_PROMPT,
-  NOTARY_AUDITOR_RECONCILER_PROMPT,
-} from '@/lib/ai/prompts';
-import { persistDossierRecord } from '@/lib/supabase/server';
-import { normalizeDossier } from '@/lib/dossier-helpers';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
 

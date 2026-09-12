@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import { Loader2, ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
 import { Header } from '@/components/Header';
 import { PreparedFile } from '@/components/UploadZone';
-import { Dossier, CaseType, FieldStatus, GenericFieldDossier } from '@/types/dossier';
-import { DocumentRecord, computeDocumentStatus } from '@/lib/supabase/server';
-import { normalizeDossier } from '@/lib/dossier-helpers';
-import { useDocuments } from '@/hooks/useDocuments';
-import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
-import { VorgangTableView } from '@/components/views/VorgangTableView';
-import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
-import { Loader2, ChevronRight } from 'lucide-react';
+import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
+import { VorgangTableView } from '@/components/views/VorgangTableView';
+import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
+import { useDocuments } from '@/hooks/useDocuments';
+import { normalizeDossier } from '@/lib/dossier-helpers';
+import { DocumentRecord, computeDocumentStatus } from '@/lib/supabase/server';
+import { Dossier, CaseType, FieldStatus, GenericFieldDossier } from '@/types/dossier';
 
 function HomeContent() {
   const router = useRouter();

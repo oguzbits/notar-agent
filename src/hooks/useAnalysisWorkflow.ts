@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Dossier, CaseType } from '@/types/dossier';
 import { PreparedFile } from '@/components/UploadZone';
+import { Dossier, CaseType } from '@/types/dossier';
 
 export interface AnalysisStreamResult {
   dossier: Dossier;

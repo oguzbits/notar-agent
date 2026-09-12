@@ -1,6 +1,6 @@
+import { NextRequest } from 'next/server';
 import { describe, it, expect } from 'vitest';
 import { POST } from './route';
-import { NextRequest } from 'next/server';
 
 describe('API Route: POST /api/analyze Guardrails & Validation', () => {
   it('sollte Status 400 liefern, wenn weder Dateien noch Notizen übermittelt werden', async () => {

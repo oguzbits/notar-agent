@@ -1,7 +1,3 @@
-import React, { useState } from 'react';
-import { Dossier } from '@/types/dossier';
-import { extractAllFieldRows, generatePruefberichtText } from '@/lib/dossier-helpers';
-import { StatusBadge } from './FieldCockpit/StatusBadge';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -12,6 +8,10 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
+import React, { useState } from 'react';
+import { extractAllFieldRows, generatePruefberichtText } from '@/lib/dossier-helpers';
+import { Dossier } from '@/types/dossier';
+import { StatusBadge } from './FieldCockpit/StatusBadge';
 
 interface PruefberichtSectionProps {
   dossier: Dossier;

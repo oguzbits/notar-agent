@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { DetectedDocument } from '@/types/dossier';
 import { Calendar, ChevronDown, ChevronUp, FileText, StickyNote } from 'lucide-react';
+import { useState } from 'react';
 import { formatDateGerman } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { DetectedDocument } from '@/types/dossier';
 
 interface DocumentDetectionListProps {
   documents: DetectedDocument[];

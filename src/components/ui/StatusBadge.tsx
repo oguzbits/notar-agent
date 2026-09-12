@@ -1,6 +1,6 @@
+import { CheckCircle2, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
 import React from 'react';
 import { FieldStatus } from '@/types/dossier';
-import { CheckCircle2, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
 
 export type StatusVariant = FieldStatus | 'Entwurfsreif' | 'In Prüfung' | 'Beurkundet';
 

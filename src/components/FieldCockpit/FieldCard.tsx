@@ -1,7 +1,3 @@
-import React, { useState } from 'react';
-import { FieldStatus, SourceLocation } from '@/types/dossier';
-import { StatusBadge } from './StatusBadge';
-import { SourceAuditDrawer } from './SourceAuditDrawer';
 import {
   AlertCircle,
   ArrowRight,
@@ -10,6 +6,10 @@ import {
   ChevronRight,
   Edit3,
 } from 'lucide-react';
+import React, { useState } from 'react';
+import { FieldStatus, SourceLocation } from '@/types/dossier';
+import { SourceAuditDrawer } from './SourceAuditDrawer';
+import { StatusBadge } from './StatusBadge';
 
 interface FieldCardProps {
   index: number;

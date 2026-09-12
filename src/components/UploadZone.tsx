@@ -1,7 +1,5 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { CaseType } from '@/types/dossier';
 import {
   UploadCloud,
   Trash2,
@@ -11,6 +9,8 @@ import {
   MessageSquareText,
   Plus,
 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { CaseType } from '@/types/dossier';
 
 export interface PreparedFile {
   name: string;

@@ -1,5 +1,5 @@
-import React from 'react';
 import { FileText, StickyNote } from 'lucide-react';
+import React from 'react';
 
 interface SourcePillProps {
   fileName: string;

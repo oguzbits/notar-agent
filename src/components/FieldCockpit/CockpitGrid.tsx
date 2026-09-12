@@ -1,6 +1,3 @@
-import React from 'react';
-import { Dossier, FieldStatus, ImmobilienFields } from '@/types/dossier';
-import { FieldCard } from './FieldCard';
 import {
   Building2,
   UserCheck,
@@ -13,7 +10,10 @@ import {
   Zap,
   Key,
 } from 'lucide-react';
+import React from 'react';
 import { formatDateGerman, formatOwnerEntry, cleanTextValue } from '@/lib/formatters';
+import { Dossier, FieldStatus, ImmobilienFields } from '@/types/dossier';
+import { FieldCard } from './FieldCard';
 
 interface CockpitGridProps {
   dossier: Dossier;

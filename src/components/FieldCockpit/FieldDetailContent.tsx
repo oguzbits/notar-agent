@@ -1,5 +1,3 @@
-import React from 'react';
-import { Dossier, ImmobilienFields } from '@/types/dossier';
 import {
   Building2,
   UserCheck,
@@ -12,7 +10,9 @@ import {
   Zap,
   Key,
 } from 'lucide-react';
+import React from 'react';
 import { formatDateGerman, formatOwnerEntry, cleanTextValue } from '@/lib/formatters';
+import { Dossier, ImmobilienFields } from '@/types/dossier';
 
 interface FieldDetailContentProps {
   fieldKey: string;

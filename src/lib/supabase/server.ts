@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { Dossier } from '@/types/dossier';
 import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier-helpers';
+import { Dossier } from '@/types/dossier';
 
 export type CaseStatus = 'In Prüfung' | 'Entwurfsreif';
 

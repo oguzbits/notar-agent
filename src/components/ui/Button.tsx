@@ -1,5 +1,5 @@
-import React from 'react';
 import { Loader2 } from 'lucide-react';
+import React from 'react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';

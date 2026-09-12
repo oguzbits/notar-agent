@@ -1,5 +1,5 @@
-import React from 'react';
 import { FileSearch, Scale, CheckCircle2 } from 'lucide-react';
+import React from 'react';
 
 interface AgenticWorkflowStepperProps {
   isAnalyzing: boolean;

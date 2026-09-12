@@ -1,11 +1,11 @@
 'use client';
 
+import { X } from 'lucide-react';
 import React from 'react';
-import { CaseType } from '@/types/dossier';
-import { UploadZone, PreparedFile } from '@/components/UploadZone';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { Button } from '@/components/ui/Button';
-import { X } from 'lucide-react';
+import { UploadZone, PreparedFile } from '@/components/UploadZone';
+import { CaseType } from '@/types/dossier';
 
 interface NewVorgangUploadViewProps {
   files: PreparedFile[];

@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { Dossier, FieldStatus, Inquiry, ImmobilienFields } from '@/types/dossier';
 import {
   isDossierEntwurfsreif,
   extractFieldObservations,
   parseSourceLocations,
   generatePruefberichtText,
 } from './dossier-helpers';
-import { Dossier, FieldStatus, Inquiry, ImmobilienFields } from '@/types/dossier';
 
 function createMockDossier(
   fieldStatusMap: Partial<Record<keyof ImmobilienFields, FieldStatus>> = {},

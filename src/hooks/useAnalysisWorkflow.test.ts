@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useAnalysisWorkflow } from './useAnalysisWorkflow';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CaseType } from '@/types/dossier';
+import { useAnalysisWorkflow } from './useAnalysisWorkflow';
 
 describe('useAnalysisWorkflow', () => {
   beforeEach(() => {

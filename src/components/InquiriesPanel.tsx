@@ -1,6 +1,6 @@
+import { MailQuestion, Copy, Check, ArrowUpRight, CheckCircle, Circle } from 'lucide-react';
 import React, { useState } from 'react';
 import { Inquiry } from '@/types/dossier';
-import { MailQuestion, Copy, Check, ArrowUpRight, CheckCircle, Circle } from 'lucide-react';
 
 interface InquiriesPanelProps {
   inquiries: Inquiry[];

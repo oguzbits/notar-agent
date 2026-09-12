@@ -1,6 +1,6 @@
+import { Download } from 'lucide-react';
 import React from 'react';
 import { Dossier } from '@/types/dossier';
-import { Download } from 'lucide-react';
 
 interface ExportActionsProps {
   dossier: Dossier;

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Dossier, FieldStatus } from '@/types/dossier';
-import { extractAllFieldRows, getDossierReadinessStage } from '@/lib/dossier-helpers';
-import { useClickOutside } from '@/hooks/useClickOutside';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { StatusBadge } from './StatusBadge';
-import { FieldDetailContent } from './FieldDetailContent';
 import { FileText, Quote, ChevronDown, ChevronUp, Check, X, Pencil } from 'lucide-react';
+import React, { useState } from 'react';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { useClickOutside } from '@/hooks/useClickOutside';
+import { extractAllFieldRows, getDossierReadinessStage } from '@/lib/dossier-helpers';
+import { Dossier, FieldStatus } from '@/types/dossier';
+import { FieldDetailContent } from './FieldDetailContent';
+import { StatusBadge } from './StatusBadge';
 
 interface UnifiedFieldCockpitTableProps {
   dossier: Dossier;
