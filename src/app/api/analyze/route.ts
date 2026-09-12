@@ -298,7 +298,6 @@ ${notesSection}${
             stepDetail: 'Stufe 2: Notarielle Vorprüfung, Fristen & Plausibilisierung...',
           });
 
-          const auditorSystemPrompt = NOTARY_AUDITOR_RECONCILER_PROMPT;
           const auditorContextPrompt = `Heutiges Bearbeitungsdatum: ${todayStr}
 VORGANGSTYP: ${caseType}
 

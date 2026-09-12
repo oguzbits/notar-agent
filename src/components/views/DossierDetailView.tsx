@@ -11,8 +11,8 @@ import { UploadZone, PreparedFile } from '@/components/UploadZone';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { UnifiedFieldCockpitTable } from '@/components/FieldCockpit/UnifiedFieldCockpitTable';
 import { DocumentDetectionList } from '@/components/DocumentDetectionList';
-import { InquiriesPanel } from '@/components/InquiriesPanel';
 import { Button } from '@/components/ui/Button';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PlusCircle, X, Copy, Check } from 'lucide-react';
 
 interface DossierDetailViewProps {
@@ -230,10 +230,15 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           </div>
 
           <div className="p-2.5 sm:p-3">
-            <UnifiedFieldCockpitTable
-              dossier={dossier}
-              onOverrideFieldStatus={onOverrideFieldStatus}
-            />
+            <ErrorBoundary
+              fallbackTitle="Cockpit-Tabelle konnte nicht geladen werden"
+              fallbackDescription="Die notariellen Pflichtangaben konnten aufgrund eines Darstellungsfehlers nicht gerendert werden."
+            >
+              <UnifiedFieldCockpitTable
+                dossier={dossier}
+                onOverrideFieldStatus={onOverrideFieldStatus}
+              />
+            </ErrorBoundary>
           </div>
         </section>
 
@@ -264,7 +269,12 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           </div>
 
           <div className="p-2.5 sm:p-3">
-            <DocumentDetectionList documents={dossier.detectedDocuments} />
+            <ErrorBoundary
+              fallbackTitle="Aktenbestand konnte nicht visualisiert werden"
+              fallbackDescription="Die Dokumentenliste konnte aufgrund eines Fehlers nicht gerendert werden."
+            >
+              <DocumentDetectionList documents={dossier.detectedDocuments} />
+            </ErrorBoundary>
           </div>
         </section>
       </div>

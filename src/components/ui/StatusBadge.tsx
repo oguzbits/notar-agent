@@ -26,9 +26,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     case 'Beurkundet':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 rounded-md border border-[#B9ED94] bg-[#E7F9DA] font-semibold text-[#284E0D] ${sizeClasses} ${className}`}
+          className={`border-documenso-400 bg-documenso-200 text-documenso-950 inline-flex items-center gap-1.5 rounded-md border font-semibold ${sizeClasses} ${className}`}
         >
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#356611]" />
+          <CheckCircle2 className="text-documenso-900 h-3.5 w-3.5 shrink-0" />
           {status === 'VERIFIED' ? 'Belegt' : 'Entwurfsreif'}
         </span>
       );

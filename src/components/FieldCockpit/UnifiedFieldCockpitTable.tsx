@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dossier, FieldStatus } from '@/types/dossier';
 import { extractAllFieldRows, getDossierReadinessStage } from '@/lib/dossier-helpers';
 import { useClickOutside } from '@/hooks/useClickOutside';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { StatusBadge } from './StatusBadge';
 import { FieldDetailContent } from './FieldDetailContent';
 import { FileText, Quote, ChevronDown, ChevronUp, Check, X, Pencil } from 'lucide-react';
@@ -440,7 +441,12 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                           </div>
 
                           {/* 1. Die Fachdaten */}
-                          <FieldDetailContent fieldKey={row.fieldKey} dossier={dossier} />
+                          <ErrorBoundary
+                            fallbackTitle={`Details zu ${row.fieldTitle} nicht verfügbar`}
+                            fallbackDescription="Die spezifischen Detaildaten konnten nicht visualisiert werden."
+                          >
+                            <FieldDetailContent fieldKey={row.fieldKey} dossier={dossier} />
+                          </ErrorBoundary>
 
                           {/* 2. Direkt integrierte Quellen & Zitate im Detail-Bereich */}
                           {hasSources && (

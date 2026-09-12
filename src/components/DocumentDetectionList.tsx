@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DetectedDocument } from '@/types/dossier';
 import { Calendar, ChevronDown, ChevronUp, FileText, StickyNote } from 'lucide-react';
 import { formatDateGerman } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 interface DocumentDetectionListProps {
   documents: DetectedDocument[];
@@ -109,13 +110,28 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
               }
             };
 
+            const isInteractive = isLongText || isNote;
+
             return (
               <tr
                 key={idx}
                 onClick={handleRowClick}
-                className={`align-top transition-colors select-text ${
-                  isLongText || isNote ? 'cursor-pointer' : ''
-                } ${isExpanded ? 'bg-muted/15' : 'hover:bg-muted/30'}`}
+                tabIndex={isInteractive ? 0 : undefined}
+                role={isInteractive ? 'button' : undefined}
+                aria-expanded={isInteractive ? isExpanded : undefined}
+                aria-controls={isInteractive ? `doc-row-detail-${idx}` : undefined}
+                onKeyDown={(e) => {
+                  if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    toggleRowSummary(idx);
+                  }
+                }}
+                className={cn(
+                  'align-top transition-colors select-text',
+                  isInteractive &&
+                    'focus-visible:ring-primary cursor-pointer focus-visible:ring-2 focus-visible:outline-hidden focus-visible:ring-inset',
+                  isExpanded ? 'bg-muted/15' : 'hover:bg-muted/30'
+                )}
               >
                 {/* 1. Index */}
                 <td className="w-[36px] min-w-[36px] px-1.5 py-2.5 text-center">
@@ -142,11 +158,12 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 <td className="w-[140px] min-w-[140px] px-2.5 py-2.5 whitespace-nowrap">
                   <div className="flex flex-col items-start gap-1">
                     <span
-                      className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                      className={cn(
+                        'rounded px-1.5 py-0.5 text-xs font-medium',
                         isNote
                           ? 'border border-amber-300 bg-amber-100 text-amber-900'
                           : 'bg-muted text-foreground'
-                      }`}
+                      )}
                     >
                       {doc.documentType}
                     </span>
@@ -164,7 +181,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 </td>
 
                 {/* 4. Inhalt / Zusammenfassung: Volle Breite, flexibel & ein-/ausklappbar */}
-                <td className="px-3 py-2.5 leading-relaxed">
+                <td id={`doc-row-detail-${idx}`} className="px-3 py-2.5 leading-relaxed">
                   {!summaryText ? (
                     <span className="text-muted-foreground text-sm">—</span>
                   ) : isExpanded ? (
@@ -214,7 +231,10 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 {/* 5. Stand / Umfang */}
                 <td className="w-[130px] min-w-[130px] px-2.5 py-2.5 text-right text-xs whitespace-nowrap">
                   <div className="inline-flex items-center justify-end gap-1">
-                    <Calendar className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                    <Calendar
+                      className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
                     <span>{formatDateGerman(doc.date)}</span>
                     {doc.pageCount && !isNote ? (
                       <span className="text-muted-foreground/80 ml-1">({doc.pageCount} S.)</span>
@@ -228,13 +248,18 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                     <button
                       type="button"
                       onClick={() => toggleRowSummary(idx)}
-                      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors"
+                      aria-expanded={isExpanded}
+                      aria-controls={`doc-row-detail-${idx}`}
+                      className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-primary inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors focus-visible:ring-2 focus-visible:outline-hidden"
                       title={isExpanded ? 'Details einklappen' : 'Details aufklappen'}
+                      aria-label={
+                        isExpanded ? `${doc.fileName} einklappen` : `${doc.fileName} aufklappen`
+                      }
                     >
                       {isExpanded ? (
-                        <ChevronUp className="h-3.5 w-3.5" />
+                        <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
                       ) : (
-                        <ChevronDown className="h-3.5 w-3.5" />
+                        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
                       )}
                     </button>
                   ) : null}

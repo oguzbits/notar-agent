@@ -29,24 +29,32 @@ export const SourceAuditDrawer: React.FC<SourceAuditDrawerProps> = ({ source }) 
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center justify-between text-left text-xs font-medium transition-colors"
+        aria-expanded={isOpen}
+        aria-controls="source-audit-drawer-content"
+        className="text-muted-foreground hover:text-foreground focus-visible:ring-primary flex w-full cursor-pointer items-center justify-between rounded p-0.5 text-left text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-hidden"
       >
         <div className="flex flex-wrap items-center gap-1.5 truncate">
-          <FileText className="h-3.5 w-3.5 shrink-0 text-[#66C622]" />
+          <FileText className="h-3.5 w-3.5 shrink-0 text-[#66C622]" aria-hidden="true" />
           <span className="text-muted-foreground">Quellen:</span>
           {subSources.map((s, idx) => (
             <SourcePill key={idx} fileName={s.fileName} pageNumber={s.pageNumber} />
           ))}
         </div>
         {isOpen ? (
-          <ChevronUp className="text-muted-foreground ml-2 h-3.5 w-3.5 shrink-0" />
+          <ChevronUp
+            className="text-muted-foreground ml-2 h-3.5 w-3.5 shrink-0"
+            aria-hidden="true"
+          />
         ) : (
-          <ChevronDown className="text-muted-foreground ml-2 h-3.5 w-3.5 shrink-0" />
+          <ChevronDown
+            className="text-muted-foreground ml-2 h-3.5 w-3.5 shrink-0"
+            aria-hidden="true"
+          />
         )}
       </button>
 
       {isOpen && (
-        <div className="mt-2 space-y-2">
+        <div id="source-audit-drawer-content" className="mt-2 space-y-2">
           {subSources.length > 1 ? (
             <div className="space-y-1.5">
               {subSources.map((s, idx) => {
