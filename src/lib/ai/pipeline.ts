@@ -1,7 +1,7 @@
 import { generateText, LanguageModel, SystemModelMessage } from 'ai';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
+import { normalizeDossier } from '@/lib/dossier';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
-import { normalizeDossier } from '@/lib/dossier-helpers';
 import {
   CaseType,
   Dossier,

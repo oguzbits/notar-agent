@@ -11,14 +11,11 @@ import {
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { type PreparedFile, validateFiles, prepareFiles } from '@/lib/files/file-preparer';
-import { CaseType } from '@/types/dossier';
 
 export type { PreparedFile };
 
 interface UploadZoneProps {
   onFilesReady: (files: PreparedFile[]) => void;
-  caseType?: CaseType;
-  onCaseTypeChange?: (type: CaseType) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
   isAnalyzing: boolean;
@@ -33,7 +30,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   const [dragOver, setDragOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [, setIsPreparing] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFilesAdded = async (filesToAdd: FileList | File[]) => {
@@ -88,23 +85,23 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       <div
         onDragOver={(e) => {
           e.preventDefault();
-          if (!isAnalyzing) setDragOver(true);
+          if (!isAnalyzing && !isPreparing) setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
-          if (!isAnalyzing && e.dataTransfer.files) {
+          if (!isAnalyzing && !isPreparing && e.dataTransfer.files) {
             handleFilesAdded(e.dataTransfer.files);
           }
         }}
         onClick={() => {
-          if (!isAnalyzing) {
+          if (!isAnalyzing && !isPreparing) {
             fileInputRef.current?.click();
           }
         }}
         className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-          isAnalyzing
+          isAnalyzing || isPreparing
             ? 'border-border/60 bg-muted/10 cursor-not-allowed opacity-60'
             : dragOver
               ? 'border-notar-700 bg-notar-200/20 cursor-pointer'
@@ -115,7 +112,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           ref={fileInputRef}
           type="file"
           multiple
-          disabled={isAnalyzing}
+          disabled={isAnalyzing || isPreparing}
           className="hidden"
           onChange={(e) => {
             if (e.target.files) {

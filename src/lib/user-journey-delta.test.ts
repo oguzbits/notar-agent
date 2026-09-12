@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Dossier, ImmobilienFields } from '@/types/dossier';
-import { normalizeDossier } from './dossier-helpers';
+import { normalizeDossier } from './dossier';
 
 function createBaseDossier(): Dossier {
   const fields: ImmobilienFields = {

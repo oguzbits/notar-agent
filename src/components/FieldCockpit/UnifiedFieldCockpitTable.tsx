@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { extractAllFieldRows, getDossierReadinessStage } from '@/lib/dossier-helpers';
+import { extractAllFieldRows, getDossierReadinessStage } from '@/lib/dossier';
 import { Dossier, FieldStatus } from '@/types/dossier';
 import { CockpitTableHeader } from './subcomponents/CockpitTableHeader';
 import { CockpitTableRow } from './subcomponents/CockpitTableRow';

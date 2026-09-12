@@ -4,13 +4,13 @@ import { PlusCircle, X, Copy, Check } from 'lucide-react';
 import React, { useState } from 'react';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { DocumentDetectionList } from '@/components/DocumentDetectionList';
-import { getStatusBadge } from '@/components/DocumentTable/DocumentTable';
+import { getStatusBadge } from '@/components/DocumentTable';
 import { ExportActions } from '@/components/ExportActions';
 import { UnifiedFieldCockpitTable } from '@/components/FieldCockpit/UnifiedFieldCockpitTable';
 import { Button } from '@/components/ui/Button';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { UploadZone, PreparedFile } from '@/components/UploadZone';
-import { generatePruefberichtText } from '@/lib/dossier-helpers';
+import { generatePruefberichtText } from '@/lib/dossier';
 import { formatDateTimeGerman } from '@/lib/formatters';
 import { DocumentRecord } from '@/lib/supabase/server';
 import { Dossier, FieldStatus } from '@/types/dossier';
@@ -138,8 +138,6 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
 
           <UploadZone
             onFilesReady={onAppendFilesChange}
-            caseType={dossier.caseType}
-            onCaseTypeChange={() => {}}
             notes={appendNotes}
             onNotesChange={onAppendNotesChange}
             isAnalyzing={isAnalyzing}

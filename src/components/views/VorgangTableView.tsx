@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { DocumentTable } from '@/components/DocumentTable/DocumentTable';
+import { DocumentTable } from '@/components/DocumentTable';
 import { DocumentRecord } from '@/lib/supabase/server';
 
 interface VorgangTableViewProps {

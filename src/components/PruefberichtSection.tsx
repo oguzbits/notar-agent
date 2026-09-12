@@ -9,9 +9,9 @@ import {
   Check,
 } from 'lucide-react';
 import React, { useState } from 'react';
-import { extractAllFieldRows, generatePruefberichtText } from '@/lib/dossier-helpers';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { extractAllFieldRows, generatePruefberichtText } from '@/lib/dossier';
 import { Dossier } from '@/types/dossier';
-import { StatusBadge } from './FieldCockpit/StatusBadge';
 
 interface PruefberichtSectionProps {
   dossier: Dossier;

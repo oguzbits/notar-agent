@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
-import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier-helpers';
 import { Dossier } from '@/types/dossier';
 
 export { createEmptyImmobilienFields };

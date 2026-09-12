@@ -1,7 +1,7 @@
 import { FileText, ChevronDown, ChevronUp, Quote, StickyNote } from 'lucide-react';
 import React, { useState } from 'react';
 import { SourcePill } from '@/components/ui/SourcePill';
-import { parseSourceLocations } from '@/lib/dossier-helpers';
+import { parseSourceLocations } from '@/lib/dossier';
 import { SourceLocation } from '@/types/dossier';
 
 interface SourceAuditDrawerProps {

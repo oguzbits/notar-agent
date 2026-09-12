@@ -7,9 +7,9 @@ import {
   Edit3,
 } from 'lucide-react';
 import React, { useState } from 'react';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { FieldStatus, SourceLocation } from '@/types/dossier';
 import { SourceAuditDrawer } from './SourceAuditDrawer';
-import { StatusBadge } from './StatusBadge';
 
 interface FieldCardProps {
   index: number;

@@ -5,7 +5,7 @@ import {
   extractFieldObservations,
   parseSourceLocations,
   generatePruefberichtText,
-} from './dossier-helpers';
+} from './dossier';
 
 function createMockDossier(
   fieldStatusMap: Partial<Record<keyof ImmobilienFields, FieldStatus>> = {},

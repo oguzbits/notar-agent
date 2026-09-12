@@ -10,7 +10,7 @@ import { VorgangTableView } from '@/components/views/VorgangTableView';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
-import { normalizeDossier } from '@/lib/dossier-helpers';
+import { normalizeDossier } from '@/lib/dossier';
 import { DocumentRecord, computeDocumentStatus } from '@/lib/supabase/server';
 import { FieldStatus, updateDossierFieldStatus } from '@/types/dossier';
 
