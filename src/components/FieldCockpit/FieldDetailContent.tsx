@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dossier, ImmobilienFields } from '@/types/dossier';
+import { Dossier, isImmobilienDossier } from '@/types/dossier';
 import {
   VerkaeuferItemContent,
   KaeuferItemContent,
@@ -19,7 +19,11 @@ interface FieldDetailContentProps {
 }
 
 export const FieldDetailContent: React.FC<FieldDetailContentProps> = ({ fieldKey, dossier }) => {
-  const fields = dossier.fields as ImmobilienFields;
+  if (!isImmobilienDossier(dossier)) {
+    return null;
+  }
+
+  const { fields } = dossier;
 
   switch (fieldKey) {
     case 'verkaeufer':

@@ -280,7 +280,7 @@ export class SupabaseDossierRepository implements IDossierRepository {
           : doc.content;
         const computedStatus = normalizedContent
           ? computeDocumentStatus(normalizedContent)
-          : (doc.status as string) === 'Beurkundet' || (doc.status as string) === 'Entwurfsreif'
+          : doc.status === 'Entwurfsreif'
             ? 'Entwurfsreif'
             : 'In Prüfung';
         return {

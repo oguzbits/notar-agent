@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dossier, FieldStatus, ImmobilienFields } from '@/types/dossier';
+import { Dossier, FieldStatus, isImmobilienDossier } from '@/types/dossier';
 import { FieldCard } from './FieldCard';
 import {
   VerkaeuferItemContent,
@@ -20,7 +20,11 @@ interface CockpitGridProps {
 }
 
 export const CockpitGrid: React.FC<CockpitGridProps> = ({ dossier, onOverrideFieldStatus }) => {
-  const fields = dossier.fields as ImmobilienFields;
+  if (!isImmobilienDossier(dossier)) {
+    return null;
+  }
+
+  const { fields } = dossier;
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

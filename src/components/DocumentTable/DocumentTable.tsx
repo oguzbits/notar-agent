@@ -37,10 +37,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
     if (!matchesSearch) return false;
     if (activeFilter === 'Alle') return true;
-    const effectiveStatus =
-      doc.status === 'Entwurfsreif' || (doc.status as string) === 'Beurkundet'
-        ? 'Entwurfsreif'
-        : 'In Prüfung';
+    const effectiveStatus = doc.status === 'Entwurfsreif' ? 'Entwurfsreif' : 'In Prüfung';
     return effectiveStatus === activeFilter;
   });
 

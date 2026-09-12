@@ -1,4 +1,9 @@
-import { Dossier, getDossierFieldsRecord } from '@/types/dossier';
+import {
+  Dossier,
+  getDossierFieldsRecord,
+  VerkaeuferDataSchema,
+  KaeuferDataSchema,
+} from '@/types/dossier';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
 /**
@@ -64,12 +69,8 @@ export function normalizeDossier(dossier: Dossier, additionalNoteTexts?: string[
     // 1c. Notarielle Fach-Guardrails (Eigentümeridentität & Registerbelege)
     const verkaeuferField = fieldsObj['verkaeufer'];
     if (verkaeuferField && verkaeuferField.status === 'VERIFIED' && verkaeuferField.data) {
-      const vData = verkaeuferField.data as {
-        name?: string;
-        legalForm?: string;
-        registeredOwnersGrundbuch?: string[];
-        representationProofProvided?: boolean;
-      };
+      const vResult = VerkaeuferDataSchema.partial().safeParse(verkaeuferField.data);
+      const vData = vResult.success ? vResult.data : {};
 
       // Wenn im Grundbuch abweichende Eigentümer eingetragen sind und keine Vertretung nachgewiesen ist
       if (
@@ -107,10 +108,8 @@ export function normalizeDossier(dossier: Dossier, additionalNoteTexts?: string[
 
     const kaeuferField = fieldsObj['kaeufer'];
     if (kaeuferField && kaeuferField.status === 'VERIFIED' && kaeuferField.data) {
-      const kData = kaeuferField.data as {
-        legalForm?: string;
-        hasOfficialRegisterProof?: boolean;
-      };
+      const kResult = KaeuferDataSchema.partial().safeParse(kaeuferField.data);
+      const kData = kResult.success ? kResult.data : {};
       const isCorporate =
         kData.legalForm &&
         !['natürliche person', 'privatperson', 'einzelperson'].includes(

@@ -88,6 +88,7 @@ export const VerkaeuferDataSchema = z.object({
     .describe('Konkret fehlende Nachweise (bei Privatpersonen leer lassen)'),
 });
 export const VerkaeuferFieldSchema = createFieldDossierSchema(VerkaeuferDataSchema);
+export type VerkaeuferData = z.infer<typeof VerkaeuferDataSchema>;
 
 export const KaeuferDataSchema = z.object({
   companyName: z
@@ -111,6 +112,7 @@ export const KaeuferDataSchema = z.object({
     ),
 });
 export const KaeuferFieldSchema = createFieldDossierSchema(KaeuferDataSchema);
+export type KaeuferData = z.infer<typeof KaeuferDataSchema>;
 
 export const GrundbuchDataSchema = z.object({
   amtsgericht: z.string().describe('Zuständiges Amtsgericht'),
