@@ -3,5 +3,5 @@
   "entry": ["src/app/**/*.{ts,tsx}", "src/lib/dossier/index.ts"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": ["src/components/ui/index.ts"],
-  "ignoreDependencies": ["vite-tsconfig-paths", "eslint-plugin-import", "tailwindcss"]
+  "ignoreDependencies": ["eslint-plugin-import", "tailwindcss"]
 }
