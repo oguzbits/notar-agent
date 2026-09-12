@@ -1,0 +1,19 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Next.js
+.next/
+out/
+build/
+dist
+
+# Environment variables
+.env*
+!.env.example
+
+# Logs
+*.log
+
+# Misc
+.DS_Store
