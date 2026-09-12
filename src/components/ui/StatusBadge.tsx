@@ -1,8 +1,9 @@
 import { CheckCircle2, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
 import React from 'react';
+import { CaseStatus } from '@/lib/supabase/server';
 import { FieldStatus } from '@/types/dossier';
 
-export type StatusVariant = FieldStatus | 'Entwurfsreif' | 'In Prüfung' | 'Beurkundet';
+export type StatusVariant = FieldStatus | CaseStatus | 'Beurkundet';
 
 interface StatusBadgeProps {
   status: StatusVariant;

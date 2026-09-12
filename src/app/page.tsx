@@ -14,6 +14,14 @@ import { normalizeDossier } from '@/lib/dossier-helpers';
 import { DocumentRecord, computeDocumentStatus } from '@/lib/supabase/server';
 import { FieldStatus, updateDossierFieldStatus } from '@/types/dossier';
 
+export const VIEW_MODE = {
+  TABLE: 'table',
+  UPLOAD: 'upload',
+  DETAIL: 'detail',
+} as const;
+
+export type ViewMode = (typeof VIEW_MODE)[keyof typeof VIEW_MODE];
+
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,8 +47,12 @@ function HomeContent() {
   const rawDisplayedDossier = activeRecord?.content || session.dossier;
   const displayedDossier = rawDisplayedDossier ? normalizeDossier(rawDisplayedDossier) : null;
 
-  const effectiveView: 'table' | 'upload' | 'detail' =
-    vorgangParam && displayedDossier ? 'detail' : viewParam === 'upload' ? 'upload' : 'table';
+  const effectiveView: ViewMode =
+    vorgangParam && displayedDossier
+      ? VIEW_MODE.DETAIL
+      : viewParam === VIEW_MODE.UPLOAD
+        ? VIEW_MODE.UPLOAD
+        : VIEW_MODE.TABLE;
 
   // Navigation Aktionen
   const handleSelectDocument = (doc: DocumentRecord) => {
@@ -170,7 +182,7 @@ function HomeContent() {
             </button>
             <ChevronRight className="text-muted-foreground/60 h-4 w-4" />
             <span className="text-foreground font-semibold">
-              {effectiveView === 'upload'
+              {effectiveView === VIEW_MODE.UPLOAD
                 ? 'Neuer Urkundenvorgang'
                 : displayedDossier?.caseTitle || 'Urkunden-Zuarbeit'}
             </span>
@@ -180,7 +192,7 @@ function HomeContent() {
 
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 pt-3 pb-8 sm:px-6 lg:px-8">
         {/* Ansicht 1: Kanzlei Vorgangsübersicht */}
-        {effectiveView === 'table' && (
+        {effectiveView === VIEW_MODE.TABLE && (
           <VorgangTableView
             documents={documents}
             isLoading={isLoadingDocs}
@@ -193,7 +205,7 @@ function HomeContent() {
         )}
 
         {/* Ansicht 2: Upload-Bereich für neue Zuarbeit */}
-        {effectiveView === 'upload' && (
+        {effectiveView === VIEW_MODE.UPLOAD && (
           <NewVorgangUploadView
             files={session.files}
             onFilesChange={actions.setFiles}
@@ -211,7 +223,7 @@ function HomeContent() {
         )}
 
         {/* Ansicht 3: Ergebnis-Ansicht (Dossier Cockpit) */}
-        {effectiveView === 'detail' && displayedDossier && (
+        {effectiveView === VIEW_MODE.DETAIL && displayedDossier && (
           <DossierDetailView
             dossier={displayedDossier}
             activeRecord={activeRecord || null}

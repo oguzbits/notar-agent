@@ -2,8 +2,8 @@
 
 import { FileText, Search, Plus, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
-import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
-import { DocumentRecord } from '@/lib/supabase/server';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/lib/supabase/server';
 
 interface DocumentTableProps {
   documents: DocumentRecord[];
@@ -13,10 +13,16 @@ interface DocumentTableProps {
   onDeleteDocument: (id: string) => Promise<void>;
 }
 
-export type FilterStatus = 'Alle' | 'In Prüfung' | 'Entwurfsreif';
+export const DOCUMENT_FILTERS = {
+  ALL: 'Alle',
+  IN_PROGRESS: CASE_STATUS.IN_PROGRESS,
+  DRAFT_READY: CASE_STATUS.DRAFT_READY,
+} as const;
 
-export const getStatusBadge = (status?: string) => {
-  return <StatusBadge status={(status || 'In Prüfung') as StatusVariant} size="sm" />;
+export type FilterStatus = (typeof DOCUMENT_FILTERS)[keyof typeof DOCUMENT_FILTERS];
+
+export const getStatusBadge = (status?: CaseStatus) => {
+  return <StatusBadge status={status || CASE_STATUS.IN_PROGRESS} size="sm" />;
 };
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
@@ -27,7 +33,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   onDeleteDocument,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterStatus>('Alle');
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>(DOCUMENT_FILTERS.ALL);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filteredDocuments = documents.filter((doc) => {
@@ -36,8 +42,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       (doc.content?.caseTitle || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
-    if (activeFilter === 'Alle') return true;
-    const effectiveStatus = doc.status === 'Entwurfsreif' ? 'Entwurfsreif' : 'In Prüfung';
+    if (activeFilter === DOCUMENT_FILTERS.ALL) return true;
+    const effectiveStatus: CaseStatus =
+      doc.status === CASE_STATUS.DRAFT_READY ? CASE_STATUS.DRAFT_READY : CASE_STATUS.IN_PROGRESS;
     return effectiveStatus === activeFilter;
   });
 
@@ -96,7 +103,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       <div className="border-border bg-card flex flex-col items-center justify-between gap-3 rounded-xl border p-3 shadow-xs sm:flex-row">
         {/* Filter Tabs */}
         <div className="bg-muted border-border flex w-full items-center rounded-lg border p-1 sm:w-auto">
-          {(['Alle', 'In Prüfung', 'Entwurfsreif'] as FilterStatus[]).map((tab) => (
+          {Object.values(DOCUMENT_FILTERS).map((tab) => (
             <button
               key={tab}
               type="button"

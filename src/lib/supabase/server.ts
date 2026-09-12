@@ -10,10 +10,11 @@ import {
   UpdateResult,
   getUniformCaseTitle,
   computeDocumentStatus,
+  CASE_STATUS,
 } from './repository';
 
 export type { DocumentRecord, CaseStatus, PersistenceResult, UpdateResult, IDossierRepository };
-export { getUniformCaseTitle, computeDocumentStatus };
+export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

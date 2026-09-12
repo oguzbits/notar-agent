@@ -23,6 +23,7 @@
 - **Explicit Export Types:** Enforce explicit return types on all exported functions, services, and route handlers.
 - **Immutability & Resilience:** Never mutate state or arguments in-place. Zero silent error swallowing (`catch {}`); provide actionable error context. Wrap route segments and async boundary components in Error Boundaries or `error.tsx`.
 - **Component Sizing & Styling:** Keep components under ~200 lines (excluding declarative configs/schemas and tests). Never use arbitrary hardcoded hex codes (`#B9ED94`) or ad-hoc Tailwind values (`text-[11px]`, `bg-[#...]`) anywhere in `src/`. Use semantic design tokens from `globals.css` and standard utility classes. Domain modules in `src/lib/` must never contain UI CSS classes or color hexes. Ensure accessibility (semantic HTML, visible focus states, ARIA states on custom disclosures).
+- **Zero Magic Strings & States:** Domain states, UI routes, and status filters must never be raw magic strings. Enforce typed `as const` dictionaries or Zod enums (e.g. `CASE_STATUS.DRAFT_READY`, `VIEW_MODE.UPLOAD`) with derived types. Magic numbers must be declared as named constants.
 
 ## 4. Guardrails (Zero-Laziness)
 
