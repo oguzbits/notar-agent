@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect } from 'vitest';
-import { POST } from './route';
+import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import { POST, PUT } from './route';
 
 describe('API Route: POST /api/analyze Guardrails & Validation', () => {
   it('sollte Status 400 liefern, wenn weder Dateien noch Notizen übermittelt werden', async () => {
@@ -24,6 +25,19 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
     const req = new NextRequest('http://localhost:3000/api/analyze', {
       method: 'POST',
       body: JSON.stringify({}),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  it('sollte Status 400 liefern, wenn ungültiger caseType übermittelt wird', async () => {
+    const req = new NextRequest('http://localhost:3000/api/analyze', {
+      method: 'POST',
+      body: JSON.stringify({
+        files: [{ name: 'test.pdf', type: 'application/pdf', size: 100 }],
+        caseType: 'INVALID_TYPE',
+      }),
     });
 
     const res = await POST(req);
@@ -56,5 +70,33 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
       if (prevAnthropic) process.env.ANTHROPIC_API_KEY = prevAnthropic;
       if (prevGoogleGen) process.env.GOOGLE_GENERATIVE_AI_API_KEY = prevGoogleGen;
     }
+  });
+});
+
+describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
+  it('sollte Status 400 liefern, wenn documentId oder dossier fehlen', async () => {
+    const req = new NextRequest('http://localhost:3000/api/analyze', {
+      method: 'PUT',
+      body: JSON.stringify({}),
+    });
+
+    const res = await PUT(req);
+    expect(res.status).toBe(400);
+  });
+
+  it('sollte Status 200 liefern, wenn documentId und valides Dossier gesendet werden', async () => {
+    const validDossier = createTestImmobilienDossier();
+    const req = new NextRequest('http://localhost:3000/api/analyze', {
+      method: 'PUT',
+      body: JSON.stringify({
+        documentId: 'doc-test-123',
+        dossier: validDossier,
+      }),
+    });
+
+    const res = await PUT(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
   });
 });

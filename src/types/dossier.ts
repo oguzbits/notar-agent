@@ -474,3 +474,44 @@ export function updateDossierFieldStatus(
 
   return cloned;
 }
+
+// ==========================================
+// 4. API REQUEST SCHEMATA
+// ==========================================
+
+export const UploadedFilePayloadSchema = z.object({
+  name: z.string().min(1, 'Dateiname darf nicht leer sein'),
+  type: z.string(),
+  size: z.number().nonnegative(),
+  content: z.string().optional(),
+  isBase64: z.boolean().optional(),
+});
+
+export const AnalyzeRequestSchema = z
+  .object({
+    files: z.array(UploadedFilePayloadSchema).default([]),
+    caseType: CaseTypeSchema.default('IMMOBILIENKAUF'),
+    notes: z.string().default(''),
+    documentId: z.string().optional(),
+    existingDossier: DossierSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // Wenn keine Dateien übermittelt werden, müssen entweder ein bestehendes Dossier oder Notizen vorliegen
+      if (data.files.length === 0) {
+        return Boolean(data.existingDossier || data.notes.trim());
+      }
+      return true;
+    },
+    {
+      message: 'Keine Dokumente oder Notizen für die Aktualisierung übermittelt.',
+      path: ['files'],
+    }
+  );
+export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
+
+export const UpdateDossierRequestSchema = z.object({
+  documentId: z.string().min(1, 'documentId ist erforderlich.'),
+  dossier: DossierSchema,
+});
+export type UpdateDossierRequest = z.infer<typeof UpdateDossierRequestSchema>;

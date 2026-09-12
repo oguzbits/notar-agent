@@ -1,33 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
-import { runAnalysisPipeline, type UploadedFilePayload } from '@/lib/ai/pipeline';
+import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
 import {
   getDossierRepository,
   getServerSupabase,
   getUniformCaseTitle,
 } from '@/lib/supabase/server';
-import { CaseType, Dossier } from '@/types/dossier';
+import { AnalyzeRequestSchema, UpdateDossierRequestSchema } from '@/types/dossier';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<Response> {
   try {
-    const body = await req.json();
-    const files: UploadedFilePayload[] = body.files || [];
-    const caseType: CaseType = body.caseType || 'IMMOBILIENKAUF';
-    const notes: string = body.notes || '';
-    const documentId: string | undefined = body.documentId;
-    const existingDossier: Dossier | undefined = body.existingDossier;
+    const rawBody: unknown = await req.json().catch(() => ({}));
+    const parseResult = AnalyzeRequestSchema.safeParse(rawBody);
 
-    if (!files || files.length === 0) {
-      if (!existingDossier || !notes.trim()) {
-        return NextResponse.json(
-          { error: 'Keine Dokumente oder Notizen für die Aktualisierung übermittelt.' },
-          { status: 400 }
-        );
-      }
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      const errorMessage = issue?.message || 'Ungültige Anfrage-Parameter.';
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
+
+    const { files, caseType, notes, documentId, existingDossier } = parseResult.data;
 
     let aiConfig;
     try {
@@ -95,17 +90,18 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function PUT(req: NextRequest) {
+export async function PUT(req: NextRequest): Promise<Response> {
   try {
-    const body = await req.json();
-    const { documentId, dossier } = body;
+    const rawBody: unknown = await req.json().catch(() => ({}));
+    const parseResult = UpdateDossierRequestSchema.safeParse(rawBody);
 
-    if (!documentId || !dossier) {
-      return NextResponse.json(
-        { error: 'documentId und dossier sind erforderlich.' },
-        { status: 400 }
-      );
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      const errorMessage = issue?.message || 'documentId und dossier sind erforderlich.';
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
+
+    const { documentId, dossier } = parseResult.data;
 
     const repo = getDossierRepository();
     const updateRes = await repo.update(documentId, dossier);
