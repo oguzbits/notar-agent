@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateText } from 'ai';
+import { generateText, type SystemModelMessage } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogle } from '@ai-sdk/google';
 import {
   CaseType,
   Dossier,
@@ -46,26 +47,73 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!geminiKey && !anthropicKey) {
       return NextResponse.json(
         {
-          error: 'ANTHROPIC_API_KEY ist nicht in den Umgebungsvariablen (.env.local) konfiguriert.',
+          error:
+            'Kein KI-API-Key konfiguriert. Bitte hinterlege GEMINI_API_KEY oder ANTHROPIC_API_KEY in deiner .env.local.',
         },
         { status: 500 }
       );
     }
 
-    const anthropicHeaders: Record<string, string> = {};
-    if (process.env.ANTHROPIC_WORKSPACE_ID) {
-      anthropicHeaders['anthropic-workspace-id'] = process.env.ANTHROPIC_WORKSPACE_ID;
-    }
+    const useGemini = Boolean(geminiKey && (!anthropicKey || process.env.AI_PROVIDER === 'google'));
 
-    const anthropic = createAnthropic({
-      apiKey,
-      headers: anthropicHeaders,
-    });
-    const model = anthropic(process.env.AI_MODEL || 'claude-haiku-4-5');
+    let model;
+    let extractionInstructions: SystemModelMessage;
+    let auditorInstructions: SystemModelMessage;
+
+    if (useGemini) {
+      const google = createGoogle({
+        apiKey: geminiKey,
+      });
+      const modelName =
+        process.env.AI_MODEL && !process.env.AI_MODEL.startsWith('claude')
+          ? process.env.AI_MODEL
+          : 'gemini-3.5-flash-lite';
+      model = google(modelName);
+      extractionInstructions = {
+        role: 'system',
+        content: IMMOBILIEN_EXTRACTION_AGENT_PROMPT,
+      };
+      auditorInstructions = {
+        role: 'system',
+        content: NOTARY_AUDITOR_RECONCILER_PROMPT,
+      };
+    } else {
+      const anthropicHeaders: Record<string, string> = {};
+      if (process.env.ANTHROPIC_WORKSPACE_ID) {
+        anthropicHeaders['anthropic-workspace-id'] = process.env.ANTHROPIC_WORKSPACE_ID;
+      }
+
+      const anthropic = createAnthropic({
+        apiKey: anthropicKey,
+        headers: anthropicHeaders,
+      });
+      const modelName = process.env.AI_MODEL || 'claude-haiku-4-5';
+      model = anthropic(modelName);
+      extractionInstructions = {
+        role: 'system',
+        content: IMMOBILIEN_EXTRACTION_AGENT_PROMPT,
+        providerOptions: {
+          anthropic: {
+            cacheControl: { type: 'ephemeral' },
+          },
+        },
+      };
+      auditorInstructions = {
+        role: 'system',
+        content: NOTARY_AUDITOR_RECONCILER_PROMPT,
+        providerOptions: {
+          anthropic: {
+            cacheControl: { type: 'ephemeral' },
+          },
+        },
+      };
+    }
 
     // Konstruiere multimodale bzw. textuelle User-Nachricht mit aktuellem Datumsbezug
     const todayStr = new Date().toISOString().split('T')[0];
@@ -209,18 +257,9 @@ ${notesSection}${
             stepDetail: 'Stufe 1: Urkunden- & Sachverhaltserfassung läuft...',
           });
 
-          const extractionSystemPrompt = IMMOBILIEN_EXTRACTION_AGENT_PROMPT;
           const { text: extractionText } = await generateText({
             model,
-            instructions: {
-              role: 'system',
-              content: extractionSystemPrompt,
-              providerOptions: {
-                anthropic: {
-                  cacheControl: { type: 'ephemeral' },
-                },
-              },
-            },
+            instructions: extractionInstructions,
             messages: [
               {
                 role: 'user',
@@ -302,15 +341,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
           try {
             const auditorResult = await generateText({
               model,
-              instructions: {
-                role: 'system',
-                content: auditorSystemPrompt,
-                providerOptions: {
-                  anthropic: {
-                    cacheControl: { type: 'ephemeral' },
-                  },
-                },
-              },
+              instructions: auditorInstructions,
               messages: [
                 {
                   role: 'user',

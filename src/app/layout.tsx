@@ -19,7 +19,11 @@ export const metadata: Metadata = {
     'Agentischer 2-Stufen-Workflow für die notarielle Prüfung und Strukturierung von Immobilienkaufverträgen.',
 };
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="de"
