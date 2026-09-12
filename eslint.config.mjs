@@ -63,6 +63,11 @@ const eslintConfig = defineConfig([
             "Hardcoded hex colors are forbidden. Use semantic tokens defined in globals.css instead.",
         },
         {
+          selector: "Literal[value=/(?:text|bg|border|p|m|gap|w|h)-\\[[^\\]]+\\]/]",
+          message:
+            "Ad-hoc Tailwind bracket notation (e.g. text-[10px]) is forbidden. Use semantic tokens (text-3xs, text-2xs) or standard Tailwind utility classes.",
+        },
+        {
           selector:
             "CallExpression[callee.object.name='JSON'][callee.property.name='parse'] > CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
           message:

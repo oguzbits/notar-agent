@@ -87,61 +87,36 @@ Obwohl das System für den aktuellen Scope (multidokumentarische Immobilienkaufv
 
 # Phase III: Backend & Service-Architektur (Pipeline & I/O)
 
-## 6. Monolithisches God-File & Vermischung von Streaming- und Domänenlogik in `route.ts`
+## 6. [ERLEDIGT] Monolithisches God-File & Vermischung von Streaming- und Domänenlogik in `route.ts`
 
-- **Betroffene Datei:** `src/app/api/analyze/route.ts` (622 Zeilen)
-- **Status Quo:**
-  Auf über 620 Zeilen vereint die Datei sechs orthogonale Verantwortlichkeiten:
-  1. HTTP-Request-Validierung & Header-Konfiguration
-  2. Native SSE-Stream-Erzeugung (`new ReadableStream`, `TextEncoder`, Ping-Intervalle)
-  3. Multimodale Payload-Transformation (Base64-Puffer vs. Plaintext)
-  4. Sequenzielle LLM-Aufrufe (`generateText` für Stage 1 & Stage 2) inkl. Prompt-Templating
-  5. Fehlertolerantes JSON-Parsing per Regex-Stripping und Error-Catching
-  6. Domänen-Reconciliation (Delta-Modus, `normalizeDossier`) und Datenbank-Persistierung
-- **Konkretes Problem:**
-  - **Nahezu untestbar:** In `analyze.test.ts` werden nur zwei Fehler-Codes getestet. Weder der SSE-Stream noch die Stufen der KI-Pipeline können ohne Next.js-Server-Mocks getestet werden.
-  - **SRP-Verletzung:** Änderungen am Streaming-Protokoll gefährden die Persistierung oder die Prompt-Verarbeitung.
-- **Refactoring-Maßnahme:**
-  - **Thin Controller Pattern:** `route.ts` schrumpft auf <50 Zeilen (reiner HTTP-Adapter).
-  - **SSE Manager (`src/lib/sse/create-sse-stream.ts`):** Kapselt den Stream-Controller, Heartbeat-Pings und standardisiertes Event-Encoding (`sendEvent(type, payload)`).
-  - **Pipeline Orchestrator (`src/lib/ai/pipeline.ts`):** Pure Funktion `runAnalysisPipeline(...)` mit Dependency Injection (Model, Storage, Notifier).
-  - **JSON Parser Utility (`src/lib/ai/parsers/clean-json.ts`):** Getestete Hilfsfunktion für Markdown-Codeblock-Bereinigung und resilienten Fallback.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - `src/lib/ai/parsers/clean-json.ts`: Robuste Bereinigung von Markdown-Codeblöcken (`json ... `) und fehlertolerantes JSON-Parsing inkl. vollständiger Testsuite (`clean-json.test.ts`).
+  - `src/lib/sse/create-sse-stream.ts`: Kapselung von nativer SSE-Stream-Erzeugung, Standard-Headern und standardisiertem Event-Encoding (`sendEvent`, `close`, `error`) mit isolierter Testsuite (`create-sse-stream.test.ts`).
+  - `src/lib/ai/ai-provider.ts`: Saubere Factory zur flexiblen Initialisierung von Google Gemini oder Anthropic Claude Modellen samt Provider-Optionen (z. B. Ephemeral Prompt Caching).
+  - `src/lib/ai/pipeline.ts`: Reiner Pipeline-Orchestrator `runAnalysisPipeline`, der Ingestion-, Reconciler- und Schema-Normalisierungsstufen mit Dependency Injection kapselt.
+  - `src/app/api/analyze/route.ts`: Schrumpfung des Controllers von >650 Zeilen auf einen schlanken HTTP-Adapter (<130 Zeilen).
 
 ---
 
-## 7. Kopplung von Dateivorbereitung und UI in `UploadZone.tsx`
+## 7. [ERLEDIGT] Kopplung von Dateivorbereitung und UI in `UploadZone.tsx`
 
-- **Betroffene Datei:** `src/components/UploadZone.tsx` (436 Zeilen)
-- **Status Quo:**
-  Die Komponente handhabt Drag & Drop, Render-Listen, Fehlermeldungen sowie das direkte asynchrone Einlesen und Base64-Encoden von `File`-Objekten (`FileReader`, Canvas-Resizing, Text- vs. Binary-Erkennung).
-- **Konkretes Problem:**
-  - Asynchrone Datei-Leseoperationen blockieren die Komponentenlogik.
-  - Validierungsregeln (z. B. maximale Dateigröße 32 MB) sind fest im UI-Event-Handler verdrahtet.
-- **Refactoring-Maßnahme:**
-  - **File Processing Service (`src/lib/files/file-preparer.ts`):** Reine Utility-Funktion zur Typ-Erkennung, Validierung und Base64-/Blob-Extraktion.
-  - `UploadZone` wird zur reinen Präsentations- und Drop-Komponente.
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - `src/lib/files/file-preparer.ts`: Reine Servicefunktionen für Dateigrößen-Validierung (`MAX_FILE_SIZE_BYTES = 32 MB`), FileReader-Text/Base64-Verarbeitung und Canvas-Bildskalierung auf 1600px.
+  - `src/lib/files/file-preparer.test.ts`: Unit-Tests für Größenprüfung und Validierungslogik.
+  - `src/components/UploadZone.tsx`: Befreit von asynchroner Canvas- und FileReader-Logik; agiert nun als reine Präsentations- und Drop-Komponente.
 
 ---
 
-## 8. Globaler Shared State & Memory-Leak-Risiko in `server.ts`
+## 8. [ERLEDIGT] Globaler Shared State & Memory-Leak-Risiko in `server.ts`
 
-- **Betroffene Datei:** `src/lib/supabase/server.ts` (356 Zeilen)
-- **Status Quo:**
-  Verwendung von unbeschränktem `globalThis.__inMemoryDocuments` direkt neben Supabase-SDK-Aufrufen ohne formales Interface. Neue Dokumente werden unbegrenzt via `unshift` angehängt.
-- **Konkretes Problem:**
-  - **Memory Leak:** In langlebigen Node- oder Serverless-Instanzen wächst das globale Array unbegrenzt mit großen Dossier-Payloads an (Gefahr von `heap out of memory`).
-  - **Mangelnde Testbarkeit:** `persistDossierRecord` und `updateDossierRecord` enthalten `if-else`-Verzweigungen für Datenbank vs. Memory. Keine Dependency Injection möglich.
-- **Refactoring-Maßnahme:**
-  - **Repository Pattern & Bounded LRU/FIFO-Puffer:**
-    ```typescript
-    export interface IDossierRepository {
-      findById(id: string): Promise<DocumentRecord | null>;
-      save(dossier: Dossier): Promise<PersistenceResult>;
-      update(id: string, dossier: Dossier): Promise<UpdateResult>;
-      list(): Promise<DocumentRecord[]>;
-    }
-    ```
-  - Trennung in `SupabaseDossierRepository` und `InMemoryDossierRepository` (letzteres mit fester Obergrenze, z. B. max. 25 Einträge). Auswahl erfolgt über eine Factory (`getRepository()`).
+- **Status:** Erledigt
+- **Umgesetzte Maßnahmen:**
+  - `src/lib/supabase/repository.ts`: Formale Definition von `IDossierRepository` mit Trennung in `InMemoryDossierRepository` und `SupabaseDossierRepository`.
+  - **Bounded Memory Guard:** `InMemoryDossierRepository` ist mit einer festen Obergrenze (standardmäßig 25 Einträge, FIFO-Verdrängung) versehen, wodurch unbeschränktes Anwachsen im Arbeitsspeicher (`heap out of memory`) ausgeschlossen ist.
+  - `src/lib/supabase/repository.test.ts`: Vollständige Unit-Tests für CRUD-Operationen und Verdrängungs-Obergrenze.
+  - `src/lib/supabase/server.ts`: Schlanke Fassade mit Singleton-Factory `getDossierRepository()`; 100%ige Abwärtskompatibilität für alle bestehenden Routen und Aufrufer.
 
 ---
 
