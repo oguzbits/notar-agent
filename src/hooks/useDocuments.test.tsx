@@ -58,7 +58,7 @@ describe('useDocuments with TanStack Query & MSW', () => {
     });
 
     expect(result.current.documents).toHaveLength(2);
-    expect(result.current.documents[0].id).toBe('doc-1');
+    expect(result.current.documents[0]?.id).toBe('doc-1');
   });
 
   it('deletes a document via useMutation and updates query cache', async () => {
@@ -77,7 +77,7 @@ describe('useDocuments with TanStack Query & MSW', () => {
     await waitFor(() => {
       expect(result.current.documents).toHaveLength(1);
     });
-    expect(result.current.documents[0].id).toBe('doc-2');
+    expect(result.current.documents[0]?.id).toBe('doc-2');
   });
 
   it('optimistically updates dossier and handles rollback on network error', async () => {
@@ -115,6 +115,6 @@ describe('useDocuments with TanStack Query & MSW', () => {
     expect(mutationFailed).toBe(true);
     expect(caughtError).toBeInstanceOf(Error);
     // Verified rollback to previous document state
-    expect(result.current.documents[0].id).toBe('doc-1');
+    expect(result.current.documents[0]?.id).toBe('doc-1');
   });
 });

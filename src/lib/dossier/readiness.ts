@@ -1,5 +1,6 @@
 import { Dossier, GenericFieldDossier, getDossierFieldsRecord } from '@/types/dossier';
 import { CASE_TYPE_CORE_FIELDS } from './constants';
+import type { CaseTypeCoreConfig } from './types';
 
 export type ReadinessStage = 'READY' | 'DRAFTING_POSSIBLE' | 'BLOCKED';
 
@@ -41,7 +42,11 @@ export function getDossierReadinessStage(dossier: Dossier): ReadinessInfo {
   const fields = dossier.fields as
     Record<string, GenericFieldDossier<Record<string, unknown>>> | undefined;
   const caseType = dossier.caseType || 'IMMOBILIENKAUF';
-  const coreConfig = CASE_TYPE_CORE_FIELDS[caseType] || CASE_TYPE_CORE_FIELDS.IMMOBILIENKAUF;
+  const coreConfig: CaseTypeCoreConfig = CASE_TYPE_CORE_FIELDS[caseType] ??
+    CASE_TYPE_CORE_FIELDS.IMMOBILIENKAUF ?? {
+      partyFields: ['verkaeufer', 'kaeufer'],
+      objectFields: ['kaufpreis', 'grundbuch'],
+    };
 
   const partyOk = coreConfig.partyFields.some((key) => fields?.[key]?.status === 'VERIFIED');
   const objectOk = coreConfig.objectFields.some((key) => fields?.[key]?.status === 'VERIFIED');

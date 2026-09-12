@@ -112,9 +112,10 @@ export class InMemoryDossierRepository implements IDossierRepository {
     const status = computeDocumentStatus(normalized);
 
     const index = this.documents.findIndex((d) => d.id === id);
-    if (index !== -1) {
+    const existing = this.documents[index];
+    if (index !== -1 && existing) {
       this.documents[index] = {
-        ...this.documents[index],
+        ...existing,
         title,
         status,
         content: normalized,

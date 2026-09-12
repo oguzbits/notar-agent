@@ -154,29 +154,29 @@ describe('UI Mapper & Formatting Services', () => {
       snippet: 'Ausschnitt',
     });
     expect(combined).toHaveLength(2);
-    expect(combined[0].fileName).toBe('Doc1.pdf');
-    expect(combined[1].fileName).toBe('Doc2.pdf');
+    expect(combined[0]?.fileName).toBe('Doc1.pdf');
+    expect(combined[1]?.fileName).toBe('Doc2.pdf');
   });
 
   it('extractFieldObservations should return only problematic fields (non-verified)', () => {
     const dossier = createStubDossier();
     const obs = extractFieldObservations(dossier);
     expect(obs).toHaveLength(2);
-    expect(obs[0].fieldKey).toBe('kaeufer');
-    expect(obs[0].status).toBe('NEEDS_REVIEW');
-    expect(obs[0].actionRequired).toBe('Handelsregister anfordern');
-    expect(obs[1].fieldKey).toBe('energieausweis');
-    expect(obs[1].status).toBe('OUTDATED');
+    expect(obs[0]?.fieldKey).toBe('kaeufer');
+    expect(obs[0]?.status).toBe('NEEDS_REVIEW');
+    expect(obs[0]?.actionRequired).toBe('Handelsregister anfordern');
+    expect(obs[1]?.fieldKey).toBe('energieausweis');
+    expect(obs[1]?.status).toBe('OUTDATED');
   });
 
   it('extractAllFieldRows should return all 10 fields in proper order', () => {
     const dossier = createStubDossier();
     const rows = extractAllFieldRows(dossier);
     expect(rows).toHaveLength(10);
-    expect(rows[0].fieldKey).toBe('verkaeufer');
-    expect(rows[0].fieldIndex).toBe(1);
-    expect(rows[9].fieldKey).toBe('uebergabe');
-    expect(rows[9].fieldIndex).toBe(10);
+    expect(rows[0]?.fieldKey).toBe('verkaeufer');
+    expect(rows[0]?.fieldIndex).toBe(1);
+    expect(rows[9]?.fieldKey).toBe('uebergabe');
+    expect(rows[9]?.fieldIndex).toBe(10);
   });
 
   it('generatePruefberichtText should produce a complete textual audit report', () => {

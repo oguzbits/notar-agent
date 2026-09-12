@@ -24,8 +24,12 @@ describe('Dossier Constants & Metadata Registry', () => {
     ]);
 
     keys.forEach((key, idx) => {
-      expect(IMMOBILIEN_FIELD_METADATA[key].index).toBe(idx + 1);
-      expect(IMMOBILIEN_FIELD_METADATA[key].title).toBeTruthy();
+      const meta = IMMOBILIEN_FIELD_METADATA[key];
+      expect(meta).toBeDefined();
+      if (meta) {
+        expect(meta.index).toBe(idx + 1);
+        expect(meta.title).toBeTruthy();
+      }
     });
   });
 
@@ -35,10 +39,13 @@ describe('Dossier Constants & Metadata Registry', () => {
 
   it('should define core fields for IMMOBILIENKAUF', () => {
     const config = CASE_TYPE_CORE_FIELDS['IMMOBILIENKAUF'];
-    expect(config.partyFields).toContain('verkaeufer');
-    expect(config.partyFields).toContain('kaeufer');
-    expect(config.objectFields).toContain('kaufpreis');
-    expect(config.objectFields).toContain('grundbuch');
+    expect(config).toBeDefined();
+    if (config) {
+      expect(config.partyFields).toContain('verkaeufer');
+      expect(config.partyFields).toContain('kaeufer');
+      expect(config.objectFields).toContain('kaufpreis');
+      expect(config.objectFields).toContain('grundbuch');
+    }
   });
 
   it('should provide German translations for all 4 FieldStatuses', () => {

@@ -12,8 +12,8 @@
     "type-check": "tsc --noEmit",
     "check": "npm run type-check && npm run lint",
     "depcruise": "depcruise --config config/dependency-cruiser.js src",
-    "knip": "knip",
-    "knip:files": "knip --dependencies --files",
+    "knip": "knip --include dependencies,unlisted,binaries,unresolved,files,cycles",
+    "knip:exports": "knip --exports",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"

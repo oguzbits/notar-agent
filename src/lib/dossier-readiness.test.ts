@@ -223,21 +223,21 @@ describe('Feststellungs-Extraktion & Audit-Trail Parsing', () => {
     const observations = extractFieldObservations(dossier);
     expect(observations.length).toBe(2);
 
-    expect(observations[0].fieldKey).toBe('kaufpreis');
-    expect(observations[0].fieldIndex).toBe(5);
-    expect(observations[0].status).toBe('NEEDS_REVIEW');
+    expect(observations[0]?.fieldKey).toBe('kaufpreis');
+    expect(observations[0]?.fieldIndex).toBe(5);
+    expect(observations[0]?.status).toBe('NEEDS_REVIEW');
 
-    expect(observations[1].fieldKey).toBe('energieausweis');
-    expect(observations[1].fieldIndex).toBe(9);
-    expect(observations[1].status).toBe('OUTDATED');
+    expect(observations[1]?.fieldKey).toBe('energieausweis');
+    expect(observations[1]?.fieldIndex).toBe(9);
+    expect(observations[1]?.status).toBe('OUTDATED');
   });
 
   it('sollte kombinierte Quellenangaben mit Trennzeichen (+, ;, und) korrekt parsen', () => {
     const source1 = { fileName: 'Notiz #1 + grundbuch.pdf', pageNumber: 3, snippet: 'Zitat A' };
     const parsed1 = parseSourceLocations(source1);
     expect(parsed1.length).toBe(2);
-    expect(parsed1[0].fileName).toBe('Notiz #1');
-    expect(parsed1[1].fileName).toBe('grundbuch.pdf');
+    expect(parsed1[0]?.fileName).toBe('Notiz #1');
+    expect(parsed1[1]?.fileName).toBe('grundbuch.pdf');
 
     const source2 = { fileName: 'DocA; DocB; DocA', pageNumber: 1, snippet: 'Zitat B' };
     const parsed2 = parseSourceLocations(source2);

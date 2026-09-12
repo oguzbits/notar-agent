@@ -1,6 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogle } from '@ai-sdk/google';
 import type { LanguageModel, SystemModelMessage } from 'ai';
+import { validateEnv } from '@/env';
 import {
   IMMOBILIEN_EXTRACTION_AGENT_PROMPT,
   NOTARY_AUDITOR_RECONCILER_PROMPT,
@@ -13,8 +14,9 @@ export interface AiConfiguration {
 }
 
 export function getAiConfiguration(): AiConfiguration {
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const env = validateEnv(process.env);
+  const geminiKey = env.GEMINI_API_KEY || env.GOOGLE_GENERATIVE_AI_API_KEY;
+  const anthropicKey = env.ANTHROPIC_API_KEY;
 
   if (!geminiKey && !anthropicKey) {
     throw new Error(
@@ -22,16 +24,14 @@ export function getAiConfiguration(): AiConfiguration {
     );
   }
 
-  const useGemini = Boolean(geminiKey && (!anthropicKey || process.env.AI_PROVIDER === 'google'));
+  const useGemini = Boolean(geminiKey && (!anthropicKey || env.AI_PROVIDER === 'google'));
 
   if (useGemini && geminiKey) {
     const google = createGoogle({
       apiKey: geminiKey,
     });
     const modelName =
-      process.env.AI_MODEL && !process.env.AI_MODEL.startsWith('claude')
-        ? process.env.AI_MODEL
-        : 'gemini-3.5-flash-lite';
+      env.AI_MODEL && !env.AI_MODEL.startsWith('claude') ? env.AI_MODEL : 'gemini-3.5-flash-lite';
     return {
       model: google(modelName),
       extractionInstructions: {
@@ -48,7 +48,7 @@ export function getAiConfiguration(): AiConfiguration {
   const anthropic = createAnthropic({
     apiKey: anthropicKey,
   });
-  const modelName = process.env.AI_MODEL || 'claude-haiku-4-5';
+  const modelName = env.AI_MODEL || 'claude-haiku-4-5';
 
   return {
     model: anthropic(modelName),

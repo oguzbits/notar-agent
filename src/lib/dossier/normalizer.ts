@@ -175,9 +175,10 @@ export function normalizeDossier(
 
   cloned.userNotes = existingNotes;
 
-  const todayIso = cloned.analysisTimestamp
-    ? cloned.analysisTimestamp.split('T')[0]
-    : referenceDate.toISOString().split('T')[0];
+  const todayIso =
+    (cloned.analysisTimestamp ? cloned.analysisTimestamp.split('T')[0] : undefined) ||
+    referenceDate.toISOString().split('T')[0] ||
+    new Date().toISOString().slice(0, 10);
 
   // 4. In detectedDocuments sicherstellen, dass jede Notiz mit ihrem 1:1 Originaltext vorliegt
   // Bestehende Nicht-Notiz Dokumente filtern

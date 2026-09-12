@@ -174,9 +174,9 @@ describe('User Journey: Inkrementelle Nachreichung & Delta-Updates', () => {
     // detectedDocuments muss Notiz #1 und Notiz #2 enthalten
     const noteDocs = updated.detectedDocuments.filter((d) => d.fileName.startsWith('Notiz #'));
     expect(noteDocs).toHaveLength(2);
-    expect(noteDocs[0].fileName).toBe('Notiz #1');
-    expect(noteDocs[1].fileName).toBe('Notiz #2');
-    expect(noteDocs[1].summary).toBe(newNoteText);
+    expect(noteDocs[0]?.fileName).toBe('Notiz #1');
+    expect(noteDocs[1]?.fileName).toBe('Notiz #2');
+    expect(noteDocs[1]?.summary).toBe(newNoteText);
 
     // Bestandsdokumente (urkunde_alt.pdf) müssen erhalten bleiben
     const otherDocs = updated.detectedDocuments.filter((d) => d.fileName === 'urkunde_alt.pdf');

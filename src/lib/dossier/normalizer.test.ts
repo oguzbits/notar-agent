@@ -62,9 +62,9 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
 
     // Notizen werden in detectedDocuments einsortiert (Notiz #1 an erster Stelle)
     expect(normalized.detectedDocuments.length).toBe(2);
-    expect(normalized.detectedDocuments[0].fileName).toBe('Notiz #1');
-    expect(normalized.detectedDocuments[0].documentType).toBe('Bearbeitungsvermerk / Notiz');
-    expect(normalized.detectedDocuments[1].fileName).toBe('grundbuch.pdf');
+    expect(normalized.detectedDocuments[0]?.fileName).toBe('Notiz #1');
+    expect(normalized.detectedDocuments[0]?.documentType).toBe('Bearbeitungsvermerk / Notiz');
+    expect(normalized.detectedDocuments[1]?.fileName).toBe('grundbuch.pdf');
   });
 
   it('should resiliently parse notary number strings with german formatting and symbols', () => {

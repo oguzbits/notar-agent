@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { validateEnv } from '@/env';
 import { Dossier } from '@/types/dossier';
 import {
   IDossierRepository,
@@ -16,9 +17,6 @@ import {
 export type { DocumentRecord, CaseStatus, PersistenceResult, UpdateResult, IDossierRepository };
 export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
 // Globaler Singleton für In-Memory-Speicher mit fester Obergrenze (max. 25 Einträge FIFO) gegen Memory Leaks
 declare global {
   var __boundedInMemoryRepo: InMemoryDossierRepository | undefined;
@@ -31,6 +29,10 @@ if (!globalThis.__boundedInMemoryRepo) {
 const inMemoryRepo = globalThis.__boundedInMemoryRepo;
 
 export function getServerSupabase() {
+  const env = validateEnv(process.env);
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
+  const supabaseKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
   if (!supabaseUrl || !supabaseKey) {
     return null;
   }

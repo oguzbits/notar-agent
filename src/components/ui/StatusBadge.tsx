@@ -58,7 +58,12 @@ const statusBadgeConfig: Record<string, BadgeConfig> = {
   },
 };
 
-const defaultBadgeConfig: BadgeConfig = statusBadgeConfig.MISSING;
+const defaultBadgeConfig: BadgeConfig = statusBadgeConfig.MISSING ?? {
+  label: 'Fehlt',
+  className: 'border-slate-200 bg-slate-100/80 text-slate-600 font-medium',
+  icon: HelpCircle,
+  iconClass: 'text-slate-500',
+};
 
 export const statusBadgeSizes = {
   sm: 'text-xs px-2 py-1',
