@@ -17,13 +17,9 @@ describe('downloadJsonFile', () => {
   });
 
   it('creates blob, triggers download anchor click, and revokes object URL', () => {
-    const clickMock = vi.fn();
-    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue({
-      setAttribute: vi.fn(),
-      click: clickMock,
-      remove: vi.fn(),
-      style: {},
-    } as unknown as HTMLAnchorElement);
+    const realAnchor = document.createElement('a');
+    const clickSpy = vi.spyOn(realAnchor, 'click').mockImplementation(() => {});
+    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(realAnchor);
 
     const appendChildSpy = vi
       .spyOn(document.body, 'appendChild')
@@ -33,8 +29,8 @@ describe('downloadJsonFile', () => {
 
     expect(createObjectURLMock).toHaveBeenCalledTimes(1);
     expect(createElementSpy).toHaveBeenCalledWith('a');
-    expect(appendChildSpy).toHaveBeenCalled();
-    expect(clickMock).toHaveBeenCalledTimes(1);
+    expect(appendChildSpy).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock-url');
   });
 });

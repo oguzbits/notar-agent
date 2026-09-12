@@ -298,7 +298,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
       ? { ...(existingDossier.fields as ImmobilienFields) }
       : { ...emptyFields };
   const mergedFields: ImmobilienFields = { ...baseFields };
-  const mergedFieldsRecord = mergedFields as unknown as Record<string, GenericFieldDossier>;
+  const mergedFieldsRecord = mergedFields as Record<string, GenericFieldDossier>;
 
   // Schritt 1: Stufe-1 Extraktionen einmergen
   for (const [key, rawField] of Object.entries(stage1Fields)) {
@@ -343,32 +343,32 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
     auditorInquiries ||
     (Array.isArray(parsedExtractionRaw.inquiries) ? parsedExtractionRaw.inquiries : []);
 
-  const normalizedInquiries = (Array.isArray(rawInquiriesList) ? rawInquiriesList : []).map(
-    (inq: unknown, idx: number) => {
-      const item = inq && typeof inq === 'object' ? (inq as Record<string, unknown>) : {};
-      const priority =
-        typeof item.priority === 'string' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(item.priority)
-          ? (item.priority as 'CRITICAL' | 'HIGH' | 'MEDIUM')
-          : 'HIGH';
+  const normalizedInquiries: Inquiry[] = (
+    Array.isArray(rawInquiriesList) ? rawInquiriesList : []
+  ).map((inq: unknown, idx: number): Inquiry => {
+    const item = inq && typeof inq === 'object' ? (inq as Record<string, unknown>) : {};
+    const priority =
+      typeof item.priority === 'string' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(item.priority)
+        ? (item.priority as 'CRITICAL' | 'HIGH' | 'MEDIUM')
+        : 'HIGH';
 
-      return {
-        id: typeof item.id === 'string' && item.id ? item.id : `inq-${idx + 1}`,
-        fieldKey: typeof item.fieldKey === 'string' && item.fieldKey ? item.fieldKey : 'all',
-        recipient:
-          typeof item.recipient === 'string' && item.recipient ? item.recipient : 'VERKAEUFER',
-        priority,
-        subject: typeof item.subject === 'string' && item.subject ? item.subject : 'Nachforderung',
-        message:
-          typeof item.message === 'string' && item.message
-            ? item.message
-            : typeof item.description === 'string'
-              ? item.description
-              : '',
-        justification: typeof item.justification === 'string' ? item.justification : '',
-        resolved: typeof item.resolved === 'boolean' ? item.resolved : false,
-      };
-    }
-  );
+    return {
+      id: typeof item.id === 'string' && item.id ? item.id : `inq-${idx + 1}`,
+      fieldKey: typeof item.fieldKey === 'string' && item.fieldKey ? item.fieldKey : 'all',
+      recipient:
+        typeof item.recipient === 'string' && item.recipient ? item.recipient : 'VERKAEUFER',
+      priority,
+      subject: typeof item.subject === 'string' && item.subject ? item.subject : 'Nachforderung',
+      message:
+        typeof item.message === 'string' && item.message
+          ? item.message
+          : typeof item.description === 'string'
+            ? item.description
+            : '',
+      justification: typeof item.justification === 'string' ? item.justification : '',
+      resolved: typeof item.resolved === 'boolean' ? item.resolved : false,
+    };
+  });
 
   const fallbackCaseTitle =
     rawCaseTitle || `Immobilienkauf ${new Date().toLocaleDateString('de-DE')}`;
@@ -399,7 +399,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
         ? parsedExtractionRaw.detectedDocuments
         : [],
       fields: mergedFields,
-      inquiries: normalizedInquiries as unknown as Inquiry[],
+      inquiries: normalizedInquiries,
       overallStatus: rawOverallStatus,
       executiveSummary: rawExecutiveSummary || 'Analyse abgeschlossen.',
     };

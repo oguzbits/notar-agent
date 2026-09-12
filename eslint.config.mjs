@@ -85,6 +85,12 @@ const eslintConfig = defineConfig([
           message:
             "Forbidden poor-man's deep clone: use structuredClone(value) instead of JSON.parse(JSON.stringify(value)).",
         },
+        {
+          selector:
+            "TSAsExpression[typeAnnotation.typeName.name!='const'][expression.type='TSAsExpression']",
+          message:
+            "Forbidden double type assertion ('as unknown as ...' / 'as any as ...'). Use proper domain schemas, type guards, or test factories instead.",
+        },
       ],
     },
   },

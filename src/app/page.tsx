@@ -12,7 +12,7 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier-helpers';
 import { DocumentRecord, computeDocumentStatus } from '@/lib/supabase/server';
-import { Dossier, FieldStatus, GenericFieldDossier } from '@/types/dossier';
+import { FieldStatus, updateDossierFieldStatus } from '@/types/dossier';
 
 function HomeContent() {
   const router = useRouter();
@@ -122,33 +122,12 @@ function HomeContent() {
   ) => {
     if (!displayedDossier) return;
 
-    const currentFields = { ...displayedDossier.fields } as Record<
-      string,
-      GenericFieldDossier<unknown>
-    >;
-    if (currentFields[fieldKey]) {
-      currentFields[fieldKey] = {
-        ...currentFields[fieldKey],
-        status: newStatus,
-        note: customNote ? customNote : currentFields[fieldKey].note,
-      };
-    }
-
-    const allVerified = Object.values(currentFields).every((f) => f.status === 'VERIFIED');
-    const newOverall = allVerified ? 'READY' : displayedDossier.overallStatus;
-
-    const updatedDossier: Dossier =
-      displayedDossier.caseType === 'GMBH_GRUENDUNG'
-        ? {
-            ...displayedDossier,
-            fields: currentFields as unknown as typeof displayedDossier.fields,
-            overallStatus: newOverall,
-          }
-        : {
-            ...displayedDossier,
-            fields: currentFields as unknown as typeof displayedDossier.fields,
-            overallStatus: newOverall,
-          };
+    const updatedDossier = updateDossierFieldStatus(
+      displayedDossier,
+      fieldKey,
+      newStatus,
+      customNote
+    );
 
     actions.setDossier(updatedDossier);
 

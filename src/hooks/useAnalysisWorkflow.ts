@@ -54,7 +54,10 @@ export function useAnalysisWorkflow() {
       } else if (event.type === 'result') {
         if (event.dossier) {
           receivedResult = true;
-          onSuccess(event as unknown as AnalysisStreamResult);
+          onSuccess({
+            dossier: event.dossier,
+            persistence: event.persistence,
+          });
         }
       } else if (event.type === 'error') {
         throw new Error(event.error || 'Fehler während der Analyse.');

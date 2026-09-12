@@ -10,12 +10,9 @@ describe('file-preparer service', () => {
   });
 
   it('erkennt Dateien, die das 32MB Hardlimit überschreiten', () => {
-    // Mock-Datei mit Übergröße
-    const bigFile = {
-      name: 'riesen_scan.pdf',
-      size: MAX_FILE_SIZE_BYTES + 1024,
-      type: 'application/pdf',
-    } as unknown as File;
+    // Reales File-Objekt mit modifizierter size-Eigenschaft (kein Cast nötig)
+    const bigFile = new File([''], 'riesen_scan.pdf', { type: 'application/pdf' });
+    Object.defineProperty(bigFile, 'size', { value: MAX_FILE_SIZE_BYTES + 1024 });
 
     const result = validateFiles([bigFile]);
     expect(result.valid).toBe(false);

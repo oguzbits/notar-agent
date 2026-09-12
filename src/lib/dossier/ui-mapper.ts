@@ -1,4 +1,4 @@
-import { Dossier, FieldStatus, SourceLocation, GenericFieldDossier } from '@/types/dossier';
+import { Dossier, FieldStatus, SourceLocation, getDossierFieldsRecord } from '@/types/dossier';
 import {
   IMMOBILIEN_FIELD_METADATA,
   CASE_TYPE_METADATA_REGISTRY,
@@ -96,10 +96,7 @@ export function extractFieldObservations(dossier: Dossier): FieldObservation[] {
 
   const observations: FieldObservation[] = [];
 
-  const fieldsObj = dossier.fields as unknown as Record<
-    string,
-    GenericFieldDossier<Record<string, unknown>>
-  >;
+  const fieldsObj = getDossierFieldsRecord(dossier);
 
   for (const [key, field] of Object.entries(fieldsObj)) {
     if (!field) continue;
@@ -156,10 +153,7 @@ export function extractAllFieldRows(dossier: Dossier): FieldObservation[] {
 
   const rows: FieldObservation[] = [];
 
-  const fieldsObj = dossier.fields as unknown as Record<
-    string,
-    GenericFieldDossier<Record<string, unknown>>
-  >;
+  const fieldsObj = getDossierFieldsRecord(dossier);
 
   for (const [key, field] of Object.entries(fieldsObj)) {
     if (!field) continue;

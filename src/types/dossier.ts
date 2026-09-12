@@ -444,5 +444,31 @@ export function isGmbhDossier(dossier: Dossier): dossier is GmbhDossier {
 export function getDossierFieldsRecord(
   dossier: Dossier
 ): Record<string, GenericFieldDossier<Record<string, unknown>>> {
-  return dossier.fields as unknown as Record<string, GenericFieldDossier<Record<string, unknown>>>;
+  return dossier.fields as Record<string, GenericFieldDossier<Record<string, unknown>>>;
+}
+
+/**
+ * Erzeugt eine unveränderliche Kopie des Dossiers mit aktualisiertem Feld-Status
+ * und neu berechnetem overallStatus (100% typsicher ohne Type-Assertions).
+ */
+export function updateDossierFieldStatus(
+  dossier: Dossier,
+  fieldKey: string,
+  newStatus: FieldStatus,
+  customNote?: string
+): Dossier {
+  const cloned: Dossier = structuredClone(dossier);
+  const fields = getDossierFieldsRecord(cloned);
+
+  if (fields[fieldKey]) {
+    fields[fieldKey].status = newStatus;
+    if (customNote !== undefined) {
+      fields[fieldKey].note = customNote;
+    }
+  }
+
+  const allVerified = Object.values(fields).every((f) => f && f.status === 'VERIFIED');
+  cloned.overallStatus = allVerified ? 'READY' : cloned.overallStatus;
+
+  return cloned;
 }
