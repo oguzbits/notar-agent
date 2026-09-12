@@ -6,15 +6,30 @@ import {
 } from '@/types/dossier';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
+export interface NormalizeDossierOptions {
+  referenceDate?: Date;
+  additionalNoteTexts?: string[];
+}
+
 /**
  * Normalisiert ein Dossier vollumfänglich:
  * - Bereinigt überlange Quellennamen (z.B. "Ergänzende Sachverhalts- und Bearbeitungshinweise") zu "Notiz #1"
  * - Stellt sicher, dass zitierte Notizen auch in "detectedDocuments" (Vorgelegte Unterlagen) auftauchen
  * - Verhindert doppelte oder gesplittete Notizeinträge
  * - Verifiziert juristische Konsistenz-Guardrails (§ 35 GBO, § 12 HGB)
+ * - Unterstützt deterministische Stichtagsberechnungen via referenceDate
  */
-export function normalizeDossier(dossier: Dossier, additionalNoteTexts?: string[]): Dossier {
+export function normalizeDossier(
+  dossier: Dossier,
+  optionsOrNotes?: string[] | NormalizeDossierOptions
+): Dossier {
   if (!dossier) return dossier;
+
+  const options: NormalizeDossierOptions = Array.isArray(optionsOrNotes)
+    ? { additionalNoteTexts: optionsOrNotes }
+    : optionsOrNotes || {};
+
+  const { referenceDate = new Date(), additionalNoteTexts } = options;
 
   const cloned: Dossier = structuredClone(dossier);
 
@@ -162,7 +177,7 @@ export function normalizeDossier(dossier: Dossier, additionalNoteTexts?: string[
 
   const todayIso = cloned.analysisTimestamp
     ? cloned.analysisTimestamp.split('T')[0]
-    : new Date().toISOString().split('T')[0];
+    : referenceDate.toISOString().split('T')[0];
 
   // 4. In detectedDocuments sicherstellen, dass jede Notiz mit ihrem 1:1 Originaltext vorliegt
   // Bestehende Nicht-Notiz Dokumente filtern

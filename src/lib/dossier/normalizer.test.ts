@@ -184,4 +184,18 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
       { numRuns: 1000 }
     );
   });
+
+  it('guarantees deterministic date injection via referenceDate', () => {
+    const testDossier = createTestImmobilienDossier({
+      analysisTimestamp: '',
+      userNotes: ['Wichtige Notiz vom Sachbearbeiter'],
+    });
+
+    const fixedDate = new Date('2025-05-15T10:00:00.000Z');
+    const normalized = normalizeDossier(testDossier, { referenceDate: fixedDate });
+
+    const noteDoc = normalized.detectedDocuments.find((d) => d.fileName === 'Notiz #1');
+    expect(noteDoc).toBeDefined();
+    expect(noteDoc?.date).toBe('2025-05-15');
+  });
 });
