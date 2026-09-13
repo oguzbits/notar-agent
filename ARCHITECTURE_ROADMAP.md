@@ -56,9 +56,9 @@ graph LR
 
 #### Phasenweise Umsetzung
 
-- **Phase 1 (Quick Win):** Lokale Markdown-/JSON-Checklisten in `src/lib/knowledge/rules/`, getriggert nach erkannten Merkmalen (ohne externe Vektor-DB).
-- **Phase 2 (Erweitert):** Hybrid Search (BM25 für Paragraphen + `pgvector` in Supabase) für Kanzleisammlungen und DNotI-Gutachten.
-- **Phase 3 (Enterprise):** Mandantenisolierte Kanzlei-Wissensbasis mit PostgreSQL Row-Level Security (§ 18 BNotO / § 203 StGB).
+- **Phase 1 (Quick Win):** [x] **Fertiggestellt & Verifiziert** — Lokale strukturierte Checklisten in `src/lib/knowledge/rules/` (`rules-registry.ts`, `rule-selector.ts`), deterministisch in Stufe 2 Prompt injiziert (`pipeline.ts`) mit 100 % Unit-Test-Abdeckung (`rule-selector.test.ts`).
+- **Phase 2 (Erweitert):** [ ] Hybrid Search (BM25 für Paragraphen + `pgvector` in Supabase) für Kanzleisammlungen und DNotI-Gutachten.
+- **Phase 3 (Enterprise):** [ ] Mandantenisolierte Kanzlei-Wissensbasis mit PostgreSQL Row-Level Security (§ 18 BNotO / § 203 StGB).
 
 ---
 
@@ -324,10 +324,31 @@ graph TD
     PhaseA --> PhaseB --> PhaseC
 ```
 
-### Übersicht der Phasen
+### Übersicht der Phasen & Umsetzungsstatus
 
-| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse                                                                                                                                                                                           |
-| :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • Basisschutz des UI-Flows via Playwright<br>• RAG-Prüfregeln (MoPeG, MaBV, BGB) ohne Prompt-Bloat<br>• `.docx`-Export für Beurkundungstermine                                                            |
-| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • Asynchrone BullMQ Queue & Worker-Prozess<br>• Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• SSE-Streaming von Teilfortschritten ins Cockpit                                                |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • Append-Only Audit-Trail & Zero-Data-Retention<br>• PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• XJustiz-Export für TriNotar / NoRA / RA-MICRO<br>• Vollzugsautomation (Behörden- & Bankenverkehr) |
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>• [ ] A.3 `.docx`-Export für Beurkundungstermine                                                                    |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [ ] B.1 Asynchrone BullMQ Queue & Worker-Prozess<br>• [ ] B.2 Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter          |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] C.3 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.4 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
+
+### Detaillierter Fortschrittstracker (Phase A)
+
+- [x] **Architektur-Fundament & Guardrails:**
+  - [x] Separation of Policy and Mechanism (Materielle Rechtsregeln in `src/lib/knowledge/`, technischer Mechanismus in `src/lib/dossier/`)
+  - [x] Dependency-Cruiser Invarianten (`domain-must-not-depend-on-ui`, `hooks-must-not-depend-on-ui`)
+  - [x] ESLint AST Invariante gegen ungemergte Template-Strings in `className`
+  - [x] Typsichere Dictionaries statt Magic Strings (`CASE_TYPES`, `FIELD_STATUS`, `CASE_STATUS`, `STATUS_LABELS_DE`)
+- [x] **A.2 RAG-Auditor (JIT Rule Retrieval):**
+  - [x] Typisierte Regel-Registry (`rules-registry.ts`) für GEG, BeurkG, HGB, GBO, BGB, BauGB
+  - [x] Deterministischer JIT-Selektor (`rule-selector.ts`) nach Merkmalen aus Stufe 1
+  - [x] Pipeline-Injektion in Stufe 2 Prompt (`pipeline.ts`)
+  - [x] Unit-Test Suite mit 100 % Abdeckung (`rule-selector.test.ts`)
+- [x] **A.1 Playwright E2E Basis-Schutz:**
+  - [x] Smoke-Test Workflow (Dokument-Upload $\rightarrow$ Stepper $\rightarrow$ FieldCockpit-Tabelle $\rightarrow$ Status-Override $\rightarrow$ Export) in `e2e/smoke-workflow.spec.ts`
+  - [x] Synthetische Urkunden-Fixtures in `e2e/fixtures/test-files.ts`
+  - [x] Playwright-Konfiguration mit WebServer-Integration & Chromium Browser (`playwright.config.ts`, `npm run test:e2e`)
+- [ ] **A.3 Word-Urkunden-Engine (`.docx`):**
+  - [ ] Kaufvertrag-Template mit OpenXML / docxtemplater auf Kanzlei-Layout
+  - [ ] Datenbindung aus dem verifizierten Dossier (Parteien, Grundbuch, Kaufpreis, Belastungen)
+  - [ ] Download-Aktion im Cockpit

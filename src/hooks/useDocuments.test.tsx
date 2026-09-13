@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node';
 import React from 'react';
 import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import { Dossier } from '@/types/dossier';
 import { useDocuments } from './useDocuments';
 
 describe('useDocuments with TanStack Query & MSW', () => {
@@ -25,7 +26,11 @@ describe('useDocuments with TanStack Query & MSW', () => {
       currentDocs = currentDocs.filter((d) => d.id !== idToDelete);
       return HttpResponse.json({ success: true });
     }),
-    http.put('/api/analyze', () => {
+    http.put('/api/analyze', async ({ request }) => {
+      const body = (await request.json()) as { documentId: string; dossier: Dossier };
+      currentDocs = currentDocs.map((d) =>
+        d.id === body.documentId ? { ...d, content: body.dossier } : d
+      );
       return HttpResponse.json({ success: true });
     })
   );
@@ -80,14 +85,40 @@ describe('useDocuments with TanStack Query & MSW', () => {
     expect(result.current.documents[0]?.id).toBe('doc-2');
   });
 
-  it('optimistically updates dossier and handles rollback on network error', async () => {
+  it('pessimistically updates query cache only after successful server response', async () => {
     const { result } = renderHook(() => useDocuments(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isLoadingDocs).toBe(false);
     });
 
-    // Mock PUT error to test rollback with MSW
+    const mockUpdatedDossier = createTestImmobilienDossier({
+      caseTitle: 'Test Vorgang 1',
+    });
+
+    await act(async () => {
+      await result.current.updateDossier({
+        documentId: 'doc-1',
+        dossier: mockUpdatedDossier,
+      });
+    });
+
+    await waitFor(() => {
+      const updated = result.current.documents.find((d) => d.id === 'doc-1');
+      expect((updated as { content?: typeof mockUpdatedDossier })?.content?.caseTitle).toBe(
+        'Test Vorgang 1'
+      );
+    });
+  });
+
+  it('rejects and preserves state without cache pollution on network error (pessimistic)', async () => {
+    const { result } = renderHook(() => useDocuments(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoadingDocs).toBe(false);
+    });
+
+    // Mock PUT error to test failure handling
     server.use(
       http.put('/api/analyze', () => {
         return new HttpResponse(null, { status: 500 });
@@ -95,7 +126,7 @@ describe('useDocuments with TanStack Query & MSW', () => {
     );
 
     const mockUpdatedDossier = createTestImmobilienDossier({
-      caseTitle: 'Test Vorgang 1',
+      caseTitle: 'Should Not Be Persisted',
     });
 
     let mutationFailed = false;
@@ -114,7 +145,8 @@ describe('useDocuments with TanStack Query & MSW', () => {
 
     expect(mutationFailed).toBe(true);
     expect(caughtError).toBeInstanceOf(Error);
-    // Verified rollback to previous document state
-    expect(result.current.documents[0]?.id).toBe('doc-1');
+    // Verified that state was not prematurely updated
+    const doc = result.current.documents.find((d) => d.id === 'doc-1');
+    expect((doc as { content?: typeof mockUpdatedDossier })?.content?.caseTitle).toBeUndefined();
   });
 });

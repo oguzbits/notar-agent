@@ -65,41 +65,14 @@ export function useDocuments() {
 
   const updateDossierMutation = useMutation({
     mutationFn: apiUpdateDossier,
-    onMutate: async (newVariables) => {
-      // Laufende Refetches abbrechen, damit sie das optimistische Update nicht überschreiben
-      await queryClient.cancelQueries({ queryKey: DOCUMENTS_QUERY_KEY });
-
-      // Vorherigen Cache-Zustand für Snapshot sichern
-      const previousDocuments = queryClient.getQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY);
-
-      // Optimistisches Update im Query-Cache anwenden
-      if (previousDocuments) {
-        queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
-          prev.map((d) =>
-            d.id === newVariables.documentId ? { ...d, content: newVariables.dossier } : d
-          )
-        );
-      }
-
-      return { previousDocuments };
-    },
-    onError: (_err, _variables, context) => {
-      // Bei Fehler: Auf vorherigen Zustand zurückrollen
-      if (context?.previousDocuments) {
-        queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, context.previousDocuments);
-      }
-    },
-    onSettled: () => {
-      // Nach Abschluss oder Fehler sicherheitshalber im Hintergrund synchronisieren
+    onSuccess: (_, variables) => {
+      // Nach erfolgreicher Server-Bestätigung (200 OK) den Cache verbindlich aktualisieren
+      queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
+        prev.map((d) => (d.id === variables.documentId ? { ...d, content: variables.dossier } : d))
+      );
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
     },
   });
-
-  const setOptimisticDossier = (documentId: string, dossier: Dossier) => {
-    queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
-      prev.map((d) => (d.id === documentId ? { ...d, content: dossier } : d))
-    );
-  };
 
   const deleteDocument = async (id: string) => {
     try {
@@ -113,7 +86,6 @@ export function useDocuments() {
 
   return {
     documents,
-    setOptimisticDossier,
     isLoadingDocs,
     loadDocuments,
     loadError,

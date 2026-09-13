@@ -2,7 +2,7 @@
 
 import { Loader2, ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { Header } from '@/components/Header';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
@@ -28,14 +28,7 @@ function HomeContent() {
   const vorgangParam = searchParams.get('vorgang');
   const viewParam = searchParams.get('view');
 
-  const {
-    documents,
-    setOptimisticDossier,
-    isLoadingDocs,
-    loadDocuments,
-    deleteDocument,
-    updateDossier,
-  } = useDocuments();
+  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
   const {
     isAnalyzing,
     activeStep,
@@ -114,10 +107,6 @@ function HomeContent() {
         (result) => {
           actions.setDossier(result.dossier);
           actions.resetAppend();
-          const docId = session.activeDocumentId || vorgangParam;
-          if (docId) {
-            setOptimisticDossier(docId, result.dossier);
-          }
         }
       );
       loadDocuments();
@@ -126,14 +115,18 @@ function HomeContent() {
     }
   };
 
-  // Notarieller Status-Override
-  const handleOverrideFieldStatus = (
+  // Aktiver Transaktionszustand für notarielle Feld-Overrides
+  const [updatingFieldKey, setUpdatingFieldKey] = useState<string | null>(null);
+
+  // Notarieller Status-Override (Pessimistic Confirmation gem. § 17 BeurkG / § 19 BNotO)
+  const handleOverrideFieldStatus = async (
     fieldKey: string,
     newStatus: FieldStatus,
     customNote?: string
   ) => {
     if (!displayedDossier) return;
 
+    const docId = session.activeDocumentId || vorgangParam;
     const updatedDossier = updateDossierFieldStatus(
       displayedDossier,
       fieldKey,
@@ -141,13 +134,22 @@ function HomeContent() {
       customNote
     );
 
-    actions.setDossier(updatedDossier);
+    setUpdatingFieldKey(fieldKey);
+    setErrorMessage(null);
 
-    const docId = session.activeDocumentId || vorgangParam;
-    if (docId) {
-      updateDossier({ documentId: docId, dossier: updatedDossier }).catch((err) => {
-        console.warn('Hintergrund-Update fehlgeschlagen:', err);
-      });
+    try {
+      if (docId) {
+        // Erst nach erfolgreicher Server-Bestätigung (200 OK) im State annehmen
+        await updateDossier({ documentId: docId, dossier: updatedDossier });
+      }
+      actions.setDossier(updatedDossier);
+    } catch (err) {
+      console.error('Status-Override fehlgeschlagen:', err);
+      setErrorMessage(
+        `Die Statusänderung für „${fieldKey}“ konnte nicht in der Kanzleidatenbank gespeichert werden. Bitte wiederholen Sie den Vorgang.`
+      );
+    } finally {
+      setUpdatingFieldKey(null);
     }
   };
 
@@ -219,6 +221,7 @@ function HomeContent() {
             dossier={displayedDossier}
             activeRecord={activeRecord || null}
             onOverrideFieldStatus={handleOverrideFieldStatus}
+            updatingFieldKey={updatingFieldKey}
             isAppending={session.isAppending}
             onToggleAppending={() => actions.setIsAppending(!session.isAppending)}
             appendFiles={session.appendFiles}

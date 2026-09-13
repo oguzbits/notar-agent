@@ -13,11 +13,13 @@ import { CockpitTableRow } from './subcomponents/CockpitTableRow';
 interface UnifiedFieldCockpitTableProps {
   dossier: Dossier;
   onOverrideFieldStatus?: (fieldKey: string, newStatus: FieldStatus, note?: string) => void;
+  updatingFieldKey?: string | null;
 }
 
 export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> = ({
   dossier,
   onOverrideFieldStatus,
+  updatingFieldKey,
 }) => {
   const [expandedFieldKeys, setExpandedFieldKeys] = useState<Set<string>>(new Set());
 
@@ -165,6 +167,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                 isExpanded={expandedFieldKeys.has(row.fieldKey)}
                 onToggleExpand={() => toggleFieldExpand(row.fieldKey)}
                 onOverrideFieldStatus={onOverrideFieldStatus}
+                updatingFieldKey={updatingFieldKey}
               />
             ))}
           </tbody>

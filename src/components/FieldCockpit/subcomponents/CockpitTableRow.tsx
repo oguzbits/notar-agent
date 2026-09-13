@@ -15,6 +15,7 @@ interface CockpitTableRowProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onOverrideFieldStatus?: (fieldKey: string, newStatus: FieldStatus, note?: string) => void;
+  updatingFieldKey?: string | null;
 }
 
 export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
@@ -23,6 +24,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
   isExpanded,
   onToggleExpand,
   onOverrideFieldStatus,
+  updatingFieldKey,
 }) => {
   const [isEditingNote, setIsEditingNote] = useState(false);
 
@@ -89,6 +91,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
           {onOverrideFieldStatus ? (
             <StatusOverrideDropdown
               status={row.status}
+              isUpdating={updatingFieldKey === row.fieldKey}
               onChange={(newStatus) => onOverrideFieldStatus(row.fieldKey, newStatus, row.note)}
             />
           ) : (

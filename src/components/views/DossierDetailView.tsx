@@ -20,6 +20,7 @@ interface DossierDetailViewProps {
   dossier: Dossier;
   activeRecord: DocumentRecord | null;
   onOverrideFieldStatus: (fieldKey: string, newStatus: FieldStatus, customNote?: string) => void;
+  updatingFieldKey?: string | null;
   // Nachreichen
   isAppending: boolean;
   onToggleAppending: () => void;
@@ -41,6 +42,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
   dossier,
   activeRecord,
   onOverrideFieldStatus,
+  updatingFieldKey,
   isAppending,
   onToggleAppending,
   appendFiles,
@@ -237,6 +239,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
               <UnifiedFieldCockpitTable
                 dossier={dossier}
                 onOverrideFieldStatus={onOverrideFieldStatus}
+                updatingFieldKey={updatingFieldKey}
               />
             </ErrorBoundary>
           </div>

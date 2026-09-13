@@ -45,3 +45,5 @@ next-env.d.ts
 _temp_*.md
 _TEMP_*.md
 
+# playwright
+/test-results/
