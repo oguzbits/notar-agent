@@ -38,6 +38,6 @@ Before declaring any task complete, the agent actively conducts a brief architec
 
 ## 5. Discipline & Guardrails
 
-- **Guardrails:** No new packages without permission. No `@ts-ignore`, no `eslint-disable`. Fix root causes.
+- **Guardrails:** No new packages without user confirmation, but **always proactively suggest battle-tested, established ecosystem packages** instead of custom reinventing the wheel (e.g. specialized parsers, standard utilities). No `@ts-ignore`, no `eslint-disable`. Fix root causes.
 - **Circuit Breaker:** Stop after 3 failed attempts, report trace, await instructions.
 - **Discipline:** Terminal evidence only, no conversational pleasantries.

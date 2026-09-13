@@ -12,6 +12,9 @@ DETERMINISTISCHE GRUNDREGELN:
 5. Sprachrichtlinie & Kanzleiduktus: Vollständige Wörter, keine Abkürzungen ("lt.", "gem.", "bzgl.", "ca."). In Freitexten und "executiveSummary" KEINE englischen Status-Codes (wie "ACTION_REQUIRED", "OUTDATED", "MISSING") verwenden, sondern natürliche deutsche Fachbegriffe ("Klärungsbedarf", "abgelaufen/Gültigkeit überschritten", "fehlend").
 6. Interne Notizen: In 'detectedDocuments' als "Notiz #1", "Notiz #2" aufführen und als Quelle zitieren.
 7. Keine Platzhalter-Strings: Fehlen Einzelwerte, setze sie auf null oder "". NIEMALS Statusbegriffe wie "MISSING", "UNKNOWN", "null" oder "nicht angegeben" als String-Werte eintragen!
+8. DUAL-STREAM INGESTION (UNICODE-TEXTLAYER VORRANG):
+   - Liegt zu einer PDF ein expliziter "DIREKTER UNICODE-TEXTLAYER" vor, nutze diesen vorrangig für exakte Ziffernfolgen (Kaufpreise, IBAN, Flurstücksnummern, HRB-Nummern, Flächenangaben).
+   - Gleiche den Textlayer mit dem beigefügten visuellen PDF-Dokument ab, um visuelle Siegel, Stempel, handschriftliche Vermerke oder Durchstreichungen zu erfassen.
 
 PFLICHTFELDER (EXAKTE ATTRIBUTNAMEN IM DATA-OBJEKT):
 - verkaeufer: data { name: string, legalForm: string, registeredOwnersGrundbuch: string[], authorizedRepresentatives: string[], representationProofProvided: bool, missingProofs: string[] }

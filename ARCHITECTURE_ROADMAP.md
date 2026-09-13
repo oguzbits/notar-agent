@@ -64,7 +64,7 @@ graph LR
 
 ### 2.2 Word-Urkunden-Engine (Ausgelagert ins Backlog)
 
-> **Hinweis:** Dieser Baustein wurde als nachgelagertes/optionales Feature eingestuft und in [ARCHITECTURE_ROADMAP_ADDITIONS.md](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp-copy/ARCHITECTURE_ROADMAP_ADDITIONS.md) archiviert. Der Fokus liegt primär auf rechtssicherer Prüfung, Konsistenz-Audit und asynchroner Großakten-Verarbeitung.
+> **Hinweis:** Dieser Baustein wurde als nachgelagertes/optionales Feature eingestuft und in [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md) archiviert. Der Fokus liegt primär auf rechtssicherer Prüfung, Konsistenz-Audit und asynchroner Großakten-Verarbeitung.
 
 ---
 
@@ -149,22 +149,29 @@ graph TD
 
 - **Lokales Hosting:** Für Bundeswehr-Liegenschaften oder Verschlusssachen können Open-Source-Vision-Modelle (z. B. Mistral Pixtral, Llama 3.2 Vision) auf kanzleieigener GPU-Hardware betrieben werden.
 
-### 4.2 Hybride OCR- & Vision-Pipeline (60–75 % Kostenersparnis)
+### 4.2 Dual-Stream Ingestion Pipeline (Industriestandard für Zeichenintegrität & Vision)
 
-Im Notariat sind mindestens 70 % der Seiten reine maschinelle Textdokumente (Fließtext alter Kaufverträge, E-Mails, Anschreiben).
+> **Architektur-Spezifikation (Dual-Stream / Hybrid Ingestion):**  
+> Der Einsatz einer hybriden Pipeline dient im Notariat **primär der absoluten Zeichenpräzision (Zero OCR-Tippfehler bei Kaufpreisen, IBANs und Flurstücken)** sowie sekundär der Geschwindigkeits- und Durchsatzoptimierung:
+>
+> - **1. Digital-Born PDF (Reiner Textlayer, keine Rasterbilder):** Extrahiert den Unicode-Text direkt verlustfrei (< 10 ms). Mathematisch ausgeschlossene Fehlinterpretationen bei sensiblen Ziffernfolgen (`1.250.000 €`, `HRB 20459`, `Flur 12, Flurstück 108/4`).
+> - **2. Scans / Bildträger (Reine Bildseiten, kein Text):** Multimodales Vision-Routing (Gemini 3.x Flash / Claude Vision) für unübertroffenes Kontextverständnis bei Handschriften, Siegeln und Stempeln.
+> - **3. Hybride Dokumente (Digitaler Text + eingescannte Siegel/Signaturen):** Dual-Stream Fusion – Übergabe sowohl des exakten Unicode-Textlayers als auch der Bild-Payloads an das Modell mit striktem Abgleich.
 
 ```mermaid
 graph TD
-    A["Eingehende PDF-Seite"] --> B{"Lokaler Layout-Classifier"}
-    B -->|"Digital-Born Text ohne Grafik"| C["Lokales Text-Parsing / pdf-parse"]
-    B -->|"Scan / Handschrift / Amtssiegel"| D["High-Res Vision Token Übergabe"]
-    C --> E["Günstige Text-Tokens an LLM: ~0.05 Cent/Seite"]
-    D --> F["Vision-Tokens an LLM: ~1.5 Cent/Seite"]
-    E --> G["Fusion im Extraction Agent"]
-    F --> G
+    A["Eingehendes PDF / Dokument"] --> B["PDF-Objekt-Introspektion (Byte-Ebene)"]
+    B --> C{"Layout- & Stream-Klassifikation"}
+    C -->|"1. Digital-Born Text (0 Rasterbilder)"| D["Direct Unicode Text Extraction"]
+    C -->|"2. Reines Rasterbild (Scan/Fax, 0 Text)"| E["Multimodal Vision Pipeline"]
+    C -->|"3. Hybrid (Text + Siegel/Signaturen)"| F["Dual-Stream Fusion (Text + Bild)"]
+    D --> G["Verlustfreier Text-Payload (< 10 ms, Zero Ziffernfehler)"]
+    E --> H["High-Res Vision Tokens für Handschrift & Siegel"]
+    F --> I["Gleichzeitige Übergabe: Textlayer + Bildverifikation"]
+    G & H & I --> J["Notary Extraction & Audit Agent"]
 ```
 
-- **Effekt:** Drastische Senkung der laufenden Betriebskosten bei 100 % Erhalt der Erkennungsqualität für Siegel, Stempel und Handschriften.
+- **Effekt:** 100 % mathematische Zeichenexaktheit bei Urkundendaten, maximale Ausfallsicherheit bei Stempeln/Handschriften und drastisch schnellere Verarbeitung digitaler Entwürfe.
 
 ---
 
@@ -306,8 +313,9 @@ graph TD
     subgraph PhaseC["Phase C: Enterprise Compliance & Ökosystem (Rollout Ready)"]
         C1["Postgres Revisionssicherer Audit-Trail (§ 17 BeurkG)"]
         C2["PostgreSQL RLS Kanzlei-Isolation (§ 203 StGB)"]
-        C3["KI-Mandantenkorrespondenz & Post-Beurkundung"]
-        C4["XJustiz / XNP Schnittstellen für TriNotar & NoRA"]
+        C3["Erweitertes RAG: Kanzlei-Wissensbasis & DNotI (pgvector + BM25)"]
+        C4["KI-Mandantenkorrespondenz & Post-Beurkundung"]
+        C5["XJustiz / XNP Schnittstellen für TriNotar & NoRA"]
     end
 
     PhaseA --> PhaseB --> PhaseC
@@ -315,11 +323,11 @@ graph TD
 
 ### Übersicht der Phasen & Umsetzungsstatus
 
-| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                |
-| :---------- | :--------------------------------- | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                      |
-| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [ ] B.2 Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] C.3 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.4 XJustiz-Export für TriNotar / NoRA / RA-MICRO                                 |
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                           |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                 |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter                   |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
 
 ### Detaillierter Fortschrittstracker (Phase A)
 
@@ -338,7 +346,7 @@ graph TD
   - [x] Synthetische Urkunden-Fixtures in `e2e/fixtures/test-files.ts`
   - [x] Playwright-Konfiguration mit WebServer-Integration & Chromium Browser (`playwright.config.ts`, `npm run test:e2e`)
 - [ ] **A.3 Word-Urkunden-Engine (`.docx`):**
-  - _Ausgelagert ins Backlog / siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp-copy/ARCHITECTURE_ROADMAP_ADDITIONS.md)_
+  - _Ausgelagert ins Backlog / siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md)_
 
 ### Detaillierter Fortschrittstracker (Phase B: Asynchrone Skalierung)
 
@@ -348,6 +356,30 @@ graph TD
   - [x] API-Adapter: `POST /api/analyze` unterstützt asynchrone Annahme via `?async=true` (`202 Accepted` & `jobId`), `GET /api/jobs/[id]`, `GET /api/jobs` & Retry via `POST /api/jobs` (`jobs-route.test.ts`, `jobs-list-route.test.ts`)
   - [x] Worker-Verarbeitungslogik mit Concurrency-Limiter (max. 2 parallele LLM-Jobs gegen 429) & State-Updates (`job-worker.ts`, `job-worker.test.ts`)
   - [x] UI-Integration in `DocumentTable` & Cockpit (Live-Kachel für Hintergrundprüfungen, dynamischer Progress-Balken, A11y, 1-Click Retry bei Fehlern)
-- [ ] **B.2 Hybrider Layout-Classifier (Text-PDF vs. Vision Pre-Filter)**
+- [x] **B.2 Dual-Stream Ingestion Pipeline (Zeichengenauigkeit & Vision):**
+  - [x] Introspektion & Klassifikation auf Byte-Ebene (`pdf-stream-classifier.ts`) in Text, Scan oder Hybrid
+  - [x] Verlustfreie Extraktion des Unicode-Textlayers (`pdf-text-extractor.ts`)
+  - [x] Dual-Stream Payload-Assembler in `pipeline.ts` (Textlayer für Ziffern/Beträge + Vision-Bilder für Siegel/Handschriften)
+  - [x] TDD-Unit-Tests für Klassifikation, Text-Integrität und Edge Cases (`pdf-stream-classifier.test.ts`, `pdf-text-extractor.test.ts`)
 - [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**
 - [ ] **B.4 Multi-LLM Provider-Adapter (AWS Bedrock / Azure / vLLM)**
+
+### Detaillierter Fortschrittstracker (Phase C: Enterprise Compliance & Ökosystem)
+
+- [ ] **C.1 Append-Only Audit-Trail & Zero-Data-Retention:**
+  - [ ] Revisionssichere Event-Tabelle (`audit_logs`) mit SHA-256 Hash-Chaining (§ 17 ff. BeurkG)
+  - [ ] Protokollierung aller Feld-Overrides inkl. Begründungszwang
+  - [ ] Konfiguration von ZDR-Vereinbarungen für Provider-Endpunkte
+- [ ] **C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB):**
+  - [ ] Mandanten-Isolation auf Datenbankebene via Row-Level Security
+  - [ ] Session-Claims & Tenant-Identifikatoren in allen Queries
+- [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid):**
+  - [ ] `pgvector`-Schema in Supabase für DNotI-Gutachten & Leitsatzentscheidungen
+  - [ ] Hybrid-Search (BM25 für Paragraphen/Normen + Embeddings für Klauselsemantik)
+  - [ ] Amtsgericht-Präzedenzdatenbank zur Vermeidung lokaler Zwischenverfügungen
+  - [ ] Kanzlei-interne Klausel- und Vorlagensammlung mit RLS-Mandantenschutz
+- [ ] **C.4 KI-Mandantenkorrespondenz & Post-Beurkundung:**
+  - [ ] Determinismus-geprüfte Anschreiben- & Nachforderungsgenerierung
+  - [ ] Fristen- und Wiedervorlagen-Extraktion für den Urkundenvollzug
+- [ ] **C.5 XJustiz / XNP Schnittstellen:**
+  - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)

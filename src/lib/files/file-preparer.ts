@@ -1,9 +1,14 @@
+import { PdfStreamType, classifyPdfStream } from '@/lib/files/pdf-stream-classifier';
+import { extractPdfUnicodeText } from '@/lib/files/pdf-text-extractor';
+
 export interface PreparedFile {
   name: string;
   size: number;
   type: string;
   content?: string;
   isBase64?: boolean;
+  streamType?: PdfStreamType;
+  extractedText?: string;
 }
 
 export const MAX_FILE_SIZE_BYTES = 32 * 1024 * 1024; // 32 MB Hardlimit für Multimodal-APIs
@@ -43,6 +48,15 @@ export function readFileAsText(file: File): Promise<string> {
   });
 }
 
+export function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 /**
  * Optimiert Bilder auf maximal 1600px Kantenlänge bei 85% JPEG-Qualität für verlässliche OCR.
  */
@@ -69,28 +83,23 @@ export function processImageFile(file: File): Promise<{ content: string; size: n
             width = Math.round((width * maxDim) / height);
             height = maxDim;
           }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(img, 0, 0, width, height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            resolve({
-              content: dataUrl,
-              size: Math.round((dataUrl.length * 3) / 4),
-            });
-            return;
-          }
         }
 
-        // Bild ist bereits <= 1600px
-        const result = (e.target?.result as string) || '';
-        resolve({ content: result, size: file.size });
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          readFileAsBase64(file).then((content) => resolve({ content, size: file.size }));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const content = canvas.toDataURL('image/jpeg', 0.85);
+        const approxSize = Math.round((content.length - 23) * 0.75);
+        resolve({ content, size: approxSize });
       };
+
       img.src = e.target?.result as string;
     };
 
@@ -103,14 +112,23 @@ export function processImageFile(file: File): Promise<{ content: string; size: n
 }
 
 /**
- * Verarbeitet eine Liste von Dateien zu typisierten `PreparedFile`-Objekten.
+ * Wandelt Rohdateien in API-Payloads um.
+ * Bei PDFs erfolgt eine automatische Dual-Stream-Klassifikation und Unicode-Textextraktion.
  */
 export async function prepareFiles(files: File[]): Promise<PreparedFile[]> {
   const prepared: PreparedFile[] = [];
 
   for (const file of files) {
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage =
+      file.type.startsWith('image/') ||
+      file.name.endsWith('.jpg') ||
+      file.name.endsWith('.jpeg') ||
+      file.name.endsWith('.png') ||
+      file.name.endsWith('.webp') ||
+      file.name.endsWith('.bmp');
+
+    const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
+
     const isText =
       file.type.startsWith('text/') ||
       file.name.endsWith('.txt') ||
@@ -129,13 +147,24 @@ export async function prepareFiles(files: File[]): Promise<PreparedFile[]> {
         isBase64: true,
       });
     } else if (isPdf) {
-      const base64 = await readFileAsBase64(file);
+      const [base64, arrayBuffer] = await Promise.all([
+        readFileAsBase64(file),
+        readFileAsArrayBuffer(file),
+      ]);
+      const uint8 = new Uint8Array(arrayBuffer);
+      const classification = classifyPdfStream(uint8);
+      const extractedText = classification.hasTextLayer
+        ? await extractPdfUnicodeText(uint8)
+        : undefined;
+
       prepared.push({
         name: file.name,
         size: file.size,
         type: 'application/pdf',
         content: base64,
         isBase64: true,
+        streamType: classification.streamType,
+        extractedText: extractedText || undefined,
       });
     } else if (isText) {
       const text = await readFileAsText(file);

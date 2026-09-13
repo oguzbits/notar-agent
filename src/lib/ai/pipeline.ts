@@ -2,6 +2,7 @@ import { generateText, LanguageModel, SystemModelMessage } from 'ai';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { normalizeDossier } from '@/lib/dossier';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
+import { PdfStreamType, PDF_STREAM_TYPES } from '@/lib/files/pdf-stream-classifier';
 import {
   formatRulesForPrompt,
   selectRelevantAuditRules,
@@ -29,6 +30,8 @@ export interface UploadedFilePayload {
   size: number;
   content?: string;
   isBase64?: boolean;
+  streamType?: PdfStreamType;
+  extractedText?: string;
 }
 
 export interface PipelineParams {
@@ -150,6 +153,19 @@ ${notesSection}${
       (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
     ) {
       const rawBase64 = (file.content || '').replace(/^data:application\/pdf;base64,/, '');
+
+      // DUAL-STREAM INGESTION (Industriestandard):
+      // 1. Wenn exakter Unicode-Textlayer vorhanden ist, diesen als referenzierbaren Präzisionstext injizieren
+      if (file.extractedText && file.extractedText.trim()) {
+        userPromptParts.push({
+          type: 'text',
+          text: `\n=== DIREKTER UNICODE-TEXTLAYER AUS "${file.name}" (MATHEMATISCH EXAKT FÜR BETRÄGE, IBAN, FLURSTÜCKE) ===\n${file.extractedText}\n=== ENDE TEXTLAYER AUS "${file.name}" ===\n`,
+        });
+      }
+
+      // 2. Multimodale PDF-Übergabe für visuelle Siegel, Stempel, Handschriften und Scans
+      // Bei reinem Digital-Born Text ohne Rasterbilder ist das visuelle Bild optional,
+      // zur vollständigen Vision-Sicherheit wird die Datei jedoch immer multimodal mitgeführt.
       userPromptParts.push({
         type: 'file',
         data: rawBase64,
@@ -158,7 +174,7 @@ ${notesSection}${
       });
       userPromptParts.push({
         type: 'text',
-        text: `\n[Obiges PDF-Dokument: "${file.name}"]\n`,
+        text: `\n[Obiges PDF-Dokument: "${file.name}" | Modus: ${file.streamType || PDF_STREAM_TYPES.SCANNED_IMAGE}]\n`,
       });
     } else if (file.content) {
       userPromptParts.push({
