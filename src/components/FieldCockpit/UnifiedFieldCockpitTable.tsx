@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { extractAllFieldRows, getDossierReadinessStage } from '@/lib/dossier';
-import { Dossier, FieldStatus } from '@/types/dossier';
+import {
+  extractAllFieldRows,
+  getDossierFieldMetrics,
+  getDossierReadinessStage,
+  READINESS_STAGES,
+} from '@/lib/dossier';
+import { Dossier, FieldStatus, FIELD_STATUS } from '@/types/dossier';
 import { CockpitTableHeader } from './subcomponents/CockpitTableHeader';
 import { CockpitTableRow } from './subcomponents/CockpitTableRow';
 
@@ -39,10 +44,10 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
   };
 
   const readiness = getDossierReadinessStage(dossier);
+  const metrics = getDossierFieldMetrics(dossier);
   const summary = dossier.executiveSummary || '';
 
-  const verifiedRows = allRows.filter((r) => r.status === 'VERIFIED');
-  const missingOrReviewRows = allRows.filter((r) => r.status !== 'VERIFIED');
+  const missingOrReviewRows = allRows.filter((r) => r.status !== FIELD_STATUS.VERIFIED);
 
   const openInquiriesCount = Array.isArray(dossier.inquiries)
     ? dossier.inquiries.filter((inq) => !inq.resolved).length
@@ -54,12 +59,12 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
       <div className="border-border flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-foreground text-base font-medium">
-            {verifiedRows.length === allRows.length
+            {metrics.isAllVerified
               ? 'Alle 10 Pflichtfelder belegt'
-              : `${verifiedRows.length}/${allRows.length} Pflichtfelder belegt (${missingOrReviewRows.length} ausstehend)`}
+              : `${metrics.verifiedCount}/${metrics.total} Pflichtfelder belegt (${metrics.pendingCount} ausstehend)`}
           </span>
 
-          {verifiedRows.length === allRows.length && openInquiriesCount > 0 && (
+          {metrics.isAllVerified && openInquiriesCount > 0 && (
             <>
               <span className="text-muted-foreground text-xs">•</span>
               <span className="text-muted-foreground text-xs">
@@ -81,7 +86,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
       </div>
 
       {/* Reifegrad-Wegweiser: Zeigt konkret, welche Felder noch fehlen */}
-      {readiness.stage !== 'READY' && missingOrReviewRows.length > 0 && (
+      {readiness.stage !== READINESS_STAGES.READY && missingOrReviewRows.length > 0 && (
         <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/20">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-900 dark:bg-amber-800 dark:text-amber-100">

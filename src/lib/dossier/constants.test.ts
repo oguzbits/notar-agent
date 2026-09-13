@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { CASE_TYPES } from '@/types/dossier';
 import {
   IMMOBILIEN_FIELD_METADATA,
   CASE_TYPE_METADATA_REGISTRY,
@@ -6,11 +7,14 @@ import {
   STATUS_LABELS_DE,
 } from './constants';
 
-describe('Dossier Constants & Metadata Registry', () => {
-  it('should define all 10 Immobilien Pflichtfelder with 1-based sequential indices', () => {
+describe('dossier constants', () => {
+  it('should have 10 fields defined in IMMOBILIEN_FIELD_METADATA', () => {
     const keys = Object.keys(IMMOBILIEN_FIELD_METADATA);
     expect(keys).toHaveLength(10);
-    expect(keys).toEqual([
+  });
+
+  it('should have 1-based sequential indices for all fields', () => {
+    const expectedKeys = [
       'verkaeufer',
       'kaeufer',
       'grundbuch',
@@ -21,9 +25,9 @@ describe('Dossier Constants & Metadata Registry', () => {
       'mietverhaeltnisse',
       'energieausweis',
       'uebergabe',
-    ]);
+    ];
 
-    keys.forEach((key, idx) => {
+    expectedKeys.forEach((key, idx) => {
       const meta = IMMOBILIEN_FIELD_METADATA[key];
       expect(meta).toBeDefined();
       if (meta) {
@@ -34,11 +38,13 @@ describe('Dossier Constants & Metadata Registry', () => {
   });
 
   it('should register IMMOBILIENKAUF in CASE_TYPE_METADATA_REGISTRY', () => {
-    expect(CASE_TYPE_METADATA_REGISTRY['IMMOBILIENKAUF']).toEqual(IMMOBILIEN_FIELD_METADATA);
+    expect(CASE_TYPE_METADATA_REGISTRY[CASE_TYPES.IMMOBILIENKAUF]).toEqual(
+      IMMOBILIEN_FIELD_METADATA
+    );
   });
 
   it('should define core fields for IMMOBILIENKAUF', () => {
-    const config = CASE_TYPE_CORE_FIELDS['IMMOBILIENKAUF'];
+    const config = CASE_TYPE_CORE_FIELDS[CASE_TYPES.IMMOBILIENKAUF];
     expect(config).toBeDefined();
     if (config) {
       expect(config.partyFields).toContain('verkaeufer');

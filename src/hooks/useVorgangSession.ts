@@ -1,8 +1,8 @@
 'use client';
 
 import { useReducer } from 'react';
-import { PreparedFile } from '@/components/UploadZone';
-import { Dossier, CaseType } from '@/types/dossier';
+import { PreparedFile } from '@/lib/files/file-preparer';
+import { Dossier, CaseType, CASE_TYPES } from '@/types/dossier';
 
 export interface PersistenceInfo {
   storageType: 'supabase' | 'in-memory' | 'none' | 'local-only';
@@ -37,7 +37,7 @@ export type VorgangSessionAction =
 
 const initialState: VorgangSessionState = {
   files: [],
-  caseType: 'IMMOBILIENKAUF',
+  caseType: CASE_TYPES.IMMOBILIENKAUF,
   notes: '',
   dossier: null,
   activeDocumentId: null,

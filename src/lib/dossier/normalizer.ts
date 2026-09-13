@@ -1,9 +1,5 @@
-import {
-  Dossier,
-  getDossierFieldsRecord,
-  VerkaeuferDataSchema,
-  KaeuferDataSchema,
-} from '@/types/dossier';
+import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
+import { Dossier, getDossierFieldsRecord } from '@/types/dossier';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
 export interface NormalizeDossierOptions {
@@ -58,86 +54,8 @@ export function normalizeDossier(
       }
     }
 
-    // 1b. Generische Konsistenz-Guardrail: Ein Feld darf niemals 'VERIFIED' sein, wenn das data-Objekt leer ist
-    for (const field of Object.values(fieldsObj)) {
-      if (field && field.status === 'VERIFIED') {
-        const d = field.data;
-        const hasValues =
-          d &&
-          typeof d === 'object' &&
-          Object.values(d).some((v) => {
-            if (v === null || v === undefined || v === '') return false;
-            if (Array.isArray(v) && v.length === 0) return false;
-            if (typeof v === 'number' && v === 0) return false;
-            if (typeof v === 'boolean' && v === false) return false;
-            return true;
-          });
-        if (!hasValues) {
-          field.status = 'NEEDS_REVIEW';
-          if (!field.note) {
-            field.note = 'Angaben unvollständig – Datenwert zur Beurkundung erforderlich.';
-          }
-        }
-      }
-    }
-
-    // 1c. Notarielle Fach-Guardrails (Eigentümeridentität & Registerbelege)
-    const verkaeuferField = fieldsObj['verkaeufer'];
-    if (verkaeuferField && verkaeuferField.status === 'VERIFIED' && verkaeuferField.data) {
-      const vResult = VerkaeuferDataSchema.partial().safeParse(verkaeuferField.data);
-      const vData = vResult.success ? vResult.data : {};
-
-      // Wenn im Grundbuch abweichende Eigentümer eingetragen sind und keine Vertretung nachgewiesen ist
-      if (
-        Array.isArray(vData.registeredOwnersGrundbuch) &&
-        vData.registeredOwnersGrundbuch.length > 0 &&
-        vData.name
-      ) {
-        const vNameClean = vData.name.toLowerCase().trim();
-        const matchesOwner = vData.registeredOwnersGrundbuch.some((owner) => {
-          const oClean = owner.toLowerCase().trim();
-          return oClean.includes(vNameClean) || vNameClean.includes(oClean);
-        });
-
-        if (!matchesOwner && !vData.representationProofProvided) {
-          verkaeuferField.status = 'NEEDS_REVIEW';
-          verkaeuferField.note =
-            'Eigentümer lt. Grundbuch weicht vom handelnden Verkäufer ab – Erbnachweis (§ 35 GBO) oder Vollmacht erforderlich.';
-        }
-      }
-
-      // Bei juristischen Personen ohne Vertretungsnachweis
-      const isCorporate =
-        vData.legalForm &&
-        !['natürliche person', 'privatperson', 'einzelperson'].includes(
-          vData.legalForm.toLowerCase().trim()
-        );
-      if (isCorporate && vData.representationProofProvided === false) {
-        verkaeuferField.status = 'NEEDS_REVIEW';
-        if (!verkaeuferField.note) {
-          verkaeuferField.note =
-            'Vertretungsnachweis der Gesellschaft vor Beurkundung erforderlich (§ 12 HGB, § 21 BNotO).';
-        }
-      }
-    }
-
-    const kaeuferField = fieldsObj['kaeufer'];
-    if (kaeuferField && kaeuferField.status === 'VERIFIED' && kaeuferField.data) {
-      const kResult = KaeuferDataSchema.partial().safeParse(kaeuferField.data);
-      const kData = kResult.success ? kResult.data : {};
-      const isCorporate =
-        kData.legalForm &&
-        !['natürliche person', 'privatperson', 'einzelperson'].includes(
-          kData.legalForm.toLowerCase().trim()
-        );
-      if (isCorporate && kData.hasOfficialRegisterProof === false) {
-        kaeuferField.status = 'NEEDS_REVIEW';
-        if (!kaeuferField.note) {
-          kaeuferField.note =
-            'Amtlicher Registerauszug der Käufergesellschaft fehlt bisher im Aktenbestand.';
-        }
-      }
-    }
+    // 1b. Fachlich-juristische Konsistenz- & Plausibilitäts-Guardrails anwenden
+    applyNotaryDomainGuardrails(fieldsObj);
   }
 
   // 2. detectedDocuments bereinigen

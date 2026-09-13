@@ -3,6 +3,7 @@ import {
   IMMOBILIEN_FIELD_METADATA,
   CASE_TYPE_METADATA_REGISTRY,
   STATUS_LABELS_DE,
+  STATUS_DEFAULT_NOTES,
 } from './constants';
 import { isDossierEntwurfsreif } from './readiness';
 import { SubSourceItem, FieldObservation } from './types';
@@ -165,13 +166,7 @@ export function extractAllFieldRows(dossier: Dossier): FieldObservation[] {
 
     let resolvedNote = note;
     if (!resolvedNote) {
-      if (status === 'VERIFIED') resolvedNote = 'Vollständig geprüft & durch Aktenbestand belegt.';
-      else if (status === 'MISSING')
-        resolvedNote = 'Erforderliche Nachweise fehlen bisher im Aktenbestand.';
-      else if (status === 'OUTDATED')
-        resolvedNote = 'Die vorgelegten Unterlagen sind veraltet oder abgelaufen.';
-      else if (status === 'NEEDS_REVIEW')
-        resolvedNote = 'Prüfung bzw. sachliche Klärung erforderlich.';
+      resolvedNote = STATUS_DEFAULT_NOTES[status] || '';
     }
 
     const sources = parseSourceLocations(field.source);

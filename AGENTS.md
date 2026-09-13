@@ -24,6 +24,10 @@
 - **Immutability & Resilience:** Never mutate state or arguments in-place. Zero silent error swallowing (`catch {}`); provide actionable error context. Wrap route segments and async boundary components in Error Boundaries or `error.tsx`.
 - **Component Sizing & Styling (ShadCN/CVA Invariant):** Keep components under ~200 lines (excluding declarative configs/schemas and tests). Never use arbitrary hardcoded hex codes (`#B9ED94`) or ad-hoc Tailwind values (`text-[11px]`, `bg-[#...]`) anywhere in `src/`. Use semantic design tokens from `globals.css` and standard utility classes. Domain modules in `src/lib/` must never contain UI CSS classes or color hexes. Reusable UI primitives in `src/components/ui/` must follow the declarative CVA pattern: Base-Styles + Variant/Size-Maps, merged deterministically via `cn(...)` from `@/lib/utils` (zero raw template strings). Ensure accessibility (semantic HTML, visible focus states, ARIA states on custom disclosures).
 - **Zero Magic Strings & States:** Domain states, UI routes, and status filters must never be raw magic strings. Enforce typed `as const` dictionaries or Zod enums (e.g. `CASE_STATUS.DRAFT_READY`, `VIEW_MODE.UPLOAD`) with derived types. Magic numbers must be declared as named constants.
+- **Separation of Policy and Mechanism (Knowledge vs. Engine):**
+  - **Mechanism (`src/types/`, `src/lib/dossier/`):** Definiert, _wie_ Daten technisch modelliert, validiert und bereinigt werden (Struktur, Enums, Zod-Schemas, String-Sanitization, UI-Mapping). Enthält **keine materiellen Bewertungsregeln oder fachlichen Fristen**.
+  - **Policy / Knowledge (`src/lib/knowledge/`):** Definiert, _was_ fachlich/rechtlich gilt (Prüfkriterien, Fristen, Ausnahmen, Bewertungsmaßstäbe als typisierte Regeln).
+  - Wenn eine Konstante oder Funktion entscheidet, _ob ein Sachverhalt inhaltlich zulässig, veraltet oder mangelhaft ist_, gehört sie in die Knowledge-Ebene (`src/lib/knowledge/`), niemals in technische Daten-Konstanten.
 
 ## 4. Guardrails (Zero-Laziness)
 

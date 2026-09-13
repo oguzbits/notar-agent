@@ -3,10 +3,17 @@ module.exports = {
   forbidden: [
     {
       name: 'domain-must-not-depend-on-ui',
-      comment: 'Reine Domänenlogik (src/lib/dossier) darf niemals von UI-Komponenten abhängen',
+      comment: 'Reine Domänen- und Wissenslogik darf niemals von UI-Komponenten abhängen',
       severity: 'error',
-      from: { path: '^src/lib/dossier' },
+      from: { path: '^src/lib/(dossier|knowledge)' },
       to: { path: '^src/(components|app)' },
+    },
+    {
+      name: 'hooks-must-not-depend-on-ui',
+      comment: 'Hooks verwalten Zustand/Logik und dürfen niemals von UI-Komponenten abhängen',
+      severity: 'error',
+      from: { path: '^src/hooks' },
+      to: { path: '^src/components' },
     },
     {
       name: 'pure-types-must-not-depend-on-implementation',

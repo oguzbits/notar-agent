@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PreparedFile } from '@/components/UploadZone';
+import { PreparedFile } from '@/lib/files/file-preparer';
 import { parseSseStream } from '@/lib/sse/parse-sse-stream';
 import { Dossier, CaseType } from '@/types/dossier';
 
