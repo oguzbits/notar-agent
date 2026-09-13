@@ -3,6 +3,10 @@ import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { normalizeDossier } from '@/lib/dossier';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
 import {
+  formatRulesForPrompt,
+  selectRelevantAuditRules,
+} from '@/lib/knowledge/rules/rule-selector';
+import {
   CaseType,
   Dossier,
   DetectedDocument,
@@ -182,9 +186,18 @@ ${notesSection}${
   const parsedExtractionRaw = cleanAndParseJson<Record<string, unknown>>(extractionText);
 
   // =========================================================================
-  // STUFE 2: Notary Auditor & Reconciler Agent (Kosteneffizienter Delta-Modus)
+  // STUFE 2: Notary Auditor & Reconciler Agent (Kosteneffizienter Delta-Modus mit JIT-Regel-Retrieval)
   // =========================================================================
   onStep(2, 'Stufe 2: Notarielle Vorprüfung, Fristen & Plausibilisierung...');
+
+  const relevantRules = selectRelevantAuditRules({
+    caseType,
+    fields: parsedExtractionRaw?.fields as Record<string, unknown> | undefined,
+    detectedDocuments: parsedExtractionRaw?.detectedDocuments as
+      Array<{ fileName?: string; documentType?: string }> | undefined,
+    notes: notesSection,
+  });
+  const rulesSection = formatRulesForPrompt(relevantRules);
 
   const auditorContextPrompt = `Heutiges Bearbeitungsdatum: ${todayStr}
 VORGANGSTYP: ${caseType}
@@ -197,13 +210,11 @@ ${JSON.stringify(parsedExtractionRaw, null, 2)}
 AKTENKONTEXT & NACHRICHTEN:
 ${notesSection || 'Keine internen Notizen.'}
 
+${rulesSection}
 Führe nun als Notary Auditor & Reconciler Agent die Qualitätskontrolle durch:
 1. Prüfe auf Widersprüche und spätere Vereinbarungen: Wurden nachweislich neuere oder abweichende Absprachen getroffen, trage den final gültigen Wert im Hauptdatenfeld ein und erfasse Vorwerte in Historien-/Vorwertfeldern.
-2. Prüfe Fristen & Gültigkeiten anhand gesetzlicher Prüfungsmaßstäbe:
-   - Bei Urkunden mit gesetzlicher Befristung (wie Energieausweise gem. § 80 Abs. 2 GEG für 10 Jahre) ist der Status 'OUTDATED' ('isExpired': true) zu setzen, wenn das Gültigkeitsdatum vor dem Bearbeitungsstichtag liegt.
-   - Bestandsurkunden ohne kalendarisches Ablaufdatum (wie Grundbuchauszüge gem. § 21 BeurkG) verfallen nicht; sie belegen den Aktenstand ('VERIFIED'). Ein älteres Auszugsdatum wird neutral als Hinweis in 'note' vermerkt (vor Beurkundung amtlicher Online-Abruf gem. § 21 BeurkG).
-   - 'OUTDATED' gilt ansonsten nur, wenn im Aktenbestand ein jüngeres Dokument desselben Typs vorliegt, das das ältere ablöst.
-3. Prüfe formelle Vollständigkeit: Fehlen für Rechtsformen oder Personen erforderliche gesetzliche Nachweise (z.B. Registerauszug gem. § 12 HGB, § 21 BNotO), erstelle gezielte Nachforderungen ("inquiries").
+2. Prüfe Fristen & Gültigkeiten anhand der oben aufgeführten gesetzlichen Prüfungsmaßstäbe.
+3. Prüfe formelle Vollständigkeit: Fehlen für Rechtsformen oder Personen erforderliche gesetzliche Nachweise (z.B. Registerauszug gem. § 12 HGB, eGbR-Nachweis gem. MoPeG), erstelle gezielte Nachforderungen ("inquiries") mit präziser juristischer Begründung.
 4. Kontrolliere, dass jedes Feld eine nachvollziehbare Quelle ("source.fileName" und "source.snippet") besitzt.
 5. STRENGSTE REGEL FÜR BELEGE: Ein Feld darf NIEMALS "VERIFIED" erhalten, wenn die tatsächlichen Datenwerte fehlen! Setze bei unvollständigen Daten zwingend "NEEDS_REVIEW" und formuliere eine konkrete Begründung in 'note'.
 6. VERWENDE EXAKT DIE ENGLISCHEN SCHEMA-ATTRIBUTE (z.B. "amountInFigures", "blatt", "validUntil", "lenderName", "mortgageAmount", "parcels").

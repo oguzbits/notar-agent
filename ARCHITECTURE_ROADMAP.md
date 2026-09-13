@@ -1,6 +1,6 @@
 # Architektur-Roadmap für den skalierenden Live-Betrieb (Notariat 24/7)
 
-> **Dokumentstatus:** Architektur-Spezifikation für die Produktivüberführung  
+> **Dokumentstatus:** Zentrale Architektur-Spezifikation für die Produktivüberführung (Single Source of Truth)  
 > **Bezugssystem:** NotarPartner Urkunden-Zuarbeit (Next.js 16, TypeScript, Claude Vision, Supabase)
 
 ---
@@ -9,33 +9,119 @@
 
 Der vorliegende Prototyp beweist die fachliche Machbarkeit: Heterogene Urkundensätze werden über einen 2-stufigen Agenten-Workflow (Extraction + Notary Auditor) rechtssicher, auditierbar und mit Human-in-the-Loop aufbereitet.
 
-Für den **Produktivbetrieb in Notariaten** mit täglichen Lastspitzen, Großaktenbänden (50–200 Seiten) und strengsten Berufsgeheimnis-Vorgaben (§ 203 StGB) definiert dieses Dokument die 5 Kernsäulen der Ziel-Architektur in ihrer logischen Umsetzungsreihenfolge:
+Für den **Produktivbetrieb in Notariaten** mit täglichen Lastspitzen, Großaktenbänden (50–200 Seiten), strengsten Berufsgeheimnis-Vorgaben (§ 203 StGB / § 18 BNotO) und dem Anspruch auf echte Arbeitserleichterung im Kanzleialltag definiert dieses Dokument die Kernsäulen der Ziel-Architektur sowie einen nach **technischem ROI und Abhängigkeiten priorisierten Phasenplan**:
 
-1. **Qualitäts-Fundament & Kanzlei-Compliance:** Playwright E2E-Automation, revisionssicherer Kanzlei-Audit-Trail & Zero-Data-Retention (ZDR).
-2. **Provider-Flexibilität & Kostensenkung:** Provider-agnostischer Multi-LLM Adapter (Bedrock, Azure, Local vLLM) und 60–75 % Kostenersparnis durch hybrides OCR/Vision-Pre-Filtering.
-3. **Asynchrone Hintergrundverarbeitung:** BullMQ & Redis-Worker zur Beseitigung von HTTP-Timeouts bei Großakten mit Live-Status (SSE).
-4. **Mandantenfähigkeit & Kanzlei-Isolation:** PostgreSQL Row-Level Security (RLS) zur hermetischen Trennung fremder Kanzleidaten (§ 203 StGB).
-5. **Ökosystem & Fachverfahren:** Standardisierter XJustiz- / XNP-Export zur medienbruchfreien Integration in TriNotar, NoRA, Notar 4.0 und RA-MICRO sowie Expansion auf weitere Rechtsgebiete.
+1. **Fachliche Kern-Module:** RAG-gestützter Auditor, unterschriftsreife Word-Generierung (`.docx`), automatisierte Mandantenkorrespondenz und Post-Beurkundungsvollzug.
+2. **Qualitäts-Fundament & Kanzlei-Compliance:** Playwright E2E-Automation, revisionssicherer Audit-Trail & Zero-Data-Retention (ZDR).
+3. **Provider-Flexibilität & Kostensenkung:** Multi-LLM Adapter (Bedrock, Azure, Local vLLM) und hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis).
+4. **Asynchrone Hintergrundverarbeitung:** BullMQ & Redis-Worker zur Beseitigung von HTTP-Timeouts bei Großakten mit Live-Status (SSE).
+5. **Mandantenfähigkeit & Kanzlei-Isolation:** PostgreSQL Row-Level Security (RLS) zur hermetischen Trennung fremder Kanzleidaten (§ 203 StGB).
+6. **Ökosystem & Fachverfahren:** Standardisierter XJustiz- / XNP-Export zur medienbruchfreien Integration in TriNotar, NoRA, Notar 4.0 und RA-MICRO sowie Rechtsgebiets-Expansion.
 
 ---
 
-## 2. Qualitäts-Fundament & Kanzlei-Compliance (Test-First)
+## 2. Fachliche Kern-Module (The Notary Core)
 
-### 2.1 Vollständige E2E-Testsuite mit Playwright
+### 2.1 RAG-gestützter Notary Auditor (Stufe-2-Optimierung)
 
-Bevor infrastrukturelle Umbauten anstehen, sichert eine Ende-zu-Ende-Testsuite das bestehende Verhalten des Sachbearbeiter-Workflows ab:
+- **Zielkomponente:** `Notary Auditor & Reconciler` in `src/app/api/analyze/route.ts`
+- **Kernnutzen:** **70–90 % Token-Ersparnis**, maximale **Deterministik** und rechtssichere Begründungen mit Paragraphenbelegen.
+
+#### Problem im Status Quo
+
+Aktuell prüft Stufe 2 mit statischen Faustregeln im Prompt (z. B. 10 Jahre GEG, § 21 BeurkG).
+
+- **Prompt-Bloat:** Sondergesetze (MoPeG für GbRs, MaBV-Raten, Sanierungsvermerke nach § 144 BauGB) können nicht alle statisch im Prompt stehen, ohne Token-Kosten und Kontextgrenzen zu sprengen.
+- **Ungenaue Nachforderungen:** Fehlen Belege, moniert das System oft generisch (_„Vollmacht fehlt“_ statt _„Registerauszug gem. § 12 HGB nötig“_).
+
+#### Lösung: Deterministisches Just-in-Time Retrieval
+
+Statt eines unübersehbaren „Mega-Prompts“ holt sich Stufe 2 **nur die Regeln, die zum konkreten Fall passen**:
+
+```mermaid
+graph LR
+    A["Stufe 1 Dossier (JSON)"] --> B{"Context Selector"}
+    B -->|"GmbH / KG erkannt"| C["§ 12 HGB Prüfnormen"]
+    B -->|"Ratenzahlung / Bau"| D["§ 3 MaBV Staffel-Regeln"]
+    B -->|"GbR erkannt"| E["MoPeG / eGbR-Vorgaben"]
+    C & D & E --> F["Schlanker Stufe 2 Prompt"]
+    F --> G["Auditierte Entscheidung mit Paragraphenbelegen"]
+```
+
+#### Wissensbasis (3 Säulen)
+
+1. **Gesetzliche Prüfnormen:** BGB, BeurkG, GBO, GEG (10-Jahres-Frist), MaBV, HGB.
+2. **Kanzlei-Standards:** Interne Checklisten nach Vorgangstyp (Gewerbekauf, Überlassung, WEG).
+3. **Zwischenverfügungs-Prävention:** Historische Beanstandungen lokaler Grundbuchämter (z. B. Klauselerfordernisse spezifischer Amtsgerichte).
+
+#### Phasenweise Umsetzung
+
+- **Phase 1 (Quick Win):** Lokale Markdown-/JSON-Checklisten in `src/lib/knowledge/rules/`, getriggert nach erkannten Merkmalen (ohne externe Vektor-DB).
+- **Phase 2 (Erweitert):** Hybrid Search (BM25 für Paragraphen + `pgvector` in Supabase) für Kanzleisammlungen und DNotI-Gutachten.
+- **Phase 3 (Enterprise):** Mandantenisolierte Kanzlei-Wissensbasis mit PostgreSQL Row-Level Security (§ 18 BNotO / § 203 StGB).
+
+---
+
+### 2.2 Word-Urkunden-Engine (Template & OpenXML Pipeline)
+
+- **Ziel:** 100 % unterschriftsreife Word-Dokumente (`.docx`) auf Kanzlei-Briefkopf ohne Copy-Paste-Fehler.
+- **Ausgangslage:** Notare verlesen im Beurkundungstermin ausschließlich Microsoft Word. Statische PDF-Exporte sind für Kanzleien im Termin unbrauchbar.
+
+```mermaid
+graph LR
+    A["Verifiziertes Dossier (Zod JSON)"] --> B["Template Engine (docxtemplater / OpenXML)"]
+    C["Kanzlei-Briefkopf (.dotx Template)"] --> B
+    D["Dynamische Klausel-Bibliothek"] --> B
+    B --> E["Unterschriftsreife .docx Urkunde"]
+```
+
+- **Bedingte Klausel-Injektion (Conditional Logic):**
+  - Z. B. Barzahlung vs. Finanzierung: Automatischer Einschub der Belastungsvollmacht und Zwangsvollstreckungsunterwerfung (§ 800 ZPO).
+- **Typografische Kanzlei-Standards:**
+  - Saubere Verlese-Absätze, geschützte Leerzeichen bei Geldbeträgen (`150.000,00 €`), Einrückungen und Paragraphen-Nummerierung.
+- **Multi-Dokumenten-Set:**
+  - Erzeugung des gesamten Pakets auf Knopfdruck: Haupturkunde, Vollmachten, Belehrungsanhang.
+
+---
+
+### 2.3 KI-Mandantenkorrespondenz & Entwurfsversand
+
+- **Ziel:** Automatisierte, individuelle Begleitschreiben und Entwurfs-E-Mails an Mandanten, Makler und Banken (Schritt 03 auf beta.notarpartner.de).
+- **Rechtssichere Hinweise:** Schreiben werden dynamisch aus dem Dossier generiert (z. B. konkreter Hinweis an den Käufer auf die gesetzliche 14-tägige BGB-Verbraucherprüffrist gem. § 17 Abs. 2a BeurkG).
+- **Automatisierter Adressaten-Filter:**
+  - _An Käufer/Verkäufer:_ Verständliche Erläuterung der nächsten Schritte (Fälligkeitsvoraussetzungen, Übergabe).
+  - _An finanzierende Bank:_ Gezielte Übersendung des Grundschuldentwurfs mit Treuhandauflagen-Bestätigung.
+- **Audit-Konnexität:** Revisionssichere Archivierung aller versendeten Entwürfe und Begleitschreiben.
+
+---
+
+### 2.4 Beschleunigte Abwicklung & Vollzug (Post-Beurkundung)
+
+- **Ziel:** Automatisierung der Nachbereitungs- und Vollzugsphase nach der Beurkundung (Schritt 04 auf beta.notarpartner.de).
+- **Automatisierte Behörden- & Vollzugssätze auf Knopfdruck:**
+  - **Grundbuchamt:** Anträge auf Eigentumsvormerkung, Eigentumsumschreibung und Grundschuldeintragung.
+  - **Gemeinde / Finanzamt:** Anforderung der Vorkaufsrechtsverzichtserklärung (§ 28 BauGB) und Unbedenklichkeitsbescheinigung.
+  - **Fälligkeitsmitteilung:** Präzise Berechnung von Zahlungsziel, Bank-IBANs und Treuhandabzügen nach Eintritt aller Voraussetzungen.
+
+---
+
+## 3. Qualitäts-Fundament & Kanzlei-Compliance (Test-First)
+
+### 3.1 Vollständige E2E-Testsuite mit Playwright
+
+Bevor infrastrukturelle Umbauten anstehen, sichert eine Ende-zu-Ende-Testsuite das Kernverhalten des Sachbearbeiter-Workflows ab:
 
 1. **Upload großer Aktenpakete:**
    - Multi-File-Drag-and-Drop (6–10 PDFs gleichzeitig) unter realistischen Netzwerkbedingungen.
 2. **Kollaboratives Human-in-the-Loop:**
    - Simuliertes Überschreiben eines Feldwertes durch den Sachbearbeiter (z. B. manueller Status-Wechsel von `NEEDS_REVIEW` auf `VERIFIED`).
-   - Verifikation, dass manuelle Korrekturen den Audit-Trail nicht zerstören.
+   - Verifikation, dass manuelle Korrekturen den Audit-Trail nicht beschädigen.
 3. **Barrierefreiheit & Keyboard-Navigation:**
    - Volle Bedienbarkeit der Cockpit-Tabelle via Tastatur (WCAG 2.1 AA Konformität für Kanzleiarbeitsplätze).
 4. **UI/UX-Polishing & Responsiveness:**
-   - Überführung der prototypischen Oberfläche in ein voll ausgereiftes, responsives Kanzlei-Designsystem (Polishing von Abständen, konsistenten Ladezuständen, Fehler-Bannern und mobiler Begleitansicht).
+   - Überführung der prototypischen Oberfläche in ein voll ausgereiftes Kanzlei-Designsystem (Abstände, Ladezustände, Feedback-Banner, Begleitansicht).
 
-### 2.2 Revisionssicherer Kanzlei-Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)
+### 3.2 Revisionssicherer Kanzlei-Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)
 
 Da der Notar persönlich für den Urkundeninhalt haftet, protokolliert eine Append-Only-Tabelle in PostgreSQL gerichtsfest jeden Bearbeitungsschritt:
 
@@ -57,15 +143,15 @@ graph LR
   - Zwingende Pflichtbegründung bei manuellem Überschreiben von Warnungen (`NEEDS_REVIEW` -> `VERIFIED`).
   - SHA-256-Fingerprint der zugrundeliegenden Quelldatei.
 
-### 2.3 Zero-Data-Retention (ZDR) Vertragskonfiguration
+### 3.3 Zero-Data-Retention (ZDR) Vertragskonfiguration
 
 - Sicherstellung, dass über Enterprise-Vereinbarungen (Anthropic BAA oder AWS Bedrock / Google Cloud Frankfurt) das 30-tägige Abuse-Monitoring-Logging der KI-Provider vollständig deaktiviert ist (0 Tage Speicherung).
 
 ---
 
-## 3. Provider-Flexibilität & Kostensenkung (Quick Wins – Hoher ROI)
+## 4. Provider-Flexibilität & Kostensenkung (High ROI)
 
-### 3.1 Provider-Agnostisches Multi-LLM & On-Premises (Local Models)
+### 4.1 Provider-Agnostisches Multi-LLM & On-Premises (Local Models)
 
 Zur Vermeidung von Vendor-Lock-in und zur Einhaltung höchster Geheimhaltungsstufen:
 
@@ -79,7 +165,7 @@ graph TD
 
 - **Lokales Hosting:** Für Bundeswehr-Liegenschaften oder Verschlusssachen können Open-Source-Vision-Modelle (z. B. Mistral Pixtral, Llama 3.2 Vision) auf kanzleieigener GPU-Hardware betrieben werden.
 
-### 3.2 Hybride OCR- & Vision-Pipeline (60–75 % Kostenersparnis)
+### 4.2 Hybride OCR- & Vision-Pipeline (60–75 % Kostenersparnis)
 
 Im Notariat sind mindestens 70 % der Seiten reine maschinelle Textdokumente (Fließtext alter Kaufverträge, E-Mails, Anschreiben).
 
@@ -98,18 +184,18 @@ graph TD
 
 ---
 
-## 4. Asynchrone Hintergrundverarbeitung (BullMQ & Redis)
+## 5. Asynchrone Hintergrundverarbeitung (BullMQ & Redis)
 
-### 4.1 Problemstellung im Kanzleialltag
+### 5.1 Problemstellung im Kanzleialltag
 
-| Problem                                 | Auswirkung ohne Queue (Synchron)                                                                                               | Lösung mit BullMQ & Redis                                                                                       |
-| :-------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| **HTTP-Timeouts**                       | Proxies (Cloudflare/Nginx/AWS ALB) kappen Verbindungen nach 30–60 s. Ein 100-Seiten-Lauf bricht mit `504 Gateway Timeout` ab.  | Der HTTP-Upload antwortet in **< 250 ms** mit `202 Accepted`. Die Verarbeitung läuft entkoppelt im Hintergrund. |
-| **Tab-Schließung / Verbindungsabbruch** | Sachbearbeiter schließt das Browser-Fenster -> Lauf bricht ab, teure LLM-Tokens sind verbrannt.                                | Jobs persistieren in Redis; der Sachbearbeiter kann den Rechner wechseln oder herunterfahren.                   |
-| **Peak-Load & Rate Limits**             | Wenn morgens um 09:00 Uhr 8 Mitarbeiter gleichzeitig Akten hochladen, drohen Anthropic-`429 Rate Limits` oder RAM-Überlastung. | **Concurrency Control:** Queue arbeitet z. B. exakt 5 Dokumente parallel ab; Überhang wartet geordnet.          |
-| **API-Spitzen / Transiente Fehler**     | KI-Server überlastet (`529 Overloaded`) -> Vorgang scheitert.                                                                  | Automatischer **Exponential Backoff Retry** (z. B. nach 5s, 15s, 45s) ohne Nutzerintervention.                  |
+| Problem                      | Auswirkung ohne Queue (Synchron)                                                                                             | Lösung mit BullMQ & Redis                                                                                       |
+| :--------------------------- | :--------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| **HTTP-Timeouts**            | Proxies (Cloudflare/Nginx/Vercel) kappen Verbindungen nach 30–60 s. Ein 100-Seiten-Lauf bricht mit `504 Gateway Timeout` ab. | Der HTTP-Upload antwortet in **< 250 ms** mit `202 Accepted`. Die Verarbeitung läuft entkoppelt im Hintergrund. |
+| **Tab-Schließung / Abbruch** | Sachbearbeiter schließt das Browser-Fenster -> Lauf bricht ab, teure LLM-Tokens sind verbrannt.                              | Jobs persistieren in Redis; der Sachbearbeiter kann den Rechner wechseln oder herunterfahren.                   |
+| **Peak-Load & Rate Limits**  | Wenn morgens um 09:00 Uhr 8 Mitarbeiter gleichzeitig Akten hochladen, drohen `429 Rate Limits` oder RAM-Crash.               | **Concurrency Control:** Queue arbeitet z. B. exakt 5 Dokumente parallel ab; Überhang wartet geordnet.          |
+| **Transiente API-Fehler**    | KI-Server überlastet (`529 Overloaded`) -> Vorgang scheitert.                                                                | Automatischer **Exponential Backoff Retry** (z. B. nach 5s, 15s, 45s) ohne Nutzerintervention.                  |
 
-### 4.2 Ziel-Architektur (Sequence Diagram)
+### 5.2 Ziel-Architektur (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
@@ -151,49 +237,15 @@ sequenceDiagram
     UI->>Notar: Cockpit-Tabelle fertig gerendert anzeigen
 ```
 
-### 4.3 Beispielhafter Worker-Code (BullMQ)
-
-```typescript
-// workers/analysisWorker.ts
-import { Worker, Job } from 'bullmq';
-import { redisConnection } from '@/lib/redis';
-import { executeTwoStageAnalysis } from '@/lib/ai/pipeline';
-import { updateDossierInDatabase } from '@/lib/db';
-
-export const analysisWorker = new Worker(
-  'notary-dossier-analysis',
-  async (job: Job) => {
-    const { dossierId, documents } = job.data;
-
-    await job.updateProgress({ stage: 'EXTRACTION', percent: 25 });
-
-    const result = await executeTwoStageAnalysis(documents, {
-      onProgress: async (p) => await job.updateProgress(p),
-    });
-
-    await updateDossierInDatabase(dossierId, result);
-    return { success: true, dossierId };
-  },
-  {
-    connection: redisConnection,
-    concurrency: 5, // Maximal 5 parallele Aktenbearbeitungen
-    limiter: {
-      max: 50, // Max 50 Anfragen pro Minute
-      duration: 60000,
-    },
-  }
-);
-```
-
 ---
 
-## 5. Mandantenfähigkeit (Multi-Tenancy) & Kanzlei-Isolation (§ 203 StGB)
+## 6. Mandantenfähigkeit (Multi-Tenancy) & Kanzlei-Isolation (§ 203 StGB)
 
-### 5.1 Das berufsrechtliche Gebot der strikten Trennung
+### 6.1 Das berufsrechtliche Gebot der strikten Trennung
 
 Notariate unterliegen der berufsrechtlichen Verschwiegenheitspflicht (§ 18 BNotO) und dem strafbewehrten Berufsgeheimnis (§ 203 StGB). In einem mandantenfähigen Cloud-Setup darf unter keinen Umständen ein Datenabfluss zwischen verschiedenen Kanzleien (Tenants) oder innerhalb einer Sozietät bei Mandatskonflikten möglich sein.
 
-### 5.2 Technisches Design: Row-Level Security (RLS) in PostgreSQL
+### 6.2 Technisches Design: Row-Level Security (RLS) in PostgreSQL
 
 Statt die Mandantentrennung fehleranfällig im Applikationscode zu verwalten, setzt die Ziel-Architektur auf **PostgreSQL Row-Level Security (RLS)** auf Datenbank-Kernel-Ebene:
 
@@ -207,7 +259,7 @@ CREATE POLICY tenant_isolation_policy ON dossiers
   USING (organization_id = current_setting('app.current_organization_id', true)::uuid);
 ```
 
-### 5.3 Rollen- und Rechtematrix (Kanzlei-RBAC)
+### 6.3 Rollen- und Rechtematrix (Kanzlei-RBAC)
 
 | Rolle                                        | Berechtigungen im System                                                                                                                                    |
 | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -218,9 +270,9 @@ CREATE POLICY tenant_isolation_policy ON dossiers
 
 ---
 
-## 6. Ökosystem, Fachverfahren & Rechtsgebiets-Expansion
+## 7. Ökosystem, Fachverfahren & Rechtsgebiets-Expansion
 
-### 6.1 Fachverfahren- & Notarnetz-Integration
+### 7.1 Fachverfahren- & Notarnetz-Integration
 
 Der NotarPartner-Prototyp darf im Produktivbetrieb kein isoliertes Datensilo sein, sondern muss sich nahtlos in die bestehende Kanzlei-IT einfügen:
 
@@ -229,12 +281,10 @@ Der NotarPartner-Prototyp darf im Produktivbetrieb kein isoliertes Datensilo sei
    - Direkter Import in marktführende Notariatsfachverfahren: **TriNotar**, **NoRA Advanced**, **Notar 4.0**, **RA-MICRO**.
 2. **EGVP / Notarnetz-Konnexität:**
    - Vorbereitung für die sichere Übertragung über das Elektronische Gerichts- und Verwaltungspostfach (EGVP) und die Bundesnotarkammer-Infrastruktur.
-3. **Office-Integration (.docx-Generierung):**
-   - Automatische Befüllung der Kanzlei-spezifischen Kaufvertrags-Vorlagen mit den 10 verifizierten Datenfeldern unter Wahrung des kanzleieigenen Corporate Designs.
 
-### 6.2 Erweiterung auf weitere notarielle Rechtsgebiete
+### 7.2 Erweiterung auf weitere notarielle Rechtsgebiete
 
-Das Datenmodell ist über die discriminated Union `CaseType` und die dynamische Cockpit-Registry darauf ausgelegt, über dieselbe Verifikations- und Audit-Pipeline weitere Urkundentypen abzuwickeln:
+Über die discriminated Union `CaseType` und die dynamische Cockpit-Registry werden weitere Urkundentypen abgewickelt:
 
 1. **Gesellschaftsrecht (`GMBH_GRUENDUNG`, Handelsregister):**
    - _Pflichtfelder:_ Gesellschafterliste, Stammkapital & Geschäftsanteile, Geschäftsführung & Vertretungsmacht, Satzung / Musterprotokoll, Gründungsvollmachten.
@@ -245,32 +295,39 @@ Das Datenmodell ist über die discriminated Union `CaseType` und die dynamische 
 
 ---
 
-## 7. Implementierungs-Phasenplan (Nach ROI & logischen Meilensteinen)
+## 8. Priorisierter Umsetzungs- und Phasenplan (Value & Dependency Driven)
 
-```text
-Meilenstein 1: Qualitäts-Fundament & Kanzlei-Compliance (Test-First)
-  ├── Playwright E2E-Testsuite in CI/CD (Absicherung des bestehenden UI- & Review-Flows)
-  ├── Revisionssicherer Kanzlei-Audit-Trail (Postgres Append-Only Table)
-  ├── Zero-Data-Retention (ZDR) Vertragskonfiguration & Prüfung
-  └── UI/UX-Polishing & Responsiveness (Kanzlei-Designsystem, Abstände, konsistente Feedback-Banner)
+Statt einer starren Nummerierung folgt die Umsetzung einem logischen **3-Stufen-Modell**: erst maximale Fachqualität & Sofort-Nutzen für Kanzleien, dann asynchrone Skalierung für Großakten, abschließend Enterprise-Kanzlei-Compliance vor dem breiten Rollout.
 
-Meilenstein 2: Provider-Flexibilität & Kostensenkung (Quick Wins – Hoher ROI)
-  ├── Provider-Agnostischer Multi-LLM Adapter (Anthropic, Bedrock, Azure OpenAI EU)
-  ├── PDF-Vorfilter (Layout-Classifier: Digital-Born Text-Extraktion vs. Vision-Tokens -> 60-75% Ersparnis)
-  └── Lokaler LLM-Fallback-Modus (vLLM / Ollama für sensible Offline-Akten)
+```mermaid
+graph TD
+    subgraph PhaseA["Phase A: Fachlicher Kernnutzen & Basis-Qualität (Immediate Value)"]
+        A1["Playwright E2E Basis-Schutz (Smoke Workflow)"]
+        A2["RAG-Auditor Stufe 2 (Lokale Prüfregeln & Paragraphen)"]
+        A3["Word-Urkunden Engine (.docx Export auf Briefkopf)"]
+    end
 
-Meilenstein 3: Asynchrone Entkopplung & Resilienz (Großakten)
-  ├── Redis-Cluster anbinden (Managed Redis)
-  ├── BullMQ Ingestion Queue & Worker-Prozess implementieren
-  ├── Intelligentes Seiten-Chunking für Aktenbände > 50 Seiten
-  └── Server-Sent Events (SSE) für Live-Statusanzeige im Cockpit
+    subgraph PhaseB["Phase B: Asynchrone Skalierung & Kostensenkung (Scale & Speed)"]
+        B1["BullMQ & Redis Queue (Beseitigung HTTP-Timeouts)"]
+        B2["Hybrider Layout-Classifier (Text-PDF vs. Vision)"]
+        B3["Server-Sent Events (SSE Live-Status im Cockpit)"]
+        B4["Provider-Adapter (Bedrock / Azure / Local vLLM)"]
+    end
 
-Meilenstein 4: Multi-Tenancy & Rollenrechte (Enterprise Security)
-  ├── PostgreSQL Row-Level Security (RLS) für strikte Kanzlei-Isolation (§ 203 StGB)
-  ├── Kanzlei-RBAC (Notar, Sachbearbeiter, Administrator)
-  └── Mandanten-Dashboard für Kanzleiverwaltung
+    subgraph PhaseC["Phase C: Enterprise Compliance & Ökosystem (Rollout Ready)"]
+        C1["Postgres Revisionssicherer Audit-Trail (§ 17 BeurkG)"]
+        C2["PostgreSQL RLS Kanzlei-Isolation (§ 203 StGB)"]
+        C3["KI-Mandantenkorrespondenz & Post-Beurkundung"]
+        C4["XJustiz / XNP Schnittstellen für TriNotar & NoRA"]
+    end
 
-Meilenstein 5: Fachverfahren-Ökosystem & Rechtsgebiets-Expansion
-  ├── XJustiz / XNP Schnittstellen-Export für TriNotar, NoRA & RA-MICRO
-  └── CaseType-Erweiterung für Gesellschaftsrecht (GmbH-Gründung) & Erbscheine
+    PhaseA --> PhaseB --> PhaseC
 ```
+
+### Übersicht der Phasen
+
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse                                                                                                                                                                                           |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • Basisschutz des UI-Flows via Playwright<br>• RAG-Prüfregeln (MoPeG, MaBV, BGB) ohne Prompt-Bloat<br>• `.docx`-Export für Beurkundungstermine                                                            |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • Asynchrone BullMQ Queue & Worker-Prozess<br>• Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• SSE-Streaming von Teilfortschritten ins Cockpit                                                |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • Append-Only Audit-Trail & Zero-Data-Retention<br>• PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• XJustiz-Export für TriNotar / NoRA / RA-MICRO<br>• Vollzugsautomation (Behörden- & Bankenverkehr) |

@@ -1,10 +1,27 @@
 import { z } from 'zod';
 
-export const CaseTypeSchema = z.enum(['IMMOBILIENKAUF', 'GMBH_GRUENDUNG']);
-export type CaseType = z.infer<typeof CaseTypeSchema>;
+export const CASE_TYPES = {
+  IMMOBILIENKAUF: 'IMMOBILIENKAUF',
+  GMBH_GRUENDUNG: 'GMBH_GRUENDUNG',
+} as const;
 
-export const FieldStatusSchema = z.enum(['VERIFIED', 'NEEDS_REVIEW', 'OUTDATED', 'MISSING']);
-export type FieldStatus = z.infer<typeof FieldStatusSchema>;
+export const CaseTypeSchema = z.enum([CASE_TYPES.IMMOBILIENKAUF, CASE_TYPES.GMBH_GRUENDUNG]);
+export type CaseType = (typeof CASE_TYPES)[keyof typeof CASE_TYPES];
+
+export const FIELD_STATUS = {
+  VERIFIED: 'VERIFIED',
+  NEEDS_REVIEW: 'NEEDS_REVIEW',
+  OUTDATED: 'OUTDATED',
+  MISSING: 'MISSING',
+} as const;
+
+export const FieldStatusSchema = z.enum([
+  FIELD_STATUS.VERIFIED,
+  FIELD_STATUS.NEEDS_REVIEW,
+  FIELD_STATUS.OUTDATED,
+  FIELD_STATUS.MISSING,
+]);
+export type FieldStatus = (typeof FIELD_STATUS)[keyof typeof FIELD_STATUS];
 
 export const SourceLocationSchema = z.object({
   fileName: z.string().describe('Name der hochgeladenen Quelldatei oder leer'),
