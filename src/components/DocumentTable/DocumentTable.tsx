@@ -1,17 +1,21 @@
 'use client';
 
-import { FileText, Search, Plus, Trash2, ExternalLink, Loader2 } from 'lucide-react';
+import { FileText, Search, Plus, Trash2, ExternalLink, Loader2, RotateCw } from 'lucide-react';
 import React, { useState } from 'react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
+import { DossierJob, JOB_STATUS } from '@/types/jobs';
 
 interface DocumentTableProps {
   documents: DocumentRecord[];
   isLoading: boolean;
   onSelectDocument: (doc: DocumentRecord) => void;
+  onSelectJob?: (job: DossierJob) => void;
   onCreateNew: () => void;
   onDeleteDocument: (id: string) => Promise<void>;
+  activeJobs?: DossierJob[];
+  onRetryJob?: (jobId: string) => Promise<boolean | void>;
 }
 
 export const DOCUMENT_FILTERS = {
@@ -30,12 +34,16 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   documents,
   isLoading,
   onSelectDocument,
+  onSelectJob,
   onCreateNew,
   onDeleteDocument,
+  activeJobs = [],
+  onRetryJob,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterStatus>(DOCUMENT_FILTERS.ALL);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
 
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch =
@@ -48,6 +56,19 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       doc.status === CASE_STATUS.DRAFT_READY ? CASE_STATUS.DRAFT_READY : CASE_STATUS.IN_PROGRESS;
     return effectiveStatus === activeFilter;
   });
+
+  const filteredActiveJobs = activeJobs.filter((job) => {
+    const title = job.payload.notes || 'Neuer Urkundenvorgang';
+    const matchesSearch =
+      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.payload.caseType.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+    if (activeFilter === DOCUMENT_FILTERS.DRAFT_READY) return false; // Jobs in Bearbeitung sind noch nicht entwurfsreif
+    return true;
+  });
+
+  const totalItemCount = filteredDocuments.length + filteredActiveJobs.length;
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
@@ -141,7 +162,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             <Loader2 className="text-notar-800 h-6 w-6 animate-spin" />
             <span className="text-base font-medium">Vorgänge werden geladen...</span>
           </div>
-        ) : filteredDocuments.length === 0 ? (
+        ) : totalItemCount === 0 ? (
           <div className="text-muted-foreground flex flex-col items-center justify-center gap-3 p-12 text-center">
             <div className="border-border bg-muted/40 flex h-12 w-12 items-center justify-center rounded-full border">
               <FileText className="h-6 w-6" />
@@ -178,6 +199,110 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-border divide-y">
+                {/* 1. Laufende Hintergrund-Jobs direkt in der Tabelle */}
+                {filteredActiveJobs.map((job) => {
+                  const isRetrying = retryingJobId === job.id;
+                  const activity =
+                    job.progressDetails?.currentActivity ||
+                    (job.status === JOB_STATUS.PENDING
+                      ? 'In Warteschlange eingereiht...'
+                      : 'Dokumente werden geprüft...');
+
+                  return (
+                    <tr
+                      key={job.id}
+                      onClick={() => onSelectJob?.(job)}
+                      className={cn(
+                        'bg-muted/30 border-l-notar-700 border-l-4 transition-colors',
+                        onSelectJob && 'hover:bg-muted/50 cursor-pointer'
+                      )}
+                    >
+                      {/* Titel & Status */}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="border-border bg-notar-100 text-notar-800 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border">
+                            {job.status === JOB_STATUS.FAILED ? (
+                              <RotateCw className="text-destructive h-4 w-4" />
+                            ) : (
+                              <Loader2 className="text-notar-800 h-4 w-4 animate-spin" />
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-foreground block font-semibold">
+                              {job.payload.notes
+                                ? job.payload.notes.slice(0, 50)
+                                : 'Neuer Urkundenvorgang'}
+                            </span>
+                            <span className="text-muted-foreground text-xs">{activity}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Typ */}
+                      <td className="text-muted-foreground px-4 py-3.5">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                          {job.payload.caseType}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <StatusBadge status={job.status} size="sm" />
+                      </td>
+
+                      {/* Datum */}
+                      <td className="text-muted-foreground px-5 py-3.5 font-mono text-xs">
+                        {formatDate(job.createdAt)}
+                      </td>
+
+                      {/* Aktionen: Bei FAILED Retry, ansonsten deaktivierte Standardaktionen ohne Text */}
+                      <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        {job.status === JOB_STATUS.FAILED && onRetryJob ? (
+                          <button
+                            type="button"
+                            disabled={isRetrying}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRetryingJobId(job.id);
+                              void onRetryJob(job.id).finally(() => setRetryingJobId(null));
+                            }}
+                            className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
+                          >
+                            {isRetrying ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RotateCw className="h-3 w-3" />
+                            )}
+                            <span>Wiederholen</span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              disabled
+                              className="text-muted-foreground/40 flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md"
+                              title="Vorgang wird noch analysiert"
+                              aria-label="Vorgang wird analysiert"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled
+                              className="text-muted-foreground/40 flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md"
+                              title="Vorgang wird noch analysiert"
+                              aria-label="Vorgang wird analysiert"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* 2. Persistierte Dokumente */}
                 {filteredDocuments.map((doc) => {
                   return (
                     <tr

@@ -11,6 +11,7 @@ interface AgenticWorkflowStepperProps {
 export const AgenticWorkflowStepper: React.FC<AgenticWorkflowStepperProps> = ({
   isAnalyzing,
   activeStep = 1,
+  stepDetail,
 }) => {
   if (!isAnalyzing) return null;
 
@@ -38,19 +39,24 @@ export const AgenticWorkflowStepper: React.FC<AgenticWorkflowStepperProps> = ({
   ];
 
   return (
-    <div className="bg-card border-border animate-in fade-in rounded-xl border p-4 shadow-sm duration-300">
-      <div className="border-border mb-3 flex items-center justify-between border-b pb-3">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-          </span>
-          <span className="text-foreground text-xs font-bold tracking-wider uppercase">
-            Notarieller Prüfprozess aktiv
+    <div className="bg-card border-border space-y-4 rounded-xl border p-5 shadow-xs">
+      {/* Header mit Live-Status und Detail */}
+      <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+        <div className="flex items-center gap-2.5">
+          <span className="bg-notar-700 h-2.5 w-2.5 rounded-full"></span>
+          <span className="text-foreground text-sm font-bold tracking-wide uppercase">
+            KI-Analyse aktiv • Stufe {currentStep} von 3
           </span>
         </div>
+
+        {stepDetail && (
+          <span className="text-notar-950 bg-notar-100 border-notar-400/60 rounded-md border px-2.5 py-1 text-xs font-semibold">
+            {stepDetail}
+          </span>
+        )}
       </div>
 
+      {/* 3 Stufen Grid mit hohem Kontrast */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {steps.map((step) => {
           const isActive = currentStep === step.id;
@@ -61,30 +67,37 @@ export const AgenticWorkflowStepper: React.FC<AgenticWorkflowStepperProps> = ({
             <div
               key={step.id}
               className={cn(
-                'flex items-start gap-3 rounded-lg border p-3 transition-all',
+                'flex items-start gap-3 rounded-lg border p-3.5 transition-all',
                 isActive
-                  ? 'border-emerald-500/50 bg-emerald-50/40 dark:bg-emerald-950/20'
+                  ? 'border-notar-600 bg-notar-50 text-notar-950 ring-notar-500/40 shadow-xs ring-1'
                   : isDone
-                    ? 'border-border/60 bg-muted/30 opacity-75'
-                    : 'border-border/40 bg-card/50 opacity-40'
+                    ? 'border-notar-400 bg-notar-200/50 text-foreground'
+                    : 'border-border/60 bg-muted/20 opacity-50'
               )}
             >
               <div
                 className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-all',
                   isActive
-                    ? 'animate-pulse bg-emerald-600 text-white'
+                    ? 'bg-notar-800 text-white shadow-xs'
                     : isDone
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
-                      : 'bg-muted text-muted-foreground'
+                      ? 'bg-notar-800 text-white'
+                      : 'bg-muted text-muted-foreground border-border border'
                 )}
               >
-                {isDone ? <CheckCircle2 className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                {isDone ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-foreground text-xs leading-snug font-semibold">{step.name}</p>
-                <p className="text-muted-foreground text-2xs mt-0.5 leading-tight">{step.desc}</p>
+                <p
+                  className={cn(
+                    'text-xs leading-snug font-bold',
+                    isActive ? 'text-notar-950' : 'text-foreground'
+                  )}
+                >
+                  {step.name}
+                </p>
+                <p className="text-muted-foreground text-2xs mt-0.5 leading-normal">{step.desc}</p>
               </div>
             </div>
           );
