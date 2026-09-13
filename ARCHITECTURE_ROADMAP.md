@@ -11,10 +11,10 @@ Der vorliegende Prototyp beweist die fachliche Machbarkeit: Heterogene Urkundens
 
 Für den **Produktivbetrieb in Notariaten** mit täglichen Lastspitzen, Großaktenbänden (50–200 Seiten), strengsten Berufsgeheimnis-Vorgaben (§ 203 StGB / § 18 BNotO) und dem Anspruch auf echte Arbeitserleichterung im Kanzleialltag definiert dieses Dokument die Kernsäulen der Ziel-Architektur sowie einen nach **technischem ROI und Abhängigkeiten priorisierten Phasenplan**:
 
-1. **Fachliche Kern-Module:** RAG-gestützter Auditor, unterschriftsreife Word-Generierung (`.docx`), automatisierte Mandantenkorrespondenz und Post-Beurkundungsvollzug.
+1. **Fachliche Kern-Module:** RAG-gestützter Auditor, automatisierte Mandantenkorrespondenz und Post-Beurkundungsvollzug (Word-Urkundengenerierung optional / siehe Additions).
 2. **Qualitäts-Fundament & Kanzlei-Compliance:** Playwright E2E-Automation, revisionssicherer Audit-Trail & Zero-Data-Retention (ZDR).
 3. **Provider-Flexibilität & Kostensenkung:** Multi-LLM Adapter (Bedrock, Azure, Local vLLM) und hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis).
-4. **Asynchrone Hintergrundverarbeitung:** BullMQ & Redis-Worker zur Beseitigung von HTTP-Timeouts bei Großakten mit Live-Status (SSE).
+4. **Asynchrone Hintergrundverarbeitung:** PostgreSQL-basierte Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED) zur Beseitigung von HTTP-Timeouts bei Großakten mit Live-Status (SSE).
 5. **Mandantenfähigkeit & Kanzlei-Isolation:** PostgreSQL Row-Level Security (RLS) zur hermetischen Trennung fremder Kanzleidaten (§ 203 StGB).
 6. **Ökosystem & Fachverfahren:** Standardisierter XJustiz- / XNP-Export zur medienbruchfreien Integration in TriNotar, NoRA, Notar 4.0 und RA-MICRO sowie Rechtsgebiets-Expansion.
 
@@ -62,25 +62,9 @@ graph LR
 
 ---
 
-### 2.2 Word-Urkunden-Engine (Template & OpenXML Pipeline)
+### 2.2 Word-Urkunden-Engine (Ausgelagert ins Backlog)
 
-- **Ziel:** 100 % unterschriftsreife Word-Dokumente (`.docx`) auf Kanzlei-Briefkopf ohne Copy-Paste-Fehler.
-- **Ausgangslage:** Notare verlesen im Beurkundungstermin ausschließlich Microsoft Word. Statische PDF-Exporte sind für Kanzleien im Termin unbrauchbar.
-
-```mermaid
-graph LR
-    A["Verifiziertes Dossier (Zod JSON)"] --> B["Template Engine (docxtemplater / OpenXML)"]
-    C["Kanzlei-Briefkopf (.dotx Template)"] --> B
-    D["Dynamische Klausel-Bibliothek"] --> B
-    B --> E["Unterschriftsreife .docx Urkunde"]
-```
-
-- **Bedingte Klausel-Injektion (Conditional Logic):**
-  - Z. B. Barzahlung vs. Finanzierung: Automatischer Einschub der Belastungsvollmacht und Zwangsvollstreckungsunterwerfung (§ 800 ZPO).
-- **Typografische Kanzlei-Standards:**
-  - Saubere Verlese-Absätze, geschützte Leerzeichen bei Geldbeträgen (`150.000,00 €`), Einrückungen und Paragraphen-Nummerierung.
-- **Multi-Dokumenten-Set:**
-  - Erzeugung des gesamten Pakets auf Knopfdruck: Haupturkunde, Vollmachten, Belehrungsanhang.
+> **Hinweis:** Dieser Baustein wurde als nachgelagertes/optionales Feature eingestuft und in [ARCHITECTURE_ROADMAP_ADDITIONS.md](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp-copy/ARCHITECTURE_ROADMAP_ADDITIONS.md) archiviert. Der Fokus liegt primär auf rechtssicherer Prüfung, Konsistenz-Audit und asynchroner Großakten-Verarbeitung.
 
 ---
 
@@ -184,18 +168,29 @@ graph TD
 
 ---
 
-## 5. Asynchrone Hintergrundverarbeitung (BullMQ & Redis)
+## 5. Asynchrone Hintergrundverarbeitung (PostgreSQL Job-Queue)
 
 ### 5.1 Problemstellung im Kanzleialltag
 
-| Problem                      | Auswirkung ohne Queue (Synchron)                                                                                             | Lösung mit BullMQ & Redis                                                                                       |
-| :--------------------------- | :--------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| **HTTP-Timeouts**            | Proxies (Cloudflare/Nginx/Vercel) kappen Verbindungen nach 30–60 s. Ein 100-Seiten-Lauf bricht mit `504 Gateway Timeout` ab. | Der HTTP-Upload antwortet in **< 250 ms** mit `202 Accepted`. Die Verarbeitung läuft entkoppelt im Hintergrund. |
-| **Tab-Schließung / Abbruch** | Sachbearbeiter schließt das Browser-Fenster -> Lauf bricht ab, teure LLM-Tokens sind verbrannt.                              | Jobs persistieren in Redis; der Sachbearbeiter kann den Rechner wechseln oder herunterfahren.                   |
-| **Peak-Load & Rate Limits**  | Wenn morgens um 09:00 Uhr 8 Mitarbeiter gleichzeitig Akten hochladen, drohen `429 Rate Limits` oder RAM-Crash.               | **Concurrency Control:** Queue arbeitet z. B. exakt 5 Dokumente parallel ab; Überhang wartet geordnet.          |
-| **Transiente API-Fehler**    | KI-Server überlastet (`529 Overloaded`) -> Vorgang scheitert.                                                                | Automatischer **Exponential Backoff Retry** (z. B. nach 5s, 15s, 45s) ohne Nutzerintervention.                  |
+| Problem                      | Auswirkung ohne Queue (Synchron)                                                                                             | Lösung mit PostgreSQL-Queue (`dossier_jobs`)                                                                                        |
+| :--------------------------- | :--------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| **HTTP-Timeouts**            | Proxies (Cloudflare/Nginx/Vercel) kappen Verbindungen nach 30–60 s. Ein 100-Seiten-Lauf bricht mit `504 Gateway Timeout` ab. | Der HTTP-Upload antwortet in **< 250 ms** mit `202 Accepted` (`status: PENDING`). Die Verarbeitung läuft entkoppelt im Hintergrund. |
+| **Tab-Schließung / Abbruch** | Sachbearbeiter schließt das Browser-Fenster -> Lauf bricht ab, teure LLM-Tokens sind verbrannt.                              | Jobs persistieren transaktionssicher in Postgres; der Sachbearbeiter kann den Rechner wechseln oder herunterfahren.                 |
+| **Peak-Load & Rate Limits**  | Wenn morgens um 09:00 Uhr 8 Mitarbeiter gleichzeitig Akten hochladen, drohen `429 Rate Limits` oder RAM-Crash.               | **Concurrency Control:** Worker greift Jobs gezielt via `FOR UPDATE SKIP LOCKED`; Überhang wartet geordnet im Status `PENDING`.     |
+| **Transiente API-Fehler**    | KI-Server überlastet (`529 Overloaded`) -> Vorgang scheitert.                                                                | Automatischer **Retry-Zähler** im Job-Record mit markiertem `FAILED`-Status und präziser Fehlerursache.                             |
 
-### 5.2 Ziel-Architektur (Sequence Diagram)
+### 5.2 Technisches Design & Job-Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: Upload empfangen (< 250ms, 202 Accepted)
+    PENDING --> PROCESSING: Worker greift Job (Stufe 1 Extraction)
+    PROCESSING --> PROCESSING: Stage-Update (Stufe 2 RAG-Auditor)
+    PROCESSING --> COMPLETED: Transaktionssicher im Dossier persistiert
+    PROCESSING --> FAILED: LLM Timeout / Unleserlicher Scan
+    FAILED --> PENDING: Manueller oder automatischer Retry
+    COMPLETED --> [*]
+```
 
 ```mermaid
 sequenceDiagram
@@ -203,37 +198,32 @@ sequenceDiagram
     actor Notar as Sachbearbeiter / Notar
     participant UI as Cockpit Frontend
     participant API as Next.js API (Ingestion)
-    participant Storage as S3 / Supabase Storage
-    participant Queue as Redis (BullMQ Queue)
-    participant Worker as Background Worker (Node.js)
+    participant DB as Postgres (dossier_jobs & dossiers)
+    participant Worker as Background Worker (Node.js / Route Handler)
     participant LLM as Anthropic Claude API
-    participant DB as Postgres (Supabase)
 
     Notar->>UI: Upload Dokumentensatz (z.B. 120 Seiten PDF)
     UI->>API: POST /api/dossiers/upload
-    API->>Storage: Rohdateien sichern (Presigned Upload)
-    API->>Queue: Job einreihen: { dossierId, fileUrls, userId }
-    API-->>UI: 202 Accepted { jobId, status: "QUEUED" }
+    API->>DB: Job anlegen: status = 'PENDING', payload = { files, caseType }
+    API-->>UI: 202 Accepted { jobId, status: "PENDING" }
 
     Note over UI,API: Sofortige Entlastung des Webservers (< 250ms)
-    UI->>API: SSE-Stream öffnen (/api/dossiers/:id/progress)
+    UI->>API: SSE-Stream / Polling (/api/dossiers/jobs/:id/status)
 
     rect rgb(240, 248, 255)
-    Note over Queue,Worker: Asynchrone Worker-Pipeline
-    Worker->>Queue: Job abholen (Concurrency = 5)
-    Worker->>UI: Event: { stage: "PAGE_SPLITTING", progress: 15% }
+    Note over DB,Worker: Asynchrone Worker-Pipeline
+    Worker->>DB: Job abholen (SELECT ... FOR UPDATE SKIP LOCKED) -> status = 'PROCESSING'
+    Worker->>DB: Status: { stage: "PAGE_SPLITTING", progress: 15% }
     Worker->>Worker: Hybrides OCR / Vision-Chunking
-    Worker->>UI: Event: { stage: "EXTRACTION", progress: 45% }
+    Worker->>DB: Status: { stage: "EXTRACTION", progress: 45% }
     Worker->>LLM: Stufe 1: Extraction Agent
     LLM-->>Worker: Roh-Dossier
-    Worker->>UI: Event: { stage: "AUDITING", progress: 80% }
+    Worker->>DB: Status: { stage: "AUDITING", progress: 80% }
     Worker->>LLM: Stufe 2: Notary Auditor & Reconciler
     LLM-->>Worker: Finales Delta
     end
 
-    Worker->>DB: Normalisiertes Dossier & Audit-Trail persistieren
-    Worker->>Queue: Job als COMPLETED markieren
-    Worker->>UI: Event: { stage: "COMPLETED", dossierId }
+    Worker->>DB: Status = 'COMPLETED', Dossier & Audit-Trail persistieren
     UI->>Notar: Cockpit-Tabelle fertig gerendert anzeigen
 ```
 
@@ -304,11 +294,10 @@ graph TD
     subgraph PhaseA["Phase A: Fachlicher Kernnutzen & Basis-Qualität (Immediate Value)"]
         A1["Playwright E2E Basis-Schutz (Smoke Workflow)"]
         A2["RAG-Auditor Stufe 2 (Lokale Prüfregeln & Paragraphen)"]
-        A3["Word-Urkunden Engine (.docx Export auf Briefkopf)"]
     end
 
     subgraph PhaseB["Phase B: Asynchrone Skalierung & Kostensenkung (Scale & Speed)"]
-        B1["BullMQ & Redis Queue (Beseitigung HTTP-Timeouts)"]
+        B1["PostgreSQL Job-Queue (PENDING / PROCESSING / COMPLETED)"]
         B2["Hybrider Layout-Classifier (Text-PDF vs. Vision)"]
         B3["Server-Sent Events (SSE Live-Status im Cockpit)"]
         B4["Provider-Adapter (Bedrock / Azure / Local vLLM)"]
@@ -326,11 +315,11 @@ graph TD
 
 ### Übersicht der Phasen & Umsetzungsstatus
 
-| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                |
-| :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>• [ ] A.3 `.docx`-Export für Beurkundungstermine                                                                    |
-| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [ ] B.1 Asynchrone BullMQ Queue & Worker-Prozess<br>• [ ] B.2 Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter          |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] C.3 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.4 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                            |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                  |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [ ] B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)<br>• [ ] B.2 Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] C.3 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.4 XJustiz-Export für TriNotar / NoRA / RA-MICRO                             |
 
 ### Detaillierter Fortschrittstracker (Phase A)
 
@@ -349,6 +338,16 @@ graph TD
   - [x] Synthetische Urkunden-Fixtures in `e2e/fixtures/test-files.ts`
   - [x] Playwright-Konfiguration mit WebServer-Integration & Chromium Browser (`playwright.config.ts`, `npm run test:e2e`)
 - [ ] **A.3 Word-Urkunden-Engine (`.docx`):**
-  - [ ] Kaufvertrag-Template mit OpenXML / docxtemplater auf Kanzlei-Layout
-  - [ ] Datenbindung aus dem verifizierten Dossier (Parteien, Grundbuch, Kaufpreis, Belastungen)
-  - [ ] Download-Aktion im Cockpit
+  - _Ausgelagert ins Backlog / siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp-copy/ARCHITECTURE_ROADMAP_ADDITIONS.md)_
+
+### Detaillierter Fortschrittstracker (Phase B: Asynchrone Skalierung)
+
+- [ ] **B.1 PostgreSQL Job-Queue (`dossier_jobs`):**
+  - [x] Zod-Schema & TypeScript-Typen für Job-Lebenszyklus (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`) und Zwischen-Stages (`src/types/jobs.ts`, `src/types/jobs.test.ts`)
+  - [ ] DB-Migration / Schema für `dossier_jobs` (mit Payload, Status, Retry-Count, Stage, Error-Message)
+  - [ ] API-Adapter: `POST /api/analyze` erzeugt Job und antwortet sofort mit `202 Accepted` & `jobId`
+  - [ ] Worker-Verarbeitungslogik mit State-Updates (`PENDING` $\rightarrow$ `PROCESSING` $\rightarrow$ `COMPLETED`/`FAILED`)
+  - [ ] UI-Integration in `DocumentTable` & Cockpit (Anzeige von `PENDING`, `PROCESSING` inkl. Ladefortschritt und Retry bei `FAILED`)
+- [ ] **B.2 Hybrider Layout-Classifier (Text-PDF vs. Vision Pre-Filter)**
+- [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**
+- [ ] **B.4 Multi-LLM Provider-Adapter (AWS Bedrock / Azure / vLLM)**

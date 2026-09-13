@@ -507,7 +507,7 @@ export const UploadedFilePayloadSchema = z.object({
 export const AnalyzeRequestSchema = z
   .object({
     files: z.array(UploadedFilePayloadSchema).default([]),
-    caseType: CaseTypeSchema.default('IMMOBILIENKAUF'),
+    caseType: CaseTypeSchema.default(CASE_TYPES.IMMOBILIENKAUF),
     notes: z.string().default(''),
     documentId: z.string().optional(),
     existingDossier: DossierSchema.optional(),
