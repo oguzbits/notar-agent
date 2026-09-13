@@ -4,6 +4,7 @@ import {
   getDossierFieldMetrics,
   getDossierReadinessStage,
   READINESS_STAGES,
+  STATUS_LABELS_DE,
 } from '@/lib/dossier';
 import { Dossier, FieldStatus, FIELD_STATUS } from '@/types/dossier';
 import { CockpitTableHeader } from './subcomponents/CockpitTableHeader';
@@ -115,13 +116,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                   >
                     <span>{r.fieldTitle}</span>
                     <span className="text-xs font-normal text-amber-700 dark:text-amber-400">
-                      (
-                      {r.status === 'NEEDS_REVIEW'
-                        ? 'Prüfung nötig'
-                        : r.status === 'MISSING'
-                          ? 'Fehlt'
-                          : 'Veraltet'}
-                      )
+                      ({STATUS_LABELS_DE[r.status]})
                     </span>
                   </button>
                 ))}

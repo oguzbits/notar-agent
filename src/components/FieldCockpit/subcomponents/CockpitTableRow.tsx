@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { FieldObservation } from '@/lib/dossier/types';
+import { cn } from '@/lib/utils';
 import { Dossier, FieldStatus } from '@/types/dossier';
 import { FieldDetailContent } from '../FieldDetailContent';
 import { InlineNoteEditor } from './InlineNoteEditor';
@@ -66,9 +67,10 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
             onToggleExpand();
           }
         }}
-        className={`focus-visible:ring-notar-900 cursor-pointer align-top transition-colors select-text focus-visible:ring-2 focus-visible:outline-hidden focus-visible:ring-inset ${
+        className={cn(
+          'focus-visible:ring-notar-900 cursor-pointer align-top transition-colors select-text focus-visible:ring-2 focus-visible:outline-hidden focus-visible:ring-inset',
           isExpanded ? 'bg-muted/20' : 'hover:bg-muted/30'
-        }`}
+        )}
       >
         {/* Index */}
         <td className="w-9 min-w-9 px-1.5 py-2.5 text-center">

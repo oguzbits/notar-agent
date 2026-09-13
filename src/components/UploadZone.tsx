@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { type PreparedFile, validateFiles, prepareFiles } from '@/lib/files/file-preparer';
+import { cn } from '@/lib/utils';
 
 export type { PreparedFile };
 
@@ -100,13 +101,14 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
             fileInputRef.current?.click();
           }
         }}
-        className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+        className={cn(
+          'rounded-xl border-2 border-dashed p-8 text-center transition-colors',
           isAnalyzing || isPreparing
             ? 'border-border/60 bg-muted/10 cursor-not-allowed opacity-60'
             : dragOver
               ? 'border-notar-700 bg-notar-200/20 cursor-pointer'
               : 'border-border bg-muted/20 hover:border-notar-600 cursor-pointer'
-        }`}
+        )}
       >
         <input
           ref={fileInputRef}
@@ -122,9 +124,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         />
         <div className="flex flex-col items-center justify-center gap-2.5">
           <div
-            className={`rounded-xl p-3 shadow-xs ${
+            className={cn(
+              'rounded-xl p-3 shadow-xs',
               isAnalyzing ? 'bg-muted text-muted-foreground' : 'bg-notar-500 text-notar-950'
-            }`}
+            )}
           >
             <UploadCloud className="h-6 w-6" />
           </div>
@@ -132,11 +135,12 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
             <p className="text-foreground text-base font-semibold">
               Dateien per Drag &amp; Drop hier ablegen oder{' '}
               <span
-                className={`font-semibold underline decoration-2 underline-offset-2 ${
+                className={cn(
+                  'font-semibold underline decoration-2 underline-offset-2',
                   isAnalyzing
                     ? 'text-muted-foreground no-underline'
                     : 'text-foreground hover:text-notar-950'
-                }`}
+                )}
               >
                 durchsuchen
               </span>
@@ -260,9 +264,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                       onChange={(e) => updateNoteAt(idx, e.target.value)}
                       placeholder="Ergänzende Sachverhaltsangaben, aktuelle Absprachen oder interne Bearbeitungshinweise für die Zuarbeit..."
                       rows={3}
-                      className={`border-border bg-muted/30 focus:bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full resize-y rounded-lg border p-3 text-base focus:ring-1 focus:outline-none ${
-                        isAnalyzing ? 'cursor-not-allowed opacity-60' : ''
-                      }`}
+                      className={cn(
+                        'border-border bg-muted/30 focus:bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full resize-y rounded-lg border p-3 text-base focus:ring-1 focus:outline-none',
+                        isAnalyzing && 'cursor-not-allowed opacity-60'
+                      )}
                     />
                   </div>
                 ))}

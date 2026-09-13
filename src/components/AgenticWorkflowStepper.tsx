@@ -1,5 +1,6 @@
 import { FileSearch, Scale, CheckCircle2 } from 'lucide-react';
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface AgenticWorkflowStepperProps {
   isAnalyzing: boolean;
@@ -59,22 +60,24 @@ export const AgenticWorkflowStepper: React.FC<AgenticWorkflowStepperProps> = ({
           return (
             <div
               key={step.id}
-              className={`flex items-start gap-3 rounded-lg border p-3 transition-all ${
+              className={cn(
+                'flex items-start gap-3 rounded-lg border p-3 transition-all',
                 isActive
                   ? 'border-emerald-500/50 bg-emerald-50/40 dark:bg-emerald-950/20'
                   : isDone
                     ? 'border-border/60 bg-muted/30 opacity-75'
                     : 'border-border/40 bg-card/50 opacity-40'
-              }`}
+              )}
             >
               <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+                className={cn(
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
                   isActive
                     ? 'animate-pulse bg-emerald-600 text-white'
                     : isDone
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
                       : 'bg-muted text-muted-foreground'
-                }`}
+                )}
               >
                 {isDone ? <CheckCircle2 className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
               </div>

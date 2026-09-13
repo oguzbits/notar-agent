@@ -49,7 +49,7 @@ export function getUniformCaseTitle(caseType: string | undefined, id: string): s
 }
 
 export function computeDocumentStatus(dossier: Dossier): CaseStatus {
-  return isDossierEntwurfsreif(dossier) ? 'Entwurfsreif' : 'In Prüfung';
+  return isDossierEntwurfsreif(dossier) ? CASE_STATUS.DRAFT_READY : CASE_STATUS.IN_PROGRESS;
 }
 
 /**
@@ -286,9 +286,9 @@ export class SupabaseDossierRepository implements IDossierRepository {
           : doc.content;
         const computedStatus = normalizedContent
           ? computeDocumentStatus(normalizedContent)
-          : doc.status === 'Entwurfsreif'
-            ? 'Entwurfsreif'
-            : 'In Prüfung';
+          : doc.status === CASE_STATUS.DRAFT_READY
+            ? CASE_STATUS.DRAFT_READY
+            : CASE_STATUS.IN_PROGRESS;
         return {
           ...doc,
           title: uniformTitle,

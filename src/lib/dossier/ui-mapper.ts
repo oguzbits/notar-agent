@@ -1,4 +1,10 @@
-import { Dossier, FieldStatus, SourceLocation, getDossierFieldsRecord } from '@/types/dossier';
+import {
+  Dossier,
+  FieldStatus,
+  FIELD_STATUS,
+  SourceLocation,
+  getDossierFieldsRecord,
+} from '@/types/dossier';
 import {
   IMMOBILIEN_FIELD_METADATA,
   CASE_TYPE_METADATA_REGISTRY,
@@ -105,21 +111,16 @@ export function extractFieldObservations(dossier: Dossier): FieldObservation[] {
     const meta = metaMap[key] || { title: key, index: 99 };
     const note = (field.note || '').trim();
     const action = (field.actionRequired || '').trim();
-    const status: FieldStatus = field.status || 'MISSING';
+    const status: FieldStatus = field.status || FIELD_STATUS.MISSING;
 
     const hasExplicitNote = note.length > 0;
     const hasAction = action.length > 0;
-    const isProblematicStatus = status !== 'VERIFIED';
+    const isProblematicStatus = status !== FIELD_STATUS.VERIFIED;
 
     if (hasExplicitNote || hasAction || isProblematicStatus) {
       let resolvedNote = note;
       if (!resolvedNote) {
-        if (status === 'MISSING')
-          resolvedNote = 'Erforderliche Nachweise fehlen bisher im Aktenbestand.';
-        else if (status === 'OUTDATED')
-          resolvedNote = 'Die vorgelegten Unterlagen sind veraltet oder abgelaufen.';
-        else if (status === 'NEEDS_REVIEW')
-          resolvedNote = 'Prüfung bzw. sachliche Klärung erforderlich.';
+        resolvedNote = STATUS_DEFAULT_NOTES[status] || '';
       }
 
       const sources = parseSourceLocations(field.source);
@@ -162,7 +163,7 @@ export function extractAllFieldRows(dossier: Dossier): FieldObservation[] {
     const meta = metaMap[key] || { title: key, index: 99 };
     const note = (field.note || '').trim();
     const action = (field.actionRequired || '').trim();
-    const status: FieldStatus = field.status || 'MISSING';
+    const status: FieldStatus = field.status || FIELD_STATUS.MISSING;
 
     let resolvedNote = note;
     if (!resolvedNote) {

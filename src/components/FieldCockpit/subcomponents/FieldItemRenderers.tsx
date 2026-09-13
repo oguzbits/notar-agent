@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import React from 'react';
 import { formatDateGerman, formatOwnerEntry, cleanTextValue } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 import { ImmobilienFields } from '@/types/dossier';
 
 interface FieldItemProps {
@@ -36,7 +37,7 @@ export const VerkaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isComp
           </span>
         )}
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         {isCompact && (
           <p>
             <strong className="text-foreground">Rechtsform:</strong> {legalForm || '—'}
@@ -93,7 +94,7 @@ export const KaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isCompact
         <UserCheck className="text-muted-foreground h-4 w-4 shrink-0" />
         <span className="text-foreground font-semibold">{companyName || '—'}</span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         <p>
           <strong className="text-foreground">Rechtsform:</strong> {legalForm || '—'}
         </p>
@@ -140,7 +141,7 @@ export const GrundbuchItemContent: React.FC<FieldItemProps> = ({ fields, isCompa
             : '—'}
         </span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         <p>
           <strong className="text-foreground">Blattnummer:</strong>{' '}
           <span className="text-foreground font-medium">{data?.blatt || '—'}</span>
@@ -172,7 +173,7 @@ export const GrundstueckeItemContent: React.FC<FieldItemProps> = ({ fields, isCo
             : '—'}
         </span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         {data?.parcels?.map((p, idx) => (
           <div key={idx} className="bg-muted/50 border-border rounded-md border p-1.5">
             <span className="text-foreground font-medium">
@@ -205,7 +206,7 @@ export const KaufpreisItemContent: React.FC<FieldItemProps> = ({ fields, isCompa
           {data?.amountInFigures ? `${data.amountInFigures.toLocaleString('de-DE')} EUR` : '—'}
         </span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         <p className="text-foreground italic">
           In Worten: <strong>{data?.amountInWords || '—'}</strong>
         </p>
@@ -230,7 +231,7 @@ export const FinanzierungItemContent: React.FC<FieldItemProps> = ({ fields, isCo
         <Landmark className="text-muted-foreground h-4 w-4 shrink-0" />
         <span className="text-foreground font-semibold">{data?.lenderName || '—'}</span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         <p>
           <strong className="text-foreground">Grundschuldbetrag:</strong>{' '}
           {data?.mortgageAmount ? (
@@ -300,7 +301,7 @@ export const MietverhaeltnisseItemContent: React.FC<FieldItemProps> = ({ fields,
           {data?.yearlyNetRent ? `${data.yearlyNetRent.toLocaleString('de-DE')} EUR p.a.` : '—'}
         </span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         <p>
           <strong className="text-foreground">Vollvermietung:</strong>{' '}
           {data?.fullRentedStatus ? 'Laut Angabe ja' : '—'}
@@ -339,7 +340,7 @@ export const EnergieausweisItemContent: React.FC<FieldItemProps> = ({ fields, is
           {data?.efficiencyClass ? `(Klasse ${data.efficiencyClass})` : ''}
         </span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         <p>
           <strong className="text-foreground">Endenergiewert:</strong>{' '}
           {data?.energyValueKWh ? `${data.energyValueKWh} kWh/(m²*a)` : '—'}
@@ -371,7 +372,7 @@ export const UebergabeItemContent: React.FC<FieldItemProps> = ({ fields, isCompa
           Geplant zum: {formatDateGerman(data?.targetDate)}
         </span>
       </div>
-      <div className={`text-muted-foreground space-y-1 ${textSize}`}>
+      <div className={cn('text-muted-foreground space-y-1', textSize)}>
         <p>
           <strong className="text-foreground">Regelung:</strong> {data?.conditionDescription || '—'}
         </p>

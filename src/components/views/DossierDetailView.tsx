@@ -12,7 +12,8 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { UploadZone, PreparedFile } from '@/components/UploadZone';
 import { generatePruefberichtText } from '@/lib/dossier';
 import { formatDateTimeGerman } from '@/lib/formatters';
-import { DocumentRecord } from '@/lib/supabase/server';
+import { DocumentRecord, CASE_STATUS } from '@/lib/supabase/server';
+import { cn } from '@/lib/utils';
 import { Dossier, FieldStatus } from '@/types/dossier';
 
 interface DossierDetailViewProps {
@@ -72,7 +73,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
             {dossier.caseTitle}
           </h2>
           <div className="flex items-center gap-2">
-            {getStatusBadge(activeRecord?.status || 'In Prüfung')}
+            {getStatusBadge(activeRecord?.status || CASE_STATUS.IN_PROGRESS)}
             <span className="text-muted-foreground text-xs">
               Stand: {formatDateTimeGerman(activeRecord?.created_at || dossier.analysisTimestamp)}
               {' Uhr'}
@@ -84,11 +85,12 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           <button
             type="button"
             onClick={onToggleAppending}
-            className={`inline-flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-base font-semibold shadow-xs transition-colors ${
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-base font-semibold shadow-xs transition-colors',
               isAppending
                 ? 'border-notar-900 bg-notar-500 text-notar-950'
                 : 'border-border bg-background hover:bg-muted text-foreground'
-            }`}
+            )}
           >
             {isAppending ? (
               <>

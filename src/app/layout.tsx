@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { cn } from '@/lib/utils';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -14,9 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NotarPartner – Intelligentes Vorprüfungs- & Dossier-Cockpit',
-  description:
-    'Agentischer 2-Stufen-Workflow für die notarielle Prüfung und Strukturierung von Immobilienkaufverträgen.',
+  title: 'NotarPartner | KI-Assistenz für Notariate',
+  description: 'Automatisierte Extraktion und Prüfung von Notariatsakten nach GNotKG und BeurkG',
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="de"
-      className={`${geistSans.variable} ${geistMono.variable} light h-full antialiased`}
+      className={cn(geistSans.variable, geistMono.variable, 'light h-full antialiased')}
       style={{ colorScheme: 'light' }}
     >
       <body className="bg-background text-foreground flex min-h-full flex-col">

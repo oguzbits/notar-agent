@@ -91,6 +91,12 @@ const eslintConfig = defineConfig([
           message:
             "Forbidden double type assertion ('as unknown as ...' / 'as any as ...'). Use proper domain schemas, type guards, or test factories instead.",
         },
+        {
+          selector:
+            "JSXAttribute[name.name='className'] > JSXExpressionContainer > TemplateLiteral",
+          message:
+            "Raw template literals in className are forbidden. Use cn(...) from '@/lib/utils' to merge Tailwind classes deterministically.",
+        },
       ],
     },
   },

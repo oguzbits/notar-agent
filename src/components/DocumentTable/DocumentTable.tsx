@@ -4,6 +4,7 @@ import { FileText, Search, Plus, Trash2, ExternalLink, Loader2 } from 'lucide-re
 import React, { useState } from 'react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/lib/supabase/server';
+import { cn } from '@/lib/utils';
 
 interface DocumentTableProps {
   documents: DocumentRecord[];
@@ -108,11 +109,12 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               key={tab}
               type="button"
               onClick={() => setActiveFilter(tab)}
-              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all sm:flex-none sm:text-base ${
+              className={cn(
+                'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all sm:flex-none sm:text-base',
                 activeFilter === tab
                   ? 'bg-background text-foreground font-semibold shadow-xs'
                   : 'text-muted-foreground hover:text-foreground'
-              }`}
+              )}
             >
               {tab}
             </button>
