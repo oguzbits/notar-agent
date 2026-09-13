@@ -2,7 +2,6 @@
 
 import { X } from 'lucide-react';
 import React from 'react';
-import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { Button } from '@/components/ui/Button';
 import { UploadZone, PreparedFile } from '@/components/UploadZone';
 
@@ -11,9 +10,7 @@ interface NewVorgangUploadViewProps {
   onFilesChange: (files: PreparedFile[]) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
-  isAnalyzing: boolean;
-  activeStep: 1 | 2 | 3;
-  stepDetail: string;
+  isStarting?: boolean;
   errorMessage: string | null;
   onClearError: () => void;
   onSubmit: () => void;
@@ -24,9 +21,7 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
   onFilesChange,
   notes,
   onNotesChange,
-  isAnalyzing,
-  activeStep,
-  stepDetail,
+  isStarting = false,
   errorMessage,
   onClearError,
   onSubmit,
@@ -64,26 +59,19 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
         onFilesReady={onFilesChange}
         notes={notes}
         onNotesChange={onNotesChange}
-        isAnalyzing={isAnalyzing}
-      />
-
-      {/* Live-Workflow-Anzeige während der KI-Verarbeitung (Echtzeit-SSE-gesteuert) */}
-      <AgenticWorkflowStepper
-        isAnalyzing={isAnalyzing}
-        activeStep={activeStep}
-        stepDetail={stepDetail}
+        isAnalyzing={isStarting}
       />
 
       <div className="flex justify-end pt-2">
         <Button
           type="button"
           disabled={files.length === 0}
-          isLoading={isAnalyzing}
+          isLoading={isStarting}
           onClick={onSubmit}
           size="md"
           className="px-5 py-2.5 text-base"
         >
-          {isAnalyzing ? 'Unterlagen werden geprüft...' : 'Unterlagen prüfen'}
+          {isStarting ? 'Vorgang wird gestartet...' : 'Unterlagen prüfen'}
         </Button>
       </div>
     </section>

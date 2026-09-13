@@ -2,22 +2,26 @@
 
 import { Loader2, ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
+import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
 import { VorgangTableView } from '@/components/views/VorgangTableView';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
+import { useJobs } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
 import { DocumentRecord } from '@/lib/supabase/server';
 import { FieldStatus, updateDossierFieldStatus } from '@/types/dossier';
+import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
 export const VIEW_MODE = {
   TABLE: 'table',
   UPLOAD: 'upload',
   DETAIL: 'detail',
+  JOB: 'job',
 } as const;
 
 export type ViewMode = (typeof VIEW_MODE)[keyof typeof VIEW_MODE];
@@ -26,21 +30,52 @@ function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vorgangParam = searchParams.get('vorgang');
+  const jobParam = searchParams.get('job');
   const viewParam = searchParams.get('view');
 
   const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
+  const { jobs, activeJobs, failedJobs, retryJob, isRetrying, loadJobs } = useJobs();
   const {
     isAnalyzing,
     activeStep,
     stepDetail,
     errorMessage,
     setErrorMessage,
-    startAnalysis,
+    startAsyncAnalysis,
     startAppendAnalysis,
   } = useAnalysisWorkflow();
   const { state: session, actions } = useVorgangSession();
 
-  // Selektierten Datensatz auflösen
+  // Selektierten Job bzw. Datensatz auflösen
+  const activeJobFromQuery = jobParam ? jobs.find((j) => j.id === jobParam) : null;
+  const activeJob =
+    activeJobFromQuery ||
+    (jobParam
+      ? {
+          id: jobParam,
+          status: JOB_STATUS.PENDING,
+          stage: JOB_STAGES.QUEUED,
+          progressDetails: {
+            currentStep: 1,
+            totalSteps: 4,
+            currentActivity: 'In der Kanzlei-Warteschlange eingereiht...',
+          },
+          payload: {
+            caseType: session.caseType,
+            notes: session.notes,
+            files: session.files.map((f) => ({ name: f.name, size: f.size })),
+          },
+        }
+      : null);
+
+  // Wenn der aufgerufene Job fertiggestellt wurde, direkt auf das erzeugte Vorgangs-Dossier weiterleiten (im Effect, nicht während des Render-Durchlaufs)
+  const completedDossierId = activeJobFromQuery?.resultDossierId;
+  useEffect(() => {
+    if (completedDossierId && vorgangParam !== completedDossierId) {
+      router.replace(`/?vorgang=${encodeURIComponent(completedDossierId)}`);
+    }
+  }, [completedDossierId, vorgangParam, router]);
+
   const activeRecord = vorgangParam ? documents.find((d) => d.id === vorgangParam) : null;
   const rawDisplayedDossier = activeRecord?.content || session.dossier;
   const displayedDossier = rawDisplayedDossier ? normalizeDossier(rawDisplayedDossier) : null;
@@ -48,9 +83,11 @@ function HomeContent() {
   const effectiveView: ViewMode =
     vorgangParam && displayedDossier
       ? VIEW_MODE.DETAIL
-      : viewParam === VIEW_MODE.UPLOAD
-        ? VIEW_MODE.UPLOAD
-        : VIEW_MODE.TABLE;
+      : jobParam && activeJob
+        ? VIEW_MODE.JOB
+        : viewParam === VIEW_MODE.UPLOAD
+          ? VIEW_MODE.UPLOAD
+          : VIEW_MODE.TABLE;
 
   // Navigation Aktionen
   const handleSelectDocument = (doc: DocumentRecord) => {
@@ -59,6 +96,11 @@ function HomeContent() {
       actions.selectDocument(doc.id, doc.content, doc.title);
       router.push(`/?vorgang=${encodeURIComponent(doc.id)}`);
     }
+  };
+
+  const handleSelectJob = (job: DossierJob) => {
+    setErrorMessage(null);
+    router.push(`/?job=${encodeURIComponent(job.id)}`);
   };
 
   const handleCreateNew = () => {
@@ -73,26 +115,15 @@ function HomeContent() {
     router.push('/');
   };
 
-  // Analyse-Trigger
+  // Analyse-Trigger: Erzeugt sofort den Vorgang und navigiert unterbrechungsfrei in die Vorgangsansicht
   const handleStartAnalysis = async () => {
     try {
-      await startAnalysis(session.files, session.caseType, session.notes, (result) => {
-        actions.setDossier(result.dossier);
-        if (result.persistence) {
-          const newId = result.persistence.id || null;
-          actions.setActiveDocumentId(newId);
-          actions.setPersistenceInfo({
-            storageType: result.persistence.storageType,
-            caseNumber: result.persistence.caseNumber,
-          });
-          if (newId) {
-            router.push(`/?vorgang=${encodeURIComponent(newId)}`);
-          }
-        }
+      await startAsyncAnalysis(session.files, session.caseType, session.notes, (jobId) => {
+        loadJobs();
+        router.push(`/?job=${encodeURIComponent(jobId)}`);
       });
-      loadDocuments();
     } catch (err) {
-      console.error('Analyse-Start fehlgeschlagen:', err);
+      console.error('Analyse Start fehlgeschlagen:', err);
     }
   };
 
@@ -166,7 +197,7 @@ function HomeContent() {
 
       {/* Sub-Header Breadcrumb */}
       <div className="mx-auto flex h-9 w-full max-w-7xl items-end px-4 sm:px-6 lg:px-8">
-        {effectiveView !== 'table' && (
+        {effectiveView !== VIEW_MODE.TABLE && (
           <nav className="text-muted-foreground flex items-center gap-2 text-sm sm:text-base">
             <button
               type="button"
@@ -179,7 +210,9 @@ function HomeContent() {
             <span className="text-foreground font-semibold">
               {effectiveView === VIEW_MODE.UPLOAD
                 ? 'Neuer Urkundenvorgang'
-                : displayedDossier?.caseTitle || 'Urkunden-Zuarbeit'}
+                : effectiveView === VIEW_MODE.JOB
+                  ? activeJob?.payload.notes?.slice(0, 40) || 'Vorgang in Prüfung'
+                  : displayedDossier?.caseTitle || 'Urkunden-Zuarbeit'}
             </span>
           </nav>
         )}
@@ -192,10 +225,13 @@ function HomeContent() {
             documents={documents}
             isLoading={isLoadingDocs}
             onSelectDocument={handleSelectDocument}
+            onSelectJob={handleSelectJob}
             onCreateNew={handleCreateNew}
             onDeleteDocument={async (id) => {
               await deleteDocument(id);
             }}
+            activeJobs={[...activeJobs, ...failedJobs]}
+            onRetryJob={retryJob}
           />
         )}
 
@@ -206,16 +242,24 @@ function HomeContent() {
             onFilesChange={actions.setFiles}
             notes={session.notes}
             onNotesChange={actions.setNotes}
-            isAnalyzing={isAnalyzing}
-            activeStep={activeStep}
-            stepDetail={stepDetail}
+            isStarting={isAnalyzing}
             errorMessage={errorMessage}
             onClearError={() => setErrorMessage(null)}
             onSubmit={handleStartAnalysis}
           />
         )}
 
-        {/* Ansicht 3: Ergebnis-Ansicht (Dossier Cockpit) */}
+        {/* Ansicht 3: Laufender / fehlgeschlagener Hintergrund-Job (Live-Workflow & Stepper) */}
+        {effectiveView === VIEW_MODE.JOB && activeJob && (
+          <JobProgressView
+            job={activeJob}
+            onBackToTable={handleBackToTable}
+            onRetryJob={retryJob}
+            isRetrying={isRetrying}
+          />
+        )}
+
+        {/* Ansicht 4: Ergebnis-Ansicht (Dossier Cockpit) */}
         {effectiveView === VIEW_MODE.DETAIL && displayedDossier && (
           <DossierDetailView
             dossier={displayedDossier}

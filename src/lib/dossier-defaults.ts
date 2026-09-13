@@ -1,4 +1,11 @@
-import { ImmobilienFields, FIELD_STATUS, ENERGIEAUSWEIS_TYPES } from '@/types/dossier';
+import {
+  ImmobilienFields,
+  FIELD_STATUS,
+  ENERGIEAUSWEIS_TYPES,
+  CASE_TYPES,
+  OVERALL_STATUS,
+  ImmobilienDossier,
+} from '@/types/dossier';
 
 export function createEmptyImmobilienFields(): ImmobilienFields {
   return {
@@ -122,5 +129,18 @@ export function createEmptyImmobilienFields(): ImmobilienFields {
       source: { fileName: '', pageNumber: 0, snippet: '' },
       note: '',
     },
+  };
+}
+
+export function createEmptyImmobilienDossier(title = 'Neuer Immobilienkauf'): ImmobilienDossier {
+  return {
+    caseTitle: title,
+    caseType: CASE_TYPES.IMMOBILIENKAUF,
+    analysisTimestamp: new Date().toISOString(),
+    overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+    executiveSummary: 'Vorgang neu angelegt. Unterlagenprüfung läuft...',
+    fields: createEmptyImmobilienFields(),
+    detectedDocuments: [],
+    inquiries: [],
   };
 }

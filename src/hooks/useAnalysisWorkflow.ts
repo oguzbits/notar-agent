@@ -71,21 +71,21 @@ export function useAnalysisWorkflow() {
     }
   };
 
-  const startAnalysis = async (
+  const startAsyncAnalysis = async (
     files: PreparedFile[],
     caseType: CaseType,
     notes: string,
-    onComplete: (result: AnalysisStreamResult) => void
+    onEnqueued: (jobId: string) => void
   ) => {
     if (files.length === 0) return;
 
     setIsAnalyzing(true);
     setActiveStep(1);
-    setStepDetail('Dateien werden vorbereitet...');
+    setStepDetail('Hintergrund-Job wird angelegt...');
     setErrorMessage(null);
 
     try {
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('/api/analyze?async=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,14 +108,12 @@ export function useAnalysisWorkflow() {
         );
       }
 
-      await processAnalysisStream(response, (result) => {
-        onComplete(result);
-      });
-
-      setErrorMessage(null);
+      const data = await response.json();
+      onEnqueued(data.jobId);
     } catch (err: unknown) {
-      console.error('Analyse Error:', err);
-      const msg = err instanceof Error ? err.message : 'Netzwerk- oder Serverfehler.';
+      console.error('Async Ingestion Error:', err);
+      const msg =
+        err instanceof Error ? err.message : 'Netzwerk- oder Serverfehler beim Einreihen.';
       setErrorMessage(msg);
       throw err;
     } finally {
@@ -188,7 +186,7 @@ export function useAnalysisWorkflow() {
     stepDetail,
     errorMessage,
     setErrorMessage,
-    startAnalysis,
+    startAsyncAnalysis,
     startAppendAnalysis,
   };
 }
