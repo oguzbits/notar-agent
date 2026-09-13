@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fromError } from 'zod-validation-error';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
+import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
 import {
   getDossierRepository,
+  getJobRepository,
   getServerSupabase,
   getUniformCaseTitle,
 } from '@/lib/supabase/server';
@@ -30,6 +32,29 @@ export async function POST(req: NextRequest): Promise<Response> {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Kein KI-API-Key konfiguriert.';
       return NextResponse.json({ error: msg }, { status: 500 });
+    }
+
+    // Prüfen, ob eine asynchrone Verarbeitung angefordert wurde (?async=true oder Header x-async: true)
+    const isAsync =
+      req.nextUrl.searchParams.get('async') === 'true' ||
+      req.headers.get('x-async-mode') === 'true';
+
+    if (isAsync) {
+      const jobRepo = getJobRepository();
+      const job = await jobRepo.createJob(parseResult.data);
+
+      // Starte Hintergrund-Worker ohne auf Fertigstellung zu blockieren
+      void executeDossierJob(job.id);
+
+      return NextResponse.json(
+        {
+          message: 'Job erfolgreich eingereiht.',
+          jobId: job.id,
+          status: job.status,
+          pollUrl: `/api/jobs/${job.id}`,
+        },
+        { status: 202 }
+      );
     }
 
     return createSseStream(async (emitter) => {

@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { validateEnv } from '@/env';
+import {
+  IJobRepository,
+  InMemoryJobRepository,
+  SupabaseJobRepository,
+} from '@/lib/jobs/job-repository';
 import { Dossier } from '@/types/dossier';
 import {
   IDossierRepository,
@@ -14,19 +19,31 @@ import {
   CASE_STATUS,
 } from './repository';
 
-export type { DocumentRecord, CaseStatus, PersistenceResult, UpdateResult, IDossierRepository };
+export type {
+  DocumentRecord,
+  CaseStatus,
+  PersistenceResult,
+  UpdateResult,
+  IDossierRepository,
+  IJobRepository,
+};
 export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 
-// Globaler Singleton für In-Memory-Speicher mit fester Obergrenze (max. 25 Einträge FIFO) gegen Memory Leaks
+// Globaler Singleton für In-Memory-Speicher mit fester Obergrenze gegen Memory Leaks
 declare global {
   var __boundedInMemoryRepo: InMemoryDossierRepository | undefined;
+  var __boundedInMemoryJobRepo: InMemoryJobRepository | undefined;
 }
 
 if (!globalThis.__boundedInMemoryRepo) {
   globalThis.__boundedInMemoryRepo = new InMemoryDossierRepository(25);
 }
+if (!globalThis.__boundedInMemoryJobRepo) {
+  globalThis.__boundedInMemoryJobRepo = new InMemoryJobRepository(50);
+}
 
 const inMemoryRepo = globalThis.__boundedInMemoryRepo;
+const inMemoryJobRepo = globalThis.__boundedInMemoryJobRepo;
 
 export function getServerSupabase() {
   const env = validateEnv(process.env);
@@ -52,6 +69,17 @@ export function getDossierRepository(): IDossierRepository {
     return inMemoryRepo;
   }
   return new SupabaseDossierRepository(supabase, inMemoryRepo);
+}
+
+/**
+ * Factory zur Bereitstellung des konfigurierten Job-Repositories (Phase B.1 Queue).
+ */
+export function getJobRepository(): IJobRepository {
+  const supabase = getServerSupabase();
+  if (!supabase) {
+    return inMemoryJobRepo;
+  }
+  return new SupabaseJobRepository(supabase, inMemoryJobRepo);
 }
 
 // Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer

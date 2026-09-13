@@ -5,9 +5,11 @@ import {
   JobStatusSchema,
   JOB_STAGES,
   JobStageSchema,
+  PROGRESS_UNIT_LABELS,
   DossierJobSchema,
   CreateJobPayloadSchema,
   getJobCaseType,
+  computeJobProgressPercent,
 } from './jobs';
 
 describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
@@ -38,12 +40,19 @@ describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should parse full DossierJob record and retrieve caseType via getJobCaseType', () => {
+  it('should parse full DossierJob record and compute derived progress percent', () => {
     const jobRecord = {
       id: 'job-123456',
       status: JOB_STATUS.PROCESSING,
       stage: JOB_STAGES.EXTRACTION,
-      progressPercent: 45,
+      progressDetails: {
+        currentStep: 2,
+        totalSteps: 4,
+        processedUnits: 2,
+        totalUnits: 5,
+        unitLabel: PROGRESS_UNIT_LABELS.DOCUMENTS,
+        currentActivity: 'Extraktion läuft...',
+      },
       payload: {
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [{ name: 'Kaufvertrag.pdf', type: 'application/pdf', size: 1024 }],
@@ -58,14 +67,16 @@ describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(getJobCaseType(result.data)).toBe(CASE_TYPES.IMMOBILIENKAUF);
+      expect(result.data.progressDetails?.processedUnits).toBe(2);
+      // 2 von 5 Einheiten = 40 %
+      expect(computeJobProgressPercent(result.data)).toBe(40);
     }
   });
 
-  it('should validate failed job with error message', () => {
+  it('should validate failed job with error message and compute 0% progress', () => {
     const failedJob = {
       id: 'job-err-789',
       status: JOB_STATUS.FAILED,
-      progressPercent: 20,
       payload: {
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
@@ -82,6 +93,7 @@ describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
     if (result.success) {
       expect(result.data.errorMessage).toBe('PDF konnte nicht dekodiert werden.');
       expect(getJobCaseType(result.data)).toBe(CASE_TYPES.IMMOBILIENKAUF);
+      expect(computeJobProgressPercent(result.data)).toBe(0);
     }
   });
 });

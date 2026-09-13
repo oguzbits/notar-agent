@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { CASE_TYPES } from '@/types/dossier';
+import { JOB_STATUS } from '@/types/jobs';
 import { POST, PUT } from './route';
 
 describe('API Route: POST /api/analyze Guardrails & Validation', () => {
@@ -70,6 +71,34 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
       if (prevGemini) process.env.GEMINI_API_KEY = prevGemini;
       if (prevAnthropic) process.env.ANTHROPIC_API_KEY = prevAnthropic;
       if (prevGoogleGen) process.env.GOOGLE_GENERATIVE_AI_API_KEY = prevGoogleGen;
+    }
+  });
+
+  it('sollte Status 202 Accepted mit jobId liefern, wenn async=true übergeben wird', async () => {
+    const prevKey = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test-key';
+
+    try {
+      const req = new NextRequest('http://localhost:3000/api/analyze?async=true', {
+        method: 'POST',
+        body: JSON.stringify({
+          files: [{ name: 'test.pdf', type: 'application/pdf', size: 100, content: 'data' }],
+          caseType: CASE_TYPES.IMMOBILIENKAUF,
+        }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(202);
+      const data = await res.json();
+      expect(data.jobId).toBeDefined();
+      expect(data.status).toBe(JOB_STATUS.PENDING);
+      expect(data.pollUrl).toBe(`/api/jobs/${data.jobId}`);
+    } finally {
+      if (prevKey) {
+        process.env.GEMINI_API_KEY = prevKey;
+      } else {
+        delete process.env.GEMINI_API_KEY;
+      }
     }
   });
 });
