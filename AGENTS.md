@@ -23,7 +23,7 @@
 2. **TDD:** Write/update failing test, iterate: `npx vitest run <path-to-test>`
 3. **Surgical Implementation:** Minimal diff to pass test. No scope creep, no bulk reformatting.
 4. **Gates:**
-   - Codebase check: `npm run check` (`tsc`, `eslint`, `depcruise`, `audit:magic-strings`)
+   - Codebase check: `npm run check` (`tsc`, `eslint`, `depcruise`, `audit:magic-strings`, `audit:duplication`)
    - Unit tests: `npm test`
    - E2E tests: `npm run test:e2e`
    - Production build: `npm run build`

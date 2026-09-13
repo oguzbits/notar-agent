@@ -57,7 +57,7 @@ export function parseSourceLocations(source?: SourceLocation): SubSourceItem[] {
   // Teile aufspalten und bereinigen
   const rawParts = cleanedFileName
     .split(/\s*\+\s*|\s*;\s*|\s+und\s+|\s*,\s*/i)
-    .map((p) => cleanSourceFileName(p.trim()))
+    .map(cleanSourceFileName)
     .filter((p) => p.length > 0);
 
   // Duplikate entfernen (z.B. falls die gleiche Notiz mehrfach genannt wurde)
