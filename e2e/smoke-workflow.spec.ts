@@ -9,6 +9,7 @@ import {
   INQUIRY_PRIORITY,
   INQUIRY_RECIPIENT,
 } from '../src/types/dossier';
+import { JOB_STATUS, JOB_STAGES } from '../src/types/jobs';
 
 test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
   test('durchläuft vollständigen Sachbearbeiter-Workflow: Upload -> Stepper -> Cockpit -> Status-Override -> Export', async ({
@@ -179,11 +180,30 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
 
     let currentDossierState = structuredClone(mockDossier);
 
-    // Mock API Route für POST /api/analyze mit SSE-Stream und PUT
-    await page.route('*/**/api/analyze', async (route) => {
+    const mockJobId = 'job-e2e-smoke-456';
+
+    // Mock API Route für POST /api/analyze* (sowohl SSE als auch Async) und PUT
+    await page.route('*/**/api/analyze*', async (route) => {
       const method = route.request().method();
+      const url = new URL(route.request().url());
+      const isAsync = url.searchParams.get('async') === 'true';
+
       if (method === 'POST') {
         currentDossierState = structuredClone(mockDossier);
+        if (isAsync) {
+          await route.fulfill({
+            status: 202,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              message: 'Job erfolgreich eingereiht.',
+              jobId: mockJobId,
+              status: JOB_STATUS.PROCESSING,
+              pollUrl: `/api/jobs/${mockJobId}`,
+            }),
+          });
+          return;
+        }
+
         const sseBody = [
           `data: ${JSON.stringify({ type: 'step', step: 1, stepDetail: 'Dateien werden erfasst...' })}\n\n`,
           `data: ${JSON.stringify({ type: 'step', step: 2, stepDetail: 'Notarielle Vorprüfung aktiv...' })}\n\n`,
@@ -225,7 +245,30 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
       }
     });
 
-    // Mock API Route für GET /api/documents (Dokumentenliste)
+    // Mock API Route für GET /api/jobs* (liefert den fertigen Testjob)
+    await page.route('*/**/api/jobs*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          jobs: [
+            {
+              id: mockJobId,
+              status: JOB_STATUS.COMPLETED,
+              stage: JOB_STAGES.PERSISTING,
+              resultDossierId: mockDossierId,
+              payload: {
+                caseType: CASE_TYPES.IMMOBILIENKAUF,
+                notes: SYNTHETIC_BEARBEITER_NOTIZ,
+                files: [{ name: 'kaufvertrag_entwurf.txt', size: 1024 }],
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    // Mock API Route für GET /api/documents* (Dokumentenliste)
     await page.route('*/**/api/documents*', async (route) => {
       const url = new URL(route.request().url());
       const docId = url.searchParams.get('id');

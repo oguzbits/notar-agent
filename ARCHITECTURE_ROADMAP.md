@@ -315,11 +315,11 @@ graph TD
 
 ### Übersicht der Phasen & Umsetzungsstatus
 
-| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                            |
-| :---------- | :--------------------------------- | :----------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                  |
-| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [ ] B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)<br>• [ ] B.2 Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] C.3 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.4 XJustiz-Export für TriNotar / NoRA / RA-MICRO                             |
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                      |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [ ] B.2 Hybrides OCR/Vision-Pre-Filtering (60–75 % Ersparnis)<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] C.3 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.4 XJustiz-Export für TriNotar / NoRA / RA-MICRO                                 |
 
 ### Detaillierter Fortschrittstracker (Phase A)
 
@@ -342,12 +342,12 @@ graph TD
 
 ### Detaillierter Fortschrittstracker (Phase B: Asynchrone Skalierung)
 
-- [ ] **B.1 PostgreSQL Job-Queue (`dossier_jobs`):**
+- [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs`):**
   - [x] Zod-Schema & TypeScript-Typen für Job-Lebenszyklus (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`) und Zwischen-Stages (`src/types/jobs.ts`, `src/types/jobs.test.ts`)
-  - [ ] DB-Migration / Schema für `dossier_jobs` (mit Payload, Status, Retry-Count, Stage, Error-Message)
-  - [ ] API-Adapter: `POST /api/analyze` erzeugt Job und antwortet sofort mit `202 Accepted` & `jobId`
-  - [ ] Worker-Verarbeitungslogik mit State-Updates (`PENDING` $\rightarrow$ `PROCESSING` $\rightarrow$ `COMPLETED`/`FAILED`)
-  - [ ] UI-Integration in `DocumentTable` & Cockpit (Anzeige von `PENDING`, `PROCESSING` inkl. Ladefortschritt und Retry bei `FAILED`)
+  - [x] Bounded In-Memory- & Supabase-Job-Repository mit Concurrency-Claim & TTL-Pruning (`job-repository.ts`, `job-repository.test.ts`)
+  - [x] API-Adapter: `POST /api/analyze` unterstützt asynchrone Annahme via `?async=true` (`202 Accepted` & `jobId`), `GET /api/jobs/[id]`, `GET /api/jobs` & Retry via `POST /api/jobs` (`jobs-route.test.ts`, `jobs-list-route.test.ts`)
+  - [x] Worker-Verarbeitungslogik mit Concurrency-Limiter (max. 2 parallele LLM-Jobs gegen 429) & State-Updates (`job-worker.ts`, `job-worker.test.ts`)
+  - [x] UI-Integration in `DocumentTable` & Cockpit (Live-Kachel für Hintergrundprüfungen, dynamischer Progress-Balken, A11y, 1-Click Retry bei Fehlern)
 - [ ] **B.2 Hybrider Layout-Classifier (Text-PDF vs. Vision Pre-Filter)**
 - [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**
 - [ ] **B.4 Multi-LLM Provider-Adapter (AWS Bedrock / Azure / vLLM)**

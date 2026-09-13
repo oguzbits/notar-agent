@@ -17,61 +17,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Parse all `export const <NAME> = { ... } as const;` blocks dynamically from the canonical files
-const CANONICAL_SOURCE_FILES = [
-  'src/types/dossier.ts',
-  'src/lib/supabase/repository.ts',
-  'src/lib/knowledge/rules/rules-registry.ts',
-  'src/lib/dossier/readiness.ts',
-  'src/components/ui/StatusBadge.tsx',
-];
-
-// Files exempt from check (defining the Single Source of Truth or containing LLM prompt instructions)
-const EXEMPT_FILES = [
-  ...CANONICAL_SOURCE_FILES,
-  'src/lib/ai/prompts.ts',
-  'scripts/audit-magic-strings.mjs',
-];
-
+// Scan directories and file extensions
 const SCAN_DIRS = ['src', 'e2e'];
 const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
 
-function extractEnumValuesFromCode(sourceCode) {
-  const enumValues = new Set();
-
-  // Match pattern: export const SOMETHING = { ... } as const;
-  const dictRegex = /export\s+const\s+[A-Z0-9_]+\s*=\s*\{([\s\S]*?)\}\s*as\s+const;/g;
-  let match;
-
-  while ((match = dictRegex.exec(sourceCode)) !== null) {
-    const blockContent = match[1];
-    // Match each key-value pair: KEY: 'VALUE' or KEY: "VALUE"
-    const pairRegex = /:\s*(['"`])([^'"`]+)\1/g;
-    let pairMatch;
-    while ((pairMatch = pairRegex.exec(blockContent)) !== null) {
-      const val = pairMatch[2].trim();
-      if (val.length > 0) {
-        enumValues.add(val);
-      }
-    }
-  }
-
-  return Array.from(enumValues);
-}
-
-// 1. Dynamically gather all canonical enum literals
-const allCanonicalLiterals = new Set();
-for (const relPath of CANONICAL_SOURCE_FILES) {
-  if (fs.existsSync(relPath)) {
-    const code = fs.readFileSync(relPath, 'utf-8');
-    const literals = extractEnumValuesFromCode(code);
-    for (const lit of literals) {
-      allCanonicalLiterals.add(lit);
-    }
-  }
-}
-
-const ENUM_LITERALS = Array.from(allCanonicalLiterals);
+// Explicit exemptions (e.g. system prompts or audit tools themselves)
+const BASE_EXEMPT_FILES = [
+  'src/lib/ai/prompts.ts',
+  'scripts/audit-magic-strings.mjs',
+];
 
 function collectFiles(dir) {
   const results = [];
@@ -86,6 +40,58 @@ function collectFiles(dir) {
   }
   return results;
 }
+
+function extractEnumValuesFromCode(sourceCode) {
+  const enumValues = new Set();
+
+  // Match pattern: export const UPPER_SNAKE_CASE = { ... } as const;
+  const dictRegex = /export\s+const\s+([A-Z0-9_]+)\s*=\s*\{([\s\S]*?)\}\s*as\s+const;/g;
+  let match;
+
+  while ((match = dictRegex.exec(sourceCode)) !== null) {
+    const blockContent = match[2];
+    // Match each key-value pair: KEY: 'VALUE' or KEY: "VALUE"
+    const pairRegex = /:\s*(['"`])([^'"`]+)\1/g;
+    let pairMatch;
+    while ((pairMatch = pairRegex.exec(blockContent)) !== null) {
+      const val = pairMatch[2].trim();
+      if (val.length > 0) {
+        enumValues.add(val);
+      }
+    }
+  }
+
+  return Array.from(enumValues);
+}
+
+// 1. DYNAMIC AUTO-DISCOVERY: Scan all files to find any that declare canonical `as const` dictionaries
+const discoveredCanonicalFiles = new Set();
+const allCanonicalLiterals = new Set();
+
+const allSourceFiles = [];
+for (const dir of SCAN_DIRS) {
+  if (fs.existsSync(dir)) {
+    allSourceFiles.push(...collectFiles(dir));
+  }
+}
+
+for (const file of allSourceFiles) {
+  const code = fs.readFileSync(file, 'utf-8');
+  const literals = extractEnumValuesFromCode(code);
+  if (literals.length > 0) {
+    discoveredCanonicalFiles.add(file.replace(/\\/g, '/'));
+    for (const lit of literals) {
+      allCanonicalLiterals.add(lit);
+    }
+  }
+}
+
+const ENUM_LITERALS = Array.from(allCanonicalLiterals);
+const EXEMPT_FILES = [
+  ...Array.from(discoveredCanonicalFiles),
+  ...BASE_EXEMPT_FILES,
+];
+
 
 const violations = [];
 

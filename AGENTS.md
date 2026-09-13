@@ -23,10 +23,20 @@
 2. **TDD:** Write/update failing test, iterate: `npx vitest run <path-to-test>`
 3. **Surgical Implementation:** Minimal diff to pass test. No scope creep, no bulk reformatting.
 4. **Gates:**
-   - Type check: `npx tsc --noEmit`
+   - Codebase check: `npm run check` (`tsc`, `eslint`, `depcruise`, `audit:magic-strings`)
    - Unit tests: `npm test`
    - E2E tests: `npm run test:e2e`
    - Production build: `npm run build`
+
+## 4. Proactive Opportunity Scan (Mandatory before handoff)
+
+Before declaring any task complete, the agent actively conducts a brief architecture and craftsmanship scan:
+
+- **State Hygiene & Single Source of Truth:** Is there redundant state, duplicate truth across modules, risk of state drift, or uncleaned magic values?
+- **Resilience & Concurrency:** Are race conditions, unbounded arrays, or API rate limits guarded against?
+- **Notary UX & Value-Add:** What are 2–3 concrete, high-impact optimizations that provide tangible workflow value for the notary practice?
+
+## 5. Discipline & Guardrails
 
 - **Guardrails:** No new packages without permission. No `@ts-ignore`, no `eslint-disable`. Fix root causes.
 - **Circuit Breaker:** Stop after 3 failed attempts, report trace, await instructions.
