@@ -152,7 +152,7 @@ export async function prepareFiles(files: File[]): Promise<PreparedFile[]> {
         readFileAsArrayBuffer(file),
       ]);
       const uint8 = new Uint8Array(arrayBuffer);
-      const classification = classifyPdfStream(uint8);
+      const classification = await classifyPdfStream(uint8);
       const extractedText = classification.hasTextLayer
         ? await extractPdfUnicodeText(uint8)
         : undefined;

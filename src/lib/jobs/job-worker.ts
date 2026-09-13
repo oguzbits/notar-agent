@@ -1,3 +1,4 @@
+import pLimit from 'p-limit';
 import { PipelineParams } from '@/lib/ai/pipeline';
 import { IJobRepository } from '@/lib/jobs/job-repository';
 import { IDossierRepository } from '@/lib/supabase/repository';
@@ -11,35 +12,13 @@ export interface WorkerDependencies {
   pipelineFn?: (params: PipelineParams) => Promise<Dossier>;
 }
 
-// Globaler Concurrency-Limiter gegen Provider-Rate-Limits (429) bei Lastspitzen
+// Globaler Concurrency-Limiter via p-limit gegen Provider-Rate-Limits (429) bei Lastspitzen
 const MAX_CONCURRENT_JOBS = 2;
-let activeJobCount = 0;
-const waitingQueue: Array<() => void> = [];
-
-function acquireJobSlot(): Promise<void> {
-  if (activeJobCount < MAX_CONCURRENT_JOBS) {
-    activeJobCount++;
-    return Promise.resolve();
-  }
-  return new Promise<void>((resolve) => {
-    waitingQueue.push(() => {
-      activeJobCount++;
-      resolve();
-    });
-  });
-}
-
-function releaseJobSlot(): void {
-  activeJobCount--;
-  const next = waitingQueue.shift();
-  if (next) {
-    next();
-  }
-}
+const limit = pLimit(MAX_CONCURRENT_JOBS);
 
 /**
  * Führt einen asynchronen Dossier-Job aus:
- * 1. Concurrency-Slot akquirieren (Drosselung gegen 429 Rate-Limits)
+ * 1. Concurrency-Slot via p-limit akquirieren (Drosselung gegen 429 Rate-Limits)
  * 2. Status auf PROCESSING + QUEUED/PAGE_SPLITTING setzen
  * 3. KI-Pipeline (Extraction + RAG Auditor) aufrufen und Teilschritte melden
  * 4. Dossier im Repository persistieren
@@ -52,12 +31,7 @@ export async function executeDossierJob(
   const jobRepo = deps.jobRepo ?? getJobRepository();
   const dossierRepo = deps.dossierRepo ?? getDossierRepository();
 
-  await acquireJobSlot();
-  try {
-    return await runJobExecution(jobId, jobRepo, dossierRepo, deps.pipelineFn);
-  } finally {
-    releaseJobSlot();
-  }
+  return limit(() => runJobExecution(jobId, jobRepo, dossierRepo, deps.pipelineFn));
 }
 
 async function runJobExecution(

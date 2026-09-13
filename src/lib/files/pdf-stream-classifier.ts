@@ -1,3 +1,5 @@
+import { extractText, extractImages } from 'unpdf';
+
 export const PDF_STREAM_TYPES = {
   DIGITAL_BORN_TEXT: 'DIGITAL_BORN_TEXT',
   SCANNED_IMAGE: 'SCANNED_IMAGE',
@@ -16,64 +18,67 @@ export interface PdfStreamClassification {
 const MIN_TEXT_CHARS_THRESHOLD = 30;
 
 /**
- * Introspektiert PDF-Byte-Puffer deterministisch nach Text-Operatoren und Raster-Images.
+ * Introspektiert PDF-Dateien via unpdf (Mozilla PDF.js) nach Textlayern und Rasterbildern.
  */
-export function classifyPdfStream(buffer: Buffer | Uint8Array): PdfStreamClassification {
-  const content = buffer.toString('binary');
+export async function classifyPdfStream(
+  buffer: Buffer | Uint8Array
+): Promise<PdfStreamClassification> {
+  // 1. Zuerst binäre Metadaten prüfen, bevor unpdf den Puffer ggf. transferiert/detached
+  const textDecoder = new TextDecoder('latin1');
+  const binaryStr = textDecoder.decode(buffer);
+  const hasImageStreamMarker =
+    /\/Subtype\s*\/Image|\/Type\s*\/XObject[^\n\r]*\/Subtype\s*\/Image|\/Filter\s*(\/DCTDecode|\/JPXDecode|\/JBIG2Decode)/i.test(
+      binaryStr
+    );
 
-  // Prüfen auf PDF-Header
-  if (!content.includes('%PDF-')) {
+  try {
+    const uint8 = new Uint8Array(buffer.byteLength);
+    uint8.set(buffer);
+
+    const textResult = await extractText(uint8);
+    const textJoined = Array.isArray(textResult.text)
+      ? textResult.text.join('\n').trim()
+      : String(textResult.text || '').trim();
+
+    const characterCount = textJoined.length;
+    const hasTextLayer = characterCount >= MIN_TEXT_CHARS_THRESHOLD;
+
+    let hasRasterImages = hasImageStreamMarker;
+    if (!hasRasterImages) {
+      try {
+        const pageImages = await extractImages(new Uint8Array(buffer), 1);
+        hasRasterImages = pageImages.length > 0;
+      } catch (imgErr: unknown) {
+        // Optionale Bildextraktion nicht kritisch, da binärer Stream-Marker bereits als Primärsignal dient
+        console.warn('[pdf-stream-classifier] extractImages Hinweis:', imgErr);
+      }
+    }
+
+    let streamType: PdfStreamType = PDF_STREAM_TYPES.SCANNED_IMAGE;
+    if (hasTextLayer && !hasRasterImages) {
+      streamType = PDF_STREAM_TYPES.DIGITAL_BORN_TEXT;
+    } else if (hasTextLayer && hasRasterImages) {
+      streamType = PDF_STREAM_TYPES.HYBRID_COMPOSITE;
+    } else {
+      streamType = PDF_STREAM_TYPES.SCANNED_IMAGE;
+    }
+
+    return {
+      streamType,
+      hasTextLayer,
+      hasRasterImages,
+      characterCount,
+    };
+  } catch (err: unknown) {
+    console.warn(
+      '[pdf-stream-classifier] unpdf-Klassifikation fehlgeschlagen, Fallback auf SCANNED_IMAGE:',
+      err
+    );
     return {
       streamType: PDF_STREAM_TYPES.SCANNED_IMAGE,
       hasTextLayer: false,
-      hasRasterImages: false,
+      hasRasterImages: true,
       characterCount: 0,
     };
   }
-
-  // 1. Erkennung von Rasterbildern (/Subtype /Image oder Filter /DCTDecode, /JPXDecode, /JBIG2Decode)
-  const isImageSubtype = /\/Subtype\s*\/Image/i.test(content);
-  const isRasterFilter = /\/Filter\s*(\/DCTDecode|\/JPXDecode|\/JBIG2Decode)/i.test(content);
-  const hasRasterImages = isImageSubtype || isRasterFilter;
-
-  // 2. Erkennung von Text-Streams (BT ... ET mit Textanzeige-Operatoren Tj, TJ, ', ")
-  const textBlockRegex = /BT[\s\S]*?ET/g;
-  const textBlocks = content.match(textBlockRegex) || [];
-
-  let approxCharCount = 0;
-  for (const block of textBlocks) {
-    // Extrahiere String-Literale in runden Klammern: (Text) Tj oder [(Text)] TJ
-    const stringMatches = block.match(/\((.*?)\)/g);
-    if (stringMatches) {
-      for (const m of stringMatches) {
-        approxCharCount += Math.max(0, m.length - 2);
-      }
-    }
-    // Hexadezimal-Strings: <48656c6c6f>
-    const hexMatches = block.match(/<([0-9a-fA-F]+)>/g);
-    if (hexMatches) {
-      for (const h of hexMatches) {
-        approxCharCount += Math.floor((h.length - 2) / 2);
-      }
-    }
-  }
-
-  const hasTextLayer = approxCharCount >= MIN_TEXT_CHARS_THRESHOLD;
-
-  let streamType: PdfStreamType = PDF_STREAM_TYPES.SCANNED_IMAGE;
-
-  if (hasTextLayer && !hasRasterImages) {
-    streamType = PDF_STREAM_TYPES.DIGITAL_BORN_TEXT;
-  } else if (hasTextLayer && hasRasterImages) {
-    streamType = PDF_STREAM_TYPES.HYBRID_COMPOSITE;
-  } else {
-    streamType = PDF_STREAM_TYPES.SCANNED_IMAGE;
-  }
-
-  return {
-    streamType,
-    hasTextLayer,
-    hasRasterImages,
-    characterCount: approxCharCount,
-  };
 }
