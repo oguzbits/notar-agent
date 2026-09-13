@@ -18,6 +18,14 @@ export function getAiConfiguration(): AiConfiguration {
   const geminiKey = env.GEMINI_API_KEY || env.GOOGLE_GENERATIVE_AI_API_KEY;
   const anthropicKey = env.ANTHROPIC_API_KEY;
 
+  if (env.MOCK_AI) {
+    return {
+      model: {} as LanguageModel,
+      extractionInstructions: { role: 'system', content: '' },
+      auditorInstructions: { role: 'system', content: '' },
+    };
+  }
+
   if (!geminiKey && !anthropicKey) {
     throw new Error(
       'Kein KI-API-Key konfiguriert. Bitte hinterlege GEMINI_API_KEY oder ANTHROPIC_API_KEY in deiner .env.local.'

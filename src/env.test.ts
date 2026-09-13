@@ -23,6 +23,7 @@ describe('env validation', () => {
 
     const env = validateEnv(process.env);
     expect(env.AI_MODEL).toBe('claude-haiku-4-5');
+    expect(env.MOCK_AI).toBe(false);
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     expect(env.GEMINI_API_KEY).toBeUndefined();
     expect(env.NEXT_PUBLIC_SUPABASE_URL).toBeUndefined();
@@ -32,6 +33,7 @@ describe('env validation', () => {
     process.env.ANTHROPIC_API_KEY = 'sk-ant-test-123';
     process.env.AI_MODEL = 'claude-sonnet-5';
     process.env.AI_PROVIDER = 'anthropic';
+    process.env.MOCK_AI = 'true';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb-anon-key';
 
@@ -39,6 +41,7 @@ describe('env validation', () => {
     expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-123');
     expect(env.AI_MODEL).toBe('claude-sonnet-5');
     expect(env.AI_PROVIDER).toBe('anthropic');
+    expect(env.MOCK_AI).toBe(true);
     expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe('https://example.supabase.co');
     expect(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).toBe('sb-anon-key');
   });

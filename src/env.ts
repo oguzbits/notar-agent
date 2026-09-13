@@ -15,6 +15,10 @@ export const ServerEnvSchema = z.object({
   GOOGLE_GENERATIVE_AI_API_KEY: optionalTrimmedString,
   AI_MODEL: optionalTrimmedString.default('claude-haiku-4-5'),
   AI_PROVIDER: optionalTrimmedString,
+  MOCK_AI: z.preprocess(
+    (val) => val === 'true' || val === true || val === '1',
+    z.boolean().default(false)
+  ),
 
   // Supabase Credentials (optional für In-Memory-Modus)
   SUPABASE_URL: optionalTrimmedString,
