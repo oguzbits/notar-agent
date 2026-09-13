@@ -131,7 +131,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               type="button"
               onClick={() => setActiveFilter(tab)}
               className={cn(
-                'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all sm:flex-none sm:text-base',
+                'flex-1 rounded-md px-3.5 py-1.5 text-sm font-medium transition-all sm:flex-none sm:text-base',
                 activeFilter === tab
                   ? 'bg-background text-foreground font-semibold shadow-xs'
                   : 'text-muted-foreground hover:text-foreground'
@@ -144,13 +144,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
         {/* Suchfeld */}
         <div className="relative w-full sm:w-80 md:w-96">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4.5 w-4.5 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Vorgang oder Aktenzeichen suchen..."
-            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full rounded-lg border py-2 pr-3 pl-9 text-sm focus:ring-1 focus:outline-none sm:text-base"
+            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full rounded-lg border py-2 pr-3.5 pl-10 text-sm focus:ring-1 focus:outline-none sm:text-base"
           />
         </div>
       </div>
@@ -233,14 +233,14 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 ? job.payload.notes.slice(0, 50)
                                 : 'Neuer Urkundenvorgang'}
                             </span>
-                            <span className="text-muted-foreground text-xs">{activity}</span>
+                            <span className="text-muted-foreground text-sm">{activity}</span>
                           </div>
                         </div>
                       </td>
 
                       {/* Typ */}
                       <td className="text-muted-foreground px-4 py-3.5">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 sm:text-sm">
                           {job.payload.caseType}
                         </span>
                       </td>
@@ -251,7 +251,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       </td>
 
                       {/* Datum */}
-                      <td className="text-muted-foreground px-5 py-3.5 font-mono text-xs">
+                      <td className="text-muted-foreground px-5 py-3.5 font-mono text-sm">
                         {formatDate(job.createdAt)}
                       </td>
 
@@ -266,34 +266,34 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               setRetryingJobId(job.id);
                               void onRetryJob(job.id).finally(() => setRetryingJobId(null));
                             }}
-                            className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
+                            className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
                           >
                             {isRetrying ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <RotateCw className="h-3 w-3" />
+                              <RotateCw className="h-4 w-4" />
                             )}
                             <span>Wiederholen</span>
                           </button>
                         ) : (
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
                               disabled
-                              className="text-muted-foreground/40 flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md"
+                              className="text-muted-foreground/40 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg"
                               title="Vorgang wird noch analysiert"
                               aria-label="Vorgang wird analysiert"
                             >
-                              <ExternalLink className="h-3.5 w-3.5" />
+                              <ExternalLink className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
                               disabled
-                              className="text-muted-foreground/40 flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-md"
+                              className="text-muted-foreground/40 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg"
                               title="Vorgang wird noch analysiert"
                               aria-label="Vorgang wird analysiert"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         )}
@@ -313,12 +313,12 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       {/* Titel & Icon */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="border-border bg-muted/60 text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border">
-                            <FileText className="text-notar-800 h-4 w-4" />
+                          <div className="border-border bg-muted/60 text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
+                            <FileText className="text-notar-800 h-4.5 w-4.5" />
                           </div>
                           <div>
                             <span className="text-foreground block font-semibold">{doc.title}</span>
-                            <span className="text-muted-foreground font-mono text-xs">
+                            <span className="text-muted-foreground font-mono text-sm">
                               ID: {doc.id}
                             </span>
                           </div>
@@ -327,7 +327,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                       {/* Typ */}
                       <td className="text-muted-foreground px-4 py-3.5">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 sm:text-sm">
                           {doc.content?.caseType
                             ? doc.content.caseType.charAt(0) +
                               doc.content.caseType.slice(1).toLowerCase().replace(/_/g, ' ')
@@ -341,34 +341,34 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       </td>
 
                       {/* Datum */}
-                      <td className="text-muted-foreground px-5 py-3.5 font-mono">
+                      <td className="text-muted-foreground px-5 py-3.5 font-mono text-sm">
                         {formatDate(doc.created_at)}
                       </td>
 
                       {/* Aktionen */}
                       <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => onSelectDocument(doc)}
-                            className="hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-notar-900 flex h-7 w-7 items-center justify-center rounded-md transition-colors focus-visible:ring-2"
+                            className="hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-notar-900 flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2"
                             title="Vorgang öffnen"
                             aria-label={`Vorgang ${doc.title} öffnen`}
                           >
-                            <ExternalLink className="h-3.5 w-3.5" />
+                            <ExternalLink className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
                             disabled={deletingId === doc.id}
                             onClick={(e) => handleDelete(doc.id, e)}
-                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive flex h-7 w-7 items-center justify-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-red-500"
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-red-500"
                             title="Vorgang löschen"
                             aria-label={`Vorgang ${doc.title} löschen`}
                           >
                             {deletingId === doc.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             )}
                           </button>
                         </div>

@@ -69,8 +69,8 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
 
           {metrics.isAllVerified && openInquiriesCount > 0 && (
             <>
-              <span className="text-muted-foreground text-xs">•</span>
-              <span className="text-muted-foreground text-xs">
+              <span className="text-muted-foreground text-sm">•</span>
+              <span className="text-muted-foreground text-sm">
                 Notarielle Vollzugshinweise &amp; Begleitpunkte unten beachten
               </span>
             </>
@@ -78,11 +78,11 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
         </div>
 
         {missingOrReviewRows.length > 0 ? (
-          <span className="text-muted-foreground text-xs italic">
+          <span className="text-muted-foreground text-sm italic">
             Entwurfsreife erfordert: Alle 10 Pflichtfelder mit Status „Belegt“
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">
             <span>✓ Entwurfsreife erreicht</span>
           </span>
         )}
@@ -92,7 +92,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
       {readiness.stage !== READINESS_STAGES.READY && missingOrReviewRows.length > 0 && (
         <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/20">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-900 dark:bg-amber-800 dark:text-amber-100">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-200 text-sm font-bold text-amber-900 dark:bg-amber-800 dark:text-amber-100">
               !
             </span>
             <div className="space-y-2">
@@ -102,7 +102,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                   „Entwurfsreif“
                 </strong>{' '}
                 wird, müssen folgende {missingOrReviewRows.length} Felder geklärt und auf{' '}
-                <span className="border-notar-400 bg-notar-200 text-notar-950 inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold">
+                <span className="border-notar-400 bg-notar-200 text-notar-950 inline-flex items-center rounded border px-2 py-0.5 text-sm font-semibold">
                   Belegt
                 </span>{' '}
                 gesetzt werden:

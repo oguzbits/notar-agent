@@ -75,8 +75,8 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
         )}
       >
         {/* Index */}
-        <td className="w-9 min-w-9 px-1.5 py-2.5 text-center">
-          <span className="bg-muted text-muted-foreground text-3xs inline-flex h-5 w-5 items-center justify-center rounded font-bold">
+        <td className="w-10 min-w-10 px-2 py-2.5 text-center">
+          <span className="bg-muted text-muted-foreground inline-flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold">
             {row.fieldIndex}
           </span>
         </td>
@@ -126,10 +126,10 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
                     e.stopPropagation();
                     setIsEditingNote(true);
                   }}
-                  className="text-muted-foreground hover:text-foreground cursor-pointer p-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="text-muted-foreground hover:text-foreground cursor-pointer rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100"
                   title="Befund/Hinweis bearbeiten"
                 >
-                  <Pencil className="h-3 w-3 text-slate-500" />
+                  <Pencil className="h-3.5 w-3.5 text-slate-500" />
                 </button>
               )}
             </div>
@@ -151,7 +151,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
                   key={sIdx}
                   className="flex w-full min-w-0 items-start gap-1.5 rounded bg-slate-100 p-2 text-sm leading-snug text-slate-800 dark:bg-slate-800/80 dark:text-slate-200"
                 >
-                  <FileText className="text-notar-900 mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <FileText className="text-notar-900 mt-0.5 h-4 w-4 shrink-0" />
                   <span className="min-w-0 flex-1 font-medium [overflow-wrap:anywhere] break-words">
                     {src.fileName}
                     {src.pageNumber && src.pageNumber > 0 ? ` (S. ${src.pageNumber})` : ''}
@@ -165,21 +165,17 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
         </td>
 
         {/* Aufklapp-Button */}
-        <td className="w-9 min-w-9 px-2 py-2.5 text-center">
+        <td className="w-10 min-w-10 px-2 py-2.5 text-center">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onToggleExpand();
             }}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors"
             title={isExpanded ? 'Fachdaten einklappen' : 'Fachdaten ausklappen'}
           >
-            {isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </td>
       </tr>

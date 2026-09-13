@@ -22,15 +22,15 @@ export const CockpitTableHeader: React.FC<CockpitTableHeaderProps> = ({
           <button
             type="button"
             onClick={onToggleAll}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-notar-900 inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors focus-visible:ring-2"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-notar-900 inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors focus-visible:ring-2"
             title={isAllExpanded ? 'Alle Details einklappen' : 'Alle Details aufklappen'}
             aria-label={isAllExpanded ? 'Alle Details einklappen' : 'Alle Details aufklappen'}
             aria-expanded={isAllExpanded}
           >
             {isAllExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
+              <ChevronUp className="h-4 w-4" />
             ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
+              <ChevronDown className="h-4 w-4" />
             )}
           </button>
         </th>

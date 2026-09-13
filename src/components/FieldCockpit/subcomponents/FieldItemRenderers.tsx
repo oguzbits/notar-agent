@@ -22,22 +22,22 @@ interface FieldItemProps {
 
 export const VerkaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.verkaeufer.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
   const name = cleanTextValue(data?.name);
   const legalForm = cleanTextValue(data?.legalForm);
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Building2 className="text-muted-foreground h-4 w-4 shrink-0" />
-        <span className="text-foreground font-semibold">{name || '—'}</span>
+        <Building2 className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
+        <span className="text-foreground text-base font-semibold">{name || '—'}</span>
         {!isCompact && legalForm && (
-          <span className="bg-muted text-muted-foreground text-3xs rounded px-1.5 py-0.5 font-medium">
+          <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-xs font-medium">
             {legalForm}
           </span>
         )}
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         {isCompact && (
           <p>
             <strong className="text-foreground">Rechtsform:</strong> {legalForm || '—'}
@@ -80,7 +80,7 @@ export const VerkaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isComp
 
 export const KaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.kaeufer.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
   const court = cleanTextValue(data?.registerCourt);
   const regNum = cleanTextValue(data?.registerNumber);
   const address = cleanTextValue(data?.address);
@@ -91,10 +91,10 @@ export const KaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isCompact
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <UserCheck className="text-muted-foreground h-4 w-4 shrink-0" />
-        <span className="text-foreground font-semibold">{companyName || '—'}</span>
+        <UserCheck className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
+        <span className="text-foreground text-base font-semibold">{companyName || '—'}</span>
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         <p>
           <strong className="text-foreground">Rechtsform:</strong> {legalForm || '—'}
         </p>
@@ -129,19 +129,19 @@ export const KaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isCompact
 
 export const GrundbuchItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.grundbuch.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <BookOpen className="text-muted-foreground h-4 w-4 shrink-0" />
-        <span className="text-foreground font-semibold">
+        <BookOpen className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
+        <span className="text-foreground text-base font-semibold">
           {data?.amtsgericht || data?.grundbuchBezirk
             ? `Amtsgericht ${data?.amtsgericht || '—'}, Grundbuch von ${data?.grundbuchBezirk || '—'}`
             : '—'}
         </span>
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         <p>
           <strong className="text-foreground">Blattnummer:</strong>{' '}
           <span className="text-foreground font-medium">{data?.blatt || '—'}</span>
@@ -161,26 +161,26 @@ export const GrundbuchItemContent: React.FC<FieldItemProps> = ({ fields, isCompa
 
 export const GrundstueckeItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.grundstuecke.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <MapPin className="text-muted-foreground h-4 w-4 shrink-0" />
-        <span className="text-foreground font-semibold">
+        <MapPin className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
+        <span className="text-foreground text-base font-semibold">
           {data?.parcels && data.parcels.length > 0
             ? `${data.parcels.length} Flurstück(e) erfasst`
             : '—'}
         </span>
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         {data?.parcels?.map((p, idx) => (
-          <div key={idx} className="bg-muted/50 border-border rounded-md border p-1.5">
+          <div key={idx} className="bg-muted/50 border-border rounded-md border p-2">
             <span className="text-foreground font-medium">
               Flurstück <strong>{p.flurstueckNummer || '—'}</strong> (Flur {p.flur || '—'},{' '}
               {p.gemarkung || '—'})
             </span>
-            <div className="text-muted-foreground text-2xs mt-0.5">
+            <div className="text-muted-foreground mt-0.5 text-xs">
               Fläche: {p.sizeM2 ? `${p.sizeM2} m²` : 'unbekannt'} |{' '}
               {p.wirtschaftsart || 'Wirtschaftsart nicht angegeben'}
             </div>
@@ -196,22 +196,22 @@ export const GrundstueckeItemContent: React.FC<FieldItemProps> = ({ fields, isCo
 
 export const KaufpreisItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.kaufpreis.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Coins className="text-notar-800 h-4 w-4 shrink-0" />
+        <Coins className="text-notar-800 h-4.5 w-4.5 shrink-0" />
         <span className="text-foreground text-base font-bold">
           {data?.amountInFigures ? `${data.amountInFigures.toLocaleString('de-DE')} EUR` : '—'}
         </span>
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         <p className="text-foreground italic">
           In Worten: <strong>{data?.amountInWords || '—'}</strong>
         </p>
         {data?.priceEvolutionSummary && (
-          <div className="bg-muted/60 border-border text-foreground text-2xs rounded-md border p-2.5">
+          <div className="bg-muted/60 border-border text-foreground rounded-md border p-2.5 text-xs leading-relaxed sm:text-sm">
             <strong className="text-notar-900">Verhandlungshistorie:</strong>{' '}
             {data.priceEvolutionSummary}
           </div>
@@ -223,7 +223,7 @@ export const KaufpreisItemContent: React.FC<FieldItemProps> = ({ fields, isCompa
 
 export const FinanzierungItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.finanzierung.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
 
   return (
     <div className="space-y-2">
@@ -261,25 +261,25 @@ export const BelastungenItemContent: React.FC<FieldItemProps> = ({ fields }) => 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <ShieldAlert className="text-muted-foreground h-4 w-4 shrink-0" />
-        <span className="text-foreground font-semibold">
+        <ShieldAlert className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
+        <span className="text-foreground text-base font-semibold">
           {data?.entries && data.entries.length > 0
             ? `${data.entries.length} Eintragung(en) verzeichnet`
             : '—'}
         </span>
       </div>
-      <div className="text-muted-foreground max-h-52 space-y-1.5 overflow-y-auto pr-1 text-xs">
+      <div className="text-muted-foreground max-h-56 space-y-2 overflow-y-auto pr-1 text-sm">
         {data?.entries?.map((b, idx) => (
-          <div key={idx} className="bg-muted/50 border-border rounded-md border p-2">
+          <div key={idx} className="bg-muted/50 border-border rounded-md border p-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-foreground font-semibold">
+              <span className="text-foreground text-sm font-semibold sm:text-base">
                 Abt. {b.section} Nr. {b.runningNumber || '—'}
               </span>
-              <span className="bg-background border-border text-foreground text-3xs rounded border px-1.5 py-0.5 font-mono uppercase">
+              <span className="bg-background border-border text-foreground rounded border px-2 py-0.5 font-mono text-xs uppercase">
                 {b.intendedHandling}
               </span>
             </div>
-            <div className="text-muted-foreground text-2xs mt-0.5 truncate">
+            <div className="text-muted-foreground mt-1 text-xs sm:text-sm">
               {b.description} {b.amount ? `(${b.amount})` : ''}
             </div>
           </div>
@@ -291,17 +291,17 @@ export const BelastungenItemContent: React.FC<FieldItemProps> = ({ fields }) => 
 
 export const MietverhaeltnisseItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.mietverhaeltnisse.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Home className="text-muted-foreground h-4 w-4 shrink-0" />
-        <span className="text-foreground font-semibold">
+        <Home className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
+        <span className="text-foreground text-base font-semibold">
           {data?.yearlyNetRent ? `${data.yearlyNetRent.toLocaleString('de-DE')} EUR p.a.` : '—'}
         </span>
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         <p>
           <strong className="text-foreground">Vollvermietung:</strong>{' '}
           {data?.fullRentedStatus ? 'Laut Angabe ja' : '—'}
@@ -312,10 +312,10 @@ export const MietverhaeltnisseItemContent: React.FC<FieldItemProps> = ({ fields,
           <strong className="text-foreground">Einheiten:</strong> {data?.unitCount || '—'}
         </p>
         {data?.privacyOrRedactionNotes && (
-          <p className="text-muted-foreground text-2xs">{data.privacyOrRedactionNotes}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm">{data.privacyOrRedactionNotes}</p>
         )}
         {data?.tenancyTransferNotes && (
-          <p className="text-muted-foreground text-2xs">
+          <p className="text-muted-foreground text-xs sm:text-sm">
             <strong className="text-foreground">§ 566 BGB Übergang:</strong>{' '}
             {data.tenancyTransferNotes}
           </p>
@@ -327,20 +327,20 @@ export const MietverhaeltnisseItemContent: React.FC<FieldItemProps> = ({ fields,
 
 export const EnergieausweisItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.energieausweis.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Zap className="h-4 w-4 shrink-0 text-amber-600" />
-        <span className="text-foreground font-semibold">
+        <Zap className="h-4.5 w-4.5 shrink-0 text-amber-600" />
+        <span className="text-foreground text-base font-semibold">
           {data?.certificateType && data.certificateType !== ENERGIEAUSWEIS_TYPES.UNBEKANNT
             ? data.certificateType
             : '—'}{' '}
           {data?.efficiencyClass ? `(Klasse ${data.efficiencyClass})` : ''}
         </span>
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         <p>
           <strong className="text-foreground">Endenergiewert:</strong>{' '}
           {data?.energyValueKWh ? `${data.energyValueKWh} kWh/(m²*a)` : '—'}
@@ -362,22 +362,22 @@ export const EnergieausweisItemContent: React.FC<FieldItemProps> = ({ fields, is
 
 export const UebergabeItemContent: React.FC<FieldItemProps> = ({ fields, isCompact }) => {
   const data = fields.uebergabe.data;
-  const textSize = isCompact ? 'text-xs' : 'text-base';
+  const textSize = isCompact ? 'text-sm' : 'text-base';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Key className="text-muted-foreground h-4 w-4 shrink-0" />
-        <span className="text-foreground font-semibold">
+        <Key className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
+        <span className="text-foreground text-base font-semibold">
           Geplant zum: {formatDateGerman(data?.targetDate)}
         </span>
       </div>
-      <div className={cn('text-muted-foreground space-y-1', textSize)}>
+      <div className={cn('text-muted-foreground space-y-1.5', textSize)}>
         <p>
           <strong className="text-foreground">Regelung:</strong> {data?.conditionDescription || '—'}
         </p>
         {data?.riskTransferNotes && (
-          <p className="text-muted-foreground text-2xs">{data.riskTransferNotes}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm">{data.riskTransferNotes}</p>
         )}
       </div>
     </div>

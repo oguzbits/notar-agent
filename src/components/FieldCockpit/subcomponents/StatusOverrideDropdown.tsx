@@ -22,7 +22,7 @@ export const StatusOverrideDropdown: React.FC<StatusOverrideDropdownProps> = ({
         disabled={isUpdating}
         onChange={(e) => onChange(e.target.value as FieldStatus)}
         className={cn(
-          'cursor-pointer appearance-none rounded-md border py-1.5 pr-6 pl-2.5 text-sm font-semibold transition-all focus:ring-2 focus:ring-offset-1 focus:outline-none',
+          'cursor-pointer appearance-none rounded-md border py-1.5 pr-7 pl-3 text-sm font-semibold transition-all focus:ring-2 focus:ring-offset-1 focus:outline-none',
           status === FIELD_STATUS.VERIFIED &&
             'border-notar-400 bg-notar-200 text-notar-950 focus:ring-notar-900',
           status === FIELD_STATUS.NEEDS_REVIEW &&
@@ -43,9 +43,9 @@ export const StatusOverrideDropdown: React.FC<StatusOverrideDropdownProps> = ({
         <option value={FIELD_STATUS.MISSING}>{STATUS_LABELS_DE[FIELD_STATUS.MISSING]}</option>
       </select>
       {isUpdating ? (
-        <Loader2 className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 animate-spin text-slate-600 dark:text-slate-300" />
+        <Loader2 className="pointer-events-none absolute right-2 h-4 w-4 animate-spin text-slate-600 dark:text-slate-300" />
       ) : (
-        <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 opacity-60" />
+        <ChevronDown className="pointer-events-none absolute right-2 h-4 w-4 opacity-60" />
       )}
     </div>
   );

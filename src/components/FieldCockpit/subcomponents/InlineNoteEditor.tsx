@@ -28,24 +28,24 @@ export const InlineNoteEditor: React.FC<InlineNoteEditorProps> = ({
         value={noteValue}
         onChange={(e) => setNoteValue(e.target.value)}
         placeholder="Befund / Prüfungshinweis anpassen..."
-        className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-notar-900 w-full rounded-md border p-2 text-xs focus:ring-2 focus:outline-none"
+        className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-notar-900 w-full rounded-md border p-2.5 text-sm focus:ring-2 focus:outline-none"
         autoFocus
       />
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => onSave(noteValue.trim())}
-          className="bg-notar-500 text-notar-950 hover:bg-notar-600 text-2xs inline-flex cursor-pointer items-center gap-1 rounded px-2.5 py-1 font-semibold shadow-2xs"
+          className="bg-notar-500 text-notar-950 hover:bg-notar-600 inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold shadow-2xs sm:text-sm"
         >
-          <Check className="h-3 w-3" />
+          <Check className="h-3.5 w-3.5" />
           Speichern
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="text-muted-foreground hover:text-foreground border-border bg-background text-2xs inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1"
+          className="text-muted-foreground hover:text-foreground border-border bg-background inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium sm:text-sm"
         >
-          <X className="h-3 w-3" />
+          <X className="h-3.5 w-3.5" />
           Abbrechen
         </button>
       </div>

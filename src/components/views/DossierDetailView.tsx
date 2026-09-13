@@ -76,7 +76,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           </h2>
           <div className="flex items-center gap-2">
             {getStatusBadge(activeRecord?.status || CASE_STATUS.IN_PROGRESS)}
-            <span className="text-muted-foreground text-xs">
+            <span className="text-muted-foreground text-sm">
               Stand: {formatDateTimeGerman(activeRecord?.created_at || dossier.analysisTimestamp)}
               {' Uhr'}
             </span>
@@ -250,7 +250,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           <div className="border-b border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="text-2xs flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-700 font-bold text-white shadow-xs">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-700 text-xs font-bold text-white shadow-xs">
                   2
                 </span>
                 <div>
@@ -258,7 +258,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
                     <h2 className="text-foreground text-base font-bold tracking-tight sm:text-base">
                       Vorgelegte Unterlagen &amp; Aktenbestand
                     </h2>
-                    <span className="border-border bg-muted/60 text-muted-foreground rounded-full border px-2.5 py-0.5 text-xs font-semibold">
+                    <span className="border-border bg-muted/60 text-muted-foreground rounded-full border px-2.5 py-0.5 text-sm font-semibold">
                       {dossier.detectedDocuments?.length || 0} Dokument(e) &amp; Notiz(en)
                     </span>
                   </div>

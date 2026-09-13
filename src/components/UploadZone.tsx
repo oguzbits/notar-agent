@@ -180,10 +180,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                       <FileText className="text-notar-900 h-4 w-4 shrink-0" />
                     )}
                     <div className="truncate">
-                      <p className="text-foreground truncate font-medium" title={file.name}>
+                      <p
+                        className="text-foreground truncate text-sm font-medium sm:text-base"
+                        title={file.name}
+                      >
                         {file.name}
                       </p>
-                      <p className="text-muted-foreground text-3xs">
+                      <p className="text-muted-foreground text-xs">
                         {Math.round(file.size / 1024)} KB
                       </p>
                     </div>
@@ -195,11 +198,11 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                         e.stopPropagation();
                         removeFile(idx);
                       }}
-                      className="text-muted-foreground hover:text-destructive rounded p-1 transition-colors focus-visible:ring-2 focus-visible:ring-red-500"
+                      className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-red-500"
                       title="Datei entfernen"
                       aria-label={`Datei ${file.name} entfernen`}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   )}
                 </div>

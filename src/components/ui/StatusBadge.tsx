@@ -104,8 +104,8 @@ const defaultBadgeConfig: BadgeConfig = statusBadgeConfig.MISSING ?? {
 };
 
 export const statusBadgeSizes = {
-  sm: 'text-xs px-2 py-1',
-  md: 'text-sm font-medium px-2.5 py-1',
+  sm: 'text-sm px-2.5 py-1',
+  md: 'text-base font-medium px-3 py-1.5',
 } as const;
 
 export type StatusBadgeSize = keyof typeof statusBadgeSizes;
@@ -129,7 +129,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md', c
         className
       )}
     >
-      <Icon className={cn('h-3.5 w-3.5 shrink-0', config.iconClass)} />
+      <Icon className={cn('h-4 w-4 shrink-0', config.iconClass)} />
       {config.label}
     </span>
   );
