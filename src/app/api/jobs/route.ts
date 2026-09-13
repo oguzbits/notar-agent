@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fromError } from 'zod-validation-error';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { getJobRepository } from '@/lib/supabase/server';
-import { JOB_STATUS } from '@/types/jobs';
+import { JOB_STATUS, RetryJobRequestSchema } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,15 +19,15 @@ export async function GET(): Promise<Response> {
 
 export async function POST(req: NextRequest): Promise<Response> {
   try {
-    const body: unknown = await req.json().catch(() => ({}));
-    const { jobId } = (body || {}) as { jobId?: string };
+    const rawBody: unknown = await req.json().catch(() => ({}));
+    const parseResult = RetryJobRequestSchema.safeParse(rawBody);
 
-    if (!jobId || typeof jobId !== 'string') {
-      return NextResponse.json(
-        { error: 'Parameter "jobId" fehlt oder ist ungültig.' },
-        { status: 400 }
-      );
+    if (!parseResult.success) {
+      const validationError = fromError(parseResult.error);
+      return NextResponse.json({ error: validationError.toString() }, { status: 400 });
     }
+
+    const { jobId } = parseResult.data;
 
     const repo = getJobRepository();
     const job = await repo.getJobById(jobId);

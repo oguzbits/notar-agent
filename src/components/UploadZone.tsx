@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { type PreparedFile, validateFiles, prepareFiles } from '@/lib/files/file-preparer';
+import { getSupportedUploadAcceptString } from '@/lib/files/file-types';
 import { cn } from '@/lib/utils';
 
 export type { PreparedFile };
@@ -114,6 +115,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           ref={fileInputRef}
           type="file"
           multiple
+          accept={getSupportedUploadAcceptString()}
           disabled={isAnalyzing || isPreparing}
           className="hidden"
           onChange={(e) => {

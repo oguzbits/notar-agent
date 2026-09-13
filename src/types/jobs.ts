@@ -100,6 +100,12 @@ export const DossierJobSchema = z.object({
   updatedAt: z.string().describe('Letzte Aktualisierung (ISO UTC)'),
 });
 
+export const RetryJobRequestSchema = z.object({
+  jobId: z.string().min(1, 'Parameter "jobId" fehlt oder ist leer.'),
+});
+
+export type RetryJobRequest = z.infer<typeof RetryJobRequestSchema>;
+
 export type DossierJob = z.infer<typeof DossierJobSchema>;
 
 /**

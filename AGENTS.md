@@ -21,12 +21,10 @@
 
 1. **Contract First:** Define Zod schemas and TypeScript types first.
 2. **TDD:** Write/update failing test, iterate: `npx vitest run <path-to-test>`
-3. **Surgical Implementation:** Minimal diff to pass test. No scope creep, no bulk reformatting.
+3. **Surgical Implementation:** Minimal diff to pass test. Apply the Boy Scout Rule to clean up immediate micro-redundancies in touched code, but avoid unprompted mass refactorings across unrelated files.
 4. **Gates:**
-   - Codebase check: `npm run check` (`tsc`, `eslint`, `depcruise`, `audit:magic-strings`, `audit:duplication`)
-   - Unit tests: `npm test`
-   - E2E tests: `npm run test:e2e`
-   - Production build: `npm run build`
+   - **Fast Feedback (Iterative):** `npm run check` & `npx vitest run <path-to-test>` for quick turnarounds.
+   - **Full Gate (Milestone / PR completion):** `npm run check` (`tsc`, `eslint`, `depcruise`, `audit:magic-strings`, `audit:duplication`), `npm test`, `npm run test:e2e`, and `npm run build`.
 
 ## 4. Proactive Opportunity Scan (Mandatory before handoff)
 
@@ -38,6 +36,7 @@ Before declaring any task complete, the agent actively conducts a brief architec
 
 ## 5. Discipline & Guardrails
 
+- **Zero Unauthorized Git Commits:** Never run `git commit` or `git push` autonomously. Always present verified changes to the user and wait for explicit confirmation.
 - **Guardrails:** No new packages without user confirmation, but **always proactively suggest battle-tested, established ecosystem packages** instead of custom reinventing the wheel (e.g. specialized parsers, standard utilities). No `@ts-ignore`, no `eslint-disable`. Fix root causes.
 - **Circuit Breaker:** Stop after 3 failed attempts, report trace, await instructions.
-- **Discipline:** Terminal evidence only, no conversational pleasantries.
+- **Discipline & Clarity:** Concise, factual communication without empty conversational pleasantries. For conceptual, architectural, or strategic questions, provide comprehensive trade-offs and actionable recommendations.

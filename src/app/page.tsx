@@ -17,14 +17,14 @@ import { DocumentRecord } from '@/lib/supabase/server';
 import { FieldStatus, updateDossierFieldStatus } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
-export const VIEW_MODE = {
+const VIEW_MODE = {
   TABLE: 'table',
   UPLOAD: 'upload',
   DETAIL: 'detail',
   JOB: 'job',
 } as const;
 
-export type ViewMode = (typeof VIEW_MODE)[keyof typeof VIEW_MODE];
+type ViewMode = (typeof VIEW_MODE)[keyof typeof VIEW_MODE];
 
 function HomeContent() {
   const router = useRouter();
