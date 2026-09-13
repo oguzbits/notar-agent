@@ -1,6 +1,5 @@
-/**
- * Hilfsfunktionen zur einheitlichen Formatierung von Datumsangaben im deutschen Format (TT.MM.JJJJ).
- */
+import { parseISO, format, isValid } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 export function formatDateGerman(dateStr?: string | null): string {
   if (!dateStr || dateStr.trim().length === 0) return '—';
@@ -12,20 +11,15 @@ export function formatDateGerman(dateStr?: string | null): string {
     return trimmed;
   }
 
-  // ISO Format JJJJ-MM-TT
-  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    const [, y, m, d] = isoMatch;
-    return `${d}.${m}.${y}`;
+  // Parse ISO JJJJ-MM-TT oder volles Date
+  const parsed = parseISO(trimmed);
+  if (isValid(parsed)) {
+    return format(parsed, 'dd.MM.yyyy', { locale: de });
   }
 
-  // Fallback: Date-Parsing
   const d = new Date(trimmed);
-  if (!isNaN(d.getTime())) {
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}.${month}.${year}`;
+  if (isValid(d)) {
+    return format(d, 'dd.MM.yyyy', { locale: de });
   }
 
   return trimmed;

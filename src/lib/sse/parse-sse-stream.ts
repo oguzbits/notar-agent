@@ -1,5 +1,7 @@
+import { createParser } from 'eventsource-parser';
+
 /**
- * Reine SSE-Parser-Funktion als AsyncGenerator.
+ * Reine SSE-Parser-Funktion als AsyncGenerator via eventsource-parser.
  * Entkoppelt Low-Level-Streambyte-Handling und SSE-Frame-Parsing von UI-Hooks und React.
  */
 export async function* parseSseStream<T = unknown>(
@@ -7,55 +9,44 @@ export async function* parseSseStream<T = unknown>(
 ): AsyncGenerator<T, void, unknown> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
-  let buffer = '';
+  const queue: T[] = [];
+
+  const parser = createParser({
+    onEvent(event) {
+      if (event.data) {
+        try {
+          const parsed = JSON.parse(event.data) as T;
+          queue.push(parsed);
+        } catch (parseErr) {
+          console.warn(
+            '[parseSseStream] Ungültiges SSE-JSON-Payload verworfen:',
+            event.data,
+            parseErr
+          );
+        }
+      }
+    },
+  });
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith(':')) {
-          continue;
-        }
-
-        if (trimmed.startsWith('data:')) {
-          const jsonStr = trimmed.slice(5).trim();
-          if (!jsonStr) continue;
-
-          try {
-            const parsed = JSON.parse(jsonStr) as T;
-            yield parsed;
-          } catch (parseErr) {
-            console.warn(
-              '[parseSseStream] Ungültiges SSE-JSON-Payload verworfen:',
-              jsonStr,
-              parseErr
-            );
-          }
+      parser.feed(decoder.decode(value, { stream: true }));
+      while (queue.length > 0) {
+        const item = queue.shift();
+        if (item !== undefined) {
+          yield item;
         }
       }
     }
 
-    // Eventuellen Restpuffer am Stream-Ende auswerten
-    if (buffer.trim().startsWith('data:')) {
-      const jsonStr = buffer.trim().slice(5).trim();
-      if (jsonStr) {
-        try {
-          const parsed = JSON.parse(jsonStr) as T;
-          yield parsed;
-        } catch (parseErr) {
-          console.warn(
-            '[parseSseStream] Ungültiger abschließender SSE-Buffer verworfen:',
-            jsonStr,
-            parseErr
-          );
-        }
+    // Eventuell verbleibende Events nach Stream-Ende
+    while (queue.length > 0) {
+      const item = queue.shift();
+      if (item !== undefined) {
+        yield item;
       }
     }
   } finally {
