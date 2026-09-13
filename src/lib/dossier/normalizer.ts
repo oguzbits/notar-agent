@@ -1,5 +1,5 @@
 import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
-import { Dossier, getDossierFieldsRecord } from '@/types/dossier';
+import { Dossier, getDossierFieldsRecord, DOCUMENT_RELIABILITY } from '@/types/dossier';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
 export interface NormalizeDossierOptions {
@@ -116,7 +116,7 @@ export function normalizeDossier(
       documentType: 'Bearbeitungsvermerk / Notiz',
       date: todayIso,
       pageCount: 1,
-      reliability: 'LOW',
+      reliability: DOCUMENT_RELIABILITY.LOW,
       summary: noteText, // 1:1 unverkürzter Originaltext, NIEMALS zusammengefasst
     });
   });

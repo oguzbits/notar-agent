@@ -1,10 +1,16 @@
 import { CheckCircle2, AlertTriangle, Clock, HelpCircle, type LucideIcon } from 'lucide-react';
 import React from 'react';
-import { CaseStatus } from '@/lib/supabase/server';
+import { CASE_STATUS, CaseStatus } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
-import { FieldStatus } from '@/types/dossier';
+import { FIELD_STATUS, FieldStatus } from '@/types/dossier';
 
-export type StatusVariant = FieldStatus | CaseStatus | 'Beurkundet';
+export const SPECIAL_CASE_STATUS = {
+  BEURKUNDET: 'Beurkundet',
+} as const;
+
+export type SpecialCaseStatus = (typeof SPECIAL_CASE_STATUS)[keyof typeof SPECIAL_CASE_STATUS];
+
+export type StatusVariant = FieldStatus | CaseStatus | SpecialCaseStatus;
 
 interface BadgeConfig {
   label: string;
@@ -14,43 +20,43 @@ interface BadgeConfig {
 }
 
 const statusBadgeConfig: Record<string, BadgeConfig> = {
-  VERIFIED: {
+  [FIELD_STATUS.VERIFIED]: {
     label: 'Belegt',
     className: 'border-notar-400 bg-notar-200 text-notar-950 font-semibold',
     icon: CheckCircle2,
     iconClass: 'text-notar-900',
   },
-  Entwurfsreif: {
+  [CASE_STATUS.DRAFT_READY]: {
     label: 'Entwurfsreif',
     className: 'border-notar-400 bg-notar-200 text-notar-950 font-semibold',
     icon: CheckCircle2,
     iconClass: 'text-notar-900',
   },
-  Beurkundet: {
+  [SPECIAL_CASE_STATUS.BEURKUNDET]: {
     label: 'Entwurfsreif',
     className: 'border-notar-400 bg-notar-200 text-notar-950 font-semibold',
     icon: CheckCircle2,
     iconClass: 'text-notar-900',
   },
-  NEEDS_REVIEW: {
+  [FIELD_STATUS.NEEDS_REVIEW]: {
     label: 'Prüfung nötig',
     className: 'border-amber-300 bg-amber-50 text-amber-950 font-semibold',
     icon: AlertTriangle,
     iconClass: 'text-amber-700',
   },
-  OUTDATED: {
+  [FIELD_STATUS.OUTDATED]: {
     label: 'Veraltet',
     className: 'border-orange-300 bg-orange-50 text-orange-950 font-semibold',
     icon: Clock,
     iconClass: 'text-orange-700',
   },
-  'In Prüfung': {
+  [CASE_STATUS.IN_PROGRESS]: {
     label: 'In Prüfung',
     className: 'border-amber-300/80 bg-amber-50 text-amber-900 font-semibold',
     icon: Clock,
     iconClass: 'text-amber-600',
   },
-  MISSING: {
+  [FIELD_STATUS.MISSING]: {
     label: 'Fehlt',
     className: 'border-slate-200 bg-slate-100/80 text-slate-600 font-medium',
     icon: HelpCircle,

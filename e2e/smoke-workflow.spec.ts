@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { SYNTHETIC_KAUFVERTRAG_RAW, SYNTHETIC_BEARBEITER_NOTIZ } from './fixtures/test-files';
+import { CASE_STATUS } from '../src/lib/supabase/repository';
+import {
+  CASE_TYPES,
+  FIELD_STATUS,
+  OVERALL_STATUS,
+  DOCUMENT_RELIABILITY,
+  INQUIRY_PRIORITY,
+  INQUIRY_RECIPIENT,
+} from '../src/types/dossier';
 
 test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
   test('durchläuft vollständigen Sachbearbeiter-Workflow: Upload -> Stepper -> Cockpit -> Status-Override -> Export', async ({
@@ -10,10 +19,10 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
     const mockCaseTitle = 'Kaufvertrag Friedrichshain (Blatt 4512)';
 
     const mockDossier = {
-      caseType: 'IMMOBILIENKAUF',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
       caseTitle: mockCaseTitle,
       analysisTimestamp: new Date().toISOString(),
-      overallStatus: 'ACTION_REQUIRED',
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
       executiveSummary:
         'Erstanalyse abgeschlossen. 9 von 10 Pflichtfeldern belegt. Energieausweis liegt noch nicht vor.',
       detectedDocuments: [
@@ -22,14 +31,14 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           documentType: 'Kaufvertragsentwurf',
           date: '2026-09-13',
           pageCount: 1,
-          reliability: 'HIGH',
+          reliability: DOCUMENT_RELIABILITY.HIGH,
         },
         {
           fileName: 'Notiz #1',
           documentType: 'Bearbeitungsvermerk / Notiz',
           date: '2026-09-13',
           pageCount: 1,
-          reliability: 'LOW',
+          reliability: DOCUMENT_RELIABILITY.LOW,
           summary: SYNTHETIC_BEARBEITER_NOTIZ,
         },
       ],
@@ -37,8 +46,8 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
         {
           id: 'inq-ea-1',
           fieldKey: 'energieausweis',
-          recipient: 'VERKAEUFER',
-          priority: 'HIGH',
+          recipient: INQUIRY_RECIPIENT.VERKAEUFER,
+          priority: INQUIRY_PRIORITY.HIGH,
           subject: 'Energieausweis fehlt gem. § 80 GEG',
           message: 'Bitte Energieausweis oder Nachweis über Denkmalstatus vorlegen.',
           justification: 'Gesetzliche Pflichtangabe.',
@@ -48,7 +57,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
       userNotes: [SYNTHETIC_BEARBEITER_NOTIZ],
       fields: {
         verkaeufer: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             name: 'Maximilian Kaufmann',
             legalForm: 'Natürliche Person',
@@ -62,7 +71,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Identität und Eigentümerstellung plausibilisiert.',
         },
         kaeufer: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             name: 'Sabine Investor',
             legalForm: 'Natürliche Person',
@@ -76,7 +85,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Käuferin vollständig erfasst.',
         },
         grundbuch: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             amtsgericht: 'Berlin-Mitte',
             grundbuchBezirk: 'Friedrichshain',
@@ -87,7 +96,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Grundbuchangaben erfasst.',
         },
         grundstuecke: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             totalAreaM2: 650,
             parcels: [
@@ -107,7 +116,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Flurstück und Fläche eindeutig.',
         },
         kaufpreis: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             amountInFigures: 450000,
             amountInWords: 'vierhundertfünfzigtausend Euro',
@@ -118,7 +127,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Kaufpreis beziffert und übereinstimmend.',
         },
         finanzierung: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             mortgageAmount: 0,
             requiresFinancingPowerOfAttorney: false,
@@ -128,7 +137,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Keine gesonderte Belastungsvollmacht erbeten (Eigenmittel).',
         },
         belastungen: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             entries: ['Lastenfrei in Abteilung II und III'],
             clearingRequirements: [],
@@ -137,7 +146,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Lastenfreier Erwerb vorgesehen.',
         },
         mietverhaeltnisse: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             fullRentedStatus: false,
             statedInEmailOrOverview: 'Keine Mietverhältnisse / Eigennutzung',
@@ -146,7 +155,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           note: 'Eigennutzung / keine bestehenden Mietverhältnisse.',
         },
         energieausweis: {
-          status: 'NEEDS_REVIEW',
+          status: FIELD_STATUS.NEEDS_REVIEW,
           data: {
             efficiencyClass: 'B',
             energyValueKWh: 75,
@@ -157,7 +166,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
           actionRequired: 'Energieausweis vom Verkäufer anfordern oder Denkmalschutz prüfen.',
         },
         uebergabe: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             targetDate: '2026-11-15',
             conditionDescription: 'nach vollständiger Kaufpreiszahlung',
@@ -228,7 +237,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
             document: {
               id: mockDossierId,
               title: mockCaseTitle,
-              status: 'In Prüfung',
+              status: CASE_STATUS.IN_PROGRESS,
               content: currentDossierState,
               created_at: new Date().toISOString(),
             },
@@ -243,7 +252,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
               {
                 id: mockDossierId,
                 title: mockCaseTitle,
-                status: 'In Prüfung',
+                status: CASE_STATUS.IN_PROGRESS,
                 content: currentDossierState,
                 created_at: new Date().toISOString(),
               },
@@ -305,11 +314,11 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
     const rowEnergy = page.locator('tr').filter({ hasText: 'Energieausweis' }).first();
     const selectDropdown = rowEnergy.locator('select');
     await expect(selectDropdown).toBeVisible();
-    await expect(selectDropdown).toHaveValue('NEEDS_REVIEW');
+    await expect(selectDropdown).toHaveValue(FIELD_STATUS.NEEDS_REVIEW);
 
     // Sachbearbeiter überschreibt Status auf VERIFIED und wartet auf UI-Reaktion
-    await selectDropdown.selectOption('VERIFIED');
-    await expect(selectDropdown).toHaveValue('VERIFIED');
+    await selectDropdown.selectOption(FIELD_STATUS.VERIFIED);
+    await expect(selectDropdown).toHaveValue(FIELD_STATUS.VERIFIED);
 
     // 10. Revisionssicheren Export prüfen
     const downloadPromise = page.waitForEvent('download');

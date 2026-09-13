@@ -1,13 +1,32 @@
 import { z } from 'zod';
 
+export const AUDIT_RULE_CATEGORIES = {
+  GRUNDBUCH_SACHENRECHT: 'GRUNDBUCH_SACHENRECHT',
+  PERSONEN_VERTRETUNG: 'PERSONEN_VERTRETUNG',
+  ENERGIE_BAU_UMWELT: 'ENERGIE_BAU_UMWELT',
+  ZAHLUNG_TREUHAND: 'ZAHLUNG_TREUHAND',
+  FORMVORSCHRIFTEN: 'FORMVORSCHRIFTEN',
+} as const;
+
 export const AuditRuleCategorySchema = z.enum([
-  'GRUNDBUCH_SACHENRECHT',
-  'PERSONEN_VERTRETUNG',
-  'ENERGIE_BAU_UMWELT',
-  'ZAHLUNG_TREUHAND',
-  'FORMVORSCHRIFTEN',
+  AUDIT_RULE_CATEGORIES.GRUNDBUCH_SACHENRECHT,
+  AUDIT_RULE_CATEGORIES.PERSONEN_VERTRETUNG,
+  AUDIT_RULE_CATEGORIES.ENERGIE_BAU_UMWELT,
+  AUDIT_RULE_CATEGORIES.ZAHLUNG_TREUHAND,
+  AUDIT_RULE_CATEGORIES.FORMVORSCHRIFTEN,
 ]);
-export type AuditRuleCategory = z.infer<typeof AuditRuleCategorySchema>;
+export type AuditRuleCategory = (typeof AUDIT_RULE_CATEGORIES)[keyof typeof AUDIT_RULE_CATEGORIES];
+
+export const AUDIT_RULE_IDS = {
+  RULE_GEG_10_YEARS: 'RULE_GEG_10_YEARS',
+  RULE_BEURKG_21_GRUNDBUCH: 'RULE_BEURKG_21_GRUNDBUCH',
+  RULE_MOPEG_EGBR: 'RULE_MOPEG_EGBR',
+  RULE_HGB_12_REGISTER: 'RULE_HGB_12_REGISTER',
+  RULE_MABV_RATES: 'RULE_MABV_RATES',
+  RULE_BGB_566_MIETE: 'RULE_BGB_566_MIETE',
+} as const;
+
+export type AuditRuleId = (typeof AUDIT_RULE_IDS)[keyof typeof AUDIT_RULE_IDS];
 
 export const AuditRuleSchema = z.object({
   id: z.string(),
@@ -26,8 +45,8 @@ export type AuditRule = z.infer<typeof AuditRuleSchema>;
 
 export const NOTARY_AUDIT_RULES: AuditRule[] = [
   {
-    id: 'RULE_GEG_10_YEARS',
-    category: 'ENERGIE_BAU_UMWELT',
+    id: AUDIT_RULE_IDS.RULE_GEG_10_YEARS,
+    category: AUDIT_RULE_CATEGORIES.ENERGIE_BAU_UMWELT,
     legalBasis: '§ 80 Abs. 2 GEG',
     title: 'Gültigkeit von Energieausweisen (10 Jahre)',
     triggerKeywords: ['energieausweis', 'bedarfsausweis', 'verbrauchsausweis'],
@@ -37,8 +56,8 @@ export const NOTARY_AUDIT_RULES: AuditRule[] = [
     suggestedAction: 'Aktuellen Energieausweis beim Verkäufer oder Eigentümer anfordern.',
   },
   {
-    id: 'RULE_BEURKG_21_GRUNDBUCH',
-    category: 'GRUNDBUCH_SACHENRECHT',
+    id: AUDIT_RULE_IDS.RULE_BEURKG_21_GRUNDBUCH,
+    category: AUDIT_RULE_CATEGORIES.GRUNDBUCH_SACHENRECHT,
     legalBasis: '§ 21 BeurkG',
     title: 'Grundbuchstand & Amtliche Einsicht',
     triggerKeywords: ['grundbuch', 'grundbuchauszug', 'blatt'],
@@ -48,8 +67,8 @@ export const NOTARY_AUDIT_RULES: AuditRule[] = [
     suggestedAction: 'Amtliche Grundbucheinsicht unmittelbar vor dem Beurkundungstermin vornehmen.',
   },
   {
-    id: 'RULE_MOPEG_EGBR',
-    category: 'PERSONEN_VERTRETUNG',
+    id: AUDIT_RULE_IDS.RULE_MOPEG_EGBR,
+    category: AUDIT_RULE_CATEGORIES.PERSONEN_VERTRETUNG,
     legalBasis: '§ 707 BGB, § 47 Abs. 2 GBO n.F. (MoPeG)',
     title: 'eGbR-Voreintragungspflicht bei Immobiliengeschäften',
     triggerKeywords: ['gbr', 'gesellschaft bürgerlichen rechts', 'egbr'],
@@ -59,8 +78,8 @@ export const NOTARY_AUDIT_RULES: AuditRule[] = [
     suggestedAction: 'Eintragungsnachweis aus dem Gesellschaftsregister (eGbR) zur Akte anfordern.',
   },
   {
-    id: 'RULE_HGB_12_REGISTER',
-    category: 'PERSONEN_VERTRETUNG',
+    id: AUDIT_RULE_IDS.RULE_HGB_12_REGISTER,
+    category: AUDIT_RULE_CATEGORIES.PERSONEN_VERTRETUNG,
     legalBasis: '§ 12 HGB, § 21 BNotO',
     title: 'Vertretungsnachweis juristischer Personen',
     triggerKeywords: ['gmbh', 'ug', 'ag', 'kg', 'ohg', 'gmbh & co'],
@@ -71,8 +90,8 @@ export const NOTARY_AUDIT_RULES: AuditRule[] = [
       'Handelsregisterauszug (HRB/HRA) amtlich abrufen oder vom Beteiligten einreichen lassen.',
   },
   {
-    id: 'RULE_MABV_RATES',
-    category: 'ZAHLUNG_TREUHAND',
+    id: AUDIT_RULE_IDS.RULE_MABV_RATES,
+    category: AUDIT_RULE_CATEGORIES.ZAHLUNG_TREUHAND,
     legalBasis: '§ 3 MaBV, § 650u BGB',
     title: 'MaBV-Ratenstaffel bei Bauträgerverträgen',
     triggerKeywords: ['bauträger', 'baufortschritt', 'mabv', 'raten', 'teilzahlungen'],
@@ -82,8 +101,8 @@ export const NOTARY_AUDIT_RULES: AuditRule[] = [
     suggestedAction: 'Kaufpreis-Ratenplan mit den Höchstsätzen des § 3 MaBV abgleichen.',
   },
   {
-    id: 'RULE_BGB_566_MIETE',
-    category: 'GRUNDBUCH_SACHENRECHT',
+    id: AUDIT_RULE_IDS.RULE_BGB_566_MIETE,
+    category: AUDIT_RULE_CATEGORIES.GRUNDBUCH_SACHENRECHT,
     legalBasis: '§ 566, § 566a BGB',
     title: 'Kauf bricht nicht Miete & Kautionsübergang',
     triggerKeywords: ['miete', 'mietvertrag', 'vermietet', 'kaution', 'mietverhaeltnisse'],

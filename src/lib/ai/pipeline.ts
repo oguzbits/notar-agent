@@ -8,12 +8,19 @@ import {
 } from '@/lib/knowledge/rules/rule-selector';
 import {
   CaseType,
+  CASE_TYPES,
   Dossier,
   DetectedDocument,
   ImmobilienDossierSchema,
   GenericFieldDossier,
   ImmobilienFields,
   Inquiry,
+  OVERALL_STATUS,
+  OverallStatus,
+  FIELD_STATUS,
+  DOCUMENT_RELIABILITY,
+  INQUIRY_RECIPIENT,
+  INQUIRY_PRIORITY,
 } from '@/types/dossier';
 
 export interface UploadedFilePayload {
@@ -96,7 +103,7 @@ ${formattedNotes}
 
   contextHeader += `Führe die Zuarbeit streng gemäß deinen Richtlinien durch:
 - Setze caseType auf "${caseType}".
-- Identifiziere jedes Dokument mit Datum und Verlässlichkeit ('HIGH', 'MEDIUM', 'LOW', 'OBSOLETE', 'UNRELATED').
+- Identifiziere jedes Dokument mit Datum und Verlässlichkeit (${DOCUMENT_RELIABILITY.HIGH}, ${DOCUMENT_RELIABILITY.MEDIUM}, ${DOCUMENT_RELIABILITY.LOW}, ${DOCUMENT_RELIABILITY.OBSOLETE}, ${DOCUMENT_RELIABILITY.UNRELATED}).
 - Prüfe jedes der 10 Pflichtfelder mit vollständigem Audit Trail (fileName + snippet).
 - Extrahiere alle im Aktenbestand nachweisbaren Datenpunkte sachlich, vollständig und präzise.
 - Setze den Status (VERIFIED, NEEDS_REVIEW, OUTDATED, MISSING) objektiv anhand der vorliegenden Belege und Gültigkeiten.
@@ -216,9 +223,9 @@ Führe nun als Notary Auditor & Reconciler Agent die Qualitätskontrolle durch:
 2. Prüfe Fristen & Gültigkeiten anhand der oben aufgeführten gesetzlichen Prüfungsmaßstäbe.
 3. Prüfe formelle Vollständigkeit: Fehlen für Rechtsformen oder Personen erforderliche gesetzliche Nachweise (z.B. Registerauszug gem. § 12 HGB, eGbR-Nachweis gem. MoPeG), erstelle gezielte Nachforderungen ("inquiries") mit präziser juristischer Begründung.
 4. Kontrolliere, dass jedes Feld eine nachvollziehbare Quelle ("source.fileName" und "source.snippet") besitzt.
-5. STRENGSTE REGEL FÜR BELEGE: Ein Feld darf NIEMALS "VERIFIED" erhalten, wenn die tatsächlichen Datenwerte fehlen! Setze bei unvollständigen Daten zwingend "NEEDS_REVIEW" und formuliere eine konkrete Begründung in 'note'.
+5. STRENGSTE REGEL FÜR BELEGE: Ein Feld darf NIEMALS ${FIELD_STATUS.VERIFIED} erhalten, wenn die tatsächlichen Datenwerte fehlen! Setze bei unvollständigen Daten zwingend ${FIELD_STATUS.NEEDS_REVIEW} und formuliere eine konkrete Begründung in 'note'.
 6. VERWENDE EXAKT DIE ENGLISCHEN SCHEMA-ATTRIBUTE (z.B. "amountInFigures", "blatt", "validUntil", "lenderName", "mortgageAmount", "parcels").
-7. EXECUTIVE SUMMARY IN REINEM KANZLEIDEUTSCH: Formuliere die Gesamteinschätzung sachlich und prägnant auf Deutsch. Verwende NIEMALS englische Statuswörter wie "Status: ACTION_REQUIRED", "OUTDATED" oder "MISSING" im Fließtext!
+7. EXECUTIVE SUMMARY IN REINEM KANZLEIDEUTSCH: Formuliere die Gesamteinschätzung sachlich und prägnant auf Deutsch. Verwende NIEMALS englische Statuswörter wie ${OVERALL_STATUS.ACTION_REQUIRED}, ${FIELD_STATUS.OUTDATED} oder ${FIELD_STATUS.MISSING} im Fließtext!
 
 EFFIZIENZ-REGEL:
 Gib im "fields"-Objekt AUSSCHLIESSLICH diejenigen Felder aus, die du korrigierst oder anpasst! Unveränderte Felder aus Stufe 1 lässt du weg.
@@ -227,12 +234,12 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
 {
   "fields": { ... nur geänderte Felder ... },
   "inquiries": [ ... ],
-  "overallStatus": "READY" | "ACTION_REQUIRED" | "BLOCKED",
+  "overallStatus": "${OVERALL_STATUS.READY}" | "${OVERALL_STATUS.ACTION_REQUIRED}" | "${OVERALL_STATUS.BLOCKED}",
   "executiveSummary": "1-2 prägnante deutsche Sätze zum Bearbeitungsstand (OHNE Status-Codes wie ACTION_REQUIRED)."
 }`;
 
   let parsedAuditorModifications: Record<string, unknown> = {};
-  let auditorOverallStatus: 'READY' | 'ACTION_REQUIRED' | 'BLOCKED' | undefined;
+  let auditorOverallStatus: OverallStatus | undefined;
   let auditorExecutiveSummary: string | undefined;
   let auditorInquiries: unknown[] | undefined;
 
@@ -256,10 +263,9 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
       }
       if (
         typeof parsedAuditorRaw.overallStatus === 'string' &&
-        ['READY', 'ACTION_REQUIRED', 'BLOCKED'].includes(parsedAuditorRaw.overallStatus)
+        Object.values(OVERALL_STATUS).includes(parsedAuditorRaw.overallStatus as OverallStatus)
       ) {
-        auditorOverallStatus = parsedAuditorRaw.overallStatus as
-          'READY' | 'ACTION_REQUIRED' | 'BLOCKED';
+        auditorOverallStatus = parsedAuditorRaw.overallStatus as OverallStatus;
       }
       if (typeof parsedAuditorRaw.executiveSummary === 'string') {
         auditorExecutiveSummary = parsedAuditorRaw.executiveSummary;
@@ -288,12 +294,12 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
     (typeof parsedExtractionRaw.executiveSummary === 'string'
       ? parsedExtractionRaw.executiveSummary
       : undefined);
-  const rawOverallStatus =
+  const rawOverallStatus: OverallStatus =
     auditorOverallStatus ||
     (typeof parsedExtractionRaw.overallStatus === 'string' &&
-    ['READY', 'ACTION_REQUIRED', 'BLOCKED'].includes(parsedExtractionRaw.overallStatus)
-      ? (parsedExtractionRaw.overallStatus as 'READY' | 'ACTION_REQUIRED' | 'BLOCKED')
-      : 'ACTION_REQUIRED');
+    Object.values(OVERALL_STATUS).includes(parsedExtractionRaw.overallStatus as OverallStatus)
+      ? (parsedExtractionRaw.overallStatus as OverallStatus)
+      : OVERALL_STATUS.ACTION_REQUIRED);
 
   let dossier: Dossier;
   const emptyFields = createEmptyImmobilienFields();
@@ -359,15 +365,19 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
   ).map((inq: unknown, idx: number): Inquiry => {
     const item = inq && typeof inq === 'object' ? (inq as Record<string, unknown>) : {};
     const priority =
-      typeof item.priority === 'string' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(item.priority)
-        ? (item.priority as 'CRITICAL' | 'HIGH' | 'MEDIUM')
-        : 'HIGH';
+      typeof item.priority === 'string' &&
+      Object.values(INQUIRY_PRIORITY).includes(item.priority as Inquiry['priority'])
+        ? (item.priority as Inquiry['priority'])
+        : INQUIRY_PRIORITY.HIGH;
 
     return {
       id: typeof item.id === 'string' && item.id ? item.id : `inq-${idx + 1}`,
-      fieldKey: typeof item.fieldKey === 'string' && item.fieldKey ? item.fieldKey : 'all',
+      fieldKey:
+        typeof item.fieldKey === 'string' && item.fieldKey ? item.fieldKey : INQUIRY_RECIPIENT.ALL,
       recipient:
-        typeof item.recipient === 'string' && item.recipient ? item.recipient : 'VERKAEUFER',
+        typeof item.recipient === 'string' && item.recipient
+          ? item.recipient
+          : INQUIRY_RECIPIENT.VERKAEUFER,
       priority,
       subject: typeof item.subject === 'string' && item.subject ? item.subject : 'Nachforderung',
       message:
@@ -384,7 +394,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
   const fallbackCaseTitle =
     rawCaseTitle || `Immobilienkauf ${new Date().toLocaleDateString('de-DE')}`;
   const rawImmobilienPayload = {
-    caseType: caseType || 'IMMOBILIENKAUF',
+    caseType: caseType || CASE_TYPES.IMMOBILIENKAUF,
     caseTitle: fallbackCaseTitle,
     analysisTimestamp: currentAnalysisTimestamp,
     detectedDocuments: Array.isArray(parsedExtractionRaw.detectedDocuments)
@@ -403,7 +413,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
       parseResult.error.format()
     );
     dossier = {
-      caseType: 'IMMOBILIENKAUF',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
       caseTitle: rawCaseTitle || `Immobilienkauf ${new Date().toLocaleDateString('de-DE')}`,
       analysisTimestamp: currentAnalysisTimestamp,
       detectedDocuments: Array.isArray(parsedExtractionRaw.detectedDocuments)
@@ -417,7 +427,7 @@ Antworte AUSSCHLIESSLICH im validen JSON-Format:
   } else {
     dossier = {
       ...parseResult.data,
-      caseType: 'IMMOBILIENKAUF',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
     };
   }
 

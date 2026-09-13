@@ -1,135 +1,50 @@
 import { describe, it, expect } from 'vitest';
-import { Dossier, ImmobilienFields } from '@/types/dossier';
+import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import {
+  Dossier,
+  FIELD_STATUS,
+  OVERALL_STATUS,
+  DOCUMENT_RELIABILITY,
+  INQUIRY_PRIORITY,
+  INQUIRY_RECIPIENT,
+} from '@/types/dossier';
 import { normalizeDossier } from './dossier';
 
 function createBaseDossier(): Dossier {
-  const fields: ImmobilienFields = {
-    verkaeufer: {
-      status: 'VERIFIED',
-      data: {
-        name: 'Muster Verkäufer GmbH',
-        legalForm: 'GmbH',
-        registeredOwnersGrundbuch: ['Muster Verkäufer GmbH'],
-        authorizedRepresentatives: [],
-        representationProofProvided: true,
-        missingProofs: [],
-      },
-      source: { fileName: 'urkunde_alt.pdf', pageNumber: 1, snippet: 'Eigentümer' },
-      note: '',
-    },
-    kaeufer: {
-      status: 'NEEDS_REVIEW',
-      data: {
-        companyName: 'Muster Käufer GmbH',
-        legalForm: 'GmbH',
-        registerCourt: 'Amtsgericht Musterstadt',
-        registerNumber: 'HRB 9999',
-        address: 'Musterweg 2',
-        authorizedRepresentatives: [],
-        hasOfficialRegisterProof: false,
-      },
-      source: { fileName: 'Notiz #1', pageNumber: 1, snippet: 'Käuferin' },
-      note: 'Handelsregisterauszug noch nicht vorgelegt.',
-    },
-    grundbuch: {
-      status: 'VERIFIED',
-      data: {
-        blatt: '100',
-        amtsgericht: 'Amtsgericht',
-        grundbuchBezirk: 'Bezirk',
-        standDatum: '2026-01-01',
-        isCurrent: true,
-      },
-      source: { fileName: 'urkunde_alt.pdf', pageNumber: 1, snippet: 'Blatt 100' },
-      note: '',
-    },
-    grundstuecke: {
-      status: 'VERIFIED',
-      data: { parcels: [], totalAreaM2: 500, areaDiscrepancyNotes: '' },
-      source: { fileName: 'urkunde_alt.pdf', pageNumber: 1, snippet: 'Parzelle' },
-      note: '',
-    },
-    kaufpreis: {
-      status: 'VERIFIED',
-      data: {
-        amountInFigures: 400000,
-        amountInWords: 'Vierhunderttausend Euro',
-        currency: 'EUR',
-        previousOffers: [380000],
-        priceEvolutionSummary: 'Nachverhandlung',
-        isFinalAgreedPrice: true,
-      },
-      source: { fileName: 'Notiz #1', pageNumber: 1, snippet: '400.000 EUR' },
-      note: '',
-    },
-    finanzierung: {
-      status: 'VERIFIED',
-      data: {
-        mortgageAmount: 300000,
-        lenderName: 'Bank',
-        requiresFinancingPowerOfAttorney: false,
-        interestRateAndPawnDetails: '',
-      },
-      source: { fileName: 'Notiz #1', pageNumber: 1, snippet: '300.000 EUR' },
-      note: '',
-    },
-    belastungen: {
-      status: 'VERIFIED',
-      data: { entries: [], clearingRequirements: [] },
-      source: { fileName: 'urkunde_alt.pdf', pageNumber: 1, snippet: 'Keine' },
-      note: '',
-    },
-    mietverhaeltnisse: {
-      status: 'VERIFIED',
-      data: {
-        yearlyNetRent: 20000,
-        statedInEmailOrOverview: 'Miete',
-        rentableAreaM2: 120,
-        unitCount: 1,
-        fullRentedStatus: true,
-        tenancyListAvailable: true,
-        privacyOrRedactionNotes: '',
-      },
-      source: { fileName: 'urkunde_alt.pdf', pageNumber: 1, snippet: 'Miete' },
-      note: '',
-    },
-    energieausweis: {
-      status: 'VERIFIED',
-      data: {
-        efficiencyClass: 'A',
-        certificateType: 'VERBRAUCHSAUSWEIS',
-        energyValueKWh: 45,
-        validUntil: '2030-01-01',
-        isExpired: false,
-        primaryEnergyCarrier: 'Gas',
-        buildingYear: '2015',
-      },
-      source: { fileName: 'urkunde_alt.pdf', pageNumber: 1, snippet: 'A' },
-      note: '',
-    },
-    uebergabe: {
-      status: 'VERIFIED',
-      data: {
-        targetDate: '2026-12-01',
-        conditionDescription: 'Nach Kaufpreiszahlung',
-        riskTransferNotes: 'Nutzen/Lasten',
-      },
-      source: { fileName: 'Notiz #1', pageNumber: 1, snippet: '01.12.' },
-      note: '',
-    },
-  };
-
-  return {
-    caseType: 'IMMOBILIENKAUF',
+  return createTestImmobilienDossier({
     caseTitle: 'Vorgang 2001',
     analysisTimestamp: '2026-09-01T10:00:00.000Z',
+    overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+    executiveSummary: 'Erstanalyse mit offenen Nachforderungen.',
+    userNotes: ['Erstes Anschreiben mit Vorangebot 400.000 EUR.'],
+    fieldStatusMap: {
+      kaeufer: FIELD_STATUS.NEEDS_REVIEW,
+      energieausweis: FIELD_STATUS.OUTDATED,
+    },
+    fields: {
+      kaeufer: {
+        note: 'Handelsregisterauszug noch nicht vorgelegt.',
+      },
+      kaufpreis: {
+        data: {
+          previousOffers: [380000],
+          priceEvolutionSummary: 'Nachverhandlung',
+        },
+      },
+      energieausweis: {
+        data: {
+          validUntil: '2020-01-01',
+          isExpired: true,
+        },
+      },
+    },
     detectedDocuments: [
       {
         fileName: 'Notiz #1',
         documentType: 'Bearbeitungsvermerk / Notiz',
         date: '2026-09-01',
         pageCount: 1,
-        reliability: 'LOW',
+        reliability: DOCUMENT_RELIABILITY.LOW,
         summary: 'Erstes Anschreiben mit Vorangebot 400.000 EUR.',
       },
       {
@@ -137,26 +52,22 @@ function createBaseDossier(): Dossier {
         documentType: 'Urkunde',
         date: '2015-05-10',
         pageCount: 4,
-        reliability: 'HIGH',
+        reliability: DOCUMENT_RELIABILITY.HIGH,
       },
     ],
     inquiries: [
       {
         id: 'inq-1',
         fieldKey: 'kaeufer',
-        recipient: 'MAKLER',
-        priority: 'CRITICAL',
+        recipient: INQUIRY_RECIPIENT.MAKLER,
+        priority: INQUIRY_PRIORITY.CRITICAL,
         subject: 'Handelsregisterauszug fehlt',
         message: 'Bitte einreichen.',
         justification: 'Nachweis erforderlich.',
         resolved: false,
       },
     ],
-    overallStatus: 'ACTION_REQUIRED',
-    executiveSummary: 'Erstanalyse mit offenen Nachforderungen.',
-    userNotes: ['Erstes Anschreiben mit Vorangebot 400.000 EUR.'],
-    fields,
-  };
+  });
 }
 
 describe('User Journey: Inkrementelle Nachreichung & Delta-Updates', () => {

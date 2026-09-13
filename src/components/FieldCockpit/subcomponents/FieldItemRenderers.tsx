@@ -13,7 +13,7 @@ import {
 import React from 'react';
 import { formatDateGerman, formatOwnerEntry, cleanTextValue } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { ImmobilienFields } from '@/types/dossier';
+import { ENERGIEAUSWEIS_TYPES, ImmobilienFields } from '@/types/dossier';
 
 interface FieldItemProps {
   fields: ImmobilienFields;
@@ -334,7 +334,7 @@ export const EnergieausweisItemContent: React.FC<FieldItemProps> = ({ fields, is
       <div className="flex items-center gap-2">
         <Zap className="h-4 w-4 shrink-0 text-amber-600" />
         <span className="text-foreground font-semibold">
-          {data?.certificateType && data.certificateType !== 'UNBEKANNT'
+          {data?.certificateType && data.certificateType !== ENERGIEAUSWEIS_TYPES.UNBEKANNT
             ? data.certificateType
             : '—'}{' '}
           {data?.efficiencyClass ? `(Klasse ${data.efficiencyClass})` : ''}

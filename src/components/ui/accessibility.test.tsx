@@ -5,6 +5,8 @@ import type { AxeMatchers } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { CASE_STATUS } from '@/lib/supabase/server';
+import { FIELD_STATUS } from '@/types/dossier';
 
 declare module 'vitest' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -28,11 +30,11 @@ describe('Accessibility (a11y) automated audits via vitest-axe', () => {
   it('StatusBadge has no accessibility violations in all variants', async () => {
     const { container } = render(
       <div>
-        <StatusBadge status="VERIFIED" />
-        <StatusBadge status="NEEDS_REVIEW" />
-        <StatusBadge status="OUTDATED" />
-        <StatusBadge status="In Prüfung" />
-        <StatusBadge status="MISSING" />
+        <StatusBadge status={FIELD_STATUS.VERIFIED} />
+        <StatusBadge status={FIELD_STATUS.NEEDS_REVIEW} />
+        <StatusBadge status={FIELD_STATUS.OUTDATED} />
+        <StatusBadge status={CASE_STATUS.IN_PROGRESS} />
+        <StatusBadge status={FIELD_STATUS.MISSING} />
       </div>
     );
 

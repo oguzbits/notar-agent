@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { CaseType } from '@/types/dossier';
+import { CASE_TYPES, OVERALL_STATUS } from '@/types/dossier';
 import { useAnalysisWorkflow } from './useAnalysisWorkflow';
 
 describe('useAnalysisWorkflow', () => {
@@ -26,13 +26,13 @@ describe('useAnalysisWorkflow', () => {
 
   it('handles successful SSE analysis stream and triggers callback', async () => {
     const mockResultDossier = {
-      caseType: 'IMMOBILIENKAUF',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
       caseTitle: 'Test Vorgang',
       analysisTimestamp: new Date().toISOString(),
       detectedDocuments: [],
       fields: {},
       inquiries: [],
-      overallStatus: 'READY',
+      overallStatus: OVERALL_STATUS.READY,
       executiveSummary: 'Alles vollständig.',
     };
 
@@ -56,7 +56,7 @@ describe('useAnalysisWorkflow', () => {
     await act(async () => {
       await result.current.startAnalysis(
         [{ name: 'doc.pdf', size: 100, type: 'application/pdf', content: 'test' }],
-        'IMMOBILIENKAUF' as CaseType,
+        CASE_TYPES.IMMOBILIENKAUF,
         'Meine Notizen',
         (res) => {
           finalResult = res;
@@ -89,7 +89,7 @@ describe('useAnalysisWorkflow', () => {
       try {
         await result.current.startAnalysis(
           [{ name: 'doc.pdf', size: 100, type: 'application/pdf', content: 'test' }],
-          'IMMOBILIENKAUF' as CaseType,
+          CASE_TYPES.IMMOBILIENKAUF,
           '',
           () => {}
         );

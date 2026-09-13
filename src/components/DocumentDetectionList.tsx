@@ -2,7 +2,7 @@ import { Calendar, ChevronDown, ChevronUp, FileText, StickyNote } from 'lucide-r
 import { useState } from 'react';
 import { formatDateGerman } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { DetectedDocument } from '@/types/dossier';
+import { DetectedDocument, DOCUMENT_RELIABILITY } from '@/types/dossier';
 
 interface DocumentDetectionListProps {
   documents: DetectedDocument[];
@@ -165,12 +165,12 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                     >
                       {doc.documentType}
                     </span>
-                    {doc.reliability === 'UNRELATED' && (
+                    {doc.reliability === DOCUMENT_RELIABILITY.UNRELATED && (
                       <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">
                         Ohne Vorgangsbezug
                       </span>
                     )}
-                    {doc.reliability === 'OBSOLETE' && (
+                    {doc.reliability === DOCUMENT_RELIABILITY.OBSOLETE && (
                       <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">
                         Obsolet
                       </span>

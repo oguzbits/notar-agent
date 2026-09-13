@@ -1,7 +1,14 @@
 import fc from 'fast-check';
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
-import { ImmobilienDossier, NotaryNumberSchema, KaufpreisDataSchema } from '@/types/dossier';
+import {
+  ImmobilienDossier,
+  NotaryNumberSchema,
+  KaufpreisDataSchema,
+  FIELD_STATUS,
+  OVERALL_STATUS,
+  DOCUMENT_RELIABILITY,
+} from '@/types/dossier';
 import { normalizeDossier } from './normalizer';
 
 describe('Dossier Normalization & Integrity Guardrails', () => {
@@ -15,15 +22,15 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
           documentType: 'Grundbuchauszug',
           date: '2024-01-01',
           pageCount: 2,
-          reliability: 'HIGH',
+          reliability: DOCUMENT_RELIABILITY.HIGH,
           summary: 'Grundbuchauszug',
         },
       ],
-      overallStatus: 'ACTION_REQUIRED',
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
       executiveSummary: 'Synthetischer Test',
       fields: {
         kaufpreis: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             amountInFigures: 500000,
             amountInWords: 'Fünfhunderttausend Euro',
@@ -36,7 +43,7 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
           note: '',
         },
         grundbuch: {
-          status: 'NEEDS_REVIEW',
+          status: FIELD_STATUS.NEEDS_REVIEW,
           data: {
             blatt: '9999',
             standDatum: '2020-01-01',
@@ -89,7 +96,7 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
     const testDossier = createTestImmobilienDossier({
       fields: {
         kaufpreis: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             amountInFigures: 0, // kein Betrag!
             amountInWords: '',
@@ -98,7 +105,7 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
           note: '',
         },
         verkaeufer: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             name: '', // kein Name!
             legalForm: '',
@@ -115,10 +122,10 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
 
     const normalized = normalizeDossier(testDossier) as ImmobilienDossier;
     const fields = normalized.fields;
-    expect(fields.kaufpreis.status).toBe('NEEDS_REVIEW');
+    expect(fields.kaufpreis.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(fields.kaufpreis.note).toContain('Angaben unvollständig');
 
-    expect(fields.verkaeufer.status).toBe('NEEDS_REVIEW');
+    expect(fields.verkaeufer.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(fields.verkaeufer.note).toContain('Angaben unvollständig');
   });
 
@@ -127,7 +134,7 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
       caseTitle: 'Erbfall Test',
       fields: {
         verkaeufer: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             name: 'Hans Müller (Erbe)',
             legalForm: 'natürliche Person',
@@ -144,7 +151,7 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
 
     const normalized = normalizeDossier(testDossier) as ImmobilienDossier;
     const fields = normalized.fields;
-    expect(fields.verkaeufer.status).toBe('NEEDS_REVIEW');
+    expect(fields.verkaeufer.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(fields.verkaeufer.note).toContain('Erbnachweis (§ 35 GBO) oder Vollmacht erforderlich');
   });
 
@@ -153,7 +160,7 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
       caseTitle: 'GmbH Register Test',
       fields: {
         kaeufer: {
-          status: 'VERIFIED',
+          status: FIELD_STATUS.VERIFIED,
           data: {
             companyName: 'Invest GmbH',
             legalForm: 'GmbH',
@@ -171,7 +178,7 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
 
     const normalized = normalizeDossier(testDossier) as ImmobilienDossier;
     const fields = normalized.fields;
-    expect(fields.kaeufer.status).toBe('NEEDS_REVIEW');
+    expect(fields.kaeufer.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(fields.kaeufer.note).toContain('Amtlicher Registerauszug der Käufergesellschaft fehlt');
   });
 

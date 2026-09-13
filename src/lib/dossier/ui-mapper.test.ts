@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Dossier, ImmobilienFields } from '@/types/dossier';
+import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import { Dossier, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import {
   cleanSourceFileName,
   parseSourceLocations,
@@ -9,129 +10,31 @@ import {
 } from './ui-mapper';
 
 function createStubDossier(): Dossier {
-  const fields: ImmobilienFields = {
-    verkaeufer: {
-      status: 'VERIFIED',
-      data: {
-        name: 'V Name',
-        legalForm: 'natürliche Person',
-        registeredOwnersGrundbuch: ['V Name'],
-        authorizedRepresentatives: [],
-        representationProofProvided: true,
-        missingProofs: [],
-      },
-      source: { fileName: 'urkunde.pdf', pageNumber: 2, snippet: 'Verkäufer V Name' },
-      note: '',
-    },
-    kaeufer: {
-      status: 'NEEDS_REVIEW',
-      data: {
-        companyName: 'K GmbH',
-        legalForm: 'GmbH',
-        registerCourt: '',
-        registerNumber: '',
-        address: '',
-        authorizedRepresentatives: [],
-        hasOfficialRegisterProof: false,
-      },
-      source: { fileName: 'angebot.pdf + Notiz #1', pageNumber: 1, snippet: 'Käuferangebot' },
-      note: 'HRB Auszug fehlt',
-      actionRequired: 'Handelsregister anfordern',
-    },
-    grundbuch: {
-      status: 'VERIFIED',
-      data: {
-        blatt: '123',
-        amtsgericht: 'AG',
-        grundbuchBezirk: 'Bezirk',
-        standDatum: '2026-01-01',
-        isCurrent: true,
-      },
-      source: { fileName: 'gb.pdf', pageNumber: 1, snippet: 'Blatt 123' },
-      note: '',
-    },
-    grundstuecke: {
-      status: 'VERIFIED',
-      data: { parcels: [], totalAreaM2: 500, areaDiscrepancyNotes: '' },
-      source: { fileName: 'gb.pdf', pageNumber: 2, snippet: '' },
-      note: '',
-    },
-    kaufpreis: {
-      status: 'VERIFIED',
-      data: {
-        amountInFigures: 250000,
-        amountInWords: 'Zweihundertfünfzigtausend Euro',
-        currency: 'EUR',
-        previousOffers: [],
-        priceEvolutionSummary: '',
-        isFinalAgreedPrice: true,
-      },
-      source: { fileName: 'angebot.pdf', pageNumber: 1, snippet: '250.000 EUR' },
-      note: '',
-    },
-    finanzierung: {
-      status: 'VERIFIED',
-      data: {
-        mortgageAmount: 200000,
-        lenderName: 'Bank',
-        requiresFinancingPowerOfAttorney: false,
-        interestRateAndPawnDetails: '',
-      },
-      source: { fileName: 'bank.pdf', pageNumber: 1, snippet: '' },
-      note: '',
-    },
-    belastungen: {
-      status: 'VERIFIED',
-      data: { entries: [], clearingRequirements: [] },
-      source: { fileName: 'gb.pdf', pageNumber: 3, snippet: '' },
-      note: '',
-    },
-    mietverhaeltnisse: {
-      status: 'VERIFIED',
-      data: {
-        yearlyNetRent: 0,
-        statedInEmailOrOverview: '',
-        rentableAreaM2: 0,
-        unitCount: 0,
-        fullRentedStatus: false,
-        tenancyListAvailable: false,
-        privacyOrRedactionNotes: '',
-      },
-      source: { fileName: '', pageNumber: 0, snippet: '' },
-      note: '',
-    },
-    energieausweis: {
-      status: 'OUTDATED',
-      data: {
-        certificateType: 'VERBRAUCHSAUSWEIS',
-        energyValueKWh: 150,
-        efficiencyClass: 'E',
-        validUntil: '2023-01-01',
-        isExpired: true,
-        primaryEnergyCarrier: 'Gas',
-        buildingYear: '1990',
-      },
-      source: { fileName: 'energieausweis_alt.pdf', pageNumber: 1, snippet: 'Gültig bis 2023' },
-      note: 'Energieausweis abgelaufen',
-    },
-    uebergabe: {
-      status: 'VERIFIED',
-      data: { targetDate: '2026-06-01', conditionDescription: 'Zahlung', riskTransferNotes: '' },
-      source: { fileName: 'urkunde.pdf', pageNumber: 5, snippet: '' },
-      note: '',
-    },
-  };
-
-  return {
-    caseType: 'IMMOBILIENKAUF',
+  return createTestImmobilienDossier({
     caseTitle: 'Test Vorgang',
     analysisTimestamp: '2026-09-12T00:00:00.000Z',
-    detectedDocuments: [],
-    inquiries: [],
-    overallStatus: 'ACTION_REQUIRED',
+    overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
     executiveSummary: '2 Felder erfordern Prüfung.',
-    fields,
-  };
+    fieldStatusMap: {
+      kaeufer: FIELD_STATUS.NEEDS_REVIEW,
+      energieausweis: FIELD_STATUS.OUTDATED,
+    },
+    fields: {
+      kaeufer: {
+        actionRequired: 'Handelsregister anfordern',
+        note: 'HRB Auszug fehlt',
+        source: { fileName: 'angebot.pdf + Notiz #1', pageNumber: 1, snippet: 'Käuferangebot' },
+      },
+      energieausweis: {
+        actionRequired: 'Neuen Ausweis anfordern',
+        note: 'Energieausweis abgelaufen',
+        data: {
+          validUntil: '2020-01-01',
+          isExpired: true,
+        },
+      },
+    },
+  });
 }
 
 describe('UI Mapper & Formatting Services', () => {
@@ -163,10 +66,10 @@ describe('UI Mapper & Formatting Services', () => {
     const obs = extractFieldObservations(dossier);
     expect(obs).toHaveLength(2);
     expect(obs[0]?.fieldKey).toBe('kaeufer');
-    expect(obs[0]?.status).toBe('NEEDS_REVIEW');
+    expect(obs[0]?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(obs[0]?.actionRequired).toBe('Handelsregister anfordern');
     expect(obs[1]?.fieldKey).toBe('energieausweis');
-    expect(obs[1]?.status).toBe('OUTDATED');
+    expect(obs[1]?.status).toBe(FIELD_STATUS.OUTDATED);
   });
 
   it('extractAllFieldRows should return all 10 fields in proper order', () => {

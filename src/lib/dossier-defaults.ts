@@ -1,4 +1,4 @@
-import { ImmobilienFields, FIELD_STATUS } from '@/types/dossier';
+import { ImmobilienFields, FIELD_STATUS, ENERGIEAUSWEIS_TYPES } from '@/types/dossier';
 
 export function createEmptyImmobilienFields(): ImmobilienFields {
   return {
@@ -100,7 +100,7 @@ export function createEmptyImmobilienFields(): ImmobilienFields {
     },
     energieausweis: {
       data: {
-        certificateType: 'UNBEKANNT',
+        certificateType: ENERGIEAUSWEIS_TYPES.UNBEKANNT,
         energyValueKWh: 0,
         efficiencyClass: '',
         validUntil: '',

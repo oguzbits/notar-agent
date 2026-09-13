@@ -1,33 +1,40 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { Dossier } from '@/types/dossier';
+import {
+  Dossier,
+  CASE_TYPES,
+  FIELD_STATUS,
+  CONTRIBUTION_TYPE,
+  POWER_OF_REPRESENTATION,
+  OVERALL_STATUS,
+} from '@/types/dossier';
 import { useVorgangSession } from './useVorgangSession';
 
 const mockDossier: Dossier = {
-  caseType: 'GMBH_GRUENDUNG',
+  caseType: CASE_TYPES.GMBH_GRUENDUNG,
   caseTitle: 'Test Vorgang',
   analysisTimestamp: '2026-09-12T10:00:00Z',
   detectedDocuments: [],
   fields: {
     firma: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: { companyName: 'Muster GmbH', hasNameCheckIhk: true, seatCity: 'Berlin' },
       source: { fileName: 'doc.pdf', pageNumber: 1, snippet: '' },
       note: '',
     },
     gesellschafter: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: { partners: [], totalCapital: 25000 },
       source: { fileName: 'doc.pdf', pageNumber: 1, snippet: '' },
       note: '',
     },
     geschaeftsfuehrer: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         managingDirectors: [
           {
             name: 'Max Mustermann',
-            powerOfRepresentation: 'EINZELVERTRETUNG',
+            powerOfRepresentation: POWER_OF_REPRESENTATION.EINZELVERTRETUNG,
             exemption181Bgb: true,
           },
         ],
@@ -37,20 +44,24 @@ const mockDossier: Dossier = {
       note: '',
     },
     stammkapital: {
-      status: 'VERIFIED',
-      data: { nominalCapital: 25000, contributionType: 'BAREINLAGE', minimumDepositPaid: true },
+      status: FIELD_STATUS.VERIFIED,
+      data: {
+        nominalCapital: 25000,
+        contributionType: CONTRIBUTION_TYPE.BAREINLAGE,
+        minimumDepositPaid: true,
+      },
       source: { fileName: 'doc.pdf', pageNumber: 1, snippet: '' },
       note: '',
     },
     unternehmensgegenstand: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: { purposeDescription: 'Software', requiresSpecialPermit: false },
       source: { fileName: 'doc.pdf', pageNumber: 1, snippet: '' },
       note: '',
     },
   },
   inquiries: [],
-  overallStatus: 'READY',
+  overallStatus: OVERALL_STATUS.READY,
   executiveSummary: 'Test',
 };
 
@@ -59,7 +70,7 @@ describe('useVorgangSession', () => {
     const { result } = renderHook(() => useVorgangSession());
 
     expect(result.current.state.files).toEqual([]);
-    expect(result.current.state.caseType).toBe('IMMOBILIENKAUF');
+    expect(result.current.state.caseType).toBe(CASE_TYPES.IMMOBILIENKAUF);
     expect(result.current.state.notes).toBe('');
     expect(result.current.state.dossier).toBeNull();
     expect(result.current.state.isAppending).toBe(false);
@@ -73,12 +84,12 @@ describe('useVorgangSession', () => {
         { name: 'test.pdf', size: 10, type: 'application/pdf', content: 'abc' },
       ]);
       result.current.actions.setNotes('Notizen zum Fall');
-      result.current.actions.setCaseType('GMBH_GRUENDUNG');
+      result.current.actions.setCaseType(CASE_TYPES.GMBH_GRUENDUNG);
     });
 
     expect(result.current.state.files).toHaveLength(1);
     expect(result.current.state.notes).toBe('Notizen zum Fall');
-    expect(result.current.state.caseType).toBe('GMBH_GRUENDUNG');
+    expect(result.current.state.caseType).toBe(CASE_TYPES.GMBH_GRUENDUNG);
   });
 
   it('selects document and resets transient upload state', () => {

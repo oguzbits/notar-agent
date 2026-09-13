@@ -97,6 +97,18 @@ const eslintConfig = defineConfig([
           message:
             "Raw template literals in className are forbidden. Use cn(...) from '@/lib/utils' to merge Tailwind classes deterministically.",
         },
+        {
+          selector:
+            "BinaryExpression[operator=/===|!==/] > Literal[value=/^(?:[A-Z][A-Z0-9_]{2,})$/]:not([value=/^(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)$/])",
+          message:
+            'Raw enum string literals in equality comparisons are forbidden. Import canonical `as const` dictionaries from `@/types/dossier` or relevant domain module.',
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='z'][callee.property.name='literal'] > Literal[value=/^[A-Z][A-Z0-9_]{2,}$/]",
+          message:
+            'Raw enum strings in z.literal() are forbidden. Use canonical `as const` dictionaries from `@/types/dossier`.',
+        },
       ],
     },
   },

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import { CASE_TYPES } from '@/types/dossier';
 import { POST, PUT } from './route';
 
 describe('API Route: POST /api/analyze Guardrails & Validation', () => {
@@ -10,7 +11,7 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
       body: JSON.stringify({
         files: [],
         notes: '',
-        caseType: 'IMMOBILIENKAUF',
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
       }),
     });
 
@@ -57,7 +58,7 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
         method: 'POST',
         body: JSON.stringify({
           files: [{ name: 'test.pdf', type: 'application/pdf', size: 100, content: 'data' }],
-          caseType: 'IMMOBILIENKAUF',
+          caseType: CASE_TYPES.IMMOBILIENKAUF,
         }),
       });
 

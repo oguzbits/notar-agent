@@ -237,10 +237,23 @@ export const MietverhaeltnisseDataSchema = z.object({
 });
 export const MietverhaeltnisseFieldSchema = createFieldDossierSchema(MietverhaeltnisseDataSchema);
 
+export const ENERGIEAUSWEIS_TYPES = {
+  BEDARFSAUSWEIS: 'BEDARFSAUSWEIS',
+  VERBRAUCHSAUSWEIS: 'VERBRAUCHSAUSWEIS',
+  UNBEKANNT: 'UNBEKANNT',
+} as const;
+
+export const EnergieausweisTypeSchema = z.enum([
+  ENERGIEAUSWEIS_TYPES.BEDARFSAUSWEIS,
+  ENERGIEAUSWEIS_TYPES.VERBRAUCHSAUSWEIS,
+  ENERGIEAUSWEIS_TYPES.UNBEKANNT,
+]);
+export type EnergieausweisType = (typeof ENERGIEAUSWEIS_TYPES)[keyof typeof ENERGIEAUSWEIS_TYPES];
+
 export const EnergieausweisDataSchema = z.object({
-  certificateType: z
-    .enum(['BEDARFSAUSWEIS', 'VERBRAUCHSAUSWEIS', 'UNBEKANNT'])
-    .describe('Art des Ausweises: Bedarfsausweis oder Verbrauchsausweis'),
+  certificateType: EnergieausweisTypeSchema.describe(
+    'Art des Ausweises: Bedarfsausweis oder Verbrauchsausweis'
+  ),
   energyValueKWh: NotaryNumberSchema.describe(
     'Endenergiebedarf bzw. -verbrauchskennwert in kWh/(m²*a)'
   ),
@@ -302,11 +315,21 @@ export const GmbhGesellschafterDataSchema = z.object({
 });
 export const GmbhGesellschafterFieldSchema = createFieldDossierSchema(GmbhGesellschafterDataSchema);
 
+export const POWER_OF_REPRESENTATION = {
+  EINZELVERTRETUNG: 'EINZELVERTRETUNG',
+  GESAMTVERTRETUNG: 'GESAMTVERTRETUNG',
+} as const;
+
+export const PowerOfRepresentationSchema = z.enum([
+  POWER_OF_REPRESENTATION.EINZELVERTRETUNG,
+  POWER_OF_REPRESENTATION.GESAMTVERTRETUNG,
+]);
+export type PowerOfRepresentation =
+  (typeof POWER_OF_REPRESENTATION)[keyof typeof POWER_OF_REPRESENTATION];
+
 export const GmbhGeschaeftsfuehrerItemSchema = z.object({
   name: z.string().describe('Vollständiger Name des Geschäftsführers'),
-  powerOfRepresentation: z
-    .enum(['EINZELVERTRETUNG', 'GESAMTVERTRETUNG'])
-    .describe('Vertretungsbefugnis'),
+  powerOfRepresentation: PowerOfRepresentationSchema.describe('Vertretungsbefugnis'),
   exemption181Bgb: z
     .boolean()
     .describe('Befreiung von den Beschränkungen des § 181 BGB (Selbstkontrahierungsverbot)'),
@@ -322,11 +345,24 @@ export const GmbhGeschaeftsfuehrerFieldSchema = createFieldDossierSchema(
   GmbhGeschaeftsfuehrerDataSchema
 );
 
+export const CONTRIBUTION_TYPE = {
+  BAREINLAGE: 'BAREINLAGE',
+  SACHEINLAGE: 'SACHEINLAGE',
+  GEMISCHT: 'GEMISCHT',
+} as const;
+
+export const ContributionTypeSchema = z.enum([
+  CONTRIBUTION_TYPE.BAREINLAGE,
+  CONTRIBUTION_TYPE.SACHEINLAGE,
+  CONTRIBUTION_TYPE.GEMISCHT,
+]);
+export type ContributionType = (typeof CONTRIBUTION_TYPE)[keyof typeof CONTRIBUTION_TYPE];
+
 export const GmbhStammkapitalDataSchema = z.object({
   nominalCapital: z
     .number()
     .describe('Stammkapital der GmbH in Euro (mind. 25.000 € bzw. 1 € bei UG)'),
-  contributionType: z.enum(['BAREINLAGE', 'SACHEINLAGE', 'GEMISCHT']).describe('Art der Einlage'),
+  contributionType: ContributionTypeSchema.describe('Art der Einlage'),
   minimumDepositPaid: z
     .boolean()
     .describe('Gesetzliche Mindesteinzahlung (mind. 12.500 € bei GmbH) nachgewiesen'),
@@ -356,6 +392,23 @@ export type GmbhFields = z.infer<typeof GmbhFieldsSchema>;
 // 3. ALLGEMEINE STRUKTUREN & GESAMTDOSSIER
 // ==========================================
 
+export const DOCUMENT_RELIABILITY = {
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+  OBSOLETE: 'OBSOLETE',
+  UNRELATED: 'UNRELATED',
+} as const;
+
+export const DocumentReliabilitySchema = z.enum([
+  DOCUMENT_RELIABILITY.HIGH,
+  DOCUMENT_RELIABILITY.MEDIUM,
+  DOCUMENT_RELIABILITY.LOW,
+  DOCUMENT_RELIABILITY.OBSOLETE,
+  DOCUMENT_RELIABILITY.UNRELATED,
+]);
+export type DocumentReliability = (typeof DOCUMENT_RELIABILITY)[keyof typeof DOCUMENT_RELIABILITY];
+
 export const DetectedDocumentSchema = z.object({
   fileName: z.string().describe('Ursprünglicher Dateiname'),
   documentType: z
@@ -365,18 +418,38 @@ export const DetectedDocumentSchema = z.object({
     ),
   date: z.string().describe('Ermitteltes Dokumentendatum (JJJJ-MM-TT oder leer)'),
   pageCount: z.number().describe('Erkannte Seitenanzahl oder 0'),
-  reliability: z
-    .enum(['HIGH', 'MEDIUM', 'LOW', 'OBSOLETE', 'UNRELATED'])
-    .describe('Verlässlichkeit für Beurkundung'),
+  reliability: DocumentReliabilitySchema.describe('Verlässlichkeit für Beurkundung'),
   summary: z.string().optional().describe('Optional'),
 });
 export type DetectedDocument = z.infer<typeof DetectedDocumentSchema>;
 
+export const INQUIRY_PRIORITY = {
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+} as const;
+
+export const InquiryPrioritySchema = z.enum([
+  INQUIRY_PRIORITY.CRITICAL,
+  INQUIRY_PRIORITY.HIGH,
+  INQUIRY_PRIORITY.MEDIUM,
+]);
+export type InquiryPriority = (typeof INQUIRY_PRIORITY)[keyof typeof INQUIRY_PRIORITY];
+
+export const INQUIRY_RECIPIENT = {
+  VERKAEUFER: 'VERKAEUFER',
+  KAEUFER: 'KAEUFER',
+  MAKLER: 'MAKLER',
+  BANK: 'BANK',
+  BEHOERDE: 'BEHOERDE',
+  ALL: 'all',
+} as const;
+
 export const InquirySchema = z.object({
   id: z.string().default(() => `inq-${Math.random().toString(36).slice(2, 7)}`),
-  fieldKey: z.string().default('all'),
-  recipient: z.string().default('VERKAEUFER'),
-  priority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM']).default('HIGH'),
+  fieldKey: z.string().default(INQUIRY_RECIPIENT.ALL),
+  recipient: z.string().default(INQUIRY_RECIPIENT.VERKAEUFER),
+  priority: InquiryPrioritySchema.default(INQUIRY_PRIORITY.HIGH),
   subject: z.string().default('Nachforderung'),
   message: z.string().default(''),
   justification: z.string().default(''),
@@ -384,8 +457,23 @@ export const InquirySchema = z.object({
 });
 export type Inquiry = z.infer<typeof InquirySchema>;
 
+export const OVERALL_STATUS = {
+  READY: 'READY',
+  ACTION_REQUIRED: 'ACTION_REQUIRED',
+  BLOCKED: 'BLOCKED',
+} as const;
+
+export const OverallStatusSchema = z.enum([
+  OVERALL_STATUS.READY,
+  OVERALL_STATUS.ACTION_REQUIRED,
+  OVERALL_STATUS.BLOCKED,
+]);
+export type OverallStatus = (typeof OVERALL_STATUS)[keyof typeof OVERALL_STATUS];
+
 export const ImmobilienDossierSchema = z.object({
-  caseType: z.literal('IMMOBILIENKAUF').describe('Art des notariellen Vorgangs: IMMOBILIENKAUF'),
+  caseType: z
+    .literal(CASE_TYPES.IMMOBILIENKAUF)
+    .describe('Art des notariellen Vorgangs: IMMOBILIENKAUF'),
   caseTitle: z.string().describe('Aktenzeichen oder Kurzbeschreibung des Vorgangs'),
   analysisTimestamp: z.string().describe('Zeitpunkt der Analyse im ISO-Format'),
   detectedDocuments: z
@@ -397,9 +485,9 @@ export const ImmobilienDossierSchema = z.object({
   inquiries: z
     .array(InquirySchema)
     .describe('Wesentliche Nachforderungen bei echten Hindernissen, sonst leeres Array []'),
-  overallStatus: z
-    .enum(['READY', 'ACTION_REQUIRED', 'BLOCKED'])
-    .describe('Gesamtreife des Vorgangs für die Entwurfserstellung'),
+  overallStatus: OverallStatusSchema.describe(
+    'Gesamtreife des Vorgangs für die Entwurfserstellung'
+  ),
   executiveSummary: z
     .string()
     .describe('Maximal 1 prägnanter Satz zum aktuellen Bearbeitungsstand für den Entwurf'),
@@ -411,7 +499,9 @@ export const ImmobilienDossierSchema = z.object({
 export type ImmobilienDossier = z.infer<typeof ImmobilienDossierSchema>;
 
 export const GmbhDossierSchema = z.object({
-  caseType: z.literal('GMBH_GRUENDUNG').describe('Art des notariellen Vorgangs: GMBH_GRUENDUNG'),
+  caseType: z
+    .literal(CASE_TYPES.GMBH_GRUENDUNG)
+    .describe('Art des notariellen Vorgangs: GMBH_GRUENDUNG'),
   caseTitle: z.string().describe('Aktenzeichen oder Kurzbeschreibung des Vorgangs'),
   analysisTimestamp: z.string().describe('Zeitpunkt der Analyse im ISO-Format'),
   detectedDocuments: z
@@ -421,9 +511,9 @@ export const GmbhDossierSchema = z.object({
   inquiries: z
     .array(InquirySchema)
     .describe('Wesentliche Nachforderungen bei echten Hindernissen, sonst leeres Array []'),
-  overallStatus: z
-    .enum(['READY', 'ACTION_REQUIRED', 'BLOCKED'])
-    .describe('Gesamtreife des Vorgangs für die Entwurfserstellung'),
+  overallStatus: OverallStatusSchema.describe(
+    'Gesamtreife des Vorgangs für die Entwurfserstellung'
+  ),
   executiveSummary: z
     .string()
     .describe('Maximal 1 prägnanter Satz zum aktuellen Bearbeitungsstand für den Entwurf'),
@@ -450,14 +540,14 @@ export type Dossier = z.infer<typeof DossierSchema>;
  * Type-Guard für Immobilienkaufvertrags-Dossiers
  */
 export function isImmobilienDossier(dossier: Dossier): dossier is ImmobilienDossier {
-  return dossier.caseType === 'IMMOBILIENKAUF';
+  return dossier.caseType === CASE_TYPES.IMMOBILIENKAUF;
 }
 
 /**
  * Type-Guard für GmbH-Gründungs-Dossiers
  */
 export function isGmbhDossier(dossier: Dossier): dossier is GmbhDossier {
-  return dossier.caseType === 'GMBH_GRUENDUNG';
+  return dossier.caseType === CASE_TYPES.GMBH_GRUENDUNG;
 }
 
 export function getDossierFieldsRecord(
@@ -486,8 +576,8 @@ export function updateDossierFieldStatus(
     }
   }
 
-  const allVerified = Object.values(fields).every((f) => f && f.status === 'VERIFIED');
-  cloned.overallStatus = allVerified ? 'READY' : cloned.overallStatus;
+  const allVerified = Object.values(fields).every((f) => f && f.status === FIELD_STATUS.VERIFIED);
+  cloned.overallStatus = allVerified ? OVERALL_STATUS.READY : cloned.overallStatus;
 
   return cloned;
 }

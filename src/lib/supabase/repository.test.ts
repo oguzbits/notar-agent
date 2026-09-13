@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Dossier } from '@/types/dossier';
+import { Dossier, CASE_TYPES, OVERALL_STATUS } from '@/types/dossier';
 import { InMemoryDossierRepository, createEmptyImmobilienFields } from './repository';
 
 function createMockDossier(title: string): Dossier {
   return {
-    caseType: 'IMMOBILIENKAUF',
+    caseType: CASE_TYPES.IMMOBILIENKAUF,
     caseTitle: title,
     analysisTimestamp: new Date().toISOString(),
-    overallStatus: 'READY',
+    overallStatus: OVERALL_STATUS.READY,
     executiveSummary: 'Test Zusammenfassung',
     detectedDocuments: [],
     fields: createEmptyImmobilienFields(),

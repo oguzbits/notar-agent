@@ -6,27 +6,32 @@ import {
   isImmobilienDossier,
   isGmbhDossier,
   Dossier,
+  CASE_TYPES,
+  OVERALL_STATUS,
+  FIELD_STATUS,
+  CONTRIBUTION_TYPE,
+  POWER_OF_REPRESENTATION,
 } from './dossier';
 
 describe('Dossier Discriminated Union & Case Schemas', () => {
   it('should validate CaseTypeSchema containing IMMOBILIENKAUF and GMBH_GRUENDUNG', () => {
-    expect(CaseTypeSchema.safeParse('IMMOBILIENKAUF').success).toBe(true);
-    expect(CaseTypeSchema.safeParse('GMBH_GRUENDUNG').success).toBe(true);
+    expect(CaseTypeSchema.safeParse(CASE_TYPES.IMMOBILIENKAUF).success).toBe(true);
+    expect(CaseTypeSchema.safeParse(CASE_TYPES.GMBH_GRUENDUNG).success).toBe(true);
     expect(CaseTypeSchema.safeParse('INVALID').success).toBe(false);
   });
 
   it('should parse valid GmbhDossier and discriminate correctly', () => {
     const validGmbhPayload = {
-      caseType: 'GMBH_GRUENDUNG' as const,
+      caseType: CASE_TYPES.GMBH_GRUENDUNG,
       caseTitle: 'Gründung Muster GmbH',
       analysisTimestamp: new Date().toISOString(),
       detectedDocuments: [],
       inquiries: [],
-      overallStatus: 'READY' as const,
+      overallStatus: OVERALL_STATUS.READY,
       executiveSummary: 'Gründungsunterlagen vollständig.',
       fields: {
         firma: {
-          status: 'VERIFIED' as const,
+          status: FIELD_STATUS.VERIFIED,
           data: {
             companyName: 'Muster Innovations GmbH',
             hasNameCheckIhk: true,
@@ -36,7 +41,7 @@ describe('Dossier Discriminated Union & Case Schemas', () => {
           note: '',
         },
         gesellschafter: {
-          status: 'VERIFIED' as const,
+          status: FIELD_STATUS.VERIFIED,
           data: {
             partners: [
               { name: 'Dr. Anna Schmidt', shareAmount: 15000, sharePercent: 60 },
@@ -48,12 +53,12 @@ describe('Dossier Discriminated Union & Case Schemas', () => {
           note: '',
         },
         geschaeftsfuehrer: {
-          status: 'VERIFIED' as const,
+          status: FIELD_STATUS.VERIFIED,
           data: {
             managingDirectors: [
               {
                 name: 'Dr. Anna Schmidt',
-                powerOfRepresentation: 'EINZELVERTRETUNG',
+                powerOfRepresentation: POWER_OF_REPRESENTATION.EINZELVERTRETUNG,
                 exemption181Bgb: true,
               },
             ],
@@ -63,17 +68,17 @@ describe('Dossier Discriminated Union & Case Schemas', () => {
           note: '',
         },
         stammkapital: {
-          status: 'VERIFIED' as const,
+          status: FIELD_STATUS.VERIFIED,
           data: {
             nominalCapital: 25000,
-            contributionType: 'BAREINLAGE' as const,
+            contributionType: CONTRIBUTION_TYPE.BAREINLAGE,
             minimumDepositPaid: true,
           },
           source: { fileName: 'Bankbeleg.pdf', pageNumber: 1, snippet: 'Einzahlung 25.000 EUR' },
           note: '',
         },
         unternehmensgegenstand: {
-          status: 'VERIFIED' as const,
+          status: FIELD_STATUS.VERIFIED,
           data: {
             purposeDescription: 'Softwareentwicklung und IT-Beratung',
             requiresSpecialPermit: false,
@@ -107,7 +112,7 @@ describe('Dossier Discriminated Union & Case Schemas', () => {
       analysisTimestamp: new Date().toISOString(),
       detectedDocuments: [],
       inquiries: [],
-      overallStatus: 'READY',
+      overallStatus: OVERALL_STATUS.READY,
       executiveSummary: '',
       fields: {},
     };

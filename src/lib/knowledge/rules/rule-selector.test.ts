@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CASE_TYPES } from '@/types/dossier';
 import { selectRelevantAuditRules } from './rule-selector';
+import { AUDIT_RULE_IDS } from './rules-registry';
 
 describe('RAG Auditor: selectRelevantAuditRules', () => {
   it('enthält immer allgemeine Basiskriterien (GEG 10 Jahre, Grundbuch § 21 BeurkG)', () => {
@@ -12,8 +13,8 @@ describe('RAG Auditor: selectRelevantAuditRules', () => {
     });
 
     const ruleIds = rules.map((r) => r.id);
-    expect(ruleIds).toContain('RULE_GEG_10_YEARS');
-    expect(ruleIds).toContain('RULE_BEURKG_21_GRUNDBUCH');
+    expect(ruleIds).toContain(AUDIT_RULE_IDS.RULE_GEG_10_YEARS);
+    expect(ruleIds).toContain(AUDIT_RULE_IDS.RULE_BEURKG_21_GRUNDBUCH);
   });
 
   it('wählt MoPeG/eGbR-Regeln aus, wenn GbR in Verkäufer oder Käufer vorkommt', () => {
@@ -31,8 +32,8 @@ describe('RAG Auditor: selectRelevantAuditRules', () => {
     });
 
     const ruleIds = rules.map((r) => r.id);
-    expect(ruleIds).toContain('RULE_MOPEG_EGBR');
-    const mopegRule = rules.find((r) => r.id === 'RULE_MOPEG_EGBR');
+    expect(ruleIds).toContain(AUDIT_RULE_IDS.RULE_MOPEG_EGBR);
+    const mopegRule = rules.find((r) => r.id === AUDIT_RULE_IDS.RULE_MOPEG_EGBR);
     expect(mopegRule?.legalBasis).toContain('§ 707 BGB');
   });
 
@@ -52,7 +53,7 @@ describe('RAG Auditor: selectRelevantAuditRules', () => {
     });
 
     const ruleIds = rules.map((r) => r.id);
-    expect(ruleIds).toContain('RULE_HGB_12_REGISTER');
+    expect(ruleIds).toContain(AUDIT_RULE_IDS.RULE_HGB_12_REGISTER);
   });
 
   it('wählt MaBV-Ratenregeln aus, wenn Bauträgerkauf oder Ratenzahlung erwähnt werden', () => {
@@ -70,7 +71,7 @@ describe('RAG Auditor: selectRelevantAuditRules', () => {
     });
 
     const ruleIds = rules.map((r) => r.id);
-    expect(ruleIds).toContain('RULE_MABV_RATES');
+    expect(ruleIds).toContain(AUDIT_RULE_IDS.RULE_MABV_RATES);
   });
 
   it('formatiert die selektierten Regeln in einen kompakten Prompt-Auszug mit Paragraphenbelegen', () => {

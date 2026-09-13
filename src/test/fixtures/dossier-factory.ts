@@ -2,6 +2,10 @@ import {
   ImmobilienDossier,
   ImmobilienFields,
   FieldStatus,
+  FIELD_STATUS,
+  CASE_TYPES,
+  OVERALL_STATUS,
+  ENERGIEAUSWEIS_TYPES,
   GenericFieldDossier,
 } from '@/types/dossier';
 
@@ -18,7 +22,7 @@ export function createTestImmobilienFields(
 ): ImmobilienFields {
   const fields: ImmobilienFields = {
     verkaeufer: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         name: 'Musterverkäufer GmbH',
         legalForm: 'GmbH',
@@ -31,7 +35,7 @@ export function createTestImmobilienFields(
       note: '',
     },
     kaeufer: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         companyName: 'Musterkäufer GmbH',
         legalForm: 'GmbH',
@@ -45,7 +49,7 @@ export function createTestImmobilienFields(
       note: '',
     },
     grundbuch: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         blatt: '1234',
         amtsgericht: 'Amtsgericht Musterstadt',
@@ -57,7 +61,7 @@ export function createTestImmobilienFields(
       note: '',
     },
     grundstuecke: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         parcels: [
           {
@@ -75,7 +79,7 @@ export function createTestImmobilienFields(
       note: '',
     },
     kaufpreis: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         amountInFigures: 1000000,
         amountInWords: 'Eine Million Euro',
@@ -88,7 +92,7 @@ export function createTestImmobilienFields(
       note: '',
     },
     finanzierung: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         lenderName: 'Musterbank AG',
         mortgageAmount: 800000,
@@ -99,13 +103,13 @@ export function createTestImmobilienFields(
       note: '',
     },
     belastungen: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: { entries: [], clearingRequirements: [] },
       source: { fileName: 'grundbuch.pdf', pageNumber: 2, snippet: 'Lastenfrei' },
       note: '',
     },
     mietverhaeltnisse: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         yearlyNetRent: 12000,
         statedInEmailOrOverview: 'Mietaufstellung',
@@ -119,10 +123,10 @@ export function createTestImmobilienFields(
       note: '',
     },
     energieausweis: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         efficiencyClass: 'B',
-        certificateType: 'VERBRAUCHSAUSWEIS',
+        certificateType: ENERGIEAUSWEIS_TYPES.VERBRAUCHSAUSWEIS,
         energyValueKWh: 60,
         validUntil: '2030-01-01',
         isExpired: false,
@@ -133,7 +137,7 @@ export function createTestImmobilienFields(
       note: '',
     },
     uebergabe: {
-      status: 'VERIFIED',
+      status: FIELD_STATUS.VERIFIED,
       data: {
         targetDate: '2026-12-01',
         conditionDescription: 'Nach Kaufpreiszahlung',
@@ -190,12 +194,12 @@ export function createTestImmobilienDossier(
   }
 
   return {
-    caseType: 'IMMOBILIENKAUF',
+    caseType: CASE_TYPES.IMMOBILIENKAUF,
     caseTitle: 'Test Vorgang',
     analysisTimestamp: '2026-03-01T12:00:00Z',
     detectedDocuments: [],
     inquiries: [],
-    overallStatus: 'READY',
+    overallStatus: OVERALL_STATUS.READY,
     executiveSummary: 'Test Zusammenfassung',
     ...overrides,
     fields: mergedFields as ImmobilienFields,

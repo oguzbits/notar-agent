@@ -4,14 +4,15 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import React from 'react';
 import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import { CASE_STATUS } from '@/lib/supabase/repository';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { Dossier } from '@/types/dossier';
 import { useDocuments } from './useDocuments';
 
 describe('useDocuments with TanStack Query & MSW', () => {
   const mockDocs = [
-    { id: 'doc-1', title: 'Vorgang 1', status: 'In Prüfung' },
-    { id: 'doc-2', title: 'Vorgang 2', status: 'Entwurfsreif' },
+    { id: 'doc-1', title: 'Vorgang 1', status: CASE_STATUS.IN_PROGRESS },
+    { id: 'doc-2', title: 'Vorgang 2', status: CASE_STATUS.DRAFT_READY },
   ];
 
   let currentDocs = [...mockDocs];
