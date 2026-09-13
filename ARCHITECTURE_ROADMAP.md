@@ -133,23 +133,11 @@ graph LR
 
 ---
 
-## 4. Provider-Flexibilität & Kostensenkung (High ROI)
+## 4. Ingestion-Pipeline & Zeichenintegrität
 
-### 4.1 Provider-Agnostisches Multi-LLM & On-Premises (Local Models)
+> _Hinweis: Das Thema Multi-LLM Provider-Adapter (AWS Bedrock / Azure / vLLM) wurde ins Backlog ausgelagert (siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md))._
 
-Zur Vermeidung von Vendor-Lock-in und zur Einhaltung höchster Geheimhaltungsstufen:
-
-```mermaid
-graph TD
-    A["NotarPartner AI Orchestrator"] --> B["Provider-Agnostischer Adapter"]
-    B -->|"Standard Cloud Tier (EU)"| C["Anthropic Claude via AWS Bedrock Frankfurt"]
-    B -->|"Fallback Cloud Provider"| D["OpenAI GPT-4o / Azure OpenAI EU"]
-    B -->|"Höchste Geheimhaltung On-Premises"| E["Lokaler vLLM / Ollama Server: Llama-3-Vision"]
-```
-
-- **Lokales Hosting:** Für Bundeswehr-Liegenschaften oder Verschlusssachen können Open-Source-Vision-Modelle (z. B. Mistral Pixtral, Llama 3.2 Vision) auf kanzleieigener GPU-Hardware betrieben werden.
-
-### 4.2 Dual-Stream Ingestion Pipeline (Industriestandard für Zeichenintegrität & Vision)
+### 4.1 Dual-Stream Ingestion Pipeline (Industriestandard für Zeichenintegrität & Vision)
 
 > **Architektur-Spezifikation (Dual-Stream / Hybrid Ingestion):**  
 > Der Einsatz einer hybriden Pipeline dient im Notariat **primär der absoluten Zeichenpräzision (Zero OCR-Tippfehler bei Kaufpreisen, IBANs und Flurstücken)** sowie sekundär der Geschwindigkeits- und Durchsatzoptimierung:
@@ -362,7 +350,6 @@ graph TD
   - [x] Dual-Stream Payload-Assembler in `pipeline.ts` (Textlayer für Ziffern/Beträge + Vision-Bilder für Siegel/Handschriften)
   - [x] TDD-Unit-Tests für Klassifikation, Text-Integrität und Edge Cases (`pdf-stream-classifier.test.ts`, `pdf-text-extractor.test.ts`)
 - [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**
-- [ ] **B.4 Multi-LLM Provider-Adapter (AWS Bedrock / Azure / vLLM)**
 
 ### Detaillierter Fortschrittstracker (Phase C: Enterprise Compliance & Ökosystem)
 
