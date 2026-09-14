@@ -15,6 +15,8 @@
     "audit:duplication": "jscpd src --ignore \"**/*.test.*,**/*.spec.*\" --threshold 2 --reporters console",
     "check": "npm run type-check && npm run lint && npm run depcruise && npm run audit:magic-strings && npm run audit:duplication",
     "depcruise": "depcruise --config config/dependency-cruiser.js src",
+    "depcruise:graph": "depcruise --config config/dependency-cruiser.js --output-type mermaid src > architecture.mmd",
+    "depcruise:report": "depcruise --config config/dependency-cruiser.js --output-type err-html --output-to depcruise-report.html src",
     "knip": "knip --include dependencies,unlisted,binaries,unresolved,files,cycles",
     "knip:exports": "knip --exports",
     "test": "vitest run",
