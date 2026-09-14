@@ -28,5 +28,15 @@
         ]
       }
     ]
+  },
+  "stop-verification-gate": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "node ./scripts/guard-stop.js",
+        "timeout": 15
+      }
+    ]
   }
 }
