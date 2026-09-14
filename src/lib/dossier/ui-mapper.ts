@@ -188,15 +188,27 @@ export function extractAllFieldRows(dossier: Dossier): FieldObservation[] {
 }
 
 /**
- * Generiert einen kompakten Textbericht für die Zwischenablage.
+ * Generiert einen revisionssicheren Prüfbericht gem. § 17 ff. BeurkG.
  */
-export function generatePruefberichtText(dossier: Dossier): string {
+export function generatePruefberichtText(
+  dossier: Dossier,
+  auditOptions?: {
+    history?: Array<{
+      action: string;
+      timestamp: string;
+      actor: string;
+      currentHash: string;
+      details?: Record<string, unknown>;
+    }>;
+    integrityValid?: boolean;
+  }
+): string {
   const isReady = isDossierEntwurfsreif(dossier);
   const statusLabel = isReady ? 'ENTWURFSREIF' : 'PRÜFUNGSBEDARF';
   const observations = extractFieldObservations(dossier);
 
   const lines: string[] = [
-    `=== PRÜFBERICHT & FESTSTELLUNGEN ===`,
+    `=== PRÜFBERICHT & FESTSTELLUNGEN (§ 17 ff. BeurkG) ===`,
     `Vorgang: ${dossier.caseTitle}`,
     `Status: ${statusLabel}`,
     `Datum: ${new Date().toLocaleDateString('de-DE')}`,
@@ -230,6 +242,30 @@ export function generatePruefberichtText(dossier: Dossier): string {
       }
       lines.push(``);
     }
+  }
+
+  // Revisionssicherer Audit-Trail Anhang
+  if (auditOptions?.history && auditOptions.history.length > 0) {
+    lines.push(`=== REVISIONSSICHERER AUDIT-TRAIL (HASH-CHAINING § 17 BeurkG) ===`);
+    lines.push(
+      `Integritätsstatus: ${auditOptions.integrityValid ? 'Mathematisch verifiziert (Lückenlos)' : 'Integritätswarnung'}`
+    );
+    lines.push(`Protokollierte Vorgangsschritte (${auditOptions.history.length}):`);
+
+    auditOptions.history.forEach((event, idx) => {
+      lines.push(`[Schritt ${idx + 1}] ${event.action} - ${event.timestamp}`);
+      lines.push(`    Akteur: ${event.actor}`);
+      lines.push(`    SHA-256 Hash: ${event.currentHash}`);
+
+      const override = event.details?.override as
+        { reason?: string; fieldKey?: string; newStatus?: string } | undefined;
+      if (override?.reason) {
+        lines.push(
+          `    Freigabebegründung (${override.fieldKey || 'Feld'} -> ${override.newStatus || ''}): "${override.reason}"`
+        );
+      }
+    });
+    lines.push(``);
   }
 
   return lines.join('\n').trim();

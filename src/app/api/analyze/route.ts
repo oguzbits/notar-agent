@@ -5,11 +5,13 @@ import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
 import {
+  getAuditRepository,
   getDossierRepository,
   getJobRepository,
   getServerSupabase,
   getUniformCaseTitle,
 } from '@/lib/supabase/server';
+import { AUDIT_ACTIONS } from '@/types/audit';
 import { AnalyzeRequestSchema, UpdateDossierRequestSchema } from '@/types/dossier';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
@@ -125,7 +127,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: validationError.toString() }, { status: 400 });
     }
 
-    const { documentId, dossier } = parseResult.data;
+    const { documentId, dossier, auditOverride, actor } = parseResult.data;
 
     const repo = getDossierRepository();
     const updateRes = await repo.update(documentId, dossier);
@@ -135,6 +137,20 @@ export async function PUT(req: NextRequest): Promise<Response> {
         { error: updateRes.error || 'Update fehlgeschlagen' },
         { status: 500 }
       );
+    }
+
+    // Revisionssicherer Audit-Trail (§ 17 ff. BeurkG)
+    if (auditOverride) {
+      const auditRepo = getAuditRepository();
+      await auditRepo.appendEvent({
+        documentId,
+        action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
+        actor: actor || 'Sachbearbeiter(in)',
+        details: {
+          override: auditOverride,
+          caseTitle: dossier.caseTitle,
+        },
+      });
     }
 
     return NextResponse.json({

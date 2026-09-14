@@ -19,7 +19,12 @@ import { Dossier, FieldStatus } from '@/types/dossier';
 interface DossierDetailViewProps {
   dossier: Dossier;
   activeRecord: DocumentRecord | null;
-  onOverrideFieldStatus: (fieldKey: string, newStatus: FieldStatus, customNote?: string) => void;
+  onOverrideFieldStatus: (
+    fieldKey: string,
+    newStatus: FieldStatus,
+    customNote?: string,
+    overrideReason?: string
+  ) => void;
   updatingFieldKey?: string | null;
   // Nachreichen
   isAppending: boolean;
@@ -106,7 +111,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
               </>
             )}
           </button>
-          <ExportActions dossier={dossier} />
+          <ExportActions dossier={dossier} documentId={activeRecord?.id} />
         </div>
       </div>
 

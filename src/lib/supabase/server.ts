@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { validateEnv } from '@/env';
 import {
+  IAuditRepository,
+  InMemoryAuditRepository,
+  SupabaseAuditRepository,
+} from '@/lib/audit/audit-repository';
+import {
   IJobRepository,
   InMemoryJobRepository,
   SupabaseJobRepository,
@@ -26,6 +31,7 @@ export type {
   UpdateResult,
   IDossierRepository,
   IJobRepository,
+  IAuditRepository,
 };
 export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 
@@ -33,6 +39,7 @@ export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 declare global {
   var __boundedInMemoryRepo: InMemoryDossierRepository | undefined;
   var __boundedInMemoryJobRepo: InMemoryJobRepository | undefined;
+  var __boundedInMemoryAuditRepo: InMemoryAuditRepository | undefined;
 }
 
 if (!globalThis.__boundedInMemoryRepo) {
@@ -41,9 +48,13 @@ if (!globalThis.__boundedInMemoryRepo) {
 if (!globalThis.__boundedInMemoryJobRepo) {
   globalThis.__boundedInMemoryJobRepo = new InMemoryJobRepository(50);
 }
+if (!globalThis.__boundedInMemoryAuditRepo) {
+  globalThis.__boundedInMemoryAuditRepo = new InMemoryAuditRepository(100);
+}
 
 const inMemoryRepo = globalThis.__boundedInMemoryRepo;
 const inMemoryJobRepo = globalThis.__boundedInMemoryJobRepo;
+const inMemoryAuditRepo = globalThis.__boundedInMemoryAuditRepo;
 
 export function getServerSupabase() {
   const env = validateEnv(process.env);
@@ -80,6 +91,17 @@ export function getJobRepository(): IJobRepository {
     return inMemoryJobRepo;
   }
   return new SupabaseJobRepository(supabase, inMemoryJobRepo);
+}
+
+/**
+ * Factory zur Bereitstellung des konfigurierten Audit-Repositories (Phase C.1 Audit-Trail).
+ */
+export function getAuditRepository(): IAuditRepository {
+  const supabase = getServerSupabase();
+  if (!supabase) {
+    return inMemoryAuditRepo;
+  }
+  return new SupabaseAuditRepository(supabase, inMemoryAuditRepo);
 }
 
 // Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer

@@ -26,14 +26,24 @@ async function apiDeleteDocument(id: string): Promise<boolean> {
 async function apiUpdateDossier({
   documentId,
   dossier,
+  auditOverride,
+  actor,
 }: {
   documentId: string;
   dossier: Dossier;
+  auditOverride?: {
+    fieldKey: string;
+    fieldTitle?: string;
+    previousStatus: string;
+    newStatus: string;
+    reason: string;
+  };
+  actor?: string;
 }): Promise<void> {
   const res = await fetch('/api/analyze', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ documentId, dossier }),
+    body: JSON.stringify({ documentId, dossier, auditOverride, actor }),
   });
   if (!res.ok) {
     throw new Error('Fehler beim Speichern der Änderungen');

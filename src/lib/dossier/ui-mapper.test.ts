@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import { AUDIT_ACTIONS } from '@/types/audit';
 import { Dossier, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import {
   cleanSourceFileName,
@@ -84,10 +85,30 @@ describe('UI Mapper & Formatting Services', () => {
 
   it('generatePruefberichtText should produce a complete textual audit report', () => {
     const dossier = createStubDossier();
-    const report = generatePruefberichtText(dossier);
-    expect(report).toContain('=== PRÜFBERICHT & FESTSTELLUNGEN ===');
+    const report = generatePruefberichtText(dossier, {
+      history: [
+        {
+          action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
+          timestamp: '2026-09-14T10:00:00Z',
+          actor: 'Notar Dr. Test',
+          currentHash: 'a'.repeat(64),
+          details: {
+            override: {
+              fieldKey: 'verkaeufer',
+              newStatus: FIELD_STATUS.VERIFIED,
+              reason: 'Erbschein vorgelegt',
+            },
+          },
+        },
+      ],
+      integrityValid: true,
+    });
+    expect(report).toContain('=== PRÜFBERICHT & FESTSTELLUNGEN (§ 17 ff. BeurkG) ===');
     expect(report).toContain('Vorgang: Test Vorgang');
     expect(report).toContain('[2] Käufer [Prüfung nötig]: HRB Auszug fehlt');
     expect(report).toContain('[9] Energieausweis [Veraltet]: Energieausweis abgelaufen');
+    expect(report).toContain('=== REVISIONSSICHERER AUDIT-TRAIL (HASH-CHAINING § 17 BeurkG) ===');
+    expect(report).toContain('Mathematisch verifiziert (Lückenlos)');
+    expect(report).toContain('Freigabebegründung (verkaeufer -> VERIFIED): "Erbschein vorgelegt"');
   });
 });

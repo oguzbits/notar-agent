@@ -359,8 +359,18 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
     await expect(selectDropdown).toBeVisible();
     await expect(selectDropdown).toHaveValue(FIELD_STATUS.NEEDS_REVIEW);
 
-    // Sachbearbeiter überschreibt Status auf VERIFIED und wartet auf UI-Reaktion
+    // Sachbearbeiter überschreibt Status auf VERIFIED
     await selectDropdown.selectOption(FIELD_STATUS.VERIFIED);
+
+    // Revisionssicherer Pflichtbegründungs-Dialog (§ 17 ff. BeurkG) erscheint
+    const modalDialog = page.getByRole('dialog');
+    await expect(modalDialog).toBeVisible();
+    await page
+      .getByLabel(/Begründung für die Akte/i)
+      .fill('Originaler Energieausweis lag bei Beurkundung vor.');
+    await page.getByRole('button', { name: /Freigabe im Audit-Trail quittieren/i }).click();
+
+    // UI-Reaktion & Bestätigung abwarten
     await expect(selectDropdown).toHaveValue(FIELD_STATUS.VERIFIED);
 
     // 10. Revisionssicheren Export prüfen

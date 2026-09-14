@@ -65,3 +65,17 @@ graph TD
 - [ ] Azure OpenAI Provider-Integration (`@ai-sdk/azure`)
 - [ ] Lokaler vLLM/Ollama Adapter via OpenAI-kompatibler Schnittstelle
 - [ ] Tenant-spezifische Provider-Auswahl im Kanzlei-Profil
+
+---
+
+## 3. Zero-Data-Retention (ZDR) Vertragskonfiguration (Cloud Contractual)
+
+- **Priorisierung:** Nachgelagertes Backlog / vertraglich-organisatorischer Schritt (ergänzend zu den technischen Hash- und Audit-Trail-Mechanismen aus Phase C.1).
+- **Ziel:** Vollständiger Ausschluss der Speicherung sensibler Mandantendaten bei externen LLM-Providern zur Einhaltung von § 203 StGB und DSGVO.
+- **Ausgangslage:** Standard-Cloud-APIs führen standardmäßig ein 30-tägiges Abuse-Monitoring-Logging durch, was für das notarielle Berufsgeheimnis ohne gesonderte Vereinbarung unzulässig ist.
+
+### Kernanforderungen & Aufgaben
+
+- [ ] Abschluss von Business Associate Agreements (BAA) / Zero-Data-Retention-Vereinbarungen mit Anthropic (0 Tage Logging)
+- [ ] Konfiguration von Enterprise-ZDR für Google Cloud Vertex AI / AWS Bedrock (Region Frankfurt / EU-Only)
+- [ ] Automatisierte Audit-Prüfung der API-Header auf ZDR-Compliance vor Übermittlung von Urkundeninhalten

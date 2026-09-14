@@ -4,17 +4,23 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { FieldObservation } from '@/lib/dossier/types';
 import { cn } from '@/lib/utils';
-import { Dossier, FieldStatus } from '@/types/dossier';
+import { Dossier, FieldStatus, FIELD_STATUS } from '@/types/dossier';
 import { FieldDetailContent } from '../FieldDetailContent';
 import { InlineNoteEditor } from './InlineNoteEditor';
 import { StatusOverrideDropdown } from './StatusOverrideDropdown';
+import { StatusOverrideReasonModal } from './StatusOverrideReasonModal';
 
 interface CockpitTableRowProps {
   row: FieldObservation;
   dossier: Dossier;
   isExpanded: boolean;
   onToggleExpand: () => void;
-  onOverrideFieldStatus?: (fieldKey: string, newStatus: FieldStatus, note?: string) => void;
+  onOverrideFieldStatus?: (
+    fieldKey: string,
+    newStatus: FieldStatus,
+    note?: string,
+    overrideReason?: string
+  ) => void;
   updatingFieldKey?: string | null;
 }
 
@@ -27,6 +33,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
   updatingFieldKey,
 }) => {
   const [isEditingNote, setIsEditingNote] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<FieldStatus | null>(null);
 
   const hasSources = row.sources && row.sources.length > 0;
 
@@ -92,7 +99,13 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
             <StatusOverrideDropdown
               status={row.status}
               isUpdating={updatingFieldKey === row.fieldKey}
-              onChange={(newStatus) => onOverrideFieldStatus(row.fieldKey, newStatus, row.note)}
+              onChange={(newStatus) => {
+                if (newStatus === FIELD_STATUS.VERIFIED && row.status !== FIELD_STATUS.VERIFIED) {
+                  setPendingStatusChange(newStatus);
+                } else {
+                  onOverrideFieldStatus(row.fieldKey, newStatus, row.note);
+                }
+              }}
             />
           ) : (
             <StatusBadge status={row.status} size="sm" />
@@ -249,6 +262,21 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
           </td>
         </tr>
       )}
+
+      {/* Revisionssicherer Pflichtbegründungs-Dialog (§ 17 ff. BeurkG) */}
+      <StatusOverrideReasonModal
+        isOpen={pendingStatusChange !== null}
+        fieldTitle={row.fieldTitle}
+        onConfirm={(reason) => {
+          if (onOverrideFieldStatus && pendingStatusChange) {
+            onOverrideFieldStatus(row.fieldKey, pendingStatusChange, row.note, reason);
+          }
+          setPendingStatusChange(null);
+        }}
+        onCancel={() => {
+          setPendingStatusChange(null);
+        }}
+      />
     </React.Fragment>
   );
 };

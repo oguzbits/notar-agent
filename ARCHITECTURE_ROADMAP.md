@@ -127,9 +127,9 @@ graph LR
   - Zwingende Pflichtbegründung bei manuellem Überschreiben von Warnungen (`NEEDS_REVIEW` -> `VERIFIED`).
   - SHA-256-Fingerprint der zugrundeliegenden Quelldatei.
 
-### 3.3 Zero-Data-Retention (ZDR) Vertragskonfiguration
+### 3.3 Zero-Data-Retention (ZDR) Vertragskonfiguration (Ausgelagert ins Backlog)
 
-- Sicherstellung, dass über Enterprise-Vereinbarungen (Anthropic BAA oder AWS Bedrock / Google Cloud Frankfurt) das 30-tägige Abuse-Monitoring-Logging der KI-Provider vollständig deaktiviert ist (0 Tage Speicherung).
+> _Hinweis: Die vertragliche Konfiguration von ZDR-Vereinbarungen (Cloud Contractual mit Anthropic / AWS / Google Cloud) wurde ins Backlog ausgelagert (siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md)). Der technische Revisionsschutz ist durch Phase C.1 (Append-Only Audit-Trail) vollständig realisiert._
 
 ---
 
@@ -311,11 +311,11 @@ graph TD
 
 ### Übersicht der Phasen & Umsetzungsstatus
 
-| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                           |
-| :---------- | :--------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                 |
-| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter                   |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [ ] C.1 Append-Only Audit-Trail & Zero-Data-Retention<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                                             |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                   |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter                                     |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
 
 ### Detaillierter Fortschrittstracker (Phase A)
 
@@ -353,10 +353,12 @@ graph TD
 
 ### Detaillierter Fortschrittstracker (Phase C: Enterprise Compliance & Ökosystem)
 
-- [ ] **C.1 Append-Only Audit-Trail & Zero-Data-Retention:**
-  - [ ] Revisionssichere Event-Tabelle (`audit_logs`) mit SHA-256 Hash-Chaining (§ 17 ff. BeurkG)
-  - [ ] Protokollierung aller Feld-Overrides inkl. Begründungszwang
-  - [ ] Konfiguration von ZDR-Vereinbarungen für Provider-Endpunkte
+- [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG):**
+  - [x] Revisionssichere Event-Tabelle (`audit_logs`) mit SHA-256 Hash-Chaining (§ 17 ff. BeurkG)
+  - [x] Protokollierung aller Feld-Overrides inkl. Begründungszwang (`StatusOverrideReasonModal`)
+  - [x] `IAuditRepository` (Bounded In-Memory & Supabase) mit automatischer Integritätsverifikation
+  - [x] Revisionssicherer Prüfbericht-Export inkl. Kettensignatur & Hash-Fingerprint in `ExportActions`
+  - _(ZDR-Cloud-Verträge ins Backlog ausgelagert, siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md))_
 - [ ] **C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB):**
   - [ ] Mandanten-Isolation auf Datenbankebene via Row-Level Security
   - [ ] Session-Claims & Tenant-Identifikatoren in allen Queries

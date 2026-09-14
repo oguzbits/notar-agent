@@ -14,7 +14,7 @@ import { useJobs } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
 import { DocumentRecord } from '@/lib/supabase/server';
-import { FieldStatus, updateDossierFieldStatus } from '@/types/dossier';
+import { FieldStatus, getDossierFieldsRecord, updateDossierFieldStatus } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
 const VIEW_MODE = {
@@ -153,10 +153,13 @@ function HomeContent() {
   const handleOverrideFieldStatus = async (
     fieldKey: string,
     newStatus: FieldStatus,
-    customNote?: string
+    customNote?: string,
+    overrideReason?: string
   ) => {
     if (!displayedDossier) return;
 
+    const fieldsRecord = getDossierFieldsRecord(displayedDossier);
+    const previousStatus = fieldsRecord[fieldKey]?.status;
     const docId = session.activeDocumentId || vorgangParam;
     const updatedDossier = updateDossierFieldStatus(
       displayedDossier,
@@ -171,7 +174,21 @@ function HomeContent() {
     try {
       if (docId) {
         // Erst nach erfolgreicher Server-Bestätigung (200 OK) im State annehmen
-        await updateDossier({ documentId: docId, dossier: updatedDossier });
+        const auditOverride = overrideReason
+          ? {
+              fieldKey,
+              fieldTitle: fieldKey,
+              previousStatus: previousStatus || newStatus,
+              newStatus,
+              reason: overrideReason,
+            }
+          : undefined;
+
+        await updateDossier({
+          documentId: docId,
+          dossier: updatedDossier,
+          auditOverride,
+        });
       }
       actions.setDossier(updatedDossier);
     } catch (err) {

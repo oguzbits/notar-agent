@@ -12,7 +12,12 @@ import { CockpitTableRow } from './subcomponents/CockpitTableRow';
 
 interface UnifiedFieldCockpitTableProps {
   dossier: Dossier;
-  onOverrideFieldStatus?: (fieldKey: string, newStatus: FieldStatus, note?: string) => void;
+  onOverrideFieldStatus?: (
+    fieldKey: string,
+    newStatus: FieldStatus,
+    note?: string,
+    overrideReason?: string
+  ) => void;
   updatingFieldKey?: string | null;
 }
 

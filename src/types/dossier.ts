@@ -620,5 +620,15 @@ export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 export const UpdateDossierRequestSchema = z.object({
   documentId: z.string().min(1, 'documentId ist erforderlich.'),
   dossier: DossierSchema,
+  auditOverride: z
+    .object({
+      fieldKey: z.string().min(1),
+      fieldTitle: z.string().optional(),
+      previousStatus: FieldStatusSchema,
+      newStatus: FieldStatusSchema,
+      reason: z.string().min(3),
+    })
+    .optional(),
+  actor: z.string().optional(),
 });
 export type UpdateDossierRequest = z.infer<typeof UpdateDossierRequestSchema>;
