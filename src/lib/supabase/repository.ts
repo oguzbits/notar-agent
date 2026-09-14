@@ -1,24 +1,11 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
+import { CaseStatus, DocumentRecord, CASE_STATUS } from '@/types/document';
 import { Dossier, PersistenceMeta, STORAGE_TYPES } from '@/types/dossier';
 
-export { createEmptyImmobilienFields };
-
-export const CASE_STATUS = {
-  IN_PROGRESS: 'In Prüfung',
-  DRAFT_READY: 'Entwurfsreif',
-} as const;
-
-export type CaseStatus = (typeof CASE_STATUS)[keyof typeof CASE_STATUS];
-
-export interface DocumentRecord {
-  id: string;
-  title: string;
-  status: CaseStatus;
-  content: Dossier;
-  created_at: string;
-}
+export { createEmptyImmobilienFields, CASE_STATUS };
+export type { CaseStatus, DocumentRecord };
 
 export type PersistenceResult = PersistenceMeta & {
   persisted: boolean;
@@ -98,7 +85,7 @@ export class InMemoryDossierRepository implements IDossierRepository {
 
     return {
       persisted: true,
-      storageType: 'in-memory',
+      storageType: STORAGE_TYPES.IN_MEMORY,
       caseNumber: title,
       id,
     };
@@ -225,7 +212,7 @@ export class SupabaseDossierRepository implements IDossierRepository {
 
       return {
         persisted: true,
-        storageType: 'supabase',
+        storageType: STORAGE_TYPES.SUPABASE,
         caseNumber: title,
         id: data?.id || newId,
       };

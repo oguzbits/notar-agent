@@ -3,8 +3,8 @@
 import { FileText, Search, Plus, Trash2, ExternalLink, Loader2, RotateCw } from 'lucide-react';
 import React, { useState } from 'react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
+import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/types/document';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
 
 export interface DocumentTableProps {

@@ -12,8 +12,8 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { UploadZone } from '@/components/UploadZone';
 import { generatePruefberichtText } from '@/lib/dossier';
 import { formatDateTimeGerman } from '@/lib/formatters';
-import { DocumentRecord, CASE_STATUS } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
+import { DocumentRecord, CASE_STATUS } from '@/types/document';
 import { Dossier, FieldStatus, UploadedFilePayload } from '@/types/dossier';
 
 interface DossierDetailViewProps {

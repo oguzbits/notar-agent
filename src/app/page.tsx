@@ -13,7 +13,7 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useJobs } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
-import { DocumentRecord } from '@/lib/supabase/server';
+import { DocumentRecord } from '@/types/document';
 import {
   FieldStatus,
   getDossierFieldsRecord,

@@ -5,7 +5,7 @@ import type { AxeMatchers } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { CASE_STATUS } from '@/lib/supabase/server';
+import { CASE_STATUS } from '@/types/document';
 import { FIELD_STATUS } from '@/types/dossier';
 
 declare module 'vitest' {

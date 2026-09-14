@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DocumentRecord } from '@/lib/supabase/server';
+import { DocumentRecord } from '@/types/document';
 import { Dossier } from '@/types/dossier';
 
 export const DOCUMENTS_QUERY_KEY = ['documents'] as const;

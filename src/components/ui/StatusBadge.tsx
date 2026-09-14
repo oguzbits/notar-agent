@@ -7,8 +7,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import React from 'react';
-import { CASE_STATUS, CaseStatus } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
+import { CASE_STATUS, CaseStatus } from '@/types/document';
 import { FIELD_STATUS, FieldStatus } from '@/types/dossier';
 import { JOB_STATUS, JobStatus } from '@/types/jobs';
 
