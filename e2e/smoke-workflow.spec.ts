@@ -8,6 +8,7 @@ import {
   DOCUMENT_RELIABILITY,
   INQUIRY_PRIORITY,
   INQUIRY_RECIPIENT,
+  STORAGE_TYPES,
 } from '../src/types/dossier';
 import { JOB_STATUS, JOB_STAGES } from '../src/types/jobs';
 
@@ -214,7 +215,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
             dossier: currentDossierState,
             persistence: {
               id: mockDossierId,
-              storageType: 'in-memory',
+              storageType: STORAGE_TYPES.IN_MEMORY,
               caseNumber: 'KV-2026-4512',
             },
           })}\n\n`,
@@ -238,7 +239,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ success: true, storageType: 'in-memory' }),
+          body: JSON.stringify({ success: true, storageType: STORAGE_TYPES.IN_MEMORY }),
         });
       } else {
         await route.continue();

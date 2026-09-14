@@ -9,12 +9,12 @@ import { ExportActions } from '@/components/ExportActions';
 import { UnifiedFieldCockpitTable } from '@/components/FieldCockpit/UnifiedFieldCockpitTable';
 import { Button } from '@/components/ui/Button';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import { UploadZone, PreparedFile } from '@/components/UploadZone';
+import { UploadZone } from '@/components/UploadZone';
 import { generatePruefberichtText } from '@/lib/dossier';
 import { formatDateTimeGerman } from '@/lib/formatters';
 import { DocumentRecord, CASE_STATUS } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
-import { Dossier, FieldStatus } from '@/types/dossier';
+import { Dossier, FieldStatus, UploadedFilePayload } from '@/types/dossier';
 
 interface DossierDetailViewProps {
   dossier: Dossier;
@@ -29,8 +29,8 @@ interface DossierDetailViewProps {
   // Nachreichen
   isAppending: boolean;
   onToggleAppending: () => void;
-  appendFiles: PreparedFile[];
-  onAppendFilesChange: (files: PreparedFile[]) => void;
+  appendFiles: UploadedFilePayload[];
+  onAppendFilesChange: (files: UploadedFilePayload[]) => void;
   appendNotes: string;
   onAppendNotesChange: (notes: string) => void;
   onCancelAppend: () => void;

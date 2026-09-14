@@ -3,18 +3,23 @@
 import { Loader2, ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
+import { DocumentTable } from '@/components/DocumentTable';
 import { Header } from '@/components/Header';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
 import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
-import { VorgangTableView } from '@/components/views/VorgangTableView';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useJobs } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
 import { DocumentRecord } from '@/lib/supabase/server';
-import { FieldStatus, getDossierFieldsRecord, updateDossierFieldStatus } from '@/types/dossier';
+import {
+  FieldStatus,
+  getDossierFieldsRecord,
+  updateDossierFieldStatus,
+  STORAGE_TYPES,
+} from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
 const VIEW_MODE = {
@@ -206,7 +211,8 @@ function HomeContent() {
       <Header
         caseNumber={session.persistenceInfo?.caseNumber || activeRecord?.title}
         storageType={
-          session.persistenceInfo?.storageType || (activeRecord ? 'supabase' : undefined)
+          session.persistenceInfo?.storageType ||
+          (activeRecord ? STORAGE_TYPES.SUPABASE : undefined)
         }
         overallStatus={displayedDossier?.overallStatus}
         onLogoClick={handleBackToTable}
@@ -238,7 +244,7 @@ function HomeContent() {
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 pt-3 pb-8 sm:px-6 lg:px-8">
         {/* Ansicht 1: Kanzlei Vorgangsübersicht */}
         {effectiveView === VIEW_MODE.TABLE && (
-          <VorgangTableView
+          <DocumentTable
             documents={documents}
             isLoading={isLoadingDocs}
             onSelectDocument={handleSelectDocument}

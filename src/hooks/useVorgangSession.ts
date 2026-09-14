@@ -1,36 +1,37 @@
 'use client';
 
 import { useReducer } from 'react';
-import { PreparedFile } from '@/lib/files/file-preparer';
-import { Dossier, CaseType, CASE_TYPES } from '@/types/dossier';
-
-export interface PersistenceInfo {
-  storageType: 'supabase' | 'in-memory' | 'none' | 'local-only';
-  caseNumber: string;
-}
+import {
+  Dossier,
+  CaseType,
+  CASE_TYPES,
+  UploadedFilePayload,
+  PersistenceMeta,
+  STORAGE_TYPES,
+} from '@/types/dossier';
 
 export interface VorgangSessionState {
-  files: PreparedFile[];
+  files: UploadedFilePayload[];
   caseType: CaseType;
   notes: string;
   dossier: Dossier | null;
   activeDocumentId: string | null;
   isAppending: boolean;
-  appendFiles: PreparedFile[];
+  appendFiles: UploadedFilePayload[];
   appendNotes: string;
-  persistenceInfo: PersistenceInfo | null;
+  persistenceInfo: PersistenceMeta | null;
 }
 
 export type VorgangSessionAction =
-  | { type: 'SET_FILES'; payload: PreparedFile[] }
+  | { type: 'SET_FILES'; payload: UploadedFilePayload[] }
   | { type: 'SET_CASE_TYPE'; payload: CaseType }
   | { type: 'SET_NOTES'; payload: string }
   | { type: 'SET_DOSSIER'; payload: Dossier | null }
   | { type: 'SET_ACTIVE_DOCUMENT_ID'; payload: string | null }
   | { type: 'SET_IS_APPENDING'; payload: boolean }
-  | { type: 'SET_APPEND_FILES'; payload: PreparedFile[] }
+  | { type: 'SET_APPEND_FILES'; payload: UploadedFilePayload[] }
   | { type: 'SET_APPEND_NOTES'; payload: string }
-  | { type: 'SET_PERSISTENCE_INFO'; payload: PersistenceInfo | null }
+  | { type: 'SET_PERSISTENCE_INFO'; payload: PersistenceMeta | null }
   | { type: 'RESET_APPEND' }
   | { type: 'RESET_NEW_VORGANG' }
   | { type: 'SELECT_DOCUMENT'; payload: { docId: string; dossier: Dossier; title: string } };
@@ -100,7 +101,7 @@ function vorgangSessionReducer(
         appendFiles: [],
         appendNotes: '',
         persistenceInfo: {
-          storageType: 'supabase',
+          storageType: STORAGE_TYPES.SUPABASE,
           caseNumber: action.payload.title,
         },
       };
@@ -113,7 +114,7 @@ export function useVorgangSession() {
   const [state, dispatch] = useReducer(vorgangSessionReducer, initialState);
 
   const actions = {
-    setFiles: (files: PreparedFile[]) => dispatch({ type: 'SET_FILES', payload: files }),
+    setFiles: (files: UploadedFilePayload[]) => dispatch({ type: 'SET_FILES', payload: files }),
     setCaseType: (caseType: CaseType) => dispatch({ type: 'SET_CASE_TYPE', payload: caseType }),
     setNotes: (notes: string) => dispatch({ type: 'SET_NOTES', payload: notes }),
     setDossier: (dossier: Dossier | null) => dispatch({ type: 'SET_DOSSIER', payload: dossier }),
@@ -121,10 +122,10 @@ export function useVorgangSession() {
       dispatch({ type: 'SET_ACTIVE_DOCUMENT_ID', payload: id }),
     setIsAppending: (isAppending: boolean) =>
       dispatch({ type: 'SET_IS_APPENDING', payload: isAppending }),
-    setAppendFiles: (files: PreparedFile[]) =>
+    setAppendFiles: (files: UploadedFilePayload[]) =>
       dispatch({ type: 'SET_APPEND_FILES', payload: files }),
     setAppendNotes: (notes: string) => dispatch({ type: 'SET_APPEND_NOTES', payload: notes }),
-    setPersistenceInfo: (info: PersistenceInfo | null) =>
+    setPersistenceInfo: (info: PersistenceMeta | null) =>
       dispatch({ type: 'SET_PERSISTENCE_INFO', payload: info }),
     resetAppend: () => dispatch({ type: 'RESET_APPEND' }),
     resetNewVorgang: () => dispatch({ type: 'RESET_NEW_VORGANG' }),

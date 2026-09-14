@@ -1,15 +1,13 @@
 import { generateText, LanguageModel, SystemModelMessage } from 'ai';
 import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
-import { assembleExtractionPromptParts, UploadedFilePayload } from '@/lib/ai/payload-assembler';
+import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
 import { normalizeDossier } from '@/lib/dossier';
 import {
   formatRulesForPrompt,
   selectRelevantAuditRules,
 } from '@/lib/knowledge/rules/rule-selector';
-import { CaseType, Dossier, OverallStatus } from '@/types/dossier';
-
-export type { UploadedFilePayload };
+import { CaseType, Dossier, OverallStatus, UploadedFilePayload } from '@/types/dossier';
 
 export interface PipelineParams {
   files: UploadedFilePayload[];

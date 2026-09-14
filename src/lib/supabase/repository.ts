@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
-import { Dossier } from '@/types/dossier';
+import { Dossier, PersistenceMeta, STORAGE_TYPES } from '@/types/dossier';
 
 export { createEmptyImmobilienFields };
 
@@ -20,12 +20,11 @@ export interface DocumentRecord {
   created_at: string;
 }
 
-export interface PersistenceResult {
+export type PersistenceResult = PersistenceMeta & {
   persisted: boolean;
-  storageType: 'supabase' | 'in-memory';
-  caseNumber: string;
+  storageType: typeof STORAGE_TYPES.SUPABASE | typeof STORAGE_TYPES.IN_MEMORY;
   id: string;
-}
+};
 
 export interface UpdateResult {
   success: boolean;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Dossier, CASE_TYPES, OVERALL_STATUS } from '@/types/dossier';
+import { Dossier, CASE_TYPES, OVERALL_STATUS, STORAGE_TYPES } from '@/types/dossier';
 import { InMemoryDossierRepository, createEmptyImmobilienFields } from './repository';
 
 function createMockDossier(title: string): Dossier {
@@ -27,7 +27,7 @@ describe('InMemoryDossierRepository', () => {
     const result = await repo.save(dossier);
 
     expect(result.persisted).toBe(true);
-    expect(result.storageType).toBe('in-memory');
+    expect(result.storageType).toBe(STORAGE_TYPES.IN_MEMORY);
 
     const found = await repo.findById(result.id);
     expect(found).not.toBeNull();

@@ -4,24 +4,25 @@ import {
   classifyPdfStream,
 } from '@/lib/files/pdf-stream-classifier';
 import { extractPdfUnicodeText } from '@/lib/files/pdf-text-extractor';
-import { DOCUMENT_RELIABILITY, DetectedDocument, CaseType } from '@/types/dossier';
+import {
+  DOCUMENT_RELIABILITY,
+  DetectedDocument,
+  CaseType,
+  UploadedFilePayload,
+} from '@/types/dossier';
 
-export interface UploadedFilePayload {
-  name: string;
-  type: string;
-  size: number;
-  content?: string;
-  isBase64?: boolean;
+export interface AssembledFilePayload extends UploadedFilePayload {
   streamType?: PdfStreamType;
   extractedText?: string;
 }
+export type { UploadedFilePayload };
 
 export type MultimodalPromptPart =
   | { type: 'text'; text: string }
   | { type: 'file'; data: string; mediaType: string; filename?: string };
 
 export interface AssembleExtractionPromptOptions {
-  files: UploadedFilePayload[];
+  files: (UploadedFilePayload | AssembledFilePayload)[];
   caseType: CaseType;
   notesSection: string;
   existingDossier?: {
@@ -104,8 +105,9 @@ ${notesSection}${
       const pdfBuffer = Buffer.from(rawBase64, 'base64');
 
       // Serverseitige Dual-Stream-Analyse: Entlastet den Client vollständig von unpdf / PDF.js
-      let streamType: PdfStreamType = file.streamType || PDF_STREAM_TYPES.SCANNED_IMAGE;
-      let extractedText: string | undefined = file.extractedText;
+      const assembledFile = file as Partial<AssembledFilePayload>;
+      let streamType: PdfStreamType = assembledFile.streamType || PDF_STREAM_TYPES.SCANNED_IMAGE;
+      let extractedText: string | undefined = assembledFile.extractedText;
 
       if (!extractedText) {
         try {

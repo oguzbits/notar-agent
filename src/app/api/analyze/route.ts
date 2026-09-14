@@ -12,7 +12,7 @@ import {
   getUniformCaseTitle,
 } from '@/lib/supabase/server';
 import { AUDIT_ACTIONS } from '@/types/audit';
-import { AnalyzeRequestSchema, UpdateDossierRequestSchema } from '@/types/dossier';
+import { AnalyzeRequestSchema, UpdateDossierRequestSchema, STORAGE_TYPES } from '@/types/dossier';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
 
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         const uniformTitle = getUniformCaseTitle(dossier.caseType, documentId);
         persistenceResult = {
           persisted: updateRes.success,
-          storageType: isSupabase ? ('supabase' as const) : ('in-memory' as const),
+          storageType: isSupabase ? STORAGE_TYPES.SUPABASE : STORAGE_TYPES.IN_MEMORY,
           caseNumber: uniformTitle,
           id: documentId,
         };
@@ -155,7 +155,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
 
     return NextResponse.json({
       success: true,
-      storageType: getServerSupabase() ? 'supabase' : 'in-memory',
+      storageType: getServerSupabase() ? STORAGE_TYPES.SUPABASE : STORAGE_TYPES.IN_MEMORY,
     });
   } catch (error: unknown) {
     console.error('PUT Analyse Error:', error);

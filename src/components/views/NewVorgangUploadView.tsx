@@ -3,11 +3,12 @@
 import { X } from 'lucide-react';
 import React from 'react';
 import { Button } from '@/components/ui/Button';
-import { UploadZone, PreparedFile } from '@/components/UploadZone';
+import { UploadZone } from '@/components/UploadZone';
+import { UploadedFilePayload } from '@/types/dossier';
 
 interface NewVorgangUploadViewProps {
-  files: PreparedFile[];
-  onFilesChange: (files: PreparedFile[]) => void;
+  files: UploadedFilePayload[];
+  onFilesChange: (files: UploadedFilePayload[]) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
   isStarting?: boolean;

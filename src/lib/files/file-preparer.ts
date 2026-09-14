@@ -1,12 +1,5 @@
+import { UploadedFilePayload } from '@/types/dossier';
 import { FILE_CATEGORIES, FileCategory, resolveFileCategory } from './file-types';
-
-export interface PreparedFile {
-  name: string;
-  size: number;
-  type: string;
-  content?: string;
-  isBase64?: boolean;
-}
 
 export const MAX_FILE_SIZE_BYTES = 32 * 1024 * 1024; // 32 MB Hardlimit für Multimodal-APIs
 
@@ -102,7 +95,7 @@ export function processImageFile(file: File): Promise<{ content: string; size: n
 /**
  * Strategy-Handler für Bilddateien.
  */
-async function prepareImageFile(file: File): Promise<PreparedFile> {
+async function prepareImageFile(file: File): Promise<UploadedFilePayload> {
   const { content, size } = await processImageFile(file);
   return {
     name: file.name,
@@ -116,7 +109,7 @@ async function prepareImageFile(file: File): Promise<PreparedFile> {
 /**
  * Strategy-Handler für PDF-Dateien.
  */
-async function preparePdfFile(file: File): Promise<PreparedFile> {
+async function preparePdfFile(file: File): Promise<UploadedFilePayload> {
   const base64 = await readFileAsBase64(file);
   return {
     name: file.name,
@@ -130,7 +123,7 @@ async function preparePdfFile(file: File): Promise<PreparedFile> {
 /**
  * Strategy-Handler für Text- und Maildateien.
  */
-async function prepareTextFile(file: File): Promise<PreparedFile> {
+async function prepareTextFile(file: File): Promise<UploadedFilePayload> {
   const text = await readFileAsText(file);
   return {
     name: file.name,
@@ -144,7 +137,7 @@ async function prepareTextFile(file: File): Promise<PreparedFile> {
 /**
  * Strategy-Handler für Binär- und Fallback-Dateien.
  */
-async function prepareBinaryFile(file: File): Promise<PreparedFile> {
+async function prepareBinaryFile(file: File): Promise<UploadedFilePayload> {
   const base64 = await readFileAsBase64(file);
   return {
     name: file.name,
@@ -158,7 +151,10 @@ async function prepareBinaryFile(file: File): Promise<PreparedFile> {
 /**
  * Deklarative Strategy-Map für Dateitypen.
  */
-const FILE_PREPARATION_STRATEGIES: Record<FileCategory, (file: File) => Promise<PreparedFile>> = {
+const FILE_PREPARATION_STRATEGIES: Record<
+  FileCategory,
+  (file: File) => Promise<UploadedFilePayload>
+> = {
   [FILE_CATEGORIES.IMAGE]: prepareImageFile,
   [FILE_CATEGORIES.PDF]: preparePdfFile,
   [FILE_CATEGORIES.TEXT]: prepareTextFile,
@@ -186,7 +182,7 @@ async function readHeaderBytes(file: File, length = 4100): Promise<Uint8Array | 
  * Wandelt Rohdateien deklarativ in API-Payloads um (Open-Closed-Principle).
  * Verarbeitet Dateien parallel via Promise.all und löst Typen über die zentrale Registry auf.
  */
-export async function prepareFiles(files: File[]): Promise<PreparedFile[]> {
+export async function prepareFiles(files: File[]): Promise<UploadedFilePayload[]> {
   return Promise.all(
     files.map(async (file) => {
       const headerBytes = await readHeaderBytes(file);

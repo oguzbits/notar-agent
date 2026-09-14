@@ -1,10 +1,10 @@
 import React from 'react';
 import { BrandLogo } from '@/components/BrandLogo';
-import { OverallStatus } from '@/types/dossier';
+import { OverallStatus, StorageType } from '@/types/dossier';
 
 interface HeaderProps {
   caseNumber?: string;
-  storageType?: 'supabase' | 'in-memory' | 'none' | 'local-only';
+  storageType?: StorageType;
   overallStatus?: OverallStatus;
   onLogoClick?: () => void;
 }

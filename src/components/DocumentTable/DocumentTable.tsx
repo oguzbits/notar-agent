@@ -7,7 +7,7 @@ import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
 
-interface DocumentTableProps {
+export interface DocumentTableProps {
   documents: DocumentRecord[];
   isLoading: boolean;
   onSelectDocument: (doc: DocumentRecord) => void;

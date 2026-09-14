@@ -7,6 +7,7 @@ import {
   CONTRIBUTION_TYPE,
   POWER_OF_REPRESENTATION,
   OVERALL_STATUS,
+  STORAGE_TYPES,
 } from '@/types/dossier';
 import { useVorgangSession } from './useVorgangSession';
 
@@ -106,7 +107,7 @@ describe('useVorgangSession', () => {
     expect(result.current.state.activeDocumentId).toBe('doc-123');
     expect(result.current.state.dossier).toEqual(mockDossier);
     expect(result.current.state.persistenceInfo).toEqual({
-      storageType: 'supabase',
+      storageType: STORAGE_TYPES.SUPABASE,
       caseNumber: 'doc-title-456',
     });
   });

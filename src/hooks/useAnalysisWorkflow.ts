@@ -1,17 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { PreparedFile } from '@/lib/files/file-preparer';
 import { parseSseStream } from '@/lib/sse/parse-sse-stream';
-import { Dossier, CaseType } from '@/types/dossier';
+import { Dossier, CaseType, UploadedFilePayload, PersistenceMeta } from '@/types/dossier';
 
 export interface AnalysisStreamResult {
   dossier: Dossier;
-  persistence?: {
-    id?: string;
-    storageType: 'supabase' | 'in-memory';
-    caseNumber: string;
-  };
+  persistence?: PersistenceMeta;
 }
 
 interface SSEAnalysisEvent {
@@ -20,11 +15,7 @@ interface SSEAnalysisEvent {
   stepDetail?: string;
   error?: string;
   dossier?: Dossier;
-  persistence?: {
-    id?: string;
-    storageType: 'supabase' | 'in-memory';
-    caseNumber: string;
-  };
+  persistence?: PersistenceMeta;
 }
 
 export function useAnalysisWorkflow() {
@@ -72,7 +63,7 @@ export function useAnalysisWorkflow() {
   };
 
   const startAsyncAnalysis = async (
-    files: PreparedFile[],
+    files: UploadedFilePayload[],
     caseType: CaseType,
     notes: string,
     onEnqueued: (jobId: string) => void
@@ -126,7 +117,7 @@ export function useAnalysisWorkflow() {
   const startAppendAnalysis = async (
     activeDocumentId: string | null,
     currentDossier: Dossier,
-    appendFiles: PreparedFile[],
+    appendFiles: UploadedFilePayload[],
     appendNotes: string,
     onComplete: (result: AnalysisStreamResult) => void
   ) => {

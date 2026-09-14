@@ -593,6 +593,7 @@ export const UploadedFilePayloadSchema = z.object({
   content: z.string().optional(),
   isBase64: z.boolean().optional(),
 });
+export type UploadedFilePayload = z.infer<typeof UploadedFilePayloadSchema>;
 
 export const AnalyzeRequestSchema = z
   .object({
@@ -632,3 +633,28 @@ export const UpdateDossierRequestSchema = z.object({
   actor: z.string().optional(),
 });
 export type UpdateDossierRequest = z.infer<typeof UpdateDossierRequestSchema>;
+
+// ==========================================
+// 5. STORAGE & PERSISTENCE METADATA
+// ==========================================
+
+export const STORAGE_TYPES = {
+  SUPABASE: 'supabase',
+  IN_MEMORY: 'in-memory',
+  LOCAL_ONLY: 'local-only',
+} as const;
+
+export const StorageTypeSchema = z.enum([
+  STORAGE_TYPES.SUPABASE,
+  STORAGE_TYPES.IN_MEMORY,
+  STORAGE_TYPES.LOCAL_ONLY,
+]);
+export type StorageType = (typeof STORAGE_TYPES)[keyof typeof STORAGE_TYPES];
+
+export const PersistenceMetaSchema = z.object({
+  id: z.string().optional(),
+  storageType: StorageTypeSchema,
+  caseNumber: z.string(),
+  persisted: z.boolean().optional(),
+});
+export type PersistenceMeta = z.infer<typeof PersistenceMetaSchema>;

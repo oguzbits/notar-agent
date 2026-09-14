@@ -10,14 +10,13 @@ import {
   Plus,
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
-import { type PreparedFile, validateFiles, prepareFiles } from '@/lib/files/file-preparer';
+import { validateFiles, prepareFiles } from '@/lib/files/file-preparer';
 import { getSupportedUploadAcceptString } from '@/lib/files/file-types';
 import { cn } from '@/lib/utils';
-
-export type { PreparedFile };
+import { UploadedFilePayload } from '@/types/dossier';
 
 interface UploadZoneProps {
-  onFilesReady: (files: PreparedFile[]) => void;
+  onFilesReady: (files: UploadedFilePayload[]) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
   isAnalyzing: boolean;

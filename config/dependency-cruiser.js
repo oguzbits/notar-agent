@@ -24,6 +24,14 @@ module.exports = {
       to: { path: '^src/(lib|app|components|hooks)' },
     },
     {
+      name: 'no-domain-types-from-components',
+      comment:
+        'Komponenten dürfen keine Datentypen für Libs, Hooks oder Types exportieren (Single Source of Truth in src/types)',
+      severity: 'error',
+      from: { path: '^src/(lib|types|hooks|app)' },
+      to: { path: '^src/components', dependencyTypes: ['type-only'] },
+    },
+    {
       name: 'no-circular-dependencies',
       comment: 'Zyklische Abhängigkeiten sind im gesamten Projekt verboten',
       severity: 'error',

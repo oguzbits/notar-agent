@@ -111,6 +111,17 @@ const eslintConfig = defineConfig([
           message:
             'Raw enum strings in z.literal() are forbidden. Use canonical `as const` dictionaries from `@/types/dossier`.',
         },
+        {
+          selector: 'ExportAllDeclaration',
+          message:
+            'Wildcard re-exports (`export * from ...`) are forbidden by AGENTS.md. Use explicit named exports.',
+        },
+        {
+          selector:
+            'TSTypeAliasDeclaration[typeAnnotation.type="TSTypeReference"][typeAnnotation.typeName.type="Identifier"]:not([typeAnnotation.typeArguments]):not([typeAnnotation.typeParameters]):not([typeParameters])',
+          message:
+            'Redundant type alias forbidden: Direct 1:1 type aliasing (`type A = B;`) is forbidden. Use the canonical type directly.',
+        },
       ],
     },
   },
