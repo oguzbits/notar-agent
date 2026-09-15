@@ -92,3 +92,53 @@ export function useJobs() {
     isRetrying: retryMutation.isPending,
   };
 }
+
+export const jobDetailQueryKey = (jobId: string) => ['jobs', jobId] as const;
+
+async function fetchJobById(jobId: string): Promise<DossierJob | null> {
+  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`);
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error(`Job '${jobId}' konnte nicht geladen werden`);
+  }
+  return (await res.json()) as DossierJob;
+}
+
+export function useJob(jobId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  const previousStatus = useRef<string | null>(null);
+
+  const {
+    data: job = null,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: jobId ? jobDetailQueryKey(jobId) : ['jobs', 'disabled'],
+    queryFn: () => (jobId ? fetchJobById(jobId) : Promise.resolve(null)),
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const currentJob = query.state.data;
+      if (!currentJob) return 2000;
+      const isActive =
+        currentJob.status === JOB_STATUS.PENDING || currentJob.status === JOB_STATUS.PROCESSING;
+      return isActive ? 2000 : false;
+    },
+  });
+
+  // Wenn der Job von aktiv/unbekannt auf COMPLETED wechselt, Dokumenten- und Job-Liste invalidieren
+  useEffect(() => {
+    if (job?.status === JOB_STATUS.COMPLETED && previousStatus.current !== JOB_STATUS.COMPLETED) {
+      queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: JOBS_QUERY_KEY });
+    }
+    previousStatus.current = job?.status ?? null;
+  }, [job?.status, queryClient]);
+
+  return {
+    job,
+    isLoading,
+    error,
+    refetch,
+  };
+}

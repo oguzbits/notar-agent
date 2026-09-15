@@ -10,7 +10,7 @@ import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
-import { useJobs } from '@/hooks/useJobs';
+import { useJobs, useJob } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
 import { DocumentRecord } from '@/types/document';
@@ -40,6 +40,7 @@ function HomeContent() {
 
   const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
   const { jobs, activeJobs, failedJobs, retryJob, isRetrying, loadJobs } = useJobs();
+  const { job: singleJob } = useJob(jobParam);
   const {
     isAnalyzing,
     activeStep,
@@ -52,7 +53,7 @@ function HomeContent() {
   const { state: session, actions } = useVorgangSession();
 
   // Selektierten Job bzw. Datensatz auflösen
-  const activeJobFromQuery = jobParam ? jobs.find((j) => j.id === jobParam) : null;
+  const activeJobFromQuery = (jobParam ? jobs.find((j) => j.id === jobParam) : null) || singleJob;
   const activeJob =
     activeJobFromQuery ||
     (jobParam

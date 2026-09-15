@@ -3,10 +3,10 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import React from 'react';
-import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { CASE_TYPES } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
-import { useJobs } from './useJobs';
+import { useJobs, useJob, jobDetailQueryKey } from './useJobs';
 
 describe('useJobs Hook with TanStack Query & MSW', () => {
   const sampleJob: DossierJob = {
@@ -96,5 +96,57 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
     });
 
     expect(jobsState[0]?.status).toBe(JOB_STATUS.PENDING);
+  });
+
+  it('fetches a single job by id via useJob and polls until completed', async () => {
+    const singleJob: DossierJob = {
+      ...sampleJob,
+      id: 'job-single-1',
+      status: JOB_STATUS.COMPLETED,
+      resultDossierId: 'dossier-456',
+    };
+
+    server.use(
+      http.get('/api/jobs/job-single-1', () => {
+        return HttpResponse.json(singleJob);
+      })
+    );
+
+    const { result } = renderHook(() => useJob('job-single-1'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.job).not.toBeNull();
+    });
+
+    expect(result.current.job?.id).toBe('job-single-1');
+    expect(result.current.job?.status).toBe(JOB_STATUS.COMPLETED);
+    expect(result.current.job?.resultDossierId).toBe('dossier-456');
+  });
+
+  it('invalidates documents query when single job completes', async () => {
+    let jobStatus: string = JOB_STATUS.PROCESSING;
+    server.use(
+      http.get('/api/jobs/job-dynamic', () => {
+        return HttpResponse.json({
+          ...sampleJob,
+          id: 'job-dynamic',
+          status: jobStatus,
+          resultDossierId: jobStatus === JOB_STATUS.COMPLETED ? 'dossier-dyn' : undefined,
+        });
+      })
+    );
+
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const { rerender } = renderHook(() => useJob('job-dynamic'), { wrapper });
+
+    // Transition job to COMPLETED
+    jobStatus = JOB_STATUS.COMPLETED;
+    queryClient.invalidateQueries({ queryKey: jobDetailQueryKey('job-dynamic') });
+    rerender();
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['documents'] });
+    });
   });
 });
