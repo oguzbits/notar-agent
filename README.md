@@ -81,6 +81,28 @@ create policy "Allow all access to documents"
 on documents for all
 using (true)
 with check (true);
+
+-- Tabelle für revisionssicheren Audit-Trail (§ 17 ff. BeurkG)
+create table if not exists audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  document_id text not null,
+  sequence_number bigint not null,
+  action text not null,
+  timestamp timestamptz not null,
+  actor text not null,
+  previous_hash varchar(64) not null,
+  current_hash varchar(64) not null,
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  constraint uq_audit_logs_doc_seq unique (document_id, sequence_number)
+);
+
+alter table audit_logs enable row level security;
+
+create policy "Allow all access to audit_logs"
+on audit_logs for all
+using (true)
+with check (true);
 ```
 
 3. **API-Schlüssel kopieren:** Gehe im Dashboard zu **Project Settings > API** und trage URL sowie den `anon` (Publishable) Key in deine `.env.local` ein:

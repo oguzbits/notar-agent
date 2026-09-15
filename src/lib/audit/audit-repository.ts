@@ -58,11 +58,17 @@ export class InMemoryAuditRepository implements IAuditRepository {
     };
 
     list.push(entry);
-    if (list.length > this.maxEntriesPerDoc) {
-      list.shift(); // FIFO: Älteste Einträge verdrängen, falls Memory-Grenze erreicht
+    this.eventsByDocId.set(params.documentId, list);
+
+    // Bounded Memory: Wenn zu viele Dokumente im Mock existieren, älteste Akte komplett verdrängen.
+    // Innerhalb einer Akte darf die Hash-Kette NIEMALS beschnitten werden, da sonst die Kette bricht!
+    if (this.eventsByDocId.size > this.maxEntriesPerDoc) {
+      const oldestKey = this.eventsByDocId.keys().next().value;
+      if (oldestKey && oldestKey !== params.documentId) {
+        this.eventsByDocId.delete(oldestKey);
+      }
     }
 
-    this.eventsByDocId.set(params.documentId, list);
     return entry;
   }
 
@@ -78,112 +84,104 @@ export class InMemoryAuditRepository implements IAuditRepository {
 }
 
 /**
- * Supabase Audit Repository mit Fallback auf InMemory bei Datenbankausfällen.
+ * Supabase Audit Repository als Single Source of Truth (SSOT).
+ * Schreibt revisionssicher in die audit_logs-Tabelle mit striktem Fail-Fast bei Datenbankfehlern.
  */
 export class SupabaseAuditRepository implements IAuditRepository {
-  constructor(
-    private supabase: SupabaseClient,
-    private fallbackRepo: InMemoryAuditRepository
-  ) {}
+  constructor(private supabase: SupabaseClient) {}
 
   async appendEvent(params: AppendAuditParams): Promise<AuditLogEntry> {
-    try {
-      // 1. Letzten Eintrag abfragen zur Ermittlung von previousHash & sequenceNumber
-      const { data: latestRecords, error: fetchErr } = await this.supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('document_id', params.documentId)
-        .order('sequence_number', { ascending: false })
-        .limit(1);
+    // 1. Letzten Eintrag abfragen zur Ermittlung von previousHash & sequenceNumber
+    const { data: latestRecords, error: fetchErr } = await this.supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('document_id', params.documentId)
+      .order('sequence_number', { ascending: false })
+      .limit(1);
 
-      if (fetchErr) {
-        console.warn('Supabase audit fetch error, using fallback:', fetchErr.message);
-        return this.fallbackRepo.appendEvent(params);
-      }
+    if (fetchErr) {
+      throw new Error(`Supabase audit fetch error: ${fetchErr.message}`);
+    }
 
-      const lastRow = Array.isArray(latestRecords) && latestRecords[0] ? latestRecords[0] : null;
-      const sequenceNumber = lastRow ? Number(lastRow.sequence_number) + 1 : 0;
-      const previousHash = lastRow ? String(lastRow.current_hash) : GENESIS_HASH;
-      const timestamp = params.timestamp || new Date().toISOString();
-      const details = params.details || {};
+    const lastRow = Array.isArray(latestRecords) && latestRecords[0] ? latestRecords[0] : null;
+    const sequenceNumber = lastRow ? Number(lastRow.sequence_number) + 1 : 0;
+    const previousHash = lastRow ? String(lastRow.current_hash) : GENESIS_HASH;
+    const timestamp = params.timestamp || new Date().toISOString();
+    const details = params.details || {};
 
-      const currentHash = calculateAuditRecordHash({
-        documentId: params.documentId,
-        sequenceNumber,
+    const currentHash = calculateAuditRecordHash({
+      documentId: params.documentId,
+      sequenceNumber,
+      action: params.action,
+      timestamp,
+      actor: params.actor,
+      previousHash,
+      details,
+    });
+
+    const newId = crypto.randomUUID();
+
+    const { data: inserted, error: insertErr } = await this.supabase
+      .from('audit_logs')
+      .insert({
+        id: newId,
+        document_id: params.documentId,
+        sequence_number: sequenceNumber,
         action: params.action,
         timestamp,
         actor: params.actor,
-        previousHash,
+        previous_hash: previousHash,
+        current_hash: currentHash,
         details,
-      });
+      })
+      .select('*')
+      .single();
 
-      const newId = crypto.randomUUID();
-
-      const { data: inserted, error: insertErr } = await this.supabase
-        .from('audit_logs')
-        .insert({
-          id: newId,
-          document_id: params.documentId,
-          sequence_number: sequenceNumber,
-          action: params.action,
-          timestamp,
-          actor: params.actor,
-          previous_hash: previousHash,
-          current_hash: currentHash,
-          details,
-        })
-        .select('*')
-        .single();
-
-      if (insertErr || !inserted) {
-        console.warn('Supabase audit insert error, using fallback:', insertErr?.message);
-        return this.fallbackRepo.appendEvent(params);
-      }
-
-      return {
-        id: inserted.id,
-        documentId: inserted.document_id,
-        sequenceNumber: inserted.sequence_number,
-        action: inserted.action,
-        timestamp: inserted.timestamp,
-        actor: inserted.actor,
-        previousHash: inserted.previous_hash,
-        currentHash: inserted.current_hash,
-        details: inserted.details || {},
-      };
-    } catch (err) {
-      console.warn('Supabase audit exception, using fallback:', err);
-      return this.fallbackRepo.appendEvent(params);
+    if (insertErr || !inserted) {
+      throw new Error(
+        `Supabase audit insert error: ${insertErr?.message || 'Kein Datensatz zurückgegeben'}`
+      );
     }
+
+    return {
+      id: inserted.id,
+      documentId: inserted.document_id,
+      sequenceNumber: inserted.sequence_number,
+      action: inserted.action,
+      timestamp: inserted.timestamp,
+      actor: inserted.actor,
+      previousHash: inserted.previous_hash,
+      currentHash: inserted.current_hash,
+      details: inserted.details || {},
+    };
   }
 
   async getHistory(documentId: string): Promise<AuditLogEntry[]> {
-    try {
-      const { data, error } = await this.supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('document_id', documentId)
-        .order('sequence_number', { ascending: true });
+    const { data, error } = await this.supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('document_id', documentId)
+      .order('sequence_number', { ascending: true });
 
-      if (error || !data) {
-        return this.fallbackRepo.getHistory(documentId);
-      }
-
-      return data.map((row) => ({
-        id: row.id,
-        documentId: row.document_id,
-        sequenceNumber: row.sequence_number,
-        action: row.action,
-        timestamp: row.timestamp,
-        actor: row.actor,
-        previousHash: row.previous_hash,
-        currentHash: row.current_hash,
-        details: row.details || {},
-      }));
-    } catch (err) {
-      console.warn('Supabase getHistory exception, using fallback:', err);
-      return this.fallbackRepo.getHistory(documentId);
+    if (error) {
+      throw new Error(`Supabase getHistory error: ${error.message}`);
     }
+
+    if (!data) {
+      return [];
+    }
+
+    return data.map((row) => ({
+      id: row.id,
+      documentId: row.document_id,
+      sequenceNumber: row.sequence_number,
+      action: row.action,
+      timestamp: row.timestamp,
+      actor: row.actor,
+      previousHash: row.previous_hash,
+      currentHash: row.current_hash,
+      details: row.details || {},
+    }));
   }
 
   async verifyIntegrity(documentId: string): Promise<AuditIntegrityResult> {

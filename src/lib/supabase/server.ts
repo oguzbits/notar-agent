@@ -101,7 +101,7 @@ export function getAuditRepository(): IAuditRepository {
   if (!supabase) {
     return inMemoryAuditRepo;
   }
-  return new SupabaseAuditRepository(supabase, inMemoryAuditRepo);
+  return new SupabaseAuditRepository(supabase);
 }
 
 // Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer

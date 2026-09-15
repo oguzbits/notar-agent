@@ -1,3 +1,4 @@
+import stringify from 'fast-json-stable-stringify';
 import { describe, it, expect } from 'vitest';
 import { AUDIT_ACTIONS, AuditLogEntry } from '@/types/audit';
 import {
@@ -8,6 +9,39 @@ import {
 } from './audit-crypto';
 
 describe('Audit Crypto & Hash Chaining (§ 17 ff. BeurkG)', () => {
+  it('calculates identical hash regardless of object key insertion order (Canonical JSON)', () => {
+    const payloadA = {
+      documentId: 'doc-canonical',
+      sequenceNumber: 0,
+      action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
+      timestamp: '2026-09-15T10:00:00.000Z',
+      actor: 'Notarassessor',
+      previousHash: GENESIS_HASH,
+      details: {
+        z_index: 99,
+        a_field: 'Alpha',
+        nested: { b: 2, a: 1 },
+      },
+    };
+
+    const payloadB = {
+      sequenceNumber: 0,
+      actor: 'Notarassessor',
+      documentId: 'doc-canonical',
+      previousHash: GENESIS_HASH,
+      action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
+      timestamp: '2026-09-15T10:00:00.000Z',
+      details: {
+        a_field: 'Alpha',
+        nested: { a: 1, b: 2 },
+        z_index: 99,
+      },
+    };
+
+    expect(stringify(payloadA.details)).toBe(stringify(payloadB.details));
+    expect(calculateAuditRecordHash(payloadA)).toBe(calculateAuditRecordHash(payloadB));
+  });
+
   it('calculates deterministic SHA-256 fingerprint for document contents', () => {
     const hash1 = calculateFileFingerprint('Kaufvertragsentwurf 120.000 €');
     const hash2 = calculateFileFingerprint('Kaufvertragsentwurf 120.000 €');

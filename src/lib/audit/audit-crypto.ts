@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import stringify from 'fast-json-stable-stringify';
 import { AuditIntegrityResult, AuditLogEntry } from '@/types/audit';
 
 export const GENESIS_HASH = '0'.repeat(64);
@@ -15,11 +16,12 @@ export interface UnhashedAuditPayload {
 
 /**
  * Erzeugt einen deterministischen SHA-256 Hash aus dem Audit-Payload und dem Vorgänger-Hash.
- * Garantiert kryptografische Manipulationssicherheit durch Chaining.
+ * Garantiert kryptografische Manipulationssicherheit durch Chaining und kanonische Serialisierung
+ * via fast-json-stable-stringify (Industriestandard).
  */
 export function calculateAuditRecordHash(payload: UnhashedAuditPayload): string {
   // Kanonische Serialisierung zur Vermeidung von Eigenschafts-Reihenfolge-Drifts
-  const canonicalJson = JSON.stringify({
+  const canonicalJson = stringify({
     documentId: payload.documentId,
     sequenceNumber: payload.sequenceNumber,
     action: payload.action,
