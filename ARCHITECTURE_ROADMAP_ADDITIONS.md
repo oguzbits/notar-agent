@@ -1,6 +1,6 @@
 # Architektur-Roadmap Additions & Backlog
 
-> **Kontext:** Ergänzende Module, optionale Features und nachgelagerte Bausteine aus der primären Architektur-Roadmap ([ARCHITECTURE_ROADMAP.md](file:///Users/oguz/Desktop/Dev/notar-partner-prototyp-copy/ARCHITECTURE_ROADMAP.md)).
+> **Kontext:** Ergänzende Module, optionale Features und nachgelagerte Bausteine aus der primären Architektur-Roadmap ([ARCHITECTURE_ROADMAP.md](./ARCHITECTURE_ROADMAP.md)).
 
 ---
 
@@ -79,3 +79,76 @@ graph TD
 - [ ] Abschluss von Business Associate Agreements (BAA) / Zero-Data-Retention-Vereinbarungen mit Anthropic (0 Tage Logging)
 - [ ] Konfiguration von Enterprise-ZDR für Google Cloud Vertex AI / AWS Bedrock (Region Frankfurt / EU-Only)
 - [ ] Automatisierte Audit-Prüfung der API-Header auf ZDR-Compliance vor Übermittlung von Urkundeninhalten
+
+---
+
+## 4. Kanzlei-Observability, Crash-Reporting & Metriken (Zero-Overhead & Production-Ready)
+
+- **Priorisierung:** Schlankes Fundament für den Produktivbetrieb (ergänzend zum bestehenden juristischen Audit-Trail gem. § 17 ff. BeurkG).
+- **Ziel:** 100 % Industrie-Standard bei **minimaler betrieblicher Komplexität** („Boring Architecture“): Keine selbst gehosteten Monster-Cluster (wie ClickHouse/Redis/MinIO), sondern bewährte, wartungsfreie Managed-Lösungen mit strikter Einhaltung des Berufsgeheimnisses (§ 203 StGB).
+
+```mermaid
+graph LR
+    A["Next.js Application"] -->|"Crash & APM (Zero-PII Filter)"| B["Sentry SaaS (EU-Region Frankfurt)"]
+    A -->|"Dossier Jobs & Audit-Trail"| C["Supabase (Managed PostgreSQL Frankfurt)"]
+    A -->|"Strukturierte JSON-Logs"| D["Next.js / Runtime Log Stream"]
+```
+
+### Kernfunktionen
+
+1. **Error-Tracking & APM via Managed Sentry (EU-Region Frankfurt):**
+   - Offizielles `@sentry/nextjs` SDK für Backend-API-Routen und Client-Fehler.
+   - **Strikte § 203 StGB / Zero-PII Konfiguration:** Client- und Server-Filter (`beforeSend`), die Dateiinhalte, Klarnamen und sensible Parameter restlos unkenntlich machen, bevor Exceptions übertragen werden.
+   - Sofortige Alerts bei echten Runtime-Crashes oder API-Timeouts.
+2. **LLM-Telemetrie via Vercel AI SDK Standard:**
+   - Nutzung der integrierten OpenTelemetry-Hooks des Vercel AI SDK (`experimental_telemetry`).
+   - Strukturierte JSON-Logs für jeden Pipeline-Lauf (Dauer, Token-Verbrauch, Modelltyp, Stage) direkt im Plattform-Logstream – ganz ohne zusätzlichen Serverbetrieb.
+3. **Health-Check & Uptime-Monitoring:**
+   - Schlanke Route `/api/health` zur Prüfung der Verfügbarkeit von Supabase (DB-Ping) und API-Konfiguration für externe Uptime-Checks (z. B. Better Uptime / Uptime Kuma).
+
+### Geplante Aufgaben
+
+- [ ] `@sentry/nextjs` Integration mit EU-Endpunkt
+- [ ] PII-Scrubber in `sentry.server.config.ts` zur Absicherung des Berufsgeheimnisses
+- [ ] Aktivierung der Vercel AI SDK Telemetrie in `pipeline.ts`
+- [ ] Health-Check Endpunkt `/api/health` mit DB-Ping
+
+---
+
+## 5. Automatisierte CI/CD- & Release-Pipeline (GitHub Actions)
+
+- **Priorisierung:** Nachgelagertes Backlog / DevOps-Fundament für Produktivüberführung.
+- **Ziel:** Garantierte Ausfallsicherheit und Regression-Schutz bei jedem Release durch automatisierte Quality-Gates, Headless-E2E-Tests und Zero-Downtime-Deployments.
+- **Ausgangslage:** Das Projekt verfügt bereits über strenge lokale Pre-Commit- und Check-Skripte (`npm run check`, `npm test`), jedoch existiert noch keine Remote-Pipeline in GitHub Actions, die Branches vor dem Merge unabhängig auf CI-Servern validiert und automatisch deployt.
+
+```mermaid
+graph LR
+    A["PR / Git Push"] --> B["GitHub Actions CI Gate"]
+    B --> C["1. Fast Checks (Type-Check, ESLint, Depcruise, Knip, Magic Strings)"]
+    B --> D["2. Vitest Unit- & Integrationstests (100% isoliert)"]
+    B --> E["3. Playwright Headless E2E (Multi-File-Upload & Cockpit-Flow)"]
+    C & D & E --> F{"Alle Gates grün?"}
+    F -->|"Ja"| G["Automatisches Preview- / Staging-Deployment"]
+    F -->|"Nein"| H["Merge geblockt (Zero Broken Main)"]
+    G --> I["Main Merge -> Zero-Downtime Production Deployment"]
+```
+
+### Kernfunktionen
+
+1. **Automatisierte PR-Gates (Continuous Integration):**
+   - **Lint & Static Architecture:** Parallelisierte Ausführung von `npm run type-check`, `npm run lint`, `npm run depcruise`, `npm run knip`, `npm run audit:magic-strings` und `npm run audit:duplication`.
+   - **Unit- & Integrations-Matrix:** Vollständiger Lauf aller Vitest-Suiten inklusive Mocking externer KI-APIs.
+   - **Headless Playwright E2E:** Automatisches Hochfahren des Next.js-Testservers und Durchführen der Smoke- und Drag-and-Drop-Workflows im Headless-Chromium.
+2. **Datenbank-Migrationen & Schema-Prüfung:**
+   - Automatische Validierung neuer Supabase- / PostgreSQL-Migrationen (`audit_logs`, `dossier_jobs`) in einer isolierten Test-DB vor dem Release.
+3. **Continuous Deployment (CD):**
+   - Automatisches Preview-Deployment für jeden Pull Request zur visuellen Abnahme von Notariats-UI-Änderungen.
+   - Zero-Downtime Rollout auf Produktivserver (Vercel / Dokploy / Docker) nach erfolgreichem Merge auf `main`.
+
+### Geplante Aufgaben
+
+- [ ] `.github/workflows/ci.yml` für automatische PR-Validierung (`check`, `test`, `build`)
+- [ ] `.github/workflows/e2e.yml` für Playwright-Tests mit Browser-Caching
+- [ ] Supabase CLI GitHub Action zur automatischen Prüfung von DB-Migrationen
+- [ ] Konfiguration von Branch-Protection-Rules (Bedingung: Alle CI-Checks müssen bestehen vor Merge)
+- [ ] CD-Deployment-Workflow (Staging & Production)
