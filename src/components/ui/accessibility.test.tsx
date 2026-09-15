@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { axe } from 'vitest-axe';
 import type { AxeMatchers } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
+import { StatusOverrideReasonModal } from '@/components/FieldCockpit/subcomponents/StatusOverrideReasonModal';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { CASE_STATUS } from '@/types/document';
@@ -39,6 +40,21 @@ describe('Accessibility (a11y) automated audits via vitest-axe', () => {
     );
 
     const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('StatusOverrideReasonModal (Radix Dialog) has no accessibility violations', async () => {
+    const { baseElement } = render(
+      <StatusOverrideReasonModal
+        isOpen={true}
+        fieldTitle="Kaufpreis"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    // Dialog.Portal rendert im document.body (baseElement)
+    const results = await axe(baseElement);
     expect(results).toHaveNoViolations();
   });
 });

@@ -1,3 +1,4 @@
+import imageCompression from 'browser-image-compression';
 import { UploadedFilePayload } from '@/types/dossier';
 import { FILE_CATEGORIES, FileCategory, resolveFileCategory } from './file-types';
 
@@ -39,57 +40,39 @@ export function readFileAsText(file: File): Promise<string> {
 }
 
 /**
- * Optimiert Bilder auf maximal 1600px Kantenlänge bei 85% JPEG-Qualität für verlässliche OCR.
+ * Optimiert Bilder auf maximal 1600px Kantenlänge via browser-image-compression (WebWorker, EXIF-Korrektur).
+ * Fällt in Headless/SSR- oder Test-Umgebungen ohne Worker/Canvas sicher auf readFileAsBase64 zurück.
  */
-export function processImageFile(file: File): Promise<{ content: string; size: number }> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      readFileAsBase64(file).then((content) => resolve({ content, size: file.size }));
-      return;
-    }
+export async function processImageFile(file: File): Promise<{ content: string; size: number }> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    const content = await readFileAsBase64(file);
+    return { content, size: file.size };
+  }
 
-    const img = new Image();
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      img.onload = () => {
-        const maxDim = 1600;
-        let { width, height } = img;
-
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          readFileAsBase64(file).then((content) => resolve({ content, size: file.size }));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const content = canvas.toDataURL('image/jpeg', 0.85);
-        const approxSize = Math.round((content.length - 23) * 0.75);
-        resolve({ content, size: approxSize });
-      };
-
-      img.src = e.target?.result as string;
+  try {
+    const options = {
+      maxSizeMB: 10,
+      maxWidthOrHeight: 1600,
+      useWebWorker: typeof Worker !== 'undefined',
+      fileType: 'image/jpeg',
+      initialQuality: 0.85,
     };
 
-    reader.onerror = () => {
-      readFileAsBase64(file).then((content) => resolve({ content, size: file.size }));
+    const compressedBlob = await imageCompression(file, options);
+    const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+    const content = await readFileAsBase64(compressedFile);
+    return {
+      content,
+      size: compressedBlob.size,
     };
-
-    reader.readAsDataURL(file);
-  });
+  } catch (err: unknown) {
+    console.warn(
+      '[file-preparer] browser-image-compression fehlgeschlagen, Fallback auf Originaldatei:',
+      err
+    );
+    const content = await readFileAsBase64(file);
+    return { content, size: file.size };
+  }
 }
 
 /**
