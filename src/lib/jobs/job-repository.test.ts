@@ -146,4 +146,39 @@ describe('InMemoryJobRepository (Bounded FIFO Queue)', () => {
     expect(pruned).toBe(1);
     expect(await repo.getJobById(job.id)).toBeNull();
   });
+
+  it('sets lockedAt when claiming a pending job and re-queues expired PROCESSING jobs via recoverOrphanJobs', async () => {
+    const job = await repo.createJob(samplePayload);
+    const claimed = await repo.claimNextPendingJob();
+
+    expect(claimed?.status).toBe(JOB_STATUS.PROCESSING);
+    expect(claimed?.lockedAt).toBeDefined();
+
+    // 1. Sweeper mit hohem Timeout findet noch nichts (Job ist aktiv)
+    const noOrphans = await repo.recoverOrphanJobs(60 * 1000);
+    expect(noOrphans.length).toBe(0);
+
+    // 2. Sweeper mit 0ms Timeout erkennt den Job als abgelaufen
+    const recovered = await repo.recoverOrphanJobs(0);
+    expect(recovered.length).toBe(1);
+    expect(recovered[0]?.status).toBe(JOB_STATUS.PENDING);
+    expect(recovered[0]?.retryCount).toBe(1);
+    expect(recovered[0]?.lockedAt).toBeUndefined();
+
+    // 3. Wenn maxRetries erreicht ist, wechselt er zu FAILED
+    const retriedJob = await repo.getJobById(job.id);
+    expect(retriedJob?.status).toBe(JOB_STATUS.PENDING);
+
+    // Auf PROCESSING setzen und retryCount auf 3 hochsetzen
+    await repo.updateJobStatus(job.id, {
+      status: JOB_STATUS.PROCESSING,
+      retryCount: 2,
+      lockedAt: new Date(Date.now() - 10000).toISOString(),
+    });
+
+    const exhausted = await repo.recoverOrphanJobs(5000);
+    expect(exhausted.length).toBe(1);
+    expect(exhausted[0]?.status).toBe(JOB_STATUS.FAILED);
+    expect(exhausted[0]?.errorMessage).toContain('Maximale Versuche');
+  });
 });

@@ -10,6 +10,7 @@ export interface WorkerDependencies {
   jobRepo?: IJobRepository;
   dossierRepo?: IDossierRepository;
   pipelineFn?: (params: PipelineParams) => Promise<Dossier>;
+  abortSignal?: AbortSignal;
 }
 
 // Globaler Concurrency-Limiter via p-limit gegen Provider-Rate-Limits (429) bei Lastspitzen
@@ -22,7 +23,7 @@ const limit = pLimit(MAX_CONCURRENT_JOBS);
  * 2. Status auf PROCESSING + QUEUED/PAGE_SPLITTING setzen
  * 3. KI-Pipeline (Extraction + RAG Auditor) aufrufen und Teilschritte melden
  * 4. Dossier im Repository persistieren
- * 5. Status auf COMPLETED oder FAILED setzen
+ * 5. Status auf COMPLETED oder FAILED setzen (oder PENDING bei Abbruch)
  */
 export async function executeDossierJob(
   jobId: string,
@@ -31,26 +32,38 @@ export async function executeDossierJob(
   const jobRepo = deps.jobRepo ?? getJobRepository();
   const dossierRepo = deps.dossierRepo ?? getDossierRepository();
 
-  return limit(() => runJobExecution(jobId, jobRepo, dossierRepo, deps.pipelineFn));
+  return limit(() =>
+    runJobExecution(jobId, jobRepo, dossierRepo, deps.pipelineFn, deps.abortSignal)
+  );
 }
 
 async function runJobExecution(
   jobId: string,
   jobRepo: IJobRepository,
   dossierRepo: IDossierRepository,
-  pipelineFn?: (params: PipelineParams) => Promise<Dossier>
+  pipelineFn?: (params: PipelineParams) => Promise<Dossier>,
+  abortSignal?: AbortSignal
 ): Promise<DossierJob | null> {
   const job = await jobRepo.getJobById(jobId);
   if (!job) {
     return null;
   }
 
+  if (abortSignal?.aborted) {
+    // Vor Beginn abgebrochen: Zurück auf PENDING
+    return jobRepo.updateJobStatus(jobId, {
+      status: JOB_STATUS.PENDING,
+      lockedAt: undefined,
+    });
+  }
+
   const totalFiles = job.payload.files.length;
 
-  // Job auf PROCESSING setzen
+  // Job auf PROCESSING setzen mit aktuellem Lease-Lock
   await jobRepo.updateJobStatus(jobId, {
     status: JOB_STATUS.PROCESSING,
     stage: JOB_STAGES.PAGE_SPLITTING,
+    lockedAt: new Date().toISOString(),
     progressDetails: {
       currentStep: 1,
       totalSteps: 4,
@@ -172,8 +185,17 @@ async function runJobExecution(
         currentActivity: 'Analyse erfolgreich abgeschlossen.',
       },
       resultDossierId,
+      lockedAt: undefined,
     });
   } catch (error: unknown) {
+    if (abortSignal?.aborted) {
+      // Wurde durch Graceful Shutdown unterbrochen: Zurückstellen auf PENDING
+      return await jobRepo.updateJobStatus(jobId, {
+        status: JOB_STATUS.PENDING,
+        lockedAt: undefined,
+      });
+    }
+
     const errMsg =
       error instanceof Error
         ? error.message
@@ -184,6 +206,7 @@ async function runJobExecution(
       status: JOB_STATUS.FAILED,
       errorMessage: errMsg,
       retryCount: (job.retryCount || 0) + 1,
+      lockedAt: undefined,
     });
   }
 }

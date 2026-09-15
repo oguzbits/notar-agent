@@ -16,6 +16,7 @@ export interface UpdateJobParams {
   resultDossierId?: string;
   errorMessage?: string;
   retryCount?: number;
+  lockedAt?: string;
 }
 
 export interface IJobRepository {
@@ -25,6 +26,7 @@ export interface IJobRepository {
   claimNextPendingJob(): Promise<DossierJob | null>;
   listJobs(): Promise<DossierJob[]>;
   pruneCompletedJobs(maxAgeMs?: number): Promise<number>;
+  recoverOrphanJobs(leaseTimeoutMs?: number): Promise<DossierJob[]>;
 }
 
 /**
@@ -87,6 +89,7 @@ export class InMemoryJobRepository implements IJobRepository {
       errorMessage: update.errorMessage !== undefined ? update.errorMessage : current.errorMessage,
       retryCount: update.retryCount !== undefined ? update.retryCount : current.retryCount,
       maxRetries: current.maxRetries,
+      lockedAt: update.lockedAt !== undefined ? update.lockedAt : current.lockedAt,
       createdAt: current.createdAt,
       updatedAt: new Date().toISOString(),
     };
@@ -114,6 +117,7 @@ export class InMemoryJobRepository implements IJobRepository {
     return this.updateJobStatus(oldestPending.id, {
       status: JOB_STATUS.PROCESSING,
       stage: JOB_STAGES.QUEUED,
+      lockedAt: new Date().toISOString(),
     });
   }
 
@@ -130,6 +134,44 @@ export class InMemoryJobRepository implements IJobRepository {
       return !isTerminal || jobTime > cutoff;
     });
     return initialCount - this.jobs.length;
+  }
+
+  async recoverOrphanJobs(leaseTimeoutMs = 5 * 60 * 1000): Promise<DossierJob[]> {
+    const now = Date.now();
+    const cutoff = now - leaseTimeoutMs;
+    const recovered: DossierJob[] = [];
+
+    for (let i = 0; i < this.jobs.length; i++) {
+      const job = this.jobs[i];
+      if (!job || job.status !== JOB_STATUS.PROCESSING) {
+        continue;
+      }
+
+      // Prüfe lockedAt oder Fallback auf updatedAt
+      const lockTimestamp = job.lockedAt
+        ? new Date(job.lockedAt).getTime()
+        : new Date(job.updatedAt).getTime();
+      if (lockTimestamp <= cutoff) {
+        const nextRetry = (job.retryCount || 0) + 1;
+        const isExhausted = nextRetry >= job.maxRetries;
+
+        const updated: DossierJob = {
+          ...job,
+          status: isExhausted ? JOB_STATUS.FAILED : JOB_STATUS.PENDING,
+          errorMessage: isExhausted
+            ? `Maximale Versuche (${job.maxRetries}) nach Timeout/Absturz überschritten.`
+            : 'Verwaister Job nach Timeout reaktiviert.',
+          retryCount: nextRetry,
+          lockedAt: undefined,
+          updatedAt: new Date().toISOString(),
+        };
+
+        this.jobs[i] = updated;
+        recovered.push({ ...updated });
+      }
+    }
+
+    return recovered;
   }
 }
 
@@ -199,6 +241,7 @@ export class SupabaseJobRepository implements IJobRepository {
         updateData.result_dossier_id = update.resultDossierId;
       if (update.errorMessage !== undefined) updateData.error_message = update.errorMessage;
       if (update.retryCount !== undefined) updateData.retry_count = update.retryCount;
+      if (update.lockedAt !== undefined) updateData.locked_at = update.lockedAt;
 
       const { data, error } = await this.supabase
         .from('dossier_jobs')
@@ -236,6 +279,7 @@ export class SupabaseJobRepository implements IJobRepository {
       return this.updateJobStatus(data.id, {
         status: JOB_STATUS.PROCESSING,
         stage: JOB_STAGES.QUEUED,
+        lockedAt: new Date().toISOString(),
       });
     } catch (err) {
       console.warn('Supabase claimNextPendingJob Ausnahme:', err);
@@ -274,6 +318,7 @@ export class SupabaseJobRepository implements IJobRepository {
       errorMessage: row.error_message ? String(row.error_message) : undefined,
       retryCount: Number(row.retry_count ?? 0),
       maxRetries: Number(row.max_retries ?? 3),
+      lockedAt: row.locked_at ? String(row.locked_at) : undefined,
       createdAt: String(row.created_at),
       updatedAt: String(row.updated_at),
     };
@@ -297,6 +342,48 @@ export class SupabaseJobRepository implements IJobRepository {
     } catch (err) {
       console.warn('Supabase pruneCompletedJobs Ausnahme:', err);
       return this.fallbackRepo.pruneCompletedJobs(maxAgeMs);
+    }
+  }
+
+  async recoverOrphanJobs(leaseTimeoutMs = 5 * 60 * 1000): Promise<DossierJob[]> {
+    try {
+      const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
+
+      // Finde alle PROCESSING Jobs, deren locked_at bzw. updated_at älter als cutoffIso ist
+      const { data: stuckJobs, error } = await this.supabase
+        .from('dossier_jobs')
+        .select('*')
+        .eq('status', JOB_STATUS.PROCESSING)
+        .or(`locked_at.lte.${cutoffIso},and(locked_at.is.null,updated_at.lte.${cutoffIso})`);
+
+      if (error || !stuckJobs || stuckJobs.length === 0) {
+        return this.fallbackRepo.recoverOrphanJobs(leaseTimeoutMs);
+      }
+
+      const recovered: DossierJob[] = [];
+      for (const row of stuckJobs) {
+        const job = this.mapRowToJob(row);
+        const nextRetry = job.retryCount + 1;
+        const isExhausted = nextRetry >= job.maxRetries;
+
+        const updated = await this.updateJobStatus(job.id, {
+          status: isExhausted ? JOB_STATUS.FAILED : JOB_STATUS.PENDING,
+          errorMessage: isExhausted
+            ? `Maximale Versuche (${job.maxRetries}) nach Timeout/Absturz überschritten.`
+            : 'Verwaister Job nach Timeout reaktiviert.',
+          retryCount: nextRetry,
+          lockedAt: undefined,
+        });
+
+        if (updated) {
+          recovered.push(updated);
+        }
+      }
+
+      return recovered;
+    } catch (err) {
+      console.warn('Supabase recoverOrphanJobs Ausnahme:', err);
+      return this.fallbackRepo.recoverOrphanJobs(leaseTimeoutMs);
     }
   }
 }

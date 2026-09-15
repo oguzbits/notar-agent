@@ -96,6 +96,10 @@ export const DossierJobSchema = z.object({
   errorMessage: z.string().optional().describe('Fehlermeldung bei Status FAILED'),
   retryCount: z.number().nonnegative().default(0),
   maxRetries: z.number().nonnegative().default(3),
+  lockedAt: z
+    .string()
+    .optional()
+    .describe('Zeitpunkt der Lease-Sperrung durch einen Worker (ISO UTC) für Orphan-Detection'),
   createdAt: z.string().describe('Erstellungszeitpunkt (ISO UTC)'),
   updatedAt: z.string().describe('Letzte Aktualisierung (ISO UTC)'),
 });

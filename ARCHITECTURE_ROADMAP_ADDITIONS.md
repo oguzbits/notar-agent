@@ -141,17 +141,21 @@ graph LR
    - **Headless Playwright E2E:** Automatisches Hochfahren des Next.js-Testservers und Durchführen der Smoke- und Drag-and-Drop-Workflows im Headless-Chromium.
 2. **Datenbank-Migrationen & Schema-Prüfung:**
    - Automatische Validierung neuer Supabase- / PostgreSQL-Migrationen (`audit_logs`, `dossier_jobs`) in einer isolierten Test-DB vor dem Release.
-3. **Continuous Deployment (CD):**
+3. **Continuous Deployment (CD) & Multi-Container-Orchestrierung:**
    - Automatisches Preview-Deployment für jeden Pull Request zur visuellen Abnahme von Notariats-UI-Änderungen.
-   - Zero-Downtime Rollout auf Produktivserver (Vercel / Dokploy / Docker) nach erfolgreichem Merge auf `main`.
+   - **Duale Prozess-Architektur (Web + Worker):** Zero-Downtime Rollout auf Produktivserver (Dokploy / Docker Compose / K8s).
+     - `web`: Next.js Server (`npm run start`) für Nutzer-Interaktion und schnelle HTTP-Responses (`202 Accepted`).
+     - `worker`: Autonomer Hintergrund-Daemon (`npm run worker`), der 24/7 PENDING Jobs abarbeitet und Zombie-Sweeper betreibt.
+   - Automatische Generierung des optimierten Multi-Stage `Dockerfile` und `docker-compose.yml`.
 
 ### Geplante Aufgaben
 
+- [ ] Multi-Stage `Dockerfile` (Node.js LTS, Runner-Separation) & `docker-compose.yml` (Web + Worker-Service)
 - [ ] `.github/workflows/ci.yml` für automatische PR-Validierung (`check`, `test`, `build`)
 - [ ] `.github/workflows/e2e.yml` für Playwright-Tests mit Browser-Caching
 - [ ] Supabase CLI GitHub Action zur automatischen Prüfung von DB-Migrationen
 - [ ] Konfiguration von Branch-Protection-Rules (Bedingung: Alle CI-Checks müssen bestehen vor Merge)
-- [ ] CD-Deployment-Workflow (Staging & Production)
+- [ ] CD-Deployment-Workflow für Dokploy / Docker (Staging & Production)
 
 ---
 

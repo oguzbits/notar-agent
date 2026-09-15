@@ -7,6 +7,7 @@
     "build": "next build",
     "analyze": "ANALYZE=true next build --webpack",
     "start": "next start",
+    "worker": "node --experimental-strip-types scripts/run-worker.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint",
