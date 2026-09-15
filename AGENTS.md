@@ -18,75 +18,44 @@
 - **React 19 & State Hygiene:** Idiomatic React 19 (no manual `useMemo`/`useCallback` unless profiled). Explicit RSC/`'use client'` boundaries. Server state via `@tanstack/react-query` only. Compute derived values during render; push state down to leaf components.
 - **Components & Styling:** Max ~200 lines. Use semantic tokens from `globals.css` (no arbitrary hex `#...` or `text-[...]`). Reusable UI primitives use CVA + `cn(...)`.
 
-## 3. Tiered Workflow: Fast Path vs. Standard Path
+## 3. The Lifecycle Invariant (Standard Industrial Workflow)
 
-To maximize velocity while guaranteeing systemic integrity, tasks follow a deterministic 2-tier model:
+The agent operates under a single, non-negotiable invariant: **Default is ALWAYS the Full Engineering Cycle**.
 
-### Tier A: Fast Path (Micro-Tasks & Pure UI Tweaks)
+Any modification touching domain models (`src/types/`), API routes (`src/app/api/`), business logic (`src/lib/`), data access, persistence, or infrastructure MUST follow this exact sequence:
 
-- **Eligibility Trigger:** Task touches only local UI presentation, copy, style tokens, or isolated local bugfixes without touching schemas, contracts, APIs, or persistent state (`LOCAL_CODE_ONLY`).
-- **Workflow:**
-  - **No upfront briefing required.** Proceed directly to implementation.
-  - Fast feedback loop: run relevant test and `npm run check`.
-  - **Completion:** A concise 1-line status report confirming verified behavior and green checks.
+1. **Pre-Flight Declaration (Before touching code):**
+   - **Scope:** 1–2 sentences on what is being modified.
+   - **Explicitly Out-of-Scope:** What is intentionally deferred.
+   - **Impact Level:**
+     - `LOCAL_CODE_ONLY`: Local logic, types, in-memory stubs only.
+     - `DECLARATION_STAGED`: Declarative artifacts created/staged (schemas, configs, migrations), zero live mutation.
+     - `LIVE_MUTATION_APPLIED`: Live environment or shared service mutated (DB, Auth, Storage, Env). Requires verified status check.
+   - **Success Criteria:** Exact test command or query to prove correctness.
+2. **Contract First:** Canonical Zod schemas and TypeScript types in `src/types/`.
+3. **TDD:** Write/update failing unit or integration test before implementing (`npx vitest run <path>`).
+4. **Surgical Implementation:** Minimal diff to satisfy tests and type checks.
+5. **Quality Gates:** `npm run check` and `npm test` passing with 0 errors.
+6. **Mandatory DoD Receipt:** Deliver the standardized receipt before declaring completion.
 
-### Tier B: Standard Path (Features, Contracts, State & Infrastructure)
+### The ONLY Permitted Exception (Fast Path):
 
-- **Eligibility Trigger:** Any task introducing/modifying types/schemas in `src/types/`, API route contracts, shared business logic, database migrations, authentication, external services, or environment configuration (`DECLARATION_STAGED` or `LIVE_MUTATION_APPLIED`).
-- **Workflow:**
-  1. **Upfront Task Briefing (2–3 sentences before code edits):**
-     - **Goal & In-Scope:** What is being built and modified?
-     - **Explicitly Out-of-Scope:** What is intentionally deferred?
-     - **Target Impact Classification:**
-       - `LOCAL_CODE_ONLY`: Internal domain logic, pure functions, contract schemas, in-memory mocks.
-       - `DECLARATION_STAGED`: Declarative artifacts prepared (e.g. schemas, configuration templates, migration files, API specifications), zero remote changes.
-       - `LIVE_MUTATION_APPLIED`: Active remote or shared environment touched (e.g. cloud database, auth directory, storage buckets, queues, environment variables).
-     - **Proof of Success:** Specific test command, static check, or query to prove the target state.
-  2. **Contract First:** Define Zod schemas and TypeScript types in `src/types/`.
-  3. **TDD:** Write/update failing test, iterate: `npx vitest run <path-to-test>`.
-  4. **Surgical Implementation:** Minimal diff to satisfy tests.
-  5. **Verification Gates:**
-     - Fast feedback: `npm run check` & `npx vitest run <path-to-test>`.
-     - Full Gate: `npm run check`, `npm test`, `npm run test:e2e`, and `npm run build`.
+Pure presentational CSS/styling (`src/app/globals.css`, `src/components/ui/*`), text copywriting in leaf components, or markdown documentation. In this case alone, upfront declaration and DoD receipt are bypassed in favor of instant execution and a 1-line verification confirmation.
 
-## 4. Definition of Done (DoD) & Standardized Receipt
+## 4. Definition of Done (DoD) Receipt
 
-No stateful or architectural task is complete merely because code compiles. For any Tier B task, the agent must output a standardized DoD receipt prior to declaring completion:
-
-### Tier B DoD Criteria:
-
-- **Base (All Tier B Tasks):**
-  - [x] Canonical contracts & types in `src/types/`, 0 type errors (`tsc --noEmit`), 0 magic values.
-  - [x] 100% isolated unit/integration tests green (`npx vitest run ...`).
-  - [x] `npm run check` and `npm test` passing with 0 errors.
-- **When `DECLARATION_STAGED`:**
-  - [x] Declarative artifacts complete, versioned, and statically validated.
-  - [x] Zero uncommitted or unintended side-effects on remote environments.
-- **When `LIVE_MUTATION_APPLIED`:**
-  - [x] Mutation executed on target environment via authorized tooling.
-  - [x] Target state (e.g. entity existence, access policies, security flags) explicitly verified and logged in the receipt.
-  - [x] Zero drift between local declarative artifacts and live environment state.
-
-### Standardized Receipt Format (Tier B Only):
+No functional task is complete without this verified receipt:
 
 ```markdown
 ### 📋 DoD Receipt: [Task Name]
 
 - [x] **Contracts & Types:** (Schemas & types in src/types/...)
 - [x] **Tests & Gates:** (X tests passing, npm run check 0 errors, npm test passing)
-- [x] **Environment & Impact Status:** [e.g. "LOCAL_CODE_ONLY" OR "DECLARATION_STAGED: Artifacts versioned" OR "LIVE_MUTATION_APPLIED: Resource X updated, verified state Y"]
-- [ ] **Explicitly Out-of-Scope:** [What was intentionally deferred]
+- [x] **Impact & Environment Status:** [LOCAL_CODE_ONLY | DECLARATION_STAGED: Artifacts versioned | LIVE_MUTATION_APPLIED: Verified state on remote system]
+- [ ] **Explicitly Out-of-Scope:** [Deferred items / next steps]
 ```
 
-## 5. Proactive Opportunity Scan (Prior to Handoff)
-
-Before finalizing, quickly assess:
-
-- **State Hygiene & Single Source of Truth:** Any duplicated state, twin truths, or raw magic values?
-- **Resilience & Concurrency:** Are race conditions, unbounded arrays, or rate limits protected?
-- **Notary UX & Value-Add:** 1–2 pragmatic optimizations providing immediate notary value?
-
-## 6. Discipline & Guardrails
+## 5. Discipline & Guardrails
 
 - **Zero Unauthorized Git Commits:** Never run `git commit` or `git push` autonomously. Always present verified changes and await explicit user confirmation.
 - **Zero Silent Assumptions:** Never assume the user knows whether an external resource was modified. Always explicitly disclose environment mutations.
