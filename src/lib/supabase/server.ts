@@ -104,23 +104,33 @@ export function getAuditRepository(): IAuditRepository {
   return new SupabaseAuditRepository(supabase);
 }
 
-// Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer
-export async function persistDossierRecord(dossier: Dossier): Promise<PersistenceResult> {
-  return getDossierRepository().save(dossier);
+// Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer mit optionaler Kanzleitrennung (§ 203 StGB)
+export async function persistDossierRecord(
+  dossier: Dossier,
+  organizationId?: string
+): Promise<PersistenceResult> {
+  return getDossierRepository().save(dossier, organizationId);
 }
 
-export async function updateDossierRecord(id: string, dossier: Dossier): Promise<UpdateResult> {
-  return getDossierRepository().update(id, dossier);
+export async function updateDossierRecord(
+  id: string,
+  dossier: Dossier,
+  organizationId?: string
+): Promise<UpdateResult> {
+  return getDossierRepository().update(id, dossier, organizationId);
 }
 
-export async function fetchDossierRecords(): Promise<DocumentRecord[]> {
-  return getDossierRepository().list();
+export async function fetchDossierRecords(organizationId?: string): Promise<DocumentRecord[]> {
+  return getDossierRepository().list(organizationId);
 }
 
-export async function fetchDossierRecordById(id: string): Promise<DocumentRecord | null> {
-  return getDossierRepository().findById(id);
+export async function fetchDossierRecordById(
+  id: string,
+  organizationId?: string
+): Promise<DocumentRecord | null> {
+  return getDossierRepository().findById(id, organizationId);
 }
 
-export async function deleteDossierRecord(id: string): Promise<boolean> {
-  return getDossierRepository().delete(id);
+export async function deleteDossierRecord(id: string, organizationId?: string): Promise<boolean> {
+  return getDossierRepository().delete(id, organizationId);
 }

@@ -205,3 +205,120 @@ graph TD
 - [ ] Lokale Draft-Sicherung im `StatusOverrideReasonModal`
 - [ ] `Last-Event-ID`-Unterstützung in `create-sse-stream.ts` und Client-Hooks
 - [ ] Retention- und Lösch-Skript für Altdaten gem. DONot
+
+---
+
+## 7. Kanzlei-Briefkopf, Corporate Identity & Dokument-Branding
+
+- **Priorisierung:** Kanzlei-Präsentation & Druckreife (Wesentliches NotarPartner-Feature).
+- **Ziel:** Medienbruchfreier Export von Urkunden, Entwürfen, Anschreiben und Vollzugsdokumenten direkt auf dem offiziellen Kanzlei-Briefpapier des Notariats.
+
+```mermaid
+graph LR
+    A["Kanzlei-Stammdaten & CI-Upload"] --> B["Template-Engine (Word / PDF)"]
+    B --> C["Kopfzeile (Kanzleilogo, Notarname, Amtssitz)"]
+    B --> D["Marginalspalte / Fußzeile (Konten, Steuernummer, Kammerbezirk)"]
+    B --> E["Urkundentext & Begleitschreiben"]
+    C & D & E --> F["Druckfertige Word- / PDF-Urkunde"]
+```
+
+### Kernfunktionen
+
+1. **Kanzlei-Profil & CI-Settings (`src/types/organization.ts`):**
+   - Verwaltung der offiziellen Notarangaben (Amtssitz, Notar/-in, Notarassessor, Siegel-Informationen, Kammerzugehörigkeit).
+   - Hinterlegung von Kanzleilogos (SVG / PNG hochauflösend) und Typografie-Standards.
+2. **Dynamische Briefkopf-Integration:**
+   - Platzierung von Kanzleibriefkopf, Fußzeile (IBAN für Anderkonten, USt-IdNr., Anschrift) in allen generierten `.docx`- und `.pdf`-Dokumenten.
+   - Mandantenspezifische Umschaltung bei Sozietäten (Auswahl des beurkundenden Notars bei mehreren Amtsträgern).
+
+### Geplante Aufgaben
+
+- [ ] Kanzlei-Einstellungsdialog & Zod-Schema für Kanzlei-Stammdaten (`organization_settings`)
+- [ ] Speicherung und Bereitstellung von Kanzlei-Logos und Siegel-Vektoren in Supabase Storage
+- [ ] Injection-Adapter für Word-Templates (`docx`) und PDF-Renderer mit dynamischen Kanzleifeldern
+
+---
+
+## 8. Kanzlei-Muster- & Klauselbibliothek (Vorlagenverwaltung)
+
+- **Priorisierung:** Praxis-Effizienz & Kanzlei-Standardisierung (Vergleichbar mit NotarPartner Regelungsbibliothek).
+- **Ziel:** Kanzleien können ihre bewährten Standard-Vertragsmuster und individuellen Sonderklauseln hinterlegen und modular zusammenstellen, statt generische Standardtexte zu nutzen.
+
+```mermaid
+graph TD
+    A["Kanzlei-Klauselsammlung"] --> B{"Vorgangs-Kontext"}
+    B -->|"Kaufvertrag Liegenschaft"| C["Spezifische Kanzlei-Fälligkeitsklausel"]
+    B -->|"GmbH-Gründung"| D["Kanzlei-Musterprotokoll / Satzung"]
+    B -->|"Vorsorge"| E["Erweiterte Vollmachtsklauseln"]
+    C & D & E --> F["Modulare Urkundenzusammenstellung"]
+```
+
+### Kernfunktionen
+
+1. **Kanzlei-interne Klauseldatenbank (`clause_library`):**
+   - Kategorisierte Speicherung nach Rechtsgebiet (Immobilien, Gesellschaftsrecht, Erbfolge, Familienrecht).
+   - Variablen-System (z.B. `{{KAUFPREIS}}`, `{{VERKAEUFER_NAME}}`, `{{FLURSTUECK}}`), das automatisch aus dem Stufe-1/2-Dossier befüllt wird.
+2. **Klausel-Alternativen & Fallback-Regeln:**
+   - Bereitstellung von Klausel-Varianten (z.B. _„Kaufpreiszahlung mit Notaranderkonto“_ vs. _„Direktzahlung mit Fälligkeitsmitteilung“_).
+   - Rechtliche Plausibilitätswarnungen bei inkompatiblen Klauselkombinationen.
+3. **Muster-Import & Migration:**
+   - Tool zum Importieren bestehender `.docx`-Muster aus Kanzleibeständen in modulare Datenbausteine.
+
+### Geplante Aufgaben
+
+- [ ] Schema `clauses` und `templates` mit RLS-Mandantenisolation
+- [ ] UI für Kanzlei-Vorlagen-Editor und Klausel-Auswahl
+- [ ] Template-Merging-Engine: Abgleich extrahierter Dossier-Felder mit Klausel-Variablen
+
+---
+
+## 9. Kanzlei-Vorgangsverwaltung & Dashboard (Dossier-Übersicht)
+
+- **Priorisierung:** Kanzlei-Workflow & Team-Kollaboration.
+- **Ziel:** Ganzheitliche Übersicht aller laufenden und abgeschlossenen Vorgänge einer Kanzlei, Zuweisung von Sachbearbeitern und Notaren sowie Fristenüberwachung.
+
+```mermaid
+graph LR
+    A["Kanzlei-Dashboard"] --> B["Vorgangsliste (Filter nach Notar / Sachbearbeiter / Status)"]
+    A --> C["Fristen- & Wiedervorlagen-Radar (14-Tage BGB-Frist)"]
+    A --> D["Aktenzeichen-Suche & Beteiligten-Index"]
+    B & C & D --> E["1-Click Einstieg in Prüf-Cockpit & Export"]
+```
+
+### Kernfunktionen
+
+1. **Zentrales Kanzlei-Dashboard (`/dashboard` oder `/vorgänge`):**
+   - Tabellarische Vorgangsübersicht mit Aktenzeichen, Beurkundungsdatum, Beteiligten, Sachbearbeiter und Bearbeitungsstatus (`ENTWURF`, `IN_PRÜFUNG`, `BEURKUNDUNGSREIF`, `VOLLZUG`, `ABGESCHLOSSEN`).
+   - Schnelle Filterung: _„Meine Akten“_, _„Zur Notar-Freigabe“_, _„Fristen diese Woche“_.
+2. **Beteiligten- und Liegenschafts-Index:**
+   - Kanzleiweiter Schnellindex zur Vermeidung von Doppelerfassungen und Kollisionswarnung (z.B. Mandatskonflikte im Anwaltsnotariat gem. § 43a BRAO).
+3. **Fristen- und Wiedervorlage-Management:**
+   - Automatisches Tracking der gesetzlichen 14-tägigen Verbraucherprüffrist (§ 17 Abs. 2a BeurkG) und Vorkaufsrechtsfristen (§ 28 BauGB).
+
+### Geplante Aufgaben
+
+- [ ] Kanzlei-Dashboard-Page mit Volltextsuche und Filter-Facets
+- [ ] Vorgangs-Zuweisung (`assigned_notary_id`, `assigned_clerk_id`) im Datenmodell
+- [ ] Kollisions-Prüfmodul für Sozietäten und Anwaltsnotariate
+
+---
+
+## 10. Erweiterung auf weitere Rechtsgebiete (Multi-Domain Expansion)
+
+- **Priorisierung:** Plattform-Skalierung (Gleichzug mit den 10 Urkundentypen von NotarPartner).
+- **Ziel:** Strukturierte Datenerfassung, Extraktion und Prüfung für Gesellschafts-, Erb- und Familienrecht über Liegenschaften hinaus.
+
+### Geplante Rechtsgebiete & Pflichtfeld-Schemata
+
+1. **Gesellschaftsrecht (`GMBH_GRUENDUNG`, `GF_WECHSEL`, `HR_ANMELDUNG`):**
+   - Gesellschafter, Stammeinlagen, Geschäftsführung, Vertretungsbefugnis, Stammkapital, Gegenstand, Satzungssonderklauseln.
+2. **Erbrecht (`TESTAMENT`, `ERBVERTRAG`, `ERBSCHEINSANTRAG`):**
+   - Erblasser, Verfügungen von Todes wegen, Erbenquoten, Vor-/Nacherbschaft, Vermächtnisse, Testamentsvollstreckung, Pflichtteilsverzicht.
+3. **Vorsorge & Familie (`VORSORGEVOLLMACHT`, `EHEVERTRAG`):**
+   - Vollmachtgeber, Bevollmächtigte, Innen-/Außenverhältnis, Patientenverfügung, Güterstand, Scheidungsfolgen.
+
+### Geplante Aufgaben
+
+- [ ] Definition typsicherer Zod-Schemas für die neuen Rechtsgebiete in `src/types/domains/`
+- [ ] Prompt-Templates und JIT-Regeln für Gesellschaftsrecht und Erbrecht
+- [ ] Cockpit-UI-Anpassung zur dynamischen Felddarstellung je nach `caseType`

@@ -86,6 +86,11 @@ export type JobProgressDetails = z.infer<typeof JobProgressDetailsSchema>;
 
 export const DossierJobSchema = z.object({
   id: z.string().describe('Eindeutige Job-ID (UUID oder nanoid)'),
+  organizationId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe('Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'),
   status: JobStatusSchema.describe('Aktueller Verarbeitungsstatus des Jobs'),
   stage: JobStageSchema.optional().describe('Detaillierter Teilschritt während PROCESSING'),
   progressDetails: JobProgressDetailsSchema.optional().describe(

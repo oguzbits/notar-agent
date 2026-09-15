@@ -36,6 +36,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: msg }, { status: 500 });
     }
 
+    // Kanzlei-Identifikation aus Body oder Header x-organization-id
+    const organizationId =
+      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined;
+
     // Prüfen, ob eine asynchrone Verarbeitung angefordert wurde (?async=true oder Header x-async: true)
     const isAsync =
       req.nextUrl.searchParams.get('async') === 'true' ||
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     if (isAsync) {
       const jobRepo = getJobRepository();
-      const job = await jobRepo.createJob(parseResult.data);
+      const job = await jobRepo.createJob(parseResult.data, organizationId);
 
       // Starte Hintergrund-Worker ohne auf Fertigstellung zu blockieren
       void executeDossierJob(job.id);
@@ -80,7 +84,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       const repo = getDossierRepository();
       let persistenceResult;
       if (documentId) {
-        const updateRes = await repo.update(documentId, dossier);
+        const updateRes = await repo.update(documentId, dossier, organizationId);
         const isSupabase = !!getServerSupabase();
         const uniformTitle = getUniformCaseTitle(dossier.caseType, documentId);
         persistenceResult = {
@@ -90,7 +94,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           id: documentId,
         };
       } else {
-        persistenceResult = await repo.save(dossier);
+        persistenceResult = await repo.save(dossier, organizationId);
       }
 
       emitter.sendEvent({
@@ -127,10 +131,12 @@ export async function PUT(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: validationError.toString() }, { status: 400 });
     }
 
-    const { documentId, dossier, auditOverride, actor } = parseResult.data;
+    const { documentId, dossier, auditOverride, actor, actorRole } = parseResult.data;
+    const organizationId =
+      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined;
 
     const repo = getDossierRepository();
-    const updateRes = await repo.update(documentId, dossier);
+    const updateRes = await repo.update(documentId, dossier, organizationId);
 
     if (!updateRes.success) {
       return NextResponse.json(
@@ -144,11 +150,13 @@ export async function PUT(req: NextRequest): Promise<Response> {
       const auditRepo = getAuditRepository();
       await auditRepo.appendEvent({
         documentId,
+        organizationId,
         action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
         actor: actor || 'Sachbearbeiter(in)',
         details: {
           override: auditOverride,
           caseTitle: dossier.caseTitle,
+          actorRole,
         },
       });
     }

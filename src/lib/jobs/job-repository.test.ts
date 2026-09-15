@@ -181,4 +181,34 @@ describe('InMemoryJobRepository (Bounded FIFO Queue)', () => {
     expect(exhausted[0]?.status).toBe(JOB_STATUS.FAILED);
     expect(exhausted[0]?.errorMessage).toContain('Maximale Versuche');
   });
+
+  it('trennt Jobs strikt nach Kanzlei (Organization Isolation gem. § 203 StGB)', async () => {
+    const orgA = '550e8400-e29b-41d4-a716-446655440001';
+    const orgB = '550e8400-e29b-41d4-a716-446655440002';
+
+    const jobA = await repo.createJob(samplePayload, orgA);
+    const jobB = await repo.createJob(samplePayload, orgB);
+
+    // ListJobs filtert nach Kanzlei
+    const jobsOrgA = await repo.listJobs(orgA);
+    expect(jobsOrgA).toHaveLength(1);
+    expect(jobsOrgA[0]?.id).toBe(jobA.id);
+
+    const jobsOrgB = await repo.listJobs(orgB);
+    expect(jobsOrgB).toHaveLength(1);
+    expect(jobsOrgB[0]?.id).toBe(jobB.id);
+
+    // GetJobById mit Kanzlei-Schutz
+    expect(await repo.getJobById(jobA.id, orgB)).toBeNull();
+    expect(await repo.getJobById(jobA.id, orgA)).not.toBeNull();
+
+    // ClaimNextPendingJob für Kanzlei B greift nur Job B
+    const claimedB = await repo.claimNextPendingJob(orgB);
+    expect(claimedB?.id).toBe(jobB.id);
+    expect(claimedB?.organizationId).toBe(orgB);
+
+    // Job A ist weiterhin PENDING
+    const checkA = await repo.getJobById(jobA.id, orgA);
+    expect(checkA?.status).toBe(JOB_STATUS.PENDING);
+  });
 });

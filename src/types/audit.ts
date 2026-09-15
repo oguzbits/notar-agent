@@ -39,6 +39,11 @@ export type AuditOverrideDetails = z.infer<typeof AuditOverrideDetailsSchema>;
 
 export const AuditLogEntrySchema = z.object({
   id: z.string().uuid(),
+  organizationId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe('Kanzlei-ID für strikte Mandantentrennung gem. § 203 StGB'),
   documentId: z.string().min(1),
   sequenceNumber: z.number().int().nonnegative(),
   action: AuditActionSchema,
@@ -52,6 +57,7 @@ export const AuditLogEntrySchema = z.object({
       sourceFingerprints: z.array(AuditSourceFingerprintSchema).optional(),
       note: z.string().optional(),
       caseTitle: z.string().optional(),
+      actorRole: z.string().optional(),
     })
     .default({}),
 });

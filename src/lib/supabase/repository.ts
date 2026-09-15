@@ -19,11 +19,11 @@ export interface UpdateResult {
 }
 
 export interface IDossierRepository {
-  findById(id: string): Promise<DocumentRecord | null>;
-  save(dossier: Dossier): Promise<PersistenceResult>;
-  update(id: string, dossier: Dossier): Promise<UpdateResult>;
-  list(): Promise<DocumentRecord[]>;
-  delete(id: string): Promise<boolean>;
+  findById(id: string, organizationId?: string): Promise<DocumentRecord | null>;
+  save(dossier: Dossier, organizationId?: string): Promise<PersistenceResult>;
+  update(id: string, dossier: Dossier, organizationId?: string): Promise<UpdateResult>;
+  list(organizationId?: string): Promise<DocumentRecord[]>;
+  delete(id: string, organizationId?: string): Promise<boolean>;
 }
 
 export function getUniformCaseTitle(caseType: string | undefined, id: string): string {
@@ -39,7 +39,7 @@ export function computeDocumentStatus(dossier: Dossier): CaseStatus {
 }
 
 /**
- * Bounded In-Memory Repository mit FIFO-Verdrängung gegen Memory Leaks.
+ * Bounded In-Memory Repository mit FIFO-Verdrängung und Kanzlei-Isolation (§ 203 StGB).
  */
 export class InMemoryDossierRepository implements IDossierRepository {
   private documents: DocumentRecord[] = [];
@@ -49,8 +49,12 @@ export class InMemoryDossierRepository implements IDossierRepository {
     this.maxCapacity = maxCapacity;
   }
 
-  async findById(id: string): Promise<DocumentRecord | null> {
-    const doc = this.documents.find((d) => d.id === id);
+  async findById(id: string, organizationId?: string): Promise<DocumentRecord | null> {
+    const doc = this.documents.find((d) => {
+      if (d.id !== id) return false;
+      if (organizationId && d.organizationId && d.organizationId !== organizationId) return false;
+      return true;
+    });
     if (!doc) return null;
     const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
     return {
@@ -62,7 +66,7 @@ export class InMemoryDossierRepository implements IDossierRepository {
     };
   }
 
-  async save(dossier: Dossier): Promise<PersistenceResult> {
+  async save(dossier: Dossier, organizationId?: string): Promise<PersistenceResult> {
     const normalized = normalizeDossier(dossier);
     const id = crypto.randomUUID();
     const title = getUniformCaseTitle(normalized.caseType, id);
@@ -72,6 +76,7 @@ export class InMemoryDossierRepository implements IDossierRepository {
 
     const record: DocumentRecord = {
       id,
+      organizationId,
       title,
       status,
       content: normalized,
@@ -91,13 +96,18 @@ export class InMemoryDossierRepository implements IDossierRepository {
     };
   }
 
-  async update(id: string, dossier: Dossier): Promise<UpdateResult> {
+  async update(id: string, dossier: Dossier, organizationId?: string): Promise<UpdateResult> {
     const normalized = normalizeDossier(dossier);
     const title = getUniformCaseTitle(normalized.caseType, id);
     normalized.caseTitle = title;
     const status = computeDocumentStatus(normalized);
 
-    const index = this.documents.findIndex((d) => d.id === id);
+    const index = this.documents.findIndex((d) => {
+      if (d.id !== id) return false;
+      if (organizationId && d.organizationId && d.organizationId !== organizationId) return false;
+      return true;
+    });
+
     const existing = this.documents[index];
     if (index !== -1 && existing) {
       this.documents[index] = {
@@ -112,6 +122,7 @@ export class InMemoryDossierRepository implements IDossierRepository {
     // Wenn nicht vorhanden, anlegen
     const newRecord: DocumentRecord = {
       id,
+      organizationId,
       title,
       status,
       content: normalized,
@@ -124,8 +135,12 @@ export class InMemoryDossierRepository implements IDossierRepository {
     return { success: true };
   }
 
-  async list(): Promise<DocumentRecord[]> {
-    return this.documents.map((doc) => {
+  async list(organizationId?: string): Promise<DocumentRecord[]> {
+    const filtered = organizationId
+      ? this.documents.filter((doc) => !doc.organizationId || doc.organizationId === organizationId)
+      : this.documents;
+
+    return filtered.map((doc) => {
       const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
       return {
         ...doc,
@@ -137,8 +152,12 @@ export class InMemoryDossierRepository implements IDossierRepository {
     });
   }
 
-  async delete(id: string): Promise<boolean> {
-    const index = this.documents.findIndex((d) => d.id === id);
+  async delete(id: string, organizationId?: string): Promise<boolean> {
+    const index = this.documents.findIndex((d) => {
+      if (d.id !== id) return false;
+      if (organizationId && d.organizationId && d.organizationId !== organizationId) return false;
+      return true;
+    });
     if (index !== -1) {
       this.documents.splice(index, 1);
       return true;
@@ -156,16 +175,18 @@ export class SupabaseDossierRepository implements IDossierRepository {
     private fallbackRepo: InMemoryDossierRepository
   ) {}
 
-  async findById(id: string): Promise<DocumentRecord | null> {
+  async findById(id: string, organizationId?: string): Promise<DocumentRecord | null> {
     try {
-      const { data, error } = await this.supabase
-        .from('documents')
-        .select('*')
-        .eq('id', id)
-        .single();
+      let query = this.supabase.from('documents').select('*').eq('id', id);
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
+      const { data, error } = await query.single();
 
       if (error || !data) {
-        return this.fallbackRepo.findById(id);
+        return this.fallbackRepo.findById(id, organizationId);
       }
 
       const doc = data as DocumentRecord;
@@ -179,11 +200,11 @@ export class SupabaseDossierRepository implements IDossierRepository {
       };
     } catch (err) {
       console.warn('Supabase findById fehlgeschlagen, wechsle zu Fallback:', err);
-      return this.fallbackRepo.findById(id);
+      return this.fallbackRepo.findById(id, organizationId);
     }
   }
 
-  async save(dossier: Dossier): Promise<PersistenceResult> {
+  async save(dossier: Dossier, organizationId?: string): Promise<PersistenceResult> {
     const normalized = normalizeDossier(dossier);
     const newId = crypto.randomUUID();
     const title = getUniformCaseTitle(normalized.caseType, newId);
@@ -191,14 +212,19 @@ export class SupabaseDossierRepository implements IDossierRepository {
     const status = computeDocumentStatus(normalized);
 
     try {
+      const insertPayload: Record<string, unknown> = {
+        id: newId,
+        title,
+        status,
+        content: dossier,
+      };
+      if (organizationId) {
+        insertPayload.organization_id = organizationId;
+      }
+
       const { data, error } = await this.supabase
         .from('documents')
-        .insert({
-          id: newId,
-          title,
-          status,
-          content: dossier,
-        })
+        .insert(insertPayload)
         .select('id, created_at')
         .single();
 
@@ -207,7 +233,7 @@ export class SupabaseDossierRepository implements IDossierRepository {
           'Supabase Insert fehlgeschlagen, speichere im In-Memory Fallback:',
           error.message
         );
-        return this.fallbackRepo.save(dossier);
+        return this.fallbackRepo.save(dossier, organizationId);
       }
 
       return {
@@ -218,18 +244,18 @@ export class SupabaseDossierRepository implements IDossierRepository {
       };
     } catch (err) {
       console.warn('Supabase Ausnahme, weiche auf In-Memory Fallback aus:', err);
-      return this.fallbackRepo.save(dossier);
+      return this.fallbackRepo.save(dossier, organizationId);
     }
   }
 
-  async update(id: string, dossier: Dossier): Promise<UpdateResult> {
+  async update(id: string, dossier: Dossier, organizationId?: string): Promise<UpdateResult> {
     const normalized = normalizeDossier(dossier);
     const title = getUniformCaseTitle(normalized.caseType, id);
     normalized.caseTitle = title;
     const status = computeDocumentStatus(normalized);
 
     try {
-      const { error } = await this.supabase
+      let query = this.supabase
         .from('documents')
         .update({
           title,
@@ -239,30 +265,39 @@ export class SupabaseDossierRepository implements IDossierRepository {
         })
         .eq('id', id);
 
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
+      const { error } = await query;
+
       if (error) {
         console.warn(
           'Supabase Update fehlgeschlagen, weiche auf In-Memory Fallback aus:',
           error.message
         );
-        return this.fallbackRepo.update(id, dossier);
+        return this.fallbackRepo.update(id, dossier, organizationId);
       }
 
       return { success: true };
     } catch (err) {
       console.warn('Supabase Update Ausnahme, aktualisiere In-Memory:', err);
-      return this.fallbackRepo.update(id, dossier);
+      return this.fallbackRepo.update(id, dossier, organizationId);
     }
   }
 
-  async list(): Promise<DocumentRecord[]> {
+  async list(organizationId?: string): Promise<DocumentRecord[]> {
     try {
-      const { data, error } = await this.supabase
-        .from('documents')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = this.supabase.from('documents').select('*');
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
-        return this.fallbackRepo.list();
+        return this.fallbackRepo.list(organizationId);
       }
 
       const supabaseDocs = ((data || []) as DocumentRecord[]).map((doc) => {
@@ -284,7 +319,9 @@ export class SupabaseDossierRepository implements IDossierRepository {
       });
 
       const existingIds = new Set(supabaseDocs.map((d) => d.id));
-      const memoryDocs = (await this.fallbackRepo.list()).filter((d) => !existingIds.has(d.id));
+      const memoryDocs = (await this.fallbackRepo.list(organizationId)).filter(
+        (d) => !existingIds.has(d.id)
+      );
       const merged = [...supabaseDocs, ...memoryDocs];
 
       return merged.sort(
@@ -292,14 +329,18 @@ export class SupabaseDossierRepository implements IDossierRepository {
       );
     } catch (err) {
       console.warn('Supabase list fehlgeschlagen, wechsle zu Fallback:', err);
-      return this.fallbackRepo.list();
+      return this.fallbackRepo.list(organizationId);
     }
   }
 
-  async delete(id: string): Promise<boolean> {
-    await this.fallbackRepo.delete(id);
+  async delete(id: string, organizationId?: string): Promise<boolean> {
+    await this.fallbackRepo.delete(id, organizationId);
     try {
-      const { error } = await this.supabase.from('documents').delete().eq('id', id);
+      let query = this.supabase.from('documents').delete().eq('id', id);
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+      const { error } = await query;
       if (error) {
         console.warn('Supabase Delete Fehler:', error.message);
       }

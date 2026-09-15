@@ -67,6 +67,37 @@ describe('InMemoryAuditRepository (§ 17 ff. BeurkG)', () => {
     expect(histA[0]?.documentId).toBe('doc-a');
     expect(histB[0]?.documentId).toBe('doc-b');
   });
+
+  it('trennt Kanzleidaten strikt über organizationId (§ 203 StGB Isolation)', async () => {
+    const orgA = '550e8400-e29b-41d4-a716-446655440001';
+    const orgB = '550e8400-e29b-41d4-a716-446655440002';
+    const docId = 'shared-doc-ref';
+
+    await repo.appendEvent({
+      documentId: docId,
+      organizationId: orgA,
+      action: AUDIT_ACTIONS.DOCUMENT_INGESTED,
+      actor: 'Notar Kanzlei A',
+    });
+
+    await repo.appendEvent({
+      documentId: docId,
+      organizationId: orgB,
+      action: AUDIT_ACTIONS.DOCUMENT_INGESTED,
+      actor: 'Notar Kanzlei B',
+    });
+
+    const historyOrgA = await repo.getHistory(docId, orgA);
+    const historyOrgB = await repo.getHistory(docId, orgB);
+
+    expect(historyOrgA).toHaveLength(1);
+    expect(historyOrgA[0]?.actor).toBe('Notar Kanzlei A');
+    expect(historyOrgA[0]?.organizationId).toBe(orgA);
+
+    expect(historyOrgB).toHaveLength(1);
+    expect(historyOrgB[0]?.actor).toBe('Notar Kanzlei B');
+    expect(historyOrgB[0]?.organizationId).toBe(orgB);
+  });
 });
 
 function createErrorMockSupabase(errorMessage: string) {

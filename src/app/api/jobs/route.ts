@@ -6,10 +6,15 @@ import { JOB_STATUS, RetryJobRequestSchema } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(): Promise<Response> {
+export async function GET(req?: NextRequest): Promise<Response> {
   try {
+    const orgId = req
+      ? req.headers.get('x-organization-id') ||
+        req.nextUrl.searchParams.get('organizationId') ||
+        undefined
+      : undefined;
     const repo = getJobRepository();
-    const jobs = await repo.listJobs();
+    const jobs = await repo.listJobs(orgId);
     return NextResponse.json({ jobs }, { status: 200 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Fehler beim Laden der Jobs.';

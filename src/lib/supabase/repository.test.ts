@@ -75,4 +75,25 @@ describe('InMemoryDossierRepository', () => {
     expect(list.map((d) => d.id)).not.toContain(d1.id);
     expect(list.map((d) => d.id)).toEqual([d4.id, d3.id, d2.id]);
   });
+
+  it('trennt Kanzleidokumente strikt nach organizationId (§ 203 StGB Isolation)', async () => {
+    const orgA = '550e8400-e29b-41d4-a716-446655440001';
+    const orgB = '550e8400-e29b-41d4-a716-446655440002';
+
+    const docA = await repo.save(createMockDossier('Kanzlei A Akte'), orgA);
+    const docB = await repo.save(createMockDossier('Kanzlei B Akte'), orgB);
+
+    // List filtert nach Kanzlei
+    const listA = await repo.list(orgA);
+    expect(listA).toHaveLength(1);
+    expect(listA[0]?.id).toBe(docA.id);
+
+    const listB = await repo.list(orgB);
+    expect(listB).toHaveLength(1);
+    expect(listB[0]?.id).toBe(docB.id);
+
+    // FindById mit Kanzleikontext
+    expect(await repo.findById(docA.id, orgB)).toBeNull();
+    expect(await repo.findById(docA.id, orgA)).not.toBeNull();
+  });
 });

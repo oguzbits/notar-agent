@@ -4,6 +4,7 @@ import { calculateAuditRecordHash, GENESIS_HASH, verifyAuditChain } from './audi
 
 export interface AppendAuditParams {
   documentId: string;
+  organizationId?: string;
   action: AuditAction;
   actor: string;
   details?: Record<string, unknown>;
@@ -12,12 +13,12 @@ export interface AppendAuditParams {
 
 export interface IAuditRepository {
   appendEvent(params: AppendAuditParams): Promise<AuditLogEntry>;
-  getHistory(documentId: string): Promise<AuditLogEntry[]>;
-  verifyIntegrity(documentId: string): Promise<AuditIntegrityResult>;
+  getHistory(documentId: string, organizationId?: string): Promise<AuditLogEntry[]>;
+  verifyIntegrity(documentId: string, organizationId?: string): Promise<AuditIntegrityResult>;
 }
 
 /**
- * Bounded In-Memory Audit Repository mit mathematischer Hash-Kette.
+ * Bounded In-Memory Audit Repository mit mathematischer Hash-Kette und Mandantentrennung (§ 203 StGB).
  */
 export class InMemoryAuditRepository implements IAuditRepository {
   private eventsByDocId = new Map<string, AuditLogEntry[]>();
@@ -47,6 +48,7 @@ export class InMemoryAuditRepository implements IAuditRepository {
 
     const entry: AuditLogEntry = {
       id: crypto.randomUUID(),
+      organizationId: params.organizationId,
       documentId: params.documentId,
       sequenceNumber,
       action: params.action,
@@ -72,13 +74,19 @@ export class InMemoryAuditRepository implements IAuditRepository {
     return entry;
   }
 
-  async getHistory(documentId: string): Promise<AuditLogEntry[]> {
+  async getHistory(documentId: string, organizationId?: string): Promise<AuditLogEntry[]> {
     const list = this.eventsByDocId.get(documentId) || [];
+    if (organizationId) {
+      return list.filter((e) => !e.organizationId || e.organizationId === organizationId);
+    }
     return [...list];
   }
 
-  async verifyIntegrity(documentId: string): Promise<AuditIntegrityResult> {
-    const list = await this.getHistory(documentId);
+  async verifyIntegrity(
+    documentId: string,
+    organizationId?: string
+  ): Promise<AuditIntegrityResult> {
+    const list = await this.getHistory(documentId, organizationId);
     return verifyAuditChain(list);
   }
 }
@@ -121,19 +129,24 @@ export class SupabaseAuditRepository implements IAuditRepository {
 
     const newId = crypto.randomUUID();
 
+    const insertPayload: Record<string, unknown> = {
+      id: newId,
+      document_id: params.documentId,
+      sequence_number: sequenceNumber,
+      action: params.action,
+      timestamp,
+      actor: params.actor,
+      previous_hash: previousHash,
+      current_hash: currentHash,
+      details,
+    };
+    if (params.organizationId) {
+      insertPayload.organization_id = params.organizationId;
+    }
+
     const { data: inserted, error: insertErr } = await this.supabase
       .from('audit_logs')
-      .insert({
-        id: newId,
-        document_id: params.documentId,
-        sequence_number: sequenceNumber,
-        action: params.action,
-        timestamp,
-        actor: params.actor,
-        previous_hash: previousHash,
-        current_hash: currentHash,
-        details,
-      })
+      .insert(insertPayload)
       .select('*')
       .single();
 
@@ -145,6 +158,7 @@ export class SupabaseAuditRepository implements IAuditRepository {
 
     return {
       id: inserted.id,
+      organizationId: inserted.organization_id,
       documentId: inserted.document_id,
       sequenceNumber: inserted.sequence_number,
       action: inserted.action,
@@ -156,12 +170,14 @@ export class SupabaseAuditRepository implements IAuditRepository {
     };
   }
 
-  async getHistory(documentId: string): Promise<AuditLogEntry[]> {
-    const { data, error } = await this.supabase
-      .from('audit_logs')
-      .select('*')
-      .eq('document_id', documentId)
-      .order('sequence_number', { ascending: true });
+  async getHistory(documentId: string, organizationId?: string): Promise<AuditLogEntry[]> {
+    let query = this.supabase.from('audit_logs').select('*').eq('document_id', documentId);
+
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data, error } = await query.order('sequence_number', { ascending: true });
 
     if (error) {
       throw new Error(`Supabase getHistory error: ${error.message}`);
@@ -173,6 +189,7 @@ export class SupabaseAuditRepository implements IAuditRepository {
 
     return data.map((row) => ({
       id: row.id,
+      organizationId: row.organization_id,
       documentId: row.document_id,
       sequenceNumber: row.sequence_number,
       action: row.action,
@@ -184,8 +201,11 @@ export class SupabaseAuditRepository implements IAuditRepository {
     }));
   }
 
-  async verifyIntegrity(documentId: string): Promise<AuditIntegrityResult> {
-    const list = await this.getHistory(documentId);
+  async verifyIntegrity(
+    documentId: string,
+    organizationId?: string
+  ): Promise<AuditIntegrityResult> {
+    const list = await this.getHistory(documentId, organizationId);
     return verifyAuditChain(list);
   }
 }

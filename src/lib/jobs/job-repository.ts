@@ -20,17 +20,17 @@ export interface UpdateJobParams {
 }
 
 export interface IJobRepository {
-  createJob(payload: CreateJobPayload): Promise<DossierJob>;
-  getJobById(id: string): Promise<DossierJob | null>;
+  createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob>;
+  getJobById(id: string, organizationId?: string): Promise<DossierJob | null>;
   updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null>;
-  claimNextPendingJob(): Promise<DossierJob | null>;
-  listJobs(): Promise<DossierJob[]>;
+  claimNextPendingJob(organizationId?: string): Promise<DossierJob | null>;
+  listJobs(organizationId?: string): Promise<DossierJob[]>;
   pruneCompletedJobs(maxAgeMs?: number): Promise<number>;
-  recoverOrphanJobs(leaseTimeoutMs?: number): Promise<DossierJob[]>;
+  recoverOrphanJobs(leaseTimeoutMs?: number, organizationId?: string): Promise<DossierJob[]>;
 }
 
 /**
- * Bounded In-Memory Job Queue mit FIFO-Verdrängung gegen Memory Leaks.
+ * Bounded In-Memory Job Queue mit FIFO-Verdrängung gegen Memory Leaks und Mandantentrennung (§ 203 StGB).
  * Garantiert Zero-Config Portability ohne laufende Datenbank.
  */
 export class InMemoryJobRepository implements IJobRepository {
@@ -41,10 +41,11 @@ export class InMemoryJobRepository implements IJobRepository {
     this.maxCapacity = maxCapacity;
   }
 
-  async createJob(payload: CreateJobPayload): Promise<DossierJob> {
+  async createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob> {
     const now = new Date().toISOString();
     const job: DossierJob = {
       id: crypto.randomUUID(),
+      organizationId,
       status: JOB_STATUS.PENDING,
       payload,
       retryCount: 0,
@@ -61,8 +62,12 @@ export class InMemoryJobRepository implements IJobRepository {
     return { ...job };
   }
 
-  async getJobById(id: string): Promise<DossierJob | null> {
-    const job = this.jobs.find((j) => j.id === id);
+  async getJobById(id: string, organizationId?: string): Promise<DossierJob | null> {
+    const job = this.jobs.find((j) => {
+      if (j.id !== id) return false;
+      if (organizationId && j.organizationId && j.organizationId !== organizationId) return false;
+      return true;
+    });
     return job ? { ...job } : null;
   }
 
@@ -78,12 +83,11 @@ export class InMemoryJobRepository implements IJobRepository {
     }
 
     const updated: DossierJob = {
-      id: current.id,
+      ...current,
       status: update.status !== undefined ? update.status : current.status,
       stage: update.stage !== undefined ? update.stage : current.stage,
       progressDetails:
         update.progressDetails !== undefined ? update.progressDetails : current.progressDetails,
-      payload: current.payload,
       resultDossierId:
         update.resultDossierId !== undefined ? update.resultDossierId : current.resultDossierId,
       errorMessage: update.errorMessage !== undefined ? update.errorMessage : current.errorMessage,
@@ -98,9 +102,13 @@ export class InMemoryJobRepository implements IJobRepository {
     return { ...updated };
   }
 
-  async claimNextPendingJob(): Promise<DossierJob | null> {
+  async claimNextPendingJob(organizationId?: string): Promise<DossierJob | null> {
     // Finde den ältesten Job im Zustand PENDING (FIFO am Ende des Arrays vor Verdrängung)
-    const pendingJobs = this.jobs.filter((j) => j.status === JOB_STATUS.PENDING);
+    const pendingJobs = this.jobs.filter((j) => {
+      if (j.status !== JOB_STATUS.PENDING) return false;
+      if (organizationId && j.organizationId && j.organizationId !== organizationId) return false;
+      return true;
+    });
     if (pendingJobs.length === 0) {
       return null;
     }
@@ -121,7 +129,12 @@ export class InMemoryJobRepository implements IJobRepository {
     });
   }
 
-  async listJobs(): Promise<DossierJob[]> {
+  async listJobs(organizationId?: string): Promise<DossierJob[]> {
+    if (organizationId) {
+      return this.jobs
+        .filter((j) => !j.organizationId || j.organizationId === organizationId)
+        .map((j) => ({ ...j }));
+    }
     return this.jobs.map((j) => ({ ...j }));
   }
 
@@ -136,7 +149,10 @@ export class InMemoryJobRepository implements IJobRepository {
     return initialCount - this.jobs.length;
   }
 
-  async recoverOrphanJobs(leaseTimeoutMs = 5 * 60 * 1000): Promise<DossierJob[]> {
+  async recoverOrphanJobs(
+    leaseTimeoutMs = 5 * 60 * 1000,
+    organizationId?: string
+  ): Promise<DossierJob[]> {
     const now = Date.now();
     const cutoff = now - leaseTimeoutMs;
     const recovered: DossierJob[] = [];
@@ -146,7 +162,9 @@ export class InMemoryJobRepository implements IJobRepository {
       if (!job || job.status !== JOB_STATUS.PROCESSING) {
         continue;
       }
-
+      if (organizationId && job.organizationId && job.organizationId !== organizationId) {
+        continue;
+      }
       // Prüfe lockedAt oder Fallback auf updatedAt
       const lockTimestamp = job.lockedAt
         ? new Date(job.lockedAt).getTime()
@@ -184,47 +202,54 @@ export class SupabaseJobRepository implements IJobRepository {
     private fallbackRepo: InMemoryJobRepository
   ) {}
 
-  async createJob(payload: CreateJobPayload): Promise<DossierJob> {
+  async createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob> {
     try {
+      const insertData: Record<string, unknown> = {
+        status: JOB_STATUS.PENDING,
+        payload,
+        retry_count: 0,
+        max_retries: 3,
+      };
+      if (organizationId) {
+        insertData.organization_id = organizationId;
+      }
+
       const { data, error } = await this.supabase
         .from('dossier_jobs')
-        .insert({
-          status: JOB_STATUS.PENDING,
-          payload,
-          retry_count: 0,
-          max_retries: 3,
-        })
+        .insert(insertData)
         .select('*')
         .single();
 
       if (error || !data) {
         console.warn('Supabase createJob fehlgeschlagen, nutze Fallback-Queue:', error?.message);
-        return this.fallbackRepo.createJob(payload);
+        return this.fallbackRepo.createJob(payload, organizationId);
       }
 
       return this.mapRowToJob(data);
     } catch (err) {
       console.warn('Supabase createJob Ausnahme:', err);
-      return this.fallbackRepo.createJob(payload);
+      return this.fallbackRepo.createJob(payload, organizationId);
     }
   }
 
-  async getJobById(id: string): Promise<DossierJob | null> {
+  async getJobById(id: string, organizationId?: string): Promise<DossierJob | null> {
     try {
-      const { data, error } = await this.supabase
-        .from('dossier_jobs')
-        .select('*')
-        .eq('id', id)
-        .single();
+      let query = this.supabase.from('dossier_jobs').select('*').eq('id', id);
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
+      const { data, error } = await query.single();
 
       if (error || !data) {
-        return this.fallbackRepo.getJobById(id);
+        return this.fallbackRepo.getJobById(id, organizationId);
       }
 
       return this.mapRowToJob(data);
     } catch (err) {
       console.warn('Supabase getJobById Ausnahme:', err);
-      return this.fallbackRepo.getJobById(id);
+      return this.fallbackRepo.getJobById(id, organizationId);
     }
   }
 
@@ -261,19 +286,22 @@ export class SupabaseJobRepository implements IJobRepository {
     }
   }
 
-  async claimNextPendingJob(): Promise<DossierJob | null> {
+  async claimNextPendingJob(organizationId?: string): Promise<DossierJob | null> {
     try {
       // Wähle ältesten PENDING Job aus und setze ihn atomar auf PROCESSING
-      const { data, error } = await this.supabase
-        .from('dossier_jobs')
-        .select('*')
-        .eq('status', JOB_STATUS.PENDING)
+      let query = this.supabase.from('dossier_jobs').select('*').eq('status', JOB_STATUS.PENDING);
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
 
       if (error || !data) {
-        return this.fallbackRepo.claimNextPendingJob();
+        return this.fallbackRepo.claimNextPendingJob(organizationId);
       }
 
       return this.updateJobStatus(data.id, {
@@ -283,31 +311,35 @@ export class SupabaseJobRepository implements IJobRepository {
       });
     } catch (err) {
       console.warn('Supabase claimNextPendingJob Ausnahme:', err);
-      return this.fallbackRepo.claimNextPendingJob();
+      return this.fallbackRepo.claimNextPendingJob(organizationId);
     }
   }
 
-  async listJobs(): Promise<DossierJob[]> {
+  async listJobs(organizationId?: string): Promise<DossierJob[]> {
     try {
-      const { data, error } = await this.supabase
-        .from('dossier_jobs')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = this.supabase.from('dossier_jobs').select('*');
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error || !data) {
-        return this.fallbackRepo.listJobs();
+        return this.fallbackRepo.listJobs(organizationId);
       }
 
       return data.map((row) => this.mapRowToJob(row));
     } catch (err) {
       console.warn('Supabase listJobs Ausnahme:', err);
-      return this.fallbackRepo.listJobs();
+      return this.fallbackRepo.listJobs(organizationId);
     }
   }
 
   private mapRowToJob(row: Record<string, unknown>): DossierJob {
     return {
       id: String(row.id),
+      organizationId: row.organization_id ? String(row.organization_id) : undefined,
       status: row.status as JobStatus,
       stage: row.stage ? (row.stage as JobStage) : undefined,
       progressDetails: row.progress_details
