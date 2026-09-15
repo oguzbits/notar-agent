@@ -152,3 +152,52 @@ graph LR
 - [ ] Supabase CLI GitHub Action zur automatischen Prüfung von DB-Migrationen
 - [ ] Konfiguration von Branch-Protection-Rules (Bedingung: Alle CI-Checks müssen bestehen vor Merge)
 - [ ] CD-Deployment-Workflow (Staging & Production)
+
+---
+
+## 6. Production Hardening, API-Schutz & Kanzlei-Resilienz
+
+- **Priorisierung:** Sicherheits- und Betriebshärtung für den ununterbrochenen Kanzleialltag.
+- **Ziel:** Schutz vor DoS-/Kosten-Explosion, Eliminierung von Datenverlusten bei Netzwerkunterbrechungen und Einhaltung notarieller Aufbewahrungs- und Löschfristen (DONot).
+
+```mermaid
+graph TD
+    A["Eingehender Kanzlei-Request"] --> B["1. API-Rate-Limiter & Token-Bucket"]
+    B --> C["2. Payload-Inspector (Magic-Bytes & MB-Limit)"]
+    C --> D["Next.js Route Handlers (Security-Headers / CSP)"]
+    D --> E["Job-Worker / LLM-Pipeline"]
+
+    subgraph ClientSide["Client-Resilienz (Browser)"]
+        F["Sachbearbeiter tippt Overrides"] --> G["IndexedDB / Session Draft Puffer"]
+        H["SSE Stream Abbruch"] --> I["Auto-Reconnect mit Last-Event-ID"]
+    end
+```
+
+### Kernfunktionen
+
+1. **API-Rate-Limiting & Kostenkontrolle:**
+   - Token-Bucket / Sliding-Window-Algorithmus (z. B. via Upstash Redis oder In-Memory-Bucket) für `/api/analyze` und `/api/jobs`.
+   - Schutz vor Skript-Schleifen, versehentlichen Doppel-Submits und DoS-Angriffen, die teure multimodale LLM-Tokens verbrauchen.
+2. **Payload-Schutz & MIME-Type Magic-Byte-Prüfung:**
+   - Explizite Server-Constraints für Body-Größen vor dem Memory-Heap (Verhinderung von Node.js OOMs bei Base64-Payloads).
+   - Validierung der binären Datei-Header (Magic Bytes) via `file-type`, um das Einschleusen manipulierter PDFs oder Skripte serverseitig zu blockieren.
+3. **HTTP-Sicherheits-Header & Content Security Policy (CSP):**
+   - Konfiguration strikter HTTP-Header in `next.config.ts`: `Content-Security-Policy`, `X-Frame-Options: DENY`, `Strict-Transport-Security (HSTS)` und `X-Content-Type-Options: nosniff`.
+4. **Client-Draft-Persistence (Verbindungsabbruch-Schutz):**
+   - Lokaler Draft-Puffer im Browser (`IndexedDB` oder `sessionStorage`) für `StatusOverrideReasonModal`.
+   - Wenn während der Eingabe einer ausführlichen Begründung (§ 17 BeurkG) das WLAN abbricht, bleibt der Text erhalten und geht nicht verloren.
+5. **Resilientes SSE-Streaming mit `Last-Event-ID`:**
+   - EventSource-Reconnection mit Exponential Backoff.
+   - Übermittlung des Headers `Last-Event-ID`, damit der Client bei temporärem Verbindungsabriss an der exakt letzten verarbeiteten Stage wieder aufsetzt, ohne den Job neu zu triggern.
+6. **Notarielle Lösch- & Aufbewahrungsfristen (DONot / DSGVO):**
+   - Automatisierte Datenbereinigung und Aktenvernichtung nach Ablauf der gesetzlichen Aufbewahrungsfristen (§ 5 Abs. 4 DONot: 5/10/30 Jahre).
+   - Kryptografische Vernichtung archivierter Dokument-Payloads bei Erhalt des revisionssicheren Audit-Hashes.
+
+### Geplante Aufgaben
+
+- [ ] Rate-Limiting Middleware für `/api/analyze` und `/api/jobs`
+- [ ] Magic-Byte-Validierung & Upload-Stream-Begrenzung im API-Layer
+- [ ] Security-Header-Konfiguration (`headers()` in `next.config.ts`)
+- [ ] Lokale Draft-Sicherung im `StatusOverrideReasonModal`
+- [ ] `Last-Event-ID`-Unterstützung in `create-sse-stream.ts` und Client-Hooks
+- [ ] Retention- und Lösch-Skript für Altdaten gem. DONot

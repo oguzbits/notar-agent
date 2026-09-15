@@ -222,6 +222,17 @@ sequenceDiagram
     UI->>Notar: Cockpit-Tabelle fertig gerendert anzeigen
 ```
 
+### 5.3 Produktionsfester Worker-Lifecycle & Ausfallsicherheit (Daemon & Orphan Recovery)
+
+Im Prototyp wird die Hintergrundverarbeitung über `void executeDossierJob(job.id)` im Next.js-Prozess angestoßen. Für den 24/7-Kanzleibetrieb erfordert dies eine robuste Entkopplung:
+
+1. **Eigenständiger Worker-Daemon (Decoupled Runner):**
+   - Entkopplung vom Next.js-Web-Container in einen dedizierten Node.js-Worker-Prozess (oder systemd/Docker-Container).
+   - Sauberes **Graceful Shutdown (`SIGTERM`/`SIGINT`)**: Laufende LLM-Pipelines erhalten ein Abbruchsignal (AbortController); der Job-Status wird geordnet auf `PENDING` zurückgesetzt statt zerstört zu werden.
+2. **Orphan-Job Recovery & Lease-Timeout (Zombie-Sweeper):**
+   - Stürzt ein Worker-Container während einer laufenden Analyse unerwartet ab (z. B. Out-of-Memory oder VM-Neustart), bleibt der Job nicht dauerhaft auf `PROCESSING` blockiert.
+   - Ein periodischer Sweeper prüft `locked_at`: Ist ein Job länger als das konfigurierte Lease-Timeout (z. B. 5 Minuten) im Status `PROCESSING` ohne Lebenszeichen, wird er automatisch zur Wiederholung freigegeben (`status = 'PENDING'`, Retry-Zähler erhöht) oder nach 3 Fehlversuchen als `FAILED` markiert.
+
 ---
 
 ## 6. Mandantenfähigkeit (Multi-Tenancy) & Kanzlei-Isolation (§ 203 StGB)
@@ -238,13 +249,26 @@ Statt die Mandantentrennung fehleranfällig im Applikationscode zu verwalten, se
 ALTER TABLE dossiers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dossier_jobs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_policy ON dossiers
   FOR ALL
   USING (organization_id = current_setting('app.current_organization_id', true)::uuid);
 ```
 
-### 6.3 Rollen- und Rechtematrix (Kanzlei-RBAC)
+### 6.3 Reproduzierbares Migrations- & Index-Management (Postgres & Supabase)
+
+Für verlässliche CI/CD-Deployments und performante Datenbankabfragen bei wachsenden Kanzleiarchiven:
+
+1. **Versionierte Migrationen (`supabase/migrations/`):**
+   - Sämtliche Tabellen (`documents`, `audit_logs`, `dossier_jobs`), Enums und RLS-Policies werden deklarativ versioniert verwaltet und automatisiert über CI angewendet.
+2. **Index-Strategie:**
+   - `audit_logs`: B-Tree auf `(document_id, sequence_number)` zur schnellen kryptografischen Kettenprüfung.
+   - `dossier_jobs`: Partieller Index auf `(status, created_at) WHERE status = 'PENDING'` für extrem schnelles Queue-Polling via `FOR UPDATE SKIP LOCKED`.
+3. **Connection Pooling & Pooling-Port:**
+   - Trennung zwischen Transaction-Pooler (Supavisor / PgBouncer Port 6543) für transiente Queue- und Audit-Writes und Session-Modus für Migrationen.
+
+### 6.4 Rollen- und Rechtematrix (Kanzlei-RBAC)
 
 | Rolle                                        | Berechtigungen im System                                                                                                                                    |
 | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -311,11 +335,11 @@ graph TD
 
 ### Übersicht der Phasen & Umsetzungsstatus
 
-| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                                             |
-| :---------- | :--------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                   |
-| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Multi-LLM Provider-Adapter                                     |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB)<br>• [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                                                                    |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                                          |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [ ] B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper<br>• [ ] B.5 Multi-LLM Provider-Adapter   |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [ ] C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB)<br>• [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
 
 ### Detaillierter Fortschrittstracker (Phase A)
 
@@ -350,6 +374,10 @@ graph TD
   - [x] Dual-Stream Payload-Assembler in `pipeline.ts` (Textlayer für Ziffern/Beträge + Vision-Bilder für Siegel/Handschriften)
   - [x] TDD-Unit-Tests für Klassifikation, Text-Integrität und Edge Cases (`pdf-stream-classifier.test.ts`, `pdf-text-extractor.test.ts`)
 - [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**
+- [ ] **B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper:**
+  - [ ] Eigenständiger Node.js-Worker-Runner mit Graceful Shutdown (`SIGTERM`/`SIGINT`)
+  - [ ] Periodischer Orphan-Recovery-Sweeper (Reaktivierung verwaister `PROCESSING`-Jobs nach Lease-Timeout)
+- [ ] **B.5 Multi-LLM Provider-Adapter**
 
 ### Detaillierter Fortschrittstracker (Phase C: Enterprise Compliance & Ökosystem)
 
@@ -359,9 +387,10 @@ graph TD
   - [x] `IAuditRepository` (Bounded In-Memory & Supabase) mit automatischer Integritätsverifikation
   - [x] Revisionssicherer Prüfbericht-Export inkl. Kettensignatur & Hash-Fingerprint in `ExportActions`
   - _(ZDR-Cloud-Verträge ins Backlog ausgelagert, siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md))_
-- [ ] **C.2 PostgreSQL RLS Mandantentrennung (§ 203 StGB):**
+- [ ] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB):**
   - [ ] Mandanten-Isolation auf Datenbankebene via Row-Level Security
   - [ ] Session-Claims & Tenant-Identifikatoren in allen Queries
+  - [ ] Deklaratives Migrationsmanagement (`supabase/migrations/`) mit B-Tree-Indizes & Connection-Pooling (Supavisor)
 - [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid):**
   - [ ] `pgvector`-Schema in Supabase für DNotI-Gutachten & Leitsatzentscheidungen
   - [ ] Hybrid-Search (BM25 für Paragraphen/Normen + Embeddings für Klauselsemantik)
