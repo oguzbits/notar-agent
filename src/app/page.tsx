@@ -13,6 +13,7 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useJobs, useJob } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
+import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { DocumentRecord } from '@/types/document';
 import {
   FieldStatus,
@@ -64,7 +65,7 @@ function HomeContent() {
           progressDetails: {
             currentStep: 1,
             totalSteps: 4,
-            currentActivity: 'In der Kanzlei-Warteschlange eingereiht...',
+            currentActivity: STAGE_ACTIVITY_LABELS_DE.QUEUED,
           },
           payload: {
             caseType: session.caseType,

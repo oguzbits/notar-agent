@@ -1,4 +1,5 @@
 import { CaseType } from '@/types/dossier';
+import { HybridSearchResult } from '@/types/knowledge';
 import { AuditRule, NOTARY_AUDIT_RULES } from './rules-registry';
 
 export interface RuleSelectionContext {
@@ -6,6 +7,7 @@ export interface RuleSelectionContext {
   fields?: Record<string, unknown>;
   detectedDocuments?: Array<{ fileName?: string; documentType?: string }>;
   notes?: string;
+  knowledgeResults?: HybridSearchResult[];
 }
 
 /**
@@ -58,16 +60,36 @@ export function selectRelevantAuditRules(context: RuleSelectionContext): AuditRu
 /**
  * Formatiert die selektierten Regeln in eine schlanke Textsektion für den Stufe-2-Prompt.
  */
-export function formatRulesForPrompt(rules: AuditRule[]): string {
-  if (rules.length === 0) return '';
+export function formatRulesForPrompt(
+  rules: AuditRule[],
+  knowledgeResults: HybridSearchResult[] = []
+): string {
+  const sections: string[] = [];
 
-  const formatted = rules
-    .map(
-      (r, i) =>
-        `${i + 1}. [${r.legalBasis}] ${r.title}:
+  if (rules.length > 0) {
+    const formattedRules = rules
+      .map(
+        (r, i) =>
+          `${i + 1}. [${r.legalBasis}] ${r.title}:
    - Prüfvorgabe: ${r.instruction}${r.suggestedAction ? `\n   - Bei Mangel/Lücke: ${r.suggestedAction}` : ''}`
-    )
-    .join('\n\n');
+      )
+      .join('\n\n');
+    sections.push(`=== GESETZLICHE PRÜFUNGSMASSSTÄBE ===\n${formattedRules}`);
+  }
 
-  return `=== RELEVANTE GESETZLICHE PRÜFUNGSMASSSTÄBE (JIT RETRIEVAL) ===\n${formatted}\n`;
+  if (knowledgeResults.length > 0) {
+    const formattedKnowledge = knowledgeResults
+      .map(
+        (kr, i) =>
+          `${i + 1}. [${kr.document.legalBasis}${kr.document.courtOrAuthority ? ` — ${kr.document.courtOrAuthority}` : ''}] ${kr.document.title}:
+   - Rechtliche Vorgabe: ${kr.document.content}`
+      )
+      .join('\n\n');
+    sections.push(
+      `=== EINSCHLÄGIGE DNOTI-GUTACHTEN & AMTSGERICHTS-PRAXIS ===\n${formattedKnowledge}`
+    );
+  }
+
+  if (sections.length === 0) return '';
+  return sections.join('\n\n') + '\n';
 }

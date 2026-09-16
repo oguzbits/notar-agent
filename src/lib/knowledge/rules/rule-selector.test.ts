@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CASE_TYPES } from '@/types/dossier';
-import { selectRelevantAuditRules } from './rule-selector';
+import { KNOWLEDGE_CATEGORIES } from '@/types/knowledge';
+import { selectRelevantAuditRules, formatRulesForPrompt } from './rule-selector';
 import { AUDIT_RULE_IDS } from './rules-registry';
 
 describe('RAG Auditor: selectRelevantAuditRules', () => {
@@ -91,5 +92,37 @@ describe('RAG Auditor: selectRelevantAuditRules', () => {
     const formatted = rules.map((r) => `[${r.legalBasis}] ${r.instruction}`).join('\n');
     expect(formatted).toContain('§ 707 BGB');
     expect(formatted).toContain('Gesellschaftsregister');
+  });
+
+  it('formatiert erweiterte Kanzlei- & DNotI-Wissenseinträge nahtlos im Prompt', () => {
+    const rules = selectRelevantAuditRules({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      fields: {},
+    });
+
+    const knowledgeResult = {
+      document: {
+        id: '11111111-1111-4111-8111-111111111111',
+        organizationId: null,
+        category: KNOWLEDGE_CATEGORIES.AMTSGERICHT_PRAXIS,
+        legalBasis: '§ 12 HGB',
+        courtOrAuthority: 'AG Hamburg',
+        title: 'Registerauszug Frist',
+        content: 'Registerauszug nicht älter als 14 Tage erforderlich.',
+        triggerKeywords: ['gmbh'],
+        createdAt: '2026-09-16T08:00:00.000Z',
+        updatedAt: '2026-09-16T08:00:00.000Z',
+      },
+      bm25Score: 3.5,
+      vectorScore: 0.9,
+      combinedScore: 4.4,
+      matchSource: 'HYBRID_FUSION' as const,
+    };
+
+    const promptText = formatRulesForPrompt(rules, [knowledgeResult]);
+    expect(promptText).toContain('=== GESETZLICHE PRÜFUNGSMASSSTÄBE ===');
+    expect(promptText).toContain('=== EINSCHLÄGIGE DNOTI-GUTACHTEN & AMTSGERICHTS-PRAXIS ===');
+    expect(promptText).toContain('AG Hamburg');
+    expect(promptText).toContain('Registerauszug nicht älter als 14 Tage');
   });
 });

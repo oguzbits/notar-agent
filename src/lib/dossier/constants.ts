@@ -53,3 +53,15 @@ export const STATUS_DEFAULT_NOTES: Record<FieldStatus, string> = {
   [FIELD_STATUS.OUTDATED]: 'Die vorgelegten Unterlagen sind veraltet oder abgelaufen.',
   [FIELD_STATUS.MISSING]: 'Erforderliche Nachweise fehlen bisher im Aktenbestand.',
 };
+
+/**
+ * Notarielle Standard-Aktivitätsbeschreibungen für Hintergrund-Jobs (Stage Activities).
+ * Verhindert Leaking von technischem Entwickler-Jargon in UI und Logs.
+ */
+export const STAGE_ACTIVITY_LABELS_DE = {
+  QUEUED: 'In der Kanzlei-Warteschlange eingereiht...',
+  PAGE_SPLITTING: 'Aktenbestand sichten & Layout prüfen...',
+  EXTRACTION: 'Stammdaten, Flurstücke und Beteiligte erfassen...',
+  AUDITING: 'Notarielle Vorprüfung, Fristen & Plausibilisierung...',
+  PERSISTING: 'Prüfbericht erstellen & Vorgang aufbereiten...',
+} as const;

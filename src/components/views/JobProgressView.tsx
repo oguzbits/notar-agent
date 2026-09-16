@@ -5,6 +5,7 @@ import React from 'react';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
 interface JobProgressViewProps {
@@ -55,7 +56,7 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
   const currentActivity =
     job.progressDetails?.currentActivity ||
     (job.status === JOB_STATUS.PENDING
-      ? 'In der Kanzlei-Warteschlange eingereiht...'
+      ? STAGE_ACTIVITY_LABELS_DE.QUEUED
       : 'Dokumente werden geprüft...');
 
   const caseTitle = job.payload.notes ? job.payload.notes.slice(0, 60) : 'Neuer Urkundenvorgang';

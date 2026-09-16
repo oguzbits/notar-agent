@@ -339,7 +339,7 @@ graph TD
 | :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                                              |
 | **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [x] **B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper**<br>• [ ] B.5 Multi-LLM Provider-Adapter   |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [x] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB)**<br>• [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [x] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB)**<br>• [x] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
 
 ### Detaillierter Fortschrittstracker (Phase A)
 
@@ -393,11 +393,14 @@ graph TD
   - [x] Kanzlei-Isolation in Repositories (In-Memory & Supabase für `audit_logs`, `dossier_jobs` und `documents`)
   - [x] API-Header- und Body-Unterstützung (`x-organization-id`) mit 100 % Unit- und Isolationstest-Abdeckung
   - [x] Deklaratives Migrationsmanagement mit B-Tree- & Partial-Indizes
-- [ ] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid):**
-  - [ ] `pgvector`-Schema in Supabase für DNotI-Gutachten & Leitsatzentscheidungen
-  - [ ] Hybrid-Search (BM25 für Paragraphen/Normen + Embeddings für Klauselsemantik)
-  - [ ] Amtsgericht-Präzedenzdatenbank zur Vermeidung lokaler Zwischenverfügungen
-  - [ ] Kanzlei-interne Klausel- und Vorlagensammlung mit RLS-Mandantenschutz
+  - _(Zugehörige UI: Login, Teamverwaltung & RBAC-Guards in [ARCHITECTURE_ROADMAP_ADDITIONS.md §11](./ARCHITECTURE_ROADMAP_ADDITIONS.md#11-kanzlei-authentifizierung-rollen-ui--session-management-auth--rbac-frontend) hinterlegt)_
+- [x] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid):**
+  - [x] `pgvector`-Schema in Supabase für DNotI-Gutachten & Leitsatzentscheidungen (`supabase/migrations/20260916093000_kanzlei_knowledge_pgvector.sql`)
+  - [x] Hybrid-Search (BM25 für Paragraphen/Normen + Embeddings für Klauselsemantik via `src/lib/knowledge/hybrid-search.ts`)
+  - [x] Amtsgericht-Präzedenzdatenbank zur Vermeidung lokaler Zwischenverfügungen (`seed-knowledge.ts`)
+  - [x] Kanzlei-interne Klausel- und Vorlagensammlung mit RLS-Mandantenschutz (`SupabaseKnowledgeRepository`)
+  - [x] Pipeline-Injektion in Stufe 2 des Notary Auditors (`pipeline.ts` mit Fallback-Resilienz)
+  - _(Zugehörige UI: Wissensbasis & RAG-Inspektor in [ARCHITECTURE_ROADMAP_ADDITIONS.md §12](./ARCHITECTURE_ROADMAP_ADDITIONS.md#12-kanzlei-wissensbasis--rag-inspektor-ui-begleit-ui-für-c3) hinterlegt)_
 - [ ] **C.4 KI-Mandantenkorrespondenz & Post-Beurkundung:**
   - [ ] Determinismus-geprüfte Anschreiben- & Nachforderungsgenerierung
   - [ ] Fristen- und Wiedervorlagen-Extraktion für den Urkundenvollzug

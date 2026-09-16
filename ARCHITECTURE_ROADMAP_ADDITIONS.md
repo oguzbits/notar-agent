@@ -322,3 +322,118 @@ graph LR
 - [ ] Definition typsicherer Zod-Schemas für die neuen Rechtsgebiete in `src/types/domains/`
 - [ ] Prompt-Templates und JIT-Regeln für Gesellschaftsrecht und Erbrecht
 - [ ] Cockpit-UI-Anpassung zur dynamischen Felddarstellung je nach `caseType`
+
+---
+
+## 11. Kanzlei-Authentifizierung, Rollen-UI & Session-Management (Auth & RBAC Frontend)
+
+- **Priorisierung:** Kanzlei-Sicherheit & Berechtigungssteuerung (Ergänzung zu C.2).
+- **Ziel:** Grafische Benutzeroberfläche zur Mitarbeiter- und Rollenverwaltung, Login-Flow mit Supabase Auth und rollenbasierte Aktionsfreigaben (RBAC) im Notariats-Cockpit.
+- **Ausgangslage:** Das Backend und die Datenbank besitzen bereits RLS-Policies und Schemas (`NotaryRole`, `Organization`, `OrganizationMember`), es existiert jedoch noch keine Benutzeroberfläche für Authentifizierung, Rollen-Zuweisung und Berechtigungsprüfungen in der UI.
+
+```mermaid
+graph TD
+    A["Kanzlei-Mitarbeiter"] --> B["Login-Screen (/login)"]
+    B --> C["Supabase Auth Session (JWT + HTTP-Only Cookie)"]
+    C --> D["Header-Badge: Kanzlei & Aktive Berufsrolle"]
+    D --> E{"Rollenbasierte Berechtigung (RBAC)"}
+    E -->|"SACHBEARBEITER"| F["Akten-Upload, OCR/Vision-Prüfung, Entwurf & Notizen"]
+    E -->|"NOTAR / ASSESSOR"| G["Letztentscheidung, Status-Override-Freigabe, Siegelung & Export"]
+    E -->|"ADMIN"| H["Teamverwaltung (/einstellungen/team): Rollen & Einladungen"]
+```
+
+### Kernfunktionen
+
+1. **Login & Authentifizierungs-Flow (`/login`):**
+   - Kanzlei-Login via E-Mail & Magic-Link oder Passwort (Supabase Auth).
+   - Session-Guard in Next.js Middleware: Automatische Weiterleitung unauthentifizierter Anfragen auf `/login`.
+   - Automatisches Einspeisen der verifizierten `organization_id` und `user_id` aus dem Server-Session-Token in alle API- und Job-Aufrufe.
+2. **Kanzlei-Header & Rollen-Badge (`Header.tsx`):**
+   - Anzeige des Kanzleinamens und des Notaramtssitzes.
+   - Visuelles Abzeichen der aktuellen Rolle (z.B. `[Dr. Kaufmann | Notar]` vs. `[Frau Weber | Notarfachangestellte]`).
+3. **Team- & Rollenverwaltung (`/einstellungen/team` oder Modal):**
+   - Übersicht aller Kanzlei-Mitarbeiter mit Name, E-Mail und Beitrittsdatum.
+   - Dropdown zur Änderung der Berufsrolle (`NOTAR`, `NOTARASSESSOR`, `SACHBEARBEITER`, `ANWALTSNOTAR_RA`, `ADMIN`).
+   - Dialog zum Einladen neuer Mitarbeiter per Kanzlei-E-Mail.
+4. **Rollenabhängige UI-Sperren (RBAC Action Guards):**
+   - `SACHBEARBEITER`: Kann Dossier-Felder bearbeiten, Warnungen begründen (`StatusOverrideReasonModal`) und Notizen anlegen.
+   - `NOTAR` / `NOTARASSESSOR`: Exklusives Recht zur finalen Beurkundungsfreigabe und zum rechtsverbindlichen Urkunden-Export.
+   - Buttons und sicherheitskritische Aktionen werden für nicht-berechtigte Rollen deterministisch mit Erklärungs-Tooltip deaktiviert.
+
+### Geplante Aufgaben
+
+- [ ] Login-Page (`src/app/login/page.tsx`) mit Supabase Auth Formular
+- [ ] Middleware-Session-Guard für geschützte Kanzleirouten
+- [ ] Kanzlei- & Rollen-Badge im `Header.tsx`
+- [ ] Team- & Rollenverwaltungs-View (`src/components/views/TeamSettingsView.tsx`)
+- [ ] RBAC-Hook (`useCurrentUserRole()`) zur rollenbasierten Button- und Aktionssteuerung im Cockpit
+
+---
+
+## 12. Kanzlei-Wissensbasis & RAG-Inspektor UI (Begleit-UI für C.3)
+
+- **Priorisierung:** Kanzlei-Transparenz & Wissensmanagement (Ergänzung zu C.3).
+- **Ziel:** Eine grafische Maske zum Verwalten und Einsehen von Kanzlei-Standards, DNotI-Gutachten und Zwischenverfügungs-Präzedenzfällen der zuständigen Amtsgerichte.
+
+```mermaid
+graph LR
+    A["Kanzlei-Admin / Notar"] --> B["Wissensbasis-Cockpit (/wissen)"]
+    B --> C["Upload DNotI-Gutachten & interne Richtlinien"]
+    B --> D["Amtsgerichts-Präzedenzen (z.B. AG München / AG Frankfurt)"]
+    C & D --> E["Vektorisierung (pgvector) & BM25-Index"]
+    E --> F["RAG-Inspektor im Prüf-Cockpit: Warum wurde diese Klausel moniert?"]
+```
+
+### Kernfunktionen
+
+1. **Wissensbasis-Cockpit (`/wissen`):**
+   - Dokumenten-Manager für Kanzlei-Muster, Sonderklauseln und Gutachten mit automatischer semantischer Vektorisierung.
+   - Zuordnung zu Rechtsgebieten (Liegenschaften, Gesellschaftsrecht, Erbfolge).
+2. **RAG-Inspektor im Prüf-Cockpit:**
+   - Klick auf ein beanstandetes Feld öffnet eine Sidebar mit exaktem Fundstellen-Nachweis:
+     - Relevante Norm (z.B. § 12 HGB, § 144 BauGB)
+     - Amtsgerichts-Praxis (z.B. _„AG Hamburg verlangt zwingend den tagesaktuellen HR-Auszug bei GmbH-Vertretung“_)
+     - Relevanter Textauszug aus internen Kanzlei-Leitfäden.
+
+### Geplante Aufgaben
+
+- [ ] Kanzlei-Wissensbasis-View (`/wissen`) für Dokumenten-Upload & Index-Übersicht
+- [ ] RAG-Fundstellen-Inspector-Panel im `FieldCockpit`
+- [ ] **Initial-Seed der Live-Datenbank:** Automatisierter Seeding-Lauf für `knowledge_documents` (Übertrag der kanonischen MoPeG-, HGB-, BauGB- und GBO-Gutachten aus `seed-knowledge.ts` in die PostgreSQL-Instanz).
+
+---
+
+## 13. Fail-Fast Repository-Architektur & Bereinigung stiller Fallbacks (Data Integrity & SSOT)
+
+- **Priorisierung:** Datenintegrität & Revisionssicherheit (Single Source of Truth gem. AGENTS.md).
+- **Ziel:** Beseitigung heimlicher In-Memory-Fallbacks bei Datenbankausfällen. Klares 2-Modi-System: Expliziter Demo-/Local-Modus vs. strikter Produktiv-Modus mit transparentem Fehlerabbruch (`throw new Error`).
+- **Ausgangslage:** In einigen Repositories (`SupabaseDossierRepository`, `SupabaseJobRepository`, `SupabaseKnowledgeRepository`) wurden DB-Fehler im `catch`-Block verschluckt und Daten still in flüchtigen RAM geschrieben. Beim Container-Neustart droht Datenverlust ohne Fehlermeldung.
+
+```mermaid
+graph TD
+    A["API- / Worker-Aktion"] --> B{"Supabase konfiguriert?"}
+    B -->|"Nein (Keine Credentials)"| C["Expliziter Demo- / In-Memory-Modus (Bounded Memory)"]
+    B -->|"Ja (Produktivbetrieb)"| D["Supabase Repository (SSOT)"]
+    D --> E{"DB-Query erfolgreich?"}
+    E -->|"200 OK"| F["Transaktionssicher persistiert"]
+    E -->|"Fehler (Timeout/RLS/Downtime)"| G["Fail-Fast: throw new Error() -> Job FAILED & Sentry Alert"]
+```
+
+### Kernfunktionen & Aufgaben
+
+1. **`SupabaseKnowledgeRepository`:**
+   - Entfernung des `fallbackRepo`-Parameters im Produktiv-Konstruktor.
+   - Harte Exceptions bei Supabase-Fehlern (`throw new Error(...)`).
+   - Trennung in `getKnowledgeRepository()`: Demo-Modus vs. Supabase-Modus.
+2. **`SupabaseJobRepository`:**
+   - Entfernung der `fallbackRepo`-Aufrufe in `createJob`, `updateJobStatus`, `claimNextPendingJob` und `listJobs`.
+   - Fehlerhafte DB-Operationen schlagen sofort fehl, damit der Job-Worker geregelte Retries durchführt statt phantomhaft im RAM weiterzulaufen.
+3. **`SupabaseDossierRepository`:**
+   - Entfernung der stillen `catch`-Fallbacks in `save`, `update`, `delete`, `findById` und `list`.
+   - Garantiert, dass Notare eine explizite Fehlermeldung erhalten, wenn ein Dossier nicht in der PostgreSQL-Datenbank gespeichert werden konnte.
+
+### Geplante Aufgaben
+
+- [ ] `SupabaseKnowledgeRepository` auf reines Fail-Fast umstellen & Tests aktualisieren
+- [ ] `SupabaseJobRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren
+- [ ] `SupabaseDossierRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren

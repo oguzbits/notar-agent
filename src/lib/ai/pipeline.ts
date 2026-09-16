@@ -7,12 +7,14 @@ import {
   formatRulesForPrompt,
   selectRelevantAuditRules,
 } from '@/lib/knowledge/rules/rule-selector';
+import { getKnowledgeRepository } from '@/lib/knowledge/supabase-knowledge-repository';
 import { CaseType, Dossier, OverallStatus, UploadedFilePayload } from '@/types/dossier';
 
 export interface PipelineParams {
   files: UploadedFilePayload[];
   caseType: CaseType;
   notes: string;
+  organizationId?: string;
   existingDossier?: Dossier;
   model: LanguageModel;
   extractionInstructions: SystemModelMessage;
@@ -107,7 +109,29 @@ ${formattedNotes}
       Array<{ fileName?: string; documentType?: string }> | undefined,
     notes: notesSection,
   });
-  const rulesSection = formatRulesForPrompt(relevantRules);
+
+  // C.3 Erweitertes RAG: Kanzlei- & DNotI-Wissensabruf
+  const knowledgeRepo = getKnowledgeRepository();
+  const rawDocs = parsedExtractionRaw?.detectedDocuments;
+  const docNames = Array.isArray(rawDocs)
+    ? rawDocs
+        .map((d) =>
+          d && typeof d === 'object' && 'fileName' in d && typeof d.fileName === 'string'
+            ? d.fileName
+            : ''
+        )
+        .filter(Boolean)
+    : [];
+
+  const searchTerms = [caseType, notesSection, ...docNames].filter(Boolean).join(' ');
+
+  const knowledgeResults = await knowledgeRepo.search({
+    queryText: searchTerms || caseType,
+    organizationId: params.organizationId,
+    topK: 3,
+  });
+
+  const rulesSection = formatRulesForPrompt(relevantRules, knowledgeResults);
 
   const auditorContextPrompt = `Heutiges Bearbeitungsdatum: ${todayStr}
 VORGANGSTYP: ${caseType}

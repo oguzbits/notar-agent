@@ -1,5 +1,6 @@
 import pLimit from 'p-limit';
 import { PipelineParams } from '@/lib/ai/pipeline';
+import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { IJobRepository } from '@/lib/jobs/job-repository';
 import { IDossierRepository } from '@/lib/supabase/repository';
 import { getJobRepository, getDossierRepository } from '@/lib/supabase/server';
@@ -90,8 +91,7 @@ async function runJobExecution(
             processedUnits: totalFiles,
             totalUnits: totalFiles,
             unitLabel: PROGRESS_UNIT_LABELS.DOCUMENTS,
-            currentActivity:
-              stepDetail || 'Extraktion der Stammdaten, Flurstücke und Beteiligten...',
+            currentActivity: stepDetail || STAGE_ACTIVITY_LABELS_DE.EXTRACTION,
           },
         });
       } else if (step === 2) {
@@ -101,8 +101,7 @@ async function runJobExecution(
             currentStep: 3,
             totalSteps: 4,
             unitLabel: PROGRESS_UNIT_LABELS.FIELDS,
-            currentActivity:
-              stepDetail || 'Notary Auditor: Prüfnormen (BGB, BeurkG, GBO) abgleichen...',
+            currentActivity: stepDetail || STAGE_ACTIVITY_LABELS_DE.AUDITING,
           },
         });
       } else if (step === 3) {
@@ -111,7 +110,7 @@ async function runJobExecution(
           progressDetails: {
             currentStep: 4,
             totalSteps: 4,
-            currentActivity: stepDetail || 'Prüfbericht & Cockpit-Aufbereitung...',
+            currentActivity: stepDetail || STAGE_ACTIVITY_LABELS_DE.PERSISTING,
           },
         });
       }

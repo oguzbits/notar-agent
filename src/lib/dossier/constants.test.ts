@@ -60,4 +60,13 @@ describe('dossier constants', () => {
     expect(STATUS_LABELS_DE.OUTDATED).toBe('Veraltet');
     expect(STATUS_LABELS_DE.MISSING).toBe('Fehlt');
   });
+
+  it('should provide German domain activities for all job stages without tech jargon', async () => {
+    const { STAGE_ACTIVITY_LABELS_DE } = await import('./constants');
+    expect(STAGE_ACTIVITY_LABELS_DE.QUEUED).toContain('Kanzlei-Warteschlange');
+    expect(STAGE_ACTIVITY_LABELS_DE.PAGE_SPLITTING).toContain('Aktenbestand');
+    expect(STAGE_ACTIVITY_LABELS_DE.EXTRACTION).toContain('Stammdaten');
+    expect(STAGE_ACTIVITY_LABELS_DE.AUDITING).toContain('Notarielle Vorprüfung');
+    expect(STAGE_ACTIVITY_LABELS_DE.PERSISTING).toContain('Prüfbericht');
+  });
 });

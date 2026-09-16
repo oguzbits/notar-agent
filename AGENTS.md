@@ -5,8 +5,10 @@
 - **Ground Truth:** Verify dependencies and APIs via codebase (`package.json`, source). Zero unverified assumptions.
 - **Traceability:** Audit extractions back to source citations. Never discard provenance metadata.
 - **Policy vs. Mechanism:** `src/types/` & `src/lib/dossier/` define technical structure; domain rules, deadlines, and criteria belong exclusively in `src/lib/knowledge/`.
+- **Domain Language & UI Agnosticism:** Technical AI/system mechanisms (e.g. RAG, vector, embeddings, prompt, tokens, pipeline stages) must never leak into user-facing UI, prompts, or audit records. User-visible status messages, activity texts, and headers must be defined strictly via canonical domain constants in `src/lib/dossier/constants.ts` using German notary practice terminology. Inline, ad-hoc status strings are prohibited.
 - **Server Confirmation for Critical State:** Audit- and release-critical changes require confirmed server persistence (200 OK) before UI confirmation. Show deterministic loading/disabled state during active mutation.
 - **Zero-Config Portability:** External services degrade gracefully to bounded local mocks (capped arrays, never unbounded state).
+- **Database-First Architecture & Zero In-Memory Streaming:** Filtering, text search, vector matching, and aggregations MUST execute on the database engine (PostgreSQL RPC, Views, GIN/HNSW indices). Streaming entire tables or unindexed datasets into Node.js application memory is strictly prohibited.
 
 ## 2. Architecture & Code Quality
 
@@ -26,6 +28,7 @@ Any modification touching domain models (`src/types/`), API routes (`src/app/api
 
 1. **Pre-Flight Declaration (Before touching code):**
    - **Scope:** 1–2 sentences on what is being modified.
+   - **Architecture & Principles Check:** Verify alignment with core constraints (execution boundaries, separation of concerns, canonical domain language).
    - **Explicitly Out-of-Scope:** What is intentionally deferred.
    - **Impact Level:**
      - `LOCAL_CODE_ONLY`: Local logic, types, in-memory stubs only.
@@ -50,8 +53,10 @@ No functional task is complete without this verified receipt:
 ### 📋 DoD Receipt: [Task Name]
 
 - [x] **Contracts & Types:** (Schemas & types in src/types/...)
+- [x] **Architecture & Consistency:** (Verified architectural fit, appropriate execution boundaries, canonical domain language enforced)
 - [x] **Tests & Gates:** (X tests passing, npm run check 0 errors, npm test passing)
-- [x] **Impact & Environment Status:** [LOCAL_CODE_ONLY | DECLARATION_STAGED: Artifacts versioned | LIVE_MUTATION_APPLIED: Verified state on remote system]
+- [x] **Impact & Environment Status:** [LOCAL_CODE_ONLY | DECLARATION_STAGED: Artifacts versioned (Agent MUST actively prompt user whether to apply live) | LIVE_MUTATION_APPLIED: Verified state on remote system]
+- [x] **Data Readiness & Seeding:** [NOT_REQUIRED | SEEDED: Details | STAGED_IN_ROADMAP: Reference to task]
 - [ ] **Explicitly Out-of-Scope:** [Deferred items / next steps]
 ```
 
