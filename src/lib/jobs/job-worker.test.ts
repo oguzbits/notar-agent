@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryJobRepository } from '@/lib/jobs/job-repository';
+import { InMemoryDossierRepository, InMemoryJobRepository } from '@/lib/in-memory';
 import { executeDossierJob, WorkerDependencies } from '@/lib/jobs/job-worker';
-import { InMemoryDossierRepository } from '@/lib/supabase/repository';
+
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS, JOB_STAGES, computeJobProgressPercent } from '@/types/jobs';

@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { InMemoryDossierRepository } from '@/lib/supabase/repository';
+import { InMemoryDossierRepository, InMemoryJobRepository } from '@/lib/in-memory';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS } from '@/types/jobs';
 import { startWorkerDaemon } from './job-daemon';
-import { InMemoryJobRepository } from './job-repository';
 
 describe('startWorkerDaemon', () => {
   let jobRepo: InMemoryJobRepository;

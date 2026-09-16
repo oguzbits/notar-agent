@@ -7,7 +7,7 @@ import {
   formatRulesForPrompt,
   selectRelevantAuditRules,
 } from '@/lib/knowledge/rules/rule-selector';
-import { getKnowledgeRepository } from '@/lib/knowledge/supabase-knowledge-repository';
+import { getKnowledgeRepository } from '@/lib/supabase/server';
 import { CaseType, Dossier, OverallStatus, UploadedFilePayload } from '@/types/dossier';
 
 export interface PipelineParams {

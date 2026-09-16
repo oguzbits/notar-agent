@@ -1,19 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 import { validateEnv } from '@/env';
+import { IAuditRepository, SupabaseAuditRepository } from '@/lib/audit/audit-repository';
 import {
-  IAuditRepository,
   InMemoryAuditRepository,
-  SupabaseAuditRepository,
-} from '@/lib/audit/audit-repository';
-import {
-  IJobRepository,
+  InMemoryDossierRepository,
   InMemoryJobRepository,
-  SupabaseJobRepository,
-} from '@/lib/jobs/job-repository';
+  InMemoryKnowledgeRepository,
+} from '@/lib/in-memory';
+import { IJobRepository, SupabaseJobRepository } from '@/lib/jobs/job-repository';
+import {
+  IKnowledgeRepository,
+  SupabaseKnowledgeRepository,
+} from '@/lib/knowledge/supabase-knowledge-repository';
 import { Dossier } from '@/types/dossier';
 import {
   IDossierRepository,
-  InMemoryDossierRepository,
   SupabaseDossierRepository,
   DocumentRecord,
   CaseStatus,
@@ -32,6 +33,7 @@ export type {
   IDossierRepository,
   IJobRepository,
   IAuditRepository,
+  IKnowledgeRepository,
 };
 export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 
@@ -40,6 +42,7 @@ declare global {
   var __boundedInMemoryRepo: InMemoryDossierRepository | undefined;
   var __boundedInMemoryJobRepo: InMemoryJobRepository | undefined;
   var __boundedInMemoryAuditRepo: InMemoryAuditRepository | undefined;
+  var __boundedInMemoryKnowledgeRepo: InMemoryKnowledgeRepository | undefined;
 }
 
 if (!globalThis.__boundedInMemoryRepo) {
@@ -51,10 +54,14 @@ if (!globalThis.__boundedInMemoryJobRepo) {
 if (!globalThis.__boundedInMemoryAuditRepo) {
   globalThis.__boundedInMemoryAuditRepo = new InMemoryAuditRepository(100);
 }
+if (!globalThis.__boundedInMemoryKnowledgeRepo) {
+  globalThis.__boundedInMemoryKnowledgeRepo = new InMemoryKnowledgeRepository();
+}
 
 const inMemoryRepo = globalThis.__boundedInMemoryRepo;
 const inMemoryJobRepo = globalThis.__boundedInMemoryJobRepo;
 const inMemoryAuditRepo = globalThis.__boundedInMemoryAuditRepo;
+const inMemoryKnowledgeRepo = globalThis.__boundedInMemoryKnowledgeRepo;
 
 export function getServerSupabase() {
   const env = validateEnv(process.env);
@@ -102,6 +109,17 @@ export function getAuditRepository(): IAuditRepository {
     return inMemoryAuditRepo;
   }
   return new SupabaseAuditRepository(supabase);
+}
+
+/**
+ * Factory zur Bereitstellung des konfigurierten Knowledge-Repositories (Phase C.3 RAG).
+ */
+export function getKnowledgeRepository(): IKnowledgeRepository {
+  const supabase = getServerSupabase();
+  if (!supabase) {
+    return inMemoryKnowledgeRepo;
+  }
+  return new SupabaseKnowledgeRepository(supabase);
 }
 
 // Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer mit optionaler Kanzleitrennung (§ 203 StGB)

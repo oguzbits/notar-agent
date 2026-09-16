@@ -1,36 +1,27 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { IKnowledgeRepository, InMemoryKnowledgeRepository } from '@/lib/knowledge/hybrid-search';
+import { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import { HybridSearchQuery, HybridSearchResult, KnowledgeDocument } from '@/types/knowledge';
 
+export type { IKnowledgeRepository };
+
 /**
- * Supabase Knowledge Repository mit In-Memory Fallback für Zero-Config Portabilität.
- * Unterstützt pgvector und BM25 Text-Suche unter Wahrung von § 203 StGB.
+ * Supabase Knowledge Repository (Phase C.3).
+ * Führt die Hybrid-Suche deterministisch auf PostgreSQL via pgvector RPC 'match_knowledge_documents' aus.
+ * Fail-Fast: Wirft sofort bei fehlendem Client oder DB-Fehlern (§ 203 StGB & Database-First Invariant).
  */
 export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
-  private supabase: SupabaseClient | null;
-  private fallbackRepo: InMemoryKnowledgeRepository | null;
+  private supabase: SupabaseClient;
 
-  constructor(
-    supabaseClient: SupabaseClient | null = null,
-    fallbackRepo: InMemoryKnowledgeRepository | null = null
-  ) {
+  constructor(supabaseClient: SupabaseClient) {
+    if (!supabaseClient) {
+      throw new Error(
+        'SupabaseKnowledgeRepository erfordert einen gültigen SupabaseClient (Fail-Fast).'
+      );
+    }
     this.supabase = supabaseClient;
-    // Wenn kein Supabase-Client vorhanden ist, wird die lokale In-Memory-Instanz aktiv
-    this.fallbackRepo = !supabaseClient
-      ? (fallbackRepo ?? new InMemoryKnowledgeRepository())
-      : null;
   }
 
   async save(doc: KnowledgeDocument): Promise<KnowledgeDocument> {
-    if (!this.supabase) {
-      if (!this.fallbackRepo) {
-        throw new Error(
-          'Supabase client is not configured and no in-memory repository is available.'
-        );
-      }
-      return this.fallbackRepo.save(doc);
-    }
-
     const payload: Record<string, unknown> = {
       id: doc.id,
       organization_id: doc.organizationId,
@@ -59,15 +50,6 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
   }
 
   async search(query: HybridSearchQuery): Promise<HybridSearchResult[]> {
-    if (!this.supabase) {
-      if (!this.fallbackRepo) {
-        throw new Error(
-          'Supabase client is not configured and no in-memory repository is available.'
-        );
-      }
-      return this.fallbackRepo.search(query);
-    }
-
     const { data, error } = await this.supabase.rpc('match_knowledge_documents', {
       p_query_text: query.queryText,
       p_query_embedding: query.queryEmbedding ?? null,
@@ -106,16 +88,4 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
       matchSource: (row.match_source as HybridSearchResult['matchSource']) ?? 'HYBRID_FUSION',
     }));
   }
-}
-
-// Globales Singleton für Knowledge Repository
-let globalKnowledgeRepo: IKnowledgeRepository | null = null;
-
-export function getKnowledgeRepository(
-  supabaseClient: SupabaseClient | null = null
-): IKnowledgeRepository {
-  if (!globalKnowledgeRepo) {
-    globalKnowledgeRepo = new SupabaseKnowledgeRepository(supabaseClient);
-  }
-  return globalKnowledgeRepo;
 }

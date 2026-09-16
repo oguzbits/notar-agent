@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { KNOWLEDGE_CATEGORIES, KnowledgeDocument } from '@/types/knowledge';
-import { InMemoryKnowledgeRepository } from './hybrid-search';
 import { SupabaseKnowledgeRepository } from './supabase-knowledge-repository';
 
 describe('SupabaseKnowledgeRepository', () => {
@@ -17,19 +16,10 @@ describe('SupabaseKnowledgeRepository', () => {
     updatedAt: '2026-09-16T08:00:00.000Z',
   };
 
-  it('degrades gracefully to InMemory fallback if Supabase client is null', async () => {
-    const fallback = new InMemoryKnowledgeRepository();
-    const repo = new SupabaseKnowledgeRepository(null, fallback);
-
-    await repo.save(doc);
-    const results = await repo.search({ queryText: 'mopeg voreintragung' });
-
-    expect(results.length).toBeGreaterThan(0);
-    const firstResult = results[0];
-    expect(firstResult).toBeDefined();
-    if (!firstResult) return;
-    expect(firstResult.document.id).toBe(doc.id);
-    expect(firstResult.document.legalBasis).toBe('DNotI-Report 2023/15');
+  it('fails fast and throws if Supabase client is missing', () => {
+    expect(() => new SupabaseKnowledgeRepository(null as never)).toThrow(
+      'SupabaseKnowledgeRepository erfordert einen gültigen SupabaseClient (Fail-Fast).'
+    );
   });
 
   it('delegates to Supabase RPC match_knowledge_documents when client is present', async () => {

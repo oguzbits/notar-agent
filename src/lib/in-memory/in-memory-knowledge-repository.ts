@@ -1,8 +1,10 @@
+import { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
+import { GLOBAL_NOTARY_KNOWLEDGE_DOCUMENTS } from '@/lib/knowledge/seed-knowledge';
 import { HybridSearchQuery, HybridSearchResult, KnowledgeDocument } from '@/types/knowledge';
-import { GLOBAL_NOTARY_KNOWLEDGE_DOCUMENTS } from './seed-knowledge';
 
 /**
  * Berechnet den Kosinus-Ähnlichkeitswert zweier Vektoren (Wert zwischen 0 und 1).
+ * Ausschließlich für flüchtige In-Memory-Mock-Suchen.
  */
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (!a || !b || a.length === 0 || b.length === 0 || a.length !== b.length) {
@@ -31,6 +33,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 /**
  * Deterministische Term-Frequency / Keyword-Scoring-Funktion (BM25 Approximation).
+ * Ausschließlich für flüchtige In-Memory-Mock-Suchen.
  */
 export function calculateBM25Score(keywords: string[], text: string): number {
   if (!keywords || keywords.length === 0 || !text) {
@@ -44,7 +47,6 @@ export function calculateBM25Score(keywords: string[], text: string): number {
     const kw = rawKeyword.trim().toLowerCase();
     if (!kw) continue;
 
-    // Zähle Vorkommen
     let count = 0;
     let pos = lowerText.indexOf(kw);
     while (pos !== -1) {
@@ -53,7 +55,6 @@ export function calculateBM25Score(keywords: string[], text: string): number {
     }
 
     if (count > 0) {
-      // Saturation curve (BM25 tf weight)
       const tf = (count * (1.2 + 1)) / (count + 1.2 * (1 - 0.75 + 0.75 * (lowerText.length / 500)));
       score += tf;
     }
@@ -63,7 +64,7 @@ export function calculateBM25Score(keywords: string[], text: string): number {
 }
 
 /**
- * Führt die hybride Fusion (BM25 + Semantic Vector Similarity) durch.
+ * Führt die hybride In-Memory Fusion (BM25 + Semantic Vector Similarity) durch.
  */
 export function performHybridSearch(
   documents: KnowledgeDocument[],
@@ -86,7 +87,6 @@ export function performHybridSearch(
       vectorScore = cosineSimilarity(queryEmbedding, doc.embedding);
     }
 
-    // Bestimme Match Source
     let matchSource: HybridSearchResult['matchSource'] = 'BM25_EXACT';
     if (bm25Score > 0 && vectorScore > 0) {
       matchSource = 'HYBRID_FUSION';
@@ -94,7 +94,6 @@ export function performHybridSearch(
       matchSource = 'SEMANTIC_VECTOR';
     }
 
-    // Normalisiere Combined Score
     const combinedScore =
       Math.round(((1 - vectorWeight) * bm25Score + vectorWeight * (vectorScore * 5)) * 100) / 100;
 
@@ -109,22 +108,13 @@ export function performHybridSearch(
     }
   }
 
-  // Sortiere absteigend nach combinedScore
   results.sort((a, b) => b.combinedScore - a.combinedScore);
-
   return results.slice(0, topK);
 }
 
 /**
- * Kanzlei-isoliertes Repository Interface (§ 203 StGB).
- */
-export interface IKnowledgeRepository {
-  search(query: HybridSearchQuery): Promise<HybridSearchResult[]>;
-  save(doc: KnowledgeDocument): Promise<KnowledgeDocument>;
-}
-
-/**
  * Bounded In-Memory Repository mit hermetischer Kanzleitrennung.
+ * Ausschließlich für isolierte Unit-Tests und Zero-Config-Demos bestimmt.
  */
 export class InMemoryKnowledgeRepository implements IKnowledgeRepository {
   private documents: KnowledgeDocument[] = [];
@@ -143,21 +133,16 @@ export class InMemoryKnowledgeRepository implements IKnowledgeRepository {
   }
 
   async search(query: HybridSearchQuery): Promise<HybridSearchResult[]> {
-    // 1. Kanzlei-Isolation (§ 203 StGB)
     const accessibleDocs = this.documents.filter((doc) => {
-      // Wenn das Dokument global ist (organizationId === null), ist es für alle zugänglich
       if (doc.organizationId === null) return true;
-      // Wenn der Query eine organizationId hat, darf nur die eigene Kanzlei zugegriffen werden
       if (query.organizationId && doc.organizationId === query.organizationId) return true;
       return false;
     });
 
-    // 2. Kategorie-Filterung (optional)
     const filteredDocs = query.category
       ? accessibleDocs.filter((d) => d.category === query.category)
       : accessibleDocs;
 
-    // 3. Hybride Suche
     return performHybridSearch(filteredDocs, query);
   }
 }

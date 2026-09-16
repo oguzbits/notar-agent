@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { InMemoryAuditRepository } from '@/lib/in-memory';
 import { AUDIT_ACTIONS } from '@/types/audit';
-import { InMemoryAuditRepository } from './audit-repository';
 
 describe('InMemoryAuditRepository (§ 17 ff. BeurkG)', () => {
   let repo: InMemoryAuditRepository;

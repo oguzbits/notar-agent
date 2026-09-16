@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { InMemoryJobRepository } from '@/lib/in-memory';
 import { CASE_TYPES } from '@/types/dossier';
 import { CreateJobPayload, JOB_STATUS, JOB_STAGES, computeJobProgressPercent } from '@/types/jobs';
-
-import { InMemoryJobRepository } from './job-repository';
 
 describe('InMemoryJobRepository (Bounded FIFO Queue)', () => {
   let repo: InMemoryJobRepository;

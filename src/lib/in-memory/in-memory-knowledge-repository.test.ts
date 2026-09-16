@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { KNOWLEDGE_CATEGORIES, KnowledgeDocument } from '@/types/knowledge';
 import {
   InMemoryKnowledgeRepository,
   cosineSimilarity,
   calculateBM25Score,
   performHybridSearch,
-} from './hybrid-search';
+} from '@/lib/in-memory';
+import { KNOWLEDGE_CATEGORIES, KnowledgeDocument } from '@/types/knowledge';
 
-describe('C.3 Hybrid Search & Knowledge Repository', () => {
+describe('InMemoryKnowledgeRepository & In-Memory Hybrid Search Helpers', () => {
   let repository: InMemoryKnowledgeRepository;
 
   const doc1: KnowledgeDocument = {

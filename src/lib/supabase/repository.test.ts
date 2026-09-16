@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { InMemoryDossierRepository } from '@/lib/in-memory';
 import { Dossier, CASE_TYPES, OVERALL_STATUS, STORAGE_TYPES } from '@/types/dossier';
-import { InMemoryDossierRepository, createEmptyImmobilienFields } from './repository';
+import { createEmptyImmobilienFields } from './repository';
 
 function createMockDossier(title: string): Dossier {
   return {
