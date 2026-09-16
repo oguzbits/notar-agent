@@ -167,41 +167,39 @@ export class InMemoryDossierRepository implements IDossierRepository {
 }
 
 /**
- * Supabase Repository mit Ausweichmöglichkeit auf das In-Memory Repository bei Ausfällen.
+/**
+ * Supabase Repository als Single Source of Truth (SSOT).
+ * Strikte Fehlerbehandlung ohne stillen In-Memory Fallback.
  */
 export class SupabaseDossierRepository implements IDossierRepository {
-  constructor(
-    private supabase: SupabaseClient,
-    private fallbackRepo: InMemoryDossierRepository
-  ) {}
+  constructor(private supabase: SupabaseClient) {}
 
   async findById(id: string, organizationId?: string): Promise<DocumentRecord | null> {
-    try {
-      let query = this.supabase.from('documents').select('*').eq('id', id);
+    let query = this.supabase.from('documents').select('*').eq('id', id);
 
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-
-      const { data, error } = await query.single();
-
-      if (error || !data) {
-        return this.fallbackRepo.findById(id, organizationId);
-      }
-
-      const doc = data as DocumentRecord;
-      const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
-      return {
-        ...doc,
-        title: uniformTitle,
-        content: doc.content
-          ? normalizeDossier({ ...doc.content, caseTitle: uniformTitle })
-          : doc.content,
-      };
-    } catch (err) {
-      console.warn('Supabase findById fehlgeschlagen, wechsle zu Fallback:', err);
-      return this.fallbackRepo.findById(id, organizationId);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      throw new Error(`Supabase Dossier findById fehlgeschlagen: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    const doc = data as DocumentRecord;
+    const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
+    return {
+      ...doc,
+      title: uniformTitle,
+      content: doc.content
+        ? normalizeDossier({ ...doc.content, caseTitle: uniformTitle })
+        : doc.content,
+    };
   }
 
   async save(dossier: Dossier, organizationId?: string): Promise<PersistenceResult> {
@@ -211,41 +209,34 @@ export class SupabaseDossierRepository implements IDossierRepository {
     normalized.caseTitle = title;
     const status = computeDocumentStatus(normalized);
 
-    try {
-      const insertPayload: Record<string, unknown> = {
-        id: newId,
-        title,
-        status,
-        content: dossier,
-      };
-      if (organizationId) {
-        insertPayload.organization_id = organizationId;
-      }
-
-      const { data, error } = await this.supabase
-        .from('documents')
-        .insert(insertPayload)
-        .select('id, created_at')
-        .single();
-
-      if (error) {
-        console.warn(
-          'Supabase Insert fehlgeschlagen, speichere im In-Memory Fallback:',
-          error.message
-        );
-        return this.fallbackRepo.save(dossier, organizationId);
-      }
-
-      return {
-        persisted: true,
-        storageType: STORAGE_TYPES.SUPABASE,
-        caseNumber: title,
-        id: data?.id || newId,
-      };
-    } catch (err) {
-      console.warn('Supabase Ausnahme, weiche auf In-Memory Fallback aus:', err);
-      return this.fallbackRepo.save(dossier, organizationId);
+    const insertPayload: Record<string, unknown> = {
+      id: newId,
+      title,
+      status,
+      content: dossier,
+    };
+    if (organizationId) {
+      insertPayload.organization_id = organizationId;
     }
+
+    const { data, error } = await this.supabase
+      .from('documents')
+      .insert(insertPayload)
+      .select('id, created_at')
+      .single();
+
+    if (error || !data) {
+      throw new Error(
+        `Supabase Dossier save fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
+    }
+
+    return {
+      persisted: true,
+      storageType: STORAGE_TYPES.SUPABASE,
+      caseNumber: title,
+      id: data.id || newId,
+    };
   }
 
   async update(id: string, dossier: Dossier, organizationId?: string): Promise<UpdateResult> {
@@ -254,100 +245,72 @@ export class SupabaseDossierRepository implements IDossierRepository {
     normalized.caseTitle = title;
     const status = computeDocumentStatus(normalized);
 
-    try {
-      let query = this.supabase
-        .from('documents')
-        .update({
-          title,
-          status,
-          content: normalized,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
+    let query = this.supabase
+      .from('documents')
+      .update({
+        title,
+        status,
+        content: normalized,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
 
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-
-      const { error } = await query;
-
-      if (error) {
-        console.warn(
-          'Supabase Update fehlgeschlagen, weiche auf In-Memory Fallback aus:',
-          error.message
-        );
-        return this.fallbackRepo.update(id, dossier, organizationId);
-      }
-
-      return { success: true };
-    } catch (err) {
-      console.warn('Supabase Update Ausnahme, aktualisiere In-Memory:', err);
-      return this.fallbackRepo.update(id, dossier, organizationId);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
+
+    const { error } = await query;
+
+    if (error) {
+      throw new Error(`Supabase Dossier update fehlgeschlagen: ${error.message}`);
+    }
+
+    return { success: true };
   }
 
   async list(organizationId?: string): Promise<DocumentRecord[]> {
-    try {
-      let query = this.supabase.from('documents').select('*');
+    let query = this.supabase.from('documents').select('*');
 
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) {
-        return this.fallbackRepo.list(organizationId);
-      }
-
-      const supabaseDocs = ((data || []) as DocumentRecord[]).map((doc) => {
-        const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
-        const normalizedContent = doc.content
-          ? normalizeDossier({ ...doc.content, caseTitle: uniformTitle })
-          : doc.content;
-        const computedStatus = normalizedContent
-          ? computeDocumentStatus(normalizedContent)
-          : doc.status === CASE_STATUS.DRAFT_READY
-            ? CASE_STATUS.DRAFT_READY
-            : CASE_STATUS.IN_PROGRESS;
-        return {
-          ...doc,
-          title: uniformTitle,
-          content: normalizedContent,
-          status: computedStatus,
-        };
-      });
-
-      const existingIds = new Set(supabaseDocs.map((d) => d.id));
-      const memoryDocs = (await this.fallbackRepo.list(organizationId)).filter(
-        (d) => !existingIds.has(d.id)
-      );
-      const merged = [...supabaseDocs, ...memoryDocs];
-
-      return merged.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    } catch (err) {
-      console.warn('Supabase list fehlgeschlagen, wechsle zu Fallback:', err);
-      return this.fallbackRepo.list(organizationId);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error || !data) {
+      throw new Error(
+        `Supabase Dossier list fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
+    }
+
+    return (data as DocumentRecord[]).map((doc) => {
+      const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
+      const normalizedContent = doc.content
+        ? normalizeDossier({ ...doc.content, caseTitle: uniformTitle })
+        : doc.content;
+      const computedStatus = normalizedContent
+        ? computeDocumentStatus(normalizedContent)
+        : doc.status === CASE_STATUS.DRAFT_READY
+          ? CASE_STATUS.DRAFT_READY
+          : CASE_STATUS.IN_PROGRESS;
+      return {
+        ...doc,
+        title: uniformTitle,
+        content: normalizedContent,
+        status: computedStatus,
+      };
+    });
   }
 
   async delete(id: string, organizationId?: string): Promise<boolean> {
-    await this.fallbackRepo.delete(id, organizationId);
-    try {
-      let query = this.supabase.from('documents').delete().eq('id', id);
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-      const { error } = await query;
-      if (error) {
-        console.warn('Supabase Delete Fehler:', error.message);
-      }
-      return true;
-    } catch (err) {
-      console.warn('Supabase Delete Ausnahme:', err);
-      return true;
+    let query = this.supabase.from('documents').delete().eq('id', id);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
+    const { error } = await query;
+    if (error) {
+      throw new Error(`Supabase Dossier delete fehlgeschlagen: ${error.message}`);
+    }
+    return true;
   }
 }

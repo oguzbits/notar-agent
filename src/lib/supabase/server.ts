@@ -79,7 +79,7 @@ export function getDossierRepository(): IDossierRepository {
   if (!supabase) {
     return inMemoryRepo;
   }
-  return new SupabaseDossierRepository(supabase, inMemoryRepo);
+  return new SupabaseDossierRepository(supabase);
 }
 
 /**
@@ -90,7 +90,7 @@ export function getJobRepository(): IJobRepository {
   if (!supabase) {
     return inMemoryJobRepo;
   }
-  return new SupabaseJobRepository(supabase, inMemoryJobRepo);
+  return new SupabaseJobRepository(supabase);
 }
 
 /**

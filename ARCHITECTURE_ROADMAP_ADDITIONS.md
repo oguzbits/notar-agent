@@ -434,6 +434,6 @@ graph TD
 
 ### Geplante Aufgaben
 
-- [ ] `SupabaseKnowledgeRepository` auf reines Fail-Fast umstellen & Tests aktualisieren
-- [ ] `SupabaseJobRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren
-- [ ] `SupabaseDossierRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren
+- [x] `SupabaseKnowledgeRepository` auf reines Fail-Fast umstellen & Tests aktualisieren
+- [x] `SupabaseJobRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren
+- [x] `SupabaseDossierRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren

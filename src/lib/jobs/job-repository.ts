@@ -194,146 +194,129 @@ export class InMemoryJobRepository implements IJobRepository {
 }
 
 /**
- * Supabase/PostgreSQL Job-Repository mit Fallback auf das In-Memory-Repository.
+ * Supabase/PostgreSQL Job-Repository (SSOT).
+ * Strikte Fehlerbehandlung ohne stillen In-Memory Fallback.
  */
 export class SupabaseJobRepository implements IJobRepository {
-  constructor(
-    private supabase: SupabaseClient,
-    private fallbackRepo: InMemoryJobRepository
-  ) {}
+  constructor(private supabase: SupabaseClient) {}
 
   async createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob> {
-    try {
-      const insertData: Record<string, unknown> = {
-        status: JOB_STATUS.PENDING,
-        payload,
-        retry_count: 0,
-        max_retries: 3,
-      };
-      if (organizationId) {
-        insertData.organization_id = organizationId;
-      }
-
-      const { data, error } = await this.supabase
-        .from('dossier_jobs')
-        .insert(insertData)
-        .select('*')
-        .single();
-
-      if (error || !data) {
-        console.warn('Supabase createJob fehlgeschlagen, nutze Fallback-Queue:', error?.message);
-        return this.fallbackRepo.createJob(payload, organizationId);
-      }
-
-      return this.mapRowToJob(data);
-    } catch (err) {
-      console.warn('Supabase createJob Ausnahme:', err);
-      return this.fallbackRepo.createJob(payload, organizationId);
+    const insertData: Record<string, unknown> = {
+      status: JOB_STATUS.PENDING,
+      payload,
+      retry_count: 0,
+      max_retries: 3,
+    };
+    if (organizationId) {
+      insertData.organization_id = organizationId;
     }
+
+    const { data, error } = await this.supabase
+      .from('dossier_jobs')
+      .insert(insertData)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw new Error(
+        `Supabase createJob fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
+    }
+
+    return this.mapRowToJob(data);
   }
 
   async getJobById(id: string, organizationId?: string): Promise<DossierJob | null> {
-    try {
-      let query = this.supabase.from('dossier_jobs').select('*').eq('id', id);
+    let query = this.supabase.from('dossier_jobs').select('*').eq('id', id);
 
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-
-      const { data, error } = await query.single();
-
-      if (error || !data) {
-        return this.fallbackRepo.getJobById(id, organizationId);
-      }
-
-      return this.mapRowToJob(data);
-    } catch (err) {
-      console.warn('Supabase getJobById Ausnahme:', err);
-      return this.fallbackRepo.getJobById(id, organizationId);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      throw new Error(`Supabase getJobById fehlgeschlagen: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return this.mapRowToJob(data);
   }
 
   async updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null> {
-    try {
-      const updateData: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-      };
-      if (update.status !== undefined) updateData.status = update.status;
-      if (update.stage !== undefined) updateData.stage = update.stage;
-      if (update.progressDetails !== undefined)
-        updateData.progress_details = update.progressDetails;
-      if (update.resultDossierId !== undefined)
-        updateData.result_dossier_id = update.resultDossierId;
-      if (update.errorMessage !== undefined) updateData.error_message = update.errorMessage;
-      if (update.retryCount !== undefined) updateData.retry_count = update.retryCount;
-      if (update.lockedAt !== undefined) updateData.locked_at = update.lockedAt;
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (update.status !== undefined) updateData.status = update.status;
+    if (update.stage !== undefined) updateData.stage = update.stage;
+    if (update.progressDetails !== undefined) updateData.progress_details = update.progressDetails;
+    if (update.resultDossierId !== undefined) updateData.result_dossier_id = update.resultDossierId;
+    if (update.errorMessage !== undefined) updateData.error_message = update.errorMessage;
+    if (update.retryCount !== undefined) updateData.retry_count = update.retryCount;
+    if (update.lockedAt !== undefined) updateData.locked_at = update.lockedAt;
 
-      const { data, error } = await this.supabase
-        .from('dossier_jobs')
-        .update(updateData)
-        .eq('id', id)
-        .select('*')
-        .single();
+    const { data, error } = await this.supabase
+      .from('dossier_jobs')
+      .update(updateData)
+      .eq('id', id)
+      .select('*')
+      .single();
 
-      if (error || !data) {
-        return this.fallbackRepo.updateJobStatus(id, update);
-      }
-
-      return this.mapRowToJob(data);
-    } catch (err) {
-      console.warn('Supabase updateJobStatus Ausnahme:', err);
-      return this.fallbackRepo.updateJobStatus(id, update);
+    if (error || !data) {
+      throw new Error(
+        `Supabase updateJobStatus fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
     }
+
+    return this.mapRowToJob(data);
   }
 
   async claimNextPendingJob(organizationId?: string): Promise<DossierJob | null> {
-    try {
-      // Wähle ältesten PENDING Job aus und setze ihn atomar auf PROCESSING
-      let query = this.supabase.from('dossier_jobs').select('*').eq('status', JOB_STATUS.PENDING);
+    let query = this.supabase.from('dossier_jobs').select('*').eq('status', JOB_STATUS.PENDING);
 
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-
-      const { data, error } = await query
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (error || !data) {
-        return this.fallbackRepo.claimNextPendingJob(organizationId);
-      }
-
-      return this.updateJobStatus(data.id, {
-        status: JOB_STATUS.PROCESSING,
-        stage: JOB_STAGES.QUEUED,
-        lockedAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.warn('Supabase claimNextPendingJob Ausnahme:', err);
-      return this.fallbackRepo.claimNextPendingJob(organizationId);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
+
+    const { data, error } = await query
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Supabase claimNextPendingJob fehlgeschlagen: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return this.updateJobStatus(data.id, {
+      status: JOB_STATUS.PROCESSING,
+      stage: JOB_STAGES.QUEUED,
+      lockedAt: new Date().toISOString(),
+    });
   }
 
   async listJobs(organizationId?: string): Promise<DossierJob[]> {
-    try {
-      let query = this.supabase.from('dossier_jobs').select('*');
+    let query = this.supabase.from('dossier_jobs').select('*');
 
-      if (organizationId) {
-        query = query.eq('organization_id', organizationId);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error || !data) {
-        return this.fallbackRepo.listJobs(organizationId);
-      }
-
-      return data.map((row) => this.mapRowToJob(row));
-    } catch (err) {
-      console.warn('Supabase listJobs Ausnahme:', err);
-      return this.fallbackRepo.listJobs(organizationId);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error || !data) {
+      throw new Error(
+        `Supabase listJobs fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
+    }
+
+    return data.map((row) => this.mapRowToJob(row));
   }
 
   private mapRowToJob(row: Record<string, unknown>): DossierJob {
@@ -357,65 +340,58 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async pruneCompletedJobs(maxAgeMs = 24 * 60 * 60 * 1000): Promise<number> {
-    try {
-      const cutoffIso = new Date(Date.now() - maxAgeMs).toISOString();
-      const { data, error } = await this.supabase
-        .from('dossier_jobs')
-        .delete()
-        .in('status', [JOB_STATUS.COMPLETED, JOB_STATUS.FAILED])
-        .lt('updated_at', cutoffIso)
-        .select('id');
+    const cutoffIso = new Date(Date.now() - maxAgeMs).toISOString();
+    const { data, error } = await this.supabase
+      .from('dossier_jobs')
+      .delete()
+      .in('status', [JOB_STATUS.COMPLETED, JOB_STATUS.FAILED])
+      .lt('updated_at', cutoffIso)
+      .select('id');
 
-      if (error) {
-        return this.fallbackRepo.pruneCompletedJobs(maxAgeMs);
-      }
-
-      return data ? data.length : 0;
-    } catch (err) {
-      console.warn('Supabase pruneCompletedJobs Ausnahme:', err);
-      return this.fallbackRepo.pruneCompletedJobs(maxAgeMs);
+    if (error) {
+      throw new Error(`Supabase pruneCompletedJobs fehlgeschlagen: ${error.message}`);
     }
+
+    return data ? data.length : 0;
   }
 
   async recoverOrphanJobs(leaseTimeoutMs = 5 * 60 * 1000): Promise<DossierJob[]> {
-    try {
-      const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
+    const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
 
-      // Finde alle PROCESSING Jobs, deren locked_at bzw. updated_at älter als cutoffIso ist
-      const { data: stuckJobs, error } = await this.supabase
-        .from('dossier_jobs')
-        .select('*')
-        .eq('status', JOB_STATUS.PROCESSING)
-        .or(`locked_at.lte.${cutoffIso},and(locked_at.is.null,updated_at.lte.${cutoffIso})`);
+    const { data: stuckJobs, error } = await this.supabase
+      .from('dossier_jobs')
+      .select('*')
+      .eq('status', JOB_STATUS.PROCESSING)
+      .or(`locked_at.lte.${cutoffIso},and(locked_at.is.null,updated_at.lte.${cutoffIso})`);
 
-      if (error || !stuckJobs || stuckJobs.length === 0) {
-        return this.fallbackRepo.recoverOrphanJobs(leaseTimeoutMs);
-      }
-
-      const recovered: DossierJob[] = [];
-      for (const row of stuckJobs) {
-        const job = this.mapRowToJob(row);
-        const nextRetry = job.retryCount + 1;
-        const isExhausted = nextRetry >= job.maxRetries;
-
-        const updated = await this.updateJobStatus(job.id, {
-          status: isExhausted ? JOB_STATUS.FAILED : JOB_STATUS.PENDING,
-          errorMessage: isExhausted
-            ? `Maximale Versuche (${job.maxRetries}) nach Timeout/Absturz überschritten.`
-            : 'Verwaister Job nach Timeout reaktiviert.',
-          retryCount: nextRetry,
-          lockedAt: undefined,
-        });
-
-        if (updated) {
-          recovered.push(updated);
-        }
-      }
-
-      return recovered;
-    } catch (err) {
-      console.warn('Supabase recoverOrphanJobs Ausnahme:', err);
-      return this.fallbackRepo.recoverOrphanJobs(leaseTimeoutMs);
+    if (error) {
+      throw new Error(`Supabase recoverOrphanJobs fehlgeschlagen: ${error.message}`);
     }
+
+    if (!stuckJobs || stuckJobs.length === 0) {
+      return [];
+    }
+
+    const recovered: DossierJob[] = [];
+    for (const row of stuckJobs) {
+      const job = this.mapRowToJob(row);
+      const nextRetry = job.retryCount + 1;
+      const isExhausted = nextRetry >= job.maxRetries;
+
+      const updated = await this.updateJobStatus(job.id, {
+        status: isExhausted ? JOB_STATUS.FAILED : JOB_STATUS.PENDING,
+        errorMessage: isExhausted
+          ? `Maximale Versuche (${job.maxRetries}) nach Timeout/Absturz überschritten.`
+          : 'Verwaister Job nach Timeout reaktiviert.',
+        retryCount: nextRetry,
+        lockedAt: undefined,
+      });
+
+      if (updated) {
+        recovered.push(updated);
+      }
+    }
+
+    return recovered;
   }
 }
