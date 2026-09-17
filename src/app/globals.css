@@ -36,6 +36,11 @@
   --color-notar-900: #356611;
   --color-notar-950: #284e0d;
 
+  --color-google-red: #ea4335;
+  --color-google-blue: #4285f4;
+  --color-google-yellow: #fbbc05;
+  --color-google-green: #34a853;
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
