@@ -513,3 +513,27 @@ graph TD
 - [ ] **SMTP / Mail-Relay:** Eigener Kanzlei-Mailversand für Einladungen via Resend / M365
 - [ ] **Health-Check Route:** `/api/health` Endpunkt mit DB-Ping für Uptime-Monitoring bereitstellen
 - [ ] **Zero-Data-Retention Check:** Validierung der Provider-Verträge vor erstem Echtakten-Scan
+
+---
+
+## 15. Kanzlei-Einladungs-Lifecycle & Token-Management (Benchmark: GitHub Org / Supabase Dashboard)
+
+- **Priorisierung:** Qualitäts- und Sicherheits-Optimierung für die Kanzlei-Teamverwaltung (Ergänzung zu Modul 11).
+- **Ziel:** Beseitigung sofortiger Dummy-Member-Einträge bei Einladungen. Strikte Trennung zwischen aktiven Mitgliedern und ausstehenden Einladungen nach modernem B2B-Standard.
+- **Ausgangslage:** Beim Einladen eines neuen Mitarbeiters über `/api/team` wurde bisher sofort eine synthetische `user_id` direkt in `organization_members` erzeugt. In echten Systemen existiert dafür ein gesonderter Einladungs-Status mit kryptografischem Token, Ablaufzeit und Kanzlei-Akzeptierungsflow.
+
+```mermaid
+graph TD
+    A["Kanzlei-Admin lädt Mitarbeiter ein"] --> B["Eintrag in organization_invitations (PENDING)"]
+    B --> C["Kanzlei-Einladungslink mit SHA-256 Token versenden"]
+    C --> D{"Mitarbeiter klickt Link"}
+    D -->|"Token gültig (< 7 Tage)"| E["Registrierung / Google SSO via Kanzlei-Domain"]
+    E --> F["Atomarer Beitritt: Insert organization_members, Update invitation ACCEPTED"]
+    D -->|"Token abgelaufen (> 7 Tage)"| G["Hinweis: Einladung abgelaufen (Admin kann neu versenden)"]
+```
+
+### Geplante Aufgaben
+
+- [ ] **Datenbank-Tabelle `organization_invitations`:** Schema mit `organization_id`, `email`, `role`, `token_hash`, `expires_at` und `status` (`PENDING`, `ACCEPTED`, `REVOKED`, `EXPIRED`).
+- [ ] **Einladungs-Management im Team-Cockpit:** Übersicht ausstehender Einladungen mit Aktionen „Erneut senden“ und „Widerrufen“.
+- [ ] **Akzeptierungs-Flow (`/invitations/accept?token=...`):** Valider Beitritts-Workflow mit automatischer Zuordnung zur einladenden Kanzlei.

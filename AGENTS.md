@@ -3,6 +3,14 @@
 ## 1. Domain & Data Integrity
 
 - **Production-Ready & Vertical Slice Invariant (No UI Stubs):** Every functional feature must be fully integrated from the database layer through the server endpoints (`src/app/api/`) down to the UI. Ephemeral client-only mocks or state simulating persistence via `localStorage` or component state are strictly forbidden for completed features.
+- **The 6-Dimensional Production-Ready Invariant (Industrial Standard):**
+  No feature or plan is production-ready unless all 6 dimensions are explicitly designed, implemented, and verified:
+  1. **Authentication & Session Identity:** Zero spoofable client IDs. Every server action and route handler resolves identity from validated server cookies/sessions (`@supabase/ssr`). Dynamic organization and user context must flow deterministically.
+  2. **Database Schema & Kernel-Level RLS:** Complete relational modeling (migrations, foreign keys, cascade rules, partial indices) paired with hermetic PostgreSQL Row-Level Security (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`) enforcing tenant isolation (§ 203 StGB).
+  3. **Deterministic Error, Loading & Empty States:** Explicit handling of all edge states (400, 401, 403, 404, 409, 500, network timeouts). Zero unhandled UI flashes, white screens, or silent failures. All mutating controls must display pending/disabled states with clear user feedback.
+  4. **Auditability & Provenance (§ 17 BeurkG):** Critical business actions (status overrides, exports, role changes) must be permanently recorded in an append-only audit trail with actor identification, timestamp, reason, and cryptographic integrity verification.
+  5. **Design System & Accessible UI Standards:** 100% adherence to reusable primitives in `src/components/ui/`, semantic theme tokens (`bg-background`, `text-foreground`, `notar-*`), typography scale (`text-base` standard, `text-sm` captions only, zero `text-xs` in body/labels), responsive layouts (mobile to desktop), and full keyboard/screenreader accessibility (ARIA attributes, proper focus management).
+  6. **Comprehensive Automated Test Coverage (TDD):** Domain logic, Zod validation schemas, API route handlers, and failure modes covered with isolated unit and integration tests (`npm test` 100% green). UI interactions covered with realistic Playwright E2E smoke tests.
 - **Zero Hardcoded Data:** Person, team, employee, client, and notary organizational data must never be hardcoded into application source code (`src/components/`, `src/providers/`, `src/lib/`). Test fixtures belong exclusively in isolated test files (`*.test.ts`) or in database seed scripts (`seed.sql`).
 - **Ground Truth:** Verify dependencies and APIs via codebase (`package.json`, source). Zero unverified assumptions.
 - **Traceability:** Audit extractions back to source citations. Never discard provenance metadata.
@@ -12,6 +20,16 @@
 - **Server Confirmation for Critical State:** Audit- and release-critical changes require confirmed server persistence (200 OK) before UI confirmation. Show deterministic loading/disabled state during active mutation.
 - **Zero-Config Portability:** External services degrade gracefully to bounded local mocks (capped arrays, never unbounded state).
 - **Database-First Architecture & Zero In-Memory Streaming:** Filtering, text search, vector matching, and aggregations MUST execute on the database engine (PostgreSQL RPC, Views, GIN/HNSW indices). Streaming entire tables or unindexed datasets into Node.js application memory is strictly prohibited.
+- **The One-Shot Production Invariants (Zero Follow-Up Required):**
+  To guarantee complete, reliable single-turn implementations, every feature modification MUST satisfy:
+  1. **Full Wiring & No-Orphan-Code Invariant:** Features must be completely wired end-to-end. Unconnected route handlers, unmounted UI modals, missing TanStack Query cache invalidations, or uninvoked database mutations are considered fatal defects. The entire data lifecycle (Fetch $\rightarrow$ Cache $\rightarrow$ Mutate $\rightarrow$ Invalidate $\rightarrow$ Render) must be active and tested.
+  2. **The Complete State Quadrant:** Any UI view or component consuming or mutating asynchronous state MUST implement all 4 states explicitly:
+     - _Empty State:_ Meaningful zero-data illustration/copy with clear Call-To-Action (CTA).
+     - _Loading State:_ Accessible skeletons or spinners preventing layout shifts (CLS).
+     - _Error State:_ User-friendly error message with an interactive Retry action.
+     - _Pending/Mutating State:_ Disabled controls, loading spinners on active buttons, and prevention of double-submits.
+  3. **Fail-Fast Database Boundary (Zero Silent Fallbacks):** Production repositories (`Supabase*`) must never silently swallow database errors or fallback to transient in-memory arrays. Runtime database exceptions must fail fast (`throw new Error`), triggering retries or error boundaries. In-memory implementations are strictly reserved for isolated unit tests or explicit local demo configurations.
+  4. **One-Shot Verification Proof:** Before declaring completion, the agent must prove functionality by executing automated checks and providing verified evidence (successful API route tests with 200/400/403/500 coverage, `npm run check`, and `npm test` 100% green).
 
 ## 2. Architecture & Code Quality
 
@@ -36,6 +54,10 @@ Any modification touching domain models (`src/types/`), API routes (`src/app/api
 
 1. **Pre-Flight Declaration (Before touching code):**
    - **Scope:** 1–2 sentences on what is being modified.
+   - **Industry Reference Baseline (Zero Blind Reinvention):** Name and analyze 2–3 battle-tested reference standards tailored to the specific problem domain:
+     - _For horizontal SaaS infrastructure_ (Team management, Auth, Billing, Webhooks, API keys): Benchmark against enterprise gold standards (e.g. Supabase Dashboard, GitHub Org Settings, Linear, Stripe, Vercel).
+     - _For vertical notary/legal domain workflows_ (Urkundenverwaltung, Fristen, Beteiligte, Aktenführung, XJustiz-Export): Benchmark against premier LegalTech & Kanzleisoftware standards (e.g. TriNotar, NoRA Advanced, Notar 4.0, RA-MICRO, Harvey AI).
+       Explicitly state which data models, UX workflows, and safeguards are adopted from these benchmarks.
    - **Architecture & Principles Check:** Verify alignment with core constraints (execution boundaries, separation of concerns, canonical domain language).
    - **Explicitly Out-of-Scope:** What is intentionally deferred.
    - **Impact Level:**
@@ -61,9 +83,20 @@ No functional task is complete without this verified receipt:
 ### 📋 DoD Receipt: [Task Name]
 
 - [x] **Contracts & Types:** (Schemas & types in src/types/...)
+- [x] **Industry Reference Baseline:** (Explicit alignment with 2–3 enterprise standards, e.g. GitHub/Supabase/Linear)
 - [x] **Endpoints & Persistence:** (Server routes in src/app/api/..., real DB persistence, zero hardcoded mocks in app code)
+- [x] **6-Dimensional Production-Readiness Check:**
+  - [x] 1. Auth & Session (Server-validated identity, zero spoofable IDs)
+  - [x] 2. DB Schema & RLS (Kernel-level isolation, migrations versioned)
+  - [x] 3. Error & Loading States (Deterministic pending/disabled/error handling)
+  - [x] 4. Audit & Provenance (Audit trail event recorded where applicable)
+  - [x] 5. Design System & A11y (Primitives only, semantic tokens, base typography, ARIA)
+  - [x] 6. Tests & Gates (Unit/Integration tests passing, zero lint/type errors)
 - [x] **Architecture & Consistency:** (Verified architectural fit, appropriate execution boundaries, canonical domain language enforced)
 - [x] **Tests & Gates:** (X tests passing, npm run check 0 errors, npm test passing)
+- [x] **Database Migration & Supabase Sync:**
+  - Status: [NOT_REQUIRED | DECLARATION_STAGED: `supabase/migrations/YYYYMMDD_name.sql` versioned | LIVE_MUTATION_APPLIED: Migration applied to Supabase project]
+  - Action Required: (If DECLARATION_STAGED, Agent MUST explicitly ask the user whether to run/apply the migration to Supabase now)
 - [x] **Impact & Environment Status:** [LOCAL_CODE_ONLY | DECLARATION_STAGED: Artifacts versioned (Agent MUST actively prompt user whether to apply live) | LIVE_MUTATION_APPLIED: Verified state on remote system]
 - [x] **Data Readiness & Seeding:** [NOT_REQUIRED | SEEDED: Details | STAGED_IN_ROADMAP: Reference to task]
 - [ ] **Explicitly Out-of-Scope:** [Deferred items / next steps]
