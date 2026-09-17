@@ -437,3 +437,79 @@ graph TD
 - [x] `SupabaseKnowledgeRepository` auf reines Fail-Fast umstellen & Tests aktualisieren
 - [x] `SupabaseJobRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren
 - [x] `SupabaseDossierRepository` bereinigen (stille Fallbacks entfernen) & Tests aktualisieren
+
+---
+
+## 14. Production Readiness & Go-Live Architecture (Custom Domain, SSL, Supabase Custom Auth & Enterprise SSO)
+
+- **Priorisierung:** Kritischer Meilenstein für den echten Produktivbetrieb (Go-Live Readiness).
+- **Ziel:** Bereitstellung einer gehärteten, hochverfügbaren und berufsrechtskonformen Betriebsumgebung für **Notar Agent** unter eigener Kanzlei-Domain ohne Prototyp-Artefakte.
+- **Ausgangslage:** Die Applikation läuft aktuell mit lokalen Platzhaltern (`localhost:3000`) und temporären Supabase-Cloud-Endpunkten. Für den Live-Betrieb müssen DNS, TLS-Zertifikate, Session-Cookie-Partitionierung, OAuth-Consent-Screens und E-Mail-Zustellung aufeinander abgestimmt werden.
+
+```mermaid
+graph TD
+    A["Notar / Kanzleiteam"] -->|"HTTPS / TLS 1.3 (HSTS)"| B["Custom Domain (z.B. app.notaragent.de)"]
+    B --> C["Reverse Proxy / Edge CDN (Cloudflare / Vercel Edge)"]
+    C -->|"Next.js App Server (SSR)"| D["Notar Agent App Engine"]
+    D -->|"Custom Auth Domain (First-Party Cookies)"| E["Supabase Auth (auth.notaragent.de)"]
+    D -->|"Zero-PII Error Tracking"| F["Sentry EU (Frankfurt)"]
+    D -->|"Transaktions-Mails (Einladungen)"| G["SMTP / Resend (Kanzlei-Absender)"]
+    E -->|"Google Workspace OAuth"| H["Google Cloud Console (Verified App)"]
+    D -->|"Dossiers, Vektoren & Jobs"| I["Managed PostgreSQL (Frankfurt / EU)"]
+```
+
+### Kernbausteine & Architektur-Anforderungen
+
+#### 1. Domain- & DNS-Infrastruktur (Zero Trust & HSTS)
+
+- **Kanzlei-Domain / Subdomain:** Bereitstellung einer dedizierten Produktions-Domain (z. B. `app.notaragent.de` oder `kanzlei-portal.de`).
+- **Automatisches Zertifikatsmanagement:** TLS 1.3 only, erzwungenes HTTPS mit HSTS (`Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`).
+- **Sicherheits-Header in `next.config.ts`:**
+  - `Content-Security-Policy (CSP)` gegen XSS
+  - `X-Frame-Options: DENY` gegen Clickjacking
+  - `X-Content-Type-Options: nosniff`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+
+#### 2. Supabase Custom Domain & First-Party-Cookies
+
+- **Storage Partitioning & Cookie-Hygiene:** In modernen Browsern (Safari ITP, Chrome CHIPS) werden Cookies über Drittanbieter-Domains (`*.supabase.co`) blockiert oder nach 7 Tagen gelöscht.
+- **Lösung:** Konfiguration einer **Custom Auth Domain** (z. B. `auth.notaragent.de` als CNAME auf den Supabase-Projekt-Ref).
+- **Vorteil:** Die Auth-Cookies (`sb-access-token`, `sb-refresh-token`) agieren als echte **First-Party-Cookies**, was Session-Drops und Login-Schleifen im Notariatsalltag verhindert.
+- **Produktions-Migration:** Live-Anwendung der Datei `supabase/migrations/20260917150000_auth_profiles_and_members.sql` und Aktivierung von RLS.
+
+#### 3. Google & Enterprise SSO Go-Live Setup
+
+- **Google Cloud Console Consent Screen:**
+  - Konfiguration des OAuth-Zustimmungsbildschirms für Notar Agent (App-Name, Kanzlei-Support-E-Mail, Datenschutzerklärung).
+  - Scope-Einschränkung auf `openid`, `email`, `profile` (keine unnötigen Berechtigungsabfragen).
+  - Autorisierte Weiterleitungs-URIs: `https://<domain>/auth/callback` und `https://<supabase-project>.supabase.co/auth/v1/callback`.
+- **Hinterlegung im Supabase Dashboard:**
+  - Aktivierung des Google-Providers unter _Authentication > Providers > Google_.
+  - Eintragen von Produktions-Client-ID und Client-Secret.
+- **Enterprise SAML / Entra ID (Optional für Großnotariate):**
+  - Vorbereitung für Microsoft 365 / Entra ID SSO über Supabase Enterprise SSO.
+
+#### 4. Kanzlei-Transaktionsmails & E-Mail-Zustellung
+
+- **Problem:** Supabase Default-E-Mails besitzen ein striktes Limit (3-4 Mails/Stunde) und landen wegen generischer Absender oft im Kanzlei-Spam.
+- **Lösung:** Anbindung eines dedizierten SMTP-/Transaktionsmail-Dienstes (z. B. Resend, Postmark oder Microsoft 365 SMTP-Relay) mit DKIM, SPF und DMARC der Kanzlei-Domain.
+- **Use Cases:** Einladung neuer Mitarbeiter ins Kanzleiteam (`/api/team`), Kennwort-Zurücksetzen, System-Benachrichtigungen.
+
+#### 5. Produktions-Secrets & Zero-Data-Retention (ZDR)
+
+- **Secrets Management:** Trennung lokaler Entwickler-Umgebungsvariablen (`.env.local`) von gesicherten Produktions-Umgebungsvariablen in der Hosting-Plattform.
+- **ZDR-Invariante:** Sicherstellung, dass in der Produktionsumgebung `MOCK_AI=false` gesetzt ist und produktive API-Keys mit Zero-Data-Retention-Vereinbarung (Anthropic BAA / Google Cloud Vertex AI Frankfurt) greifen.
+- **Health-Check & Monitoring:** Bereitstellung eines typsicheren `/api/health`-Endpunkts zur automatischen Uptime-Überwachung durch den Betreiber.
+
+---
+
+### Geplante Aufgaben (Go-Live Roadmap)
+
+- [ ] **DNS & Domain:** Domain-Registrierung und Routing (CNAME / A-Record auf Production-Host)
+- [ ] **Security Headers:** HSTS, CSP und Frameguard in `next.config.ts` konfigurieren
+- [ ] **Custom Auth Domain:** Supabase CNAME-Routing (`auth.<domain>`) einrichten
+- [ ] **DB-Migration:** `20260917150000_auth_profiles_and_members.sql` auf Live-PostgreSQL anwenden
+- [ ] **Google OAuth:** Live-Credentials in Google Cloud Console & Supabase Auth aktivieren
+- [ ] **SMTP / Mail-Relay:** Eigener Kanzlei-Mailversand für Einladungen via Resend / M365
+- [ ] **Health-Check Route:** `/api/health` Endpunkt mit DB-Ping für Uptime-Monitoring bereitstellen
+- [ ] **Zero-Data-Retention Check:** Validierung der Provider-Verträge vor erstem Echtakten-Scan
