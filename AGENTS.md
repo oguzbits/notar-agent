@@ -97,13 +97,15 @@ No functional task is complete without this verified receipt:
 - [x] **Database Migration & Supabase Sync:**
   - Status: [NOT_REQUIRED | DECLARATION_STAGED: `supabase/migrations/YYYYMMDD_name.sql` versioned | LIVE_MUTATION_APPLIED: Migration applied to Supabase project]
   - Action Required: (If DECLARATION_STAGED, Agent MUST explicitly ask the user whether to run/apply the migration to Supabase now)
-- [x] **Impact & Environment Status:** [LOCAL_CODE_ONLY | DECLARATION_STAGED: Artifacts versioned (Agent MUST actively prompt user whether to apply live) | LIVE_MUTATION_APPLIED: Verified state on remote system]
-- [x] **Data Readiness & Seeding:** [NOT_REQUIRED | SEEDED: Details | STAGED_IN_ROADMAP: Reference to task]
+- [x] **Visual UI Verification (Live UI Invariant):** [NOT_APPLICABLE (Backend/Logic only) | VERIFIED: Headless browser screenshot/render inspection proving zero CLS, correct responsive layout, and accessible interaction]
+- [x] **Language & Copywriting Check:** (100% pure German terminology, zero Denglisch, canonical notary terms from `constants.ts`)
 - [ ] **Explicitly Out-of-Scope:** [Deferred items / next steps]
 ```
 
 ## 5. Discipline & Guardrails
 
+- **Language & Communication Standard (Zero Denglisch):** All explanations, commit descriptions, UI copywriting, button labels, and system status messages MUST be written in clear, precise German. Technical Anglizismen (e.g. "Data fetching layer", "Single Source of Truth", "Pending state") must be translated into accurate domain language (z. B. "Datenabruf-Schicht", "Zentrale Datenquelle", "Schwebender Zustand"). User-visible texts must strictly use canonical terms from `src/lib/dossier/constants.ts`.
+- **Visual Self-Verification Standard (Live UI Invariant):** Whenever modifying or adding user interfaces (`src/components/`, `src/app/`), the agent must never declare completion blindly. The agent is required to verify rendering visually via headless browser / Playwright execution and embed evidence (screenshot/walkthrough) confirming zero layout shifts and proper responsive hierarchy.
 - **Zero Unauthorized Git Commits:** Never run `git commit` or `git push` autonomously. Always present verified changes and await explicit user confirmation.
 - **Zero Silent Assumptions:** Never assume the user knows whether an external resource was modified. Always explicitly disclose environment mutations.
 - **Guardrails:** No new packages without explicit approval. No `@ts-ignore`, no `eslint-disable`. Fix root causes.
