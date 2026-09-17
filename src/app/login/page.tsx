@@ -132,7 +132,7 @@ export default function LoginPage() {
           {/* Footer Registration Link */}
           <div className="border-border mt-8 border-t pt-5 text-center">
             <p className="text-muted-foreground text-base">
-              Neu bei NotarPartner?{' '}
+              Neu bei Notar Agent?{' '}
               <Link href="/register" className="text-notar-900 font-semibold hover:underline">
                 Neue Kanzlei registrieren
               </Link>

@@ -1,7 +1,7 @@
 import { startWorkerDaemon } from '../src/lib/jobs/job-daemon';
 
 console.info('====================================================');
-console.info('NotarPartner Queue Worker Daemon gestartet');
+console.info('Notar Agent Queue Worker Daemon gestartet');
 console.info('Überwacht PENDING Jobs & Orphan Sweeper aktiv');
 console.info('Beenden mit Ctrl+C (Graceful Shutdown SIGINT/SIGTERM)');
 console.info('====================================================');

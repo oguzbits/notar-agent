@@ -322,7 +322,7 @@ function HomeContent() {
 
       <footer className="border-border bg-background mt-auto border-t py-4">
         <div className="text-muted-foreground mx-auto flex max-w-7xl items-center justify-between px-4 text-xs sm:px-6 lg:px-8">
-          <span>NotarPartner</span>
+          <span>Notar Agent</span>
         </div>
       </footer>
 

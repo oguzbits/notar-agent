@@ -14,7 +14,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className, href = '/', onC
       <div className="bg-notar-500 text-notar-950 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base font-bold shadow-xs">
         N
       </div>
-      <span className="text-foreground text-base font-bold tracking-tight">NotarPartner</span>
+      <span className="text-foreground text-base font-bold tracking-tight">Notar Agent</span>
     </>
   );
 

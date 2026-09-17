@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NotarPartner | KI-Assistenz für Notariate',
+  title: 'Notar Agent | KI-Assistenz für Notariate',
   description: 'Automatisierte Extraktion und Prüfung von Notariatsakten nach GNotKG und BeurkG',
 };
 
