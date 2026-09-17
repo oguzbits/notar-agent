@@ -6,14 +6,15 @@ import {
   IMMOBILIEN_EXTRACTION_AGENT_PROMPT,
   NOTARY_AUDITOR_RECONCILER_PROMPT,
 } from '@/lib/ai/prompts';
+import { SSO_PROVIDERS } from '@/types/auth';
 
-export interface AiConfiguration {
+export interface AIModelProviderResult {
   model: LanguageModel;
   extractionInstructions: SystemModelMessage;
   auditorInstructions: SystemModelMessage;
 }
 
-export function getAiConfiguration(): AiConfiguration {
+export function getAiConfiguration(): AIModelProviderResult {
   const env = validateEnv(process.env);
   const geminiKey = env.GEMINI_API_KEY || env.GOOGLE_GENERATIVE_AI_API_KEY;
   const anthropicKey = env.ANTHROPIC_API_KEY;
@@ -32,7 +33,9 @@ export function getAiConfiguration(): AiConfiguration {
     );
   }
 
-  const useGemini = Boolean(geminiKey && (!anthropicKey || env.AI_PROVIDER === 'google'));
+  const useGemini = Boolean(
+    geminiKey && (!anthropicKey || env.AI_PROVIDER === SSO_PROVIDERS.GOOGLE)
+  );
 
   if (useGemini && geminiKey) {
     const google = createGoogle({
