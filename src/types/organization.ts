@@ -21,6 +21,14 @@ export const NotaryRoleSchema = z.enum([
 
 export type NotaryRole = z.infer<typeof NotaryRoleSchema>;
 
+export const ROLE_LABELS_DE: Record<NotaryRole, string> = {
+  [NOTARY_ROLES.NOTAR]: 'Notar / Notarin',
+  [NOTARY_ROLES.NOTARASSESSOR]: 'Notarassessor / Notarassessorin',
+  [NOTARY_ROLES.SACHBEARBEITER]: 'Notarfachangestellte(r)',
+  [NOTARY_ROLES.ANWALTSNOTAR_RA]: 'Rechtsanwalt / Partner',
+  [NOTARY_ROLES.ADMIN]: 'Kanzlei-Administrator',
+};
+
 /**
  * Kanzlei (Organization) als hermetische Mandanten-Einheit (§ 203 StGB).
  */

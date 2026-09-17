@@ -6,12 +6,14 @@ import {
   InMemoryDossierRepository,
   InMemoryJobRepository,
   InMemoryKnowledgeRepository,
+  InMemoryTeamRepository,
 } from '@/lib/in-memory';
 import { IJobRepository, SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import {
   IKnowledgeRepository,
   SupabaseKnowledgeRepository,
 } from '@/lib/knowledge/supabase-knowledge-repository';
+import { ITeamRepository, SupabaseTeamRepository } from '@/lib/team/team-repository';
 import { Dossier } from '@/types/dossier';
 import {
   IDossierRepository,
@@ -34,6 +36,7 @@ export type {
   IJobRepository,
   IAuditRepository,
   IKnowledgeRepository,
+  ITeamRepository,
 };
 export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 
@@ -43,6 +46,7 @@ declare global {
   var __boundedInMemoryJobRepo: InMemoryJobRepository | undefined;
   var __boundedInMemoryAuditRepo: InMemoryAuditRepository | undefined;
   var __boundedInMemoryKnowledgeRepo: InMemoryKnowledgeRepository | undefined;
+  var __boundedInMemoryTeamRepo: InMemoryTeamRepository | undefined;
 }
 
 if (!globalThis.__boundedInMemoryRepo) {
@@ -57,11 +61,15 @@ if (!globalThis.__boundedInMemoryAuditRepo) {
 if (!globalThis.__boundedInMemoryKnowledgeRepo) {
   globalThis.__boundedInMemoryKnowledgeRepo = new InMemoryKnowledgeRepository();
 }
+if (!globalThis.__boundedInMemoryTeamRepo) {
+  globalThis.__boundedInMemoryTeamRepo = new InMemoryTeamRepository();
+}
 
 const inMemoryRepo = globalThis.__boundedInMemoryRepo;
 const inMemoryJobRepo = globalThis.__boundedInMemoryJobRepo;
 const inMemoryAuditRepo = globalThis.__boundedInMemoryAuditRepo;
 const inMemoryKnowledgeRepo = globalThis.__boundedInMemoryKnowledgeRepo;
+const inMemoryTeamRepo = globalThis.__boundedInMemoryTeamRepo;
 
 export function getServerSupabase() {
   const env = validateEnv(process.env);
@@ -120,6 +128,17 @@ export function getKnowledgeRepository(): IKnowledgeRepository {
     return inMemoryKnowledgeRepo;
   }
   return new SupabaseKnowledgeRepository(supabase);
+}
+
+/**
+ * Factory zur Bereitstellung des konfigurierten Team-Repositories (Kanzleimitglieder & RBAC).
+ */
+export function getTeamRepository(): ITeamRepository {
+  const supabase = getServerSupabase();
+  if (!supabase) {
+    return inMemoryTeamRepo;
+  }
+  return new SupabaseTeamRepository(supabase);
 }
 
 // Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer mit optionaler Kanzleitrennung (§ 203 StGB)

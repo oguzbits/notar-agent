@@ -8,12 +8,14 @@ import { Header } from '@/components/Header';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
 import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
+import { TeamSettingsModal } from '@/components/views/TeamSettingsModal';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useJobs, useJob } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier } from '@/lib/dossier';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
+import { useAuth } from '@/providers/AuthProvider';
 import { DocumentRecord } from '@/types/document';
 import {
   FieldStatus,
@@ -38,6 +40,7 @@ function HomeContent() {
   const vorgangParam = searchParams.get('vorgang');
   const jobParam = searchParams.get('job');
   const viewParam = searchParams.get('view');
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
   const { jobs, activeJobs, failedJobs, retryJob, isRetrying, loadJobs } = useJobs();
@@ -116,6 +119,10 @@ function HomeContent() {
     router.push('/?view=upload');
   };
 
+  const handleOpenTeamSettings = () => {
+    setIsTeamModalOpen(true);
+  };
+
   const handleBackToTable = () => {
     actions.resetNewVorgang();
     setErrorMessage(null);
@@ -156,6 +163,8 @@ function HomeContent() {
   // Aktiver Transaktionszustand für notarielle Feld-Overrides
   const [updatingFieldKey, setUpdatingFieldKey] = useState<string | null>(null);
 
+  const { currentUser } = useAuth();
+
   // Notarieller Status-Override (Pessimistic Confirmation gem. § 17 BeurkG / § 19 BNotO)
   const handleOverrideFieldStatus = async (
     fieldKey: string,
@@ -195,6 +204,8 @@ function HomeContent() {
           documentId: docId,
           dossier: updatedDossier,
           auditOverride,
+          actor: currentUser.name,
+          actorRole: currentUser.role,
         });
       }
       actions.setDossier(updatedDossier);
@@ -218,6 +229,7 @@ function HomeContent() {
         }
         overallStatus={displayedDossier?.overallStatus}
         onLogoClick={handleBackToTable}
+        onOpenTeamSettings={handleOpenTeamSettings}
       />
 
       {/* Sub-Header Breadcrumb */}
@@ -313,6 +325,9 @@ function HomeContent() {
           <span>NotarPartner</span>
         </div>
       </footer>
+
+      {/* Team Settings Dialog Modal */}
+      <TeamSettingsModal isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} />
     </div>
   );
 }

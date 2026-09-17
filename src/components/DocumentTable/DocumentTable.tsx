@@ -4,6 +4,8 @@ import { FileText, Search, Plus, Trash2, ExternalLink, Loader2, RotateCw } from 
 import React, { useState } from 'react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/providers/AuthProvider';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/types/document';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
 
@@ -40,6 +42,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   activeJobs = [],
   onRetryJob,
 }) => {
+  const { hasRolePermission } = useAuth();
+  const canDelete = hasRolePermission(PERMISSION_ACTIONS.DELETE_DOSSIER);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterStatus>(DOCUMENT_FILTERS.ALL);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -359,10 +363,19 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                           </button>
                           <button
                             type="button"
-                            disabled={deletingId === doc.id}
+                            disabled={deletingId === doc.id || !canDelete}
                             onClick={(e) => handleDelete(doc.id, e)}
-                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-red-500"
-                            title="Vorgang löschen"
+                            className={cn(
+                              'flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-red-500',
+                              canDelete
+                                ? 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+                                : 'text-muted-foreground cursor-not-allowed opacity-30'
+                            )}
+                            title={
+                              canDelete
+                                ? 'Vorgang löschen'
+                                : 'Vorgänge können nur durch Notare oder Administratoren gelöscht werden'
+                            }
                             aria-label={`Vorgang ${doc.title} löschen`}
                           >
                             {deletingId === doc.id ? (

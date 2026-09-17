@@ -1,0 +1,50 @@
+import { PermissionAction, PERMISSION_ACTIONS } from '@/types/auth';
+import { NotaryRole, NOTARY_ROLES } from '@/types/organization';
+
+/**
+ * Rollen-Berechtigungsmatrix gem. BNotO, BRAO und Kanzleiorganisation.
+ */
+const ROLE_PERMISSIONS: Record<NotaryRole, ReadonlySet<PermissionAction>> = {
+  [NOTARY_ROLES.NOTAR]: new Set<PermissionAction>([
+    PERMISSION_ACTIONS.DELETE_DOSSIER,
+    PERMISSION_ACTIONS.FINAL_APPROVAL,
+    PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS,
+    PERMISSION_ACTIONS.EXPORT_OFFICIAL_REPORT,
+    PERMISSION_ACTIONS.MANAGE_TEAM,
+    PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+  ]),
+  [NOTARY_ROLES.NOTARASSESSOR]: new Set<PermissionAction>([
+    PERMISSION_ACTIONS.DELETE_DOSSIER,
+    PERMISSION_ACTIONS.FINAL_APPROVAL,
+    PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS,
+    PERMISSION_ACTIONS.EXPORT_OFFICIAL_REPORT,
+    PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+  ]),
+  [NOTARY_ROLES.SACHBEARBEITER]: new Set<PermissionAction>([
+    PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS,
+    PERMISSION_ACTIONS.EXPORT_OFFICIAL_REPORT,
+    PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+  ]),
+  [NOTARY_ROLES.ANWALTSNOTAR_RA]: new Set<PermissionAction>([
+    PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS,
+    PERMISSION_ACTIONS.EXPORT_OFFICIAL_REPORT,
+    PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+  ]),
+  [NOTARY_ROLES.ADMIN]: new Set<PermissionAction>([
+    PERMISSION_ACTIONS.DELETE_DOSSIER,
+    PERMISSION_ACTIONS.MANAGE_TEAM,
+    PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+    PERMISSION_ACTIONS.EXPORT_OFFICIAL_REPORT,
+  ]),
+};
+
+/**
+ * Deterministischer Prüfer für rollenbasierte Kanzlei-Aktionen.
+ */
+export function hasPermission(role: NotaryRole, action: PermissionAction): boolean {
+  const allowed = ROLE_PERMISSIONS[role];
+  if (!allowed) {
+    return false;
+  }
+  return allowed.has(action);
+}

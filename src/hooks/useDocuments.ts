@@ -28,6 +28,7 @@ async function apiUpdateDossier({
   dossier,
   auditOverride,
   actor,
+  actorRole,
 }: {
   documentId: string;
   dossier: Dossier;
@@ -39,11 +40,12 @@ async function apiUpdateDossier({
     reason: string;
   };
   actor?: string;
+  actorRole?: string;
 }): Promise<void> {
   const res = await fetch('/api/analyze', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ documentId, dossier, auditOverride, actor }),
+    body: JSON.stringify({ documentId, dossier, auditOverride, actor, actorRole }),
   });
   if (!res.ok) {
     throw new Error('Fehler beim Speichern der Änderungen');

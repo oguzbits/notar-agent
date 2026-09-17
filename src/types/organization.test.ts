@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   NOTARY_ROLES,
   NotaryRoleSchema,
+  ROLE_LABELS_DE,
   OrganizationSchema,
   OrganizationMemberSchema,
 } from './organization';
@@ -17,10 +18,18 @@ describe('Organization & NotaryRole Schemas', () => {
     expect(() => NotaryRoleSchema.parse('INVALID_ROLE')).toThrow();
   });
 
+  it('stellt kanonische deutsche Bezeichnungen für alle Rollen bereit (ROLE_LABELS_DE)', () => {
+    expect(ROLE_LABELS_DE[NOTARY_ROLES.NOTAR]).toBe('Notar / Notarin');
+    expect(ROLE_LABELS_DE[NOTARY_ROLES.NOTARASSESSOR]).toBe('Notarassessor / Notarassessorin');
+    expect(ROLE_LABELS_DE[NOTARY_ROLES.SACHBEARBEITER]).toBe('Notarfachangestellte(r)');
+    expect(ROLE_LABELS_DE[NOTARY_ROLES.ANWALTSNOTAR_RA]).toBe('Rechtsanwalt / Partner');
+    expect(ROLE_LABELS_DE[NOTARY_ROLES.ADMIN]).toBe('Kanzlei-Administrator');
+  });
+
   it('validiert ein valides Kanzlei-Objekt (Organization)', () => {
     const validOrg = {
       id: '550e8400-e29b-41d4-a716-446655440000',
-      name: 'Notariat Dr. Alexander Ruscher',
+      name: 'Notariat Dr. Thomas Lindemann',
       officialSeat: 'Münster',
       chamberDistrict: 'Westfälische Notarkammer',
       createdAt: '2026-09-15T12:00:00.000Z',
@@ -29,7 +38,7 @@ describe('Organization & NotaryRole Schemas', () => {
 
     const parsed = OrganizationSchema.parse(validOrg);
     expect(parsed.id).toBe(validOrg.id);
-    expect(parsed.name).toBe('Notariat Dr. Alexander Ruscher');
+    expect(parsed.name).toBe('Notariat Dr. Thomas Lindemann');
     expect(parsed.officialSeat).toBe('Münster');
   });
 

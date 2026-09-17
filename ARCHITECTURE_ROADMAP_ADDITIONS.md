@@ -362,11 +362,11 @@ graph TD
 
 ### Geplante Aufgaben
 
-- [ ] Login-Page (`src/app/login/page.tsx`) mit Supabase Auth Formular
-- [ ] Middleware-Session-Guard für geschützte Kanzleirouten
-- [ ] Kanzlei- & Rollen-Badge im `Header.tsx`
-- [ ] Team- & Rollenverwaltungs-View (`src/components/views/TeamSettingsView.tsx`)
-- [ ] RBAC-Hook (`useCurrentUserRole()`) zur rollenbasierten Button- und Aktionssteuerung im Cockpit
+- [x] Kanzlei- & Rollen-Badge im `Header.tsx` (`RoleBadge.tsx` mit interaktivem Notar-Profil- & Rollen-Switcher)
+- [x] Team- & Rollenverwaltungs-View (`src/components/views/TeamSettingsView.tsx` mit Mitglieder-Tabelle, Rollenwechsel & Einladungsdialog)
+- [x] RBAC-Engine & Hook (`src/lib/auth/rbac.ts`, `useAuth()`) zur rollenbasierten Aktionssteuerung im Cockpit (z.B. Deaktivierung der Aktenlöschung für Sachbearbeiter gem. § 18 BNotO)
+- [x] Integration der `actorRole` in Status-Overrides & Audit-Trail-Events
+- [ ] Login-Page (`src/app/login/page.tsx`) mit Supabase Auth Formular & Middleware-Session-Guard
 
 ---
 
