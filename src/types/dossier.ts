@@ -550,38 +550,6 @@ export function isGmbhDossier(dossier: Dossier): dossier is GmbhDossier {
   return dossier.caseType === CASE_TYPES.GMBH_GRUENDUNG;
 }
 
-export function getDossierFieldsRecord(
-  dossier: Dossier
-): Record<string, GenericFieldDossier<Record<string, unknown>>> {
-  return dossier.fields as Record<string, GenericFieldDossier<Record<string, unknown>>>;
-}
-
-/**
- * Erzeugt eine unveränderliche Kopie des Dossiers mit aktualisiertem Feld-Status
- * und neu berechnetem overallStatus (100% typsicher ohne Type-Assertions).
- */
-export function updateDossierFieldStatus(
-  dossier: Dossier,
-  fieldKey: string,
-  newStatus: FieldStatus,
-  customNote?: string
-): Dossier {
-  const cloned: Dossier = structuredClone(dossier);
-  const fields = getDossierFieldsRecord(cloned);
-
-  if (fields[fieldKey]) {
-    fields[fieldKey].status = newStatus;
-    if (customNote !== undefined) {
-      fields[fieldKey].note = customNote;
-    }
-  }
-
-  const allVerified = Object.values(fields).every((f) => f && f.status === FIELD_STATUS.VERIFIED);
-  cloned.overallStatus = allVerified ? OVERALL_STATUS.READY : cloned.overallStatus;
-
-  return cloned;
-}
-
 // ==========================================
 // 4. API REQUEST SCHEMATA
 // ==========================================
@@ -601,7 +569,7 @@ export const AnalyzeRequestSchema = z
     caseType: CaseTypeSchema.default(CASE_TYPES.IMMOBILIENKAUF),
     notes: z.string().default(''),
     documentId: z.string().optional(),
-    organizationId: z.string().uuid().optional(),
+    organizationId: z.uuid().optional(),
     existingDossier: DossierSchema.optional(),
   })
   .refine(
@@ -621,7 +589,7 @@ export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
 export const UpdateDossierRequestSchema = z.object({
   documentId: z.string().min(1, 'documentId ist erforderlich.'),
-  organizationId: z.string().uuid().optional(),
+  organizationId: z.uuid().optional(),
   dossier: DossierSchema,
   auditOverride: z
     .object({

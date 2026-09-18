@@ -1,11 +1,12 @@
 import { z } from 'zod';
-import { CaseType, AnalyzeRequestSchema } from './dossier';
+import { AnalyzeRequestSchema } from './dossier';
 
 export const JOB_STATUS = {
   PENDING: 'PENDING',
   PROCESSING: 'PROCESSING',
   COMPLETED: 'COMPLETED',
   FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
 } as const;
 
 export const JobStatusSchema = z.enum([
@@ -13,6 +14,7 @@ export const JobStatusSchema = z.enum([
   JOB_STATUS.PROCESSING,
   JOB_STATUS.COMPLETED,
   JOB_STATUS.FAILED,
+  JOB_STATUS.CANCELLED,
 ]);
 
 export type JobStatus = (typeof JOB_STATUS)[keyof typeof JOB_STATUS];
@@ -87,7 +89,6 @@ export type JobProgressDetails = z.infer<typeof JobProgressDetailsSchema>;
 export const DossierJobSchema = z.object({
   id: z.string().describe('Eindeutige Job-ID (UUID oder nanoid)'),
   organizationId: z
-    .string()
     .uuid()
     .optional()
     .describe('Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'),
@@ -116,40 +117,3 @@ export const RetryJobRequestSchema = z.object({
 export type RetryJobRequest = z.infer<typeof RetryJobRequestSchema>;
 
 export type DossierJob = z.infer<typeof DossierJobSchema>;
-
-/**
- * Bequemer Helper-Getter für den Vorgangstyp ohne doppelte Speicherung im Root-Objekt.
- */
-export function getJobCaseType(job: DossierJob): CaseType {
-  return job.payload.caseType;
-}
-
-/**
- * Berechnet den Fortschritt in Prozent (0-100) rein abgeleitet (Derived State)
- * aus progressDetails für A11y (aria-valuenow) und Ladebalken.
- * Verhindert redundanten State und Inkonsistenzen im Datenmodell.
- */
-export function computeJobProgressPercent(
-  job: Pick<DossierJob, 'status' | 'progressDetails'>
-): number {
-  if (job.status === JOB_STATUS.COMPLETED) return 100;
-  if (
-    job.status === JOB_STATUS.PENDING ||
-    job.status === JOB_STATUS.FAILED ||
-    !job.progressDetails
-  ) {
-    return 0;
-  }
-
-  const { currentStep, totalSteps, processedUnits, totalUnits } = job.progressDetails;
-
-  if (totalUnits && totalUnits > 0 && processedUnits !== undefined) {
-    return Math.min(100, Math.max(0, Math.round((processedUnits / totalUnits) * 100)));
-  }
-
-  if (totalSteps > 0) {
-    return Math.min(100, Math.max(0, Math.round((currentStep / totalSteps) * 100)));
-  }
-
-  return 0;
-}

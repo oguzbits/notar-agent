@@ -1,5 +1,6 @@
 import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
-import { Dossier, getDossierFieldsRecord, DOCUMENT_RELIABILITY } from '@/types/dossier';
+import { Dossier, DOCUMENT_RELIABILITY } from '@/types/dossier';
+import { getDossierFieldsRecord } from './state';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
 export interface NormalizeDossierOptions {

@@ -1,11 +1,6 @@
-import {
-  CASE_TYPES,
-  Dossier,
-  FIELD_STATUS,
-  GenericFieldDossier,
-  getDossierFieldsRecord,
-} from '@/types/dossier';
+import { CASE_TYPES, Dossier, FIELD_STATUS, GenericFieldDossier } from '@/types/dossier';
 import { CASE_TYPE_CORE_FIELDS } from './constants';
+import { getDossierFieldsRecord } from './state';
 import type { CaseTypeCoreConfig } from './types';
 
 export const READINESS_STAGES = {

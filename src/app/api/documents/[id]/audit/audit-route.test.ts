@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PUT } from '@/app/api/analyze/route';
 import { GET as getAuditRoute } from '@/app/api/documents/[id]/audit/route';
+import { updateDossierFieldStatus } from '@/lib/dossier/state';
 import { getAuditRepository, getDossierRepository } from '@/lib/supabase/server';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { AUDIT_ACTIONS } from '@/types/audit';
-import { FIELD_STATUS, updateDossierFieldStatus } from '@/types/dossier';
+import { FIELD_STATUS } from '@/types/dossier';
 
 describe('Audit Trail API Route & PUT /api/analyze Integration', () => {
   const docId = 'test-audit-doc-123';

@@ -11,8 +11,10 @@ export {
   parseSourceLocations,
   extractFieldObservations,
   extractAllFieldRows,
-  generatePruefberichtText,
 } from './ui-mapper';
+export { generatePruefberichtText } from '@/lib/export';
+export { getDossierFieldsRecord, updateDossierFieldStatus } from './state';
+export { createEmptyImmobilienFields, createEmptyImmobilienDossier } from './defaults';
 export {
   READINESS_STAGES,
   isDossierEntwurfsreif,

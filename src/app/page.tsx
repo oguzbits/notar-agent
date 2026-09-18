@@ -8,21 +8,17 @@ import { Header } from '@/components/Header';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
 import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
+import { OrganizationGatewayModal } from '@/components/views/OrganizationGatewayModal';
 import { TeamSettingsModal } from '@/components/views/TeamSettingsModal';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useJobs, useJob } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
-import { normalizeDossier } from '@/lib/dossier';
+import { normalizeDossier, getDossierFieldsRecord, updateDossierFieldStatus } from '@/lib/dossier';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { useAuth } from '@/providers/AuthProvider';
 import { DocumentRecord } from '@/types/document';
-import {
-  FieldStatus,
-  getDossierFieldsRecord,
-  updateDossierFieldStatus,
-  STORAGE_TYPES,
-} from '@/types/dossier';
+import { FieldStatus, STORAGE_TYPES } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
 const VIEW_MODE = {
@@ -41,9 +37,13 @@ function HomeContent() {
   const jobParam = searchParams.get('job');
   const viewParam = searchParams.get('view');
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
+
+  const { currentUser, hasActiveOrganization } = useAuth();
 
   const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
-  const { jobs, activeJobs, failedJobs, retryJob, isRetrying, loadJobs } = useJobs();
+  const { jobs, activeJobs, failedJobs, retryJob, isRetrying, cancelJob, isCancelling, loadJobs } =
+    useJobs();
   const { job: singleJob } = useJob(jobParam);
   const {
     isAnalyzing,
@@ -114,6 +114,10 @@ function HomeContent() {
   };
 
   const handleCreateNew = () => {
+    if (!hasActiveOrganization) {
+      setIsGatewayModalOpen(true);
+      return;
+    }
     actions.resetNewVorgang();
     setErrorMessage(null);
     router.push('/?view=upload');
@@ -162,8 +166,6 @@ function HomeContent() {
 
   // Aktiver Transaktionszustand für notarielle Feld-Overrides
   const [updatingFieldKey, setUpdatingFieldKey] = useState<string | null>(null);
-
-  const { currentUser } = useAuth();
 
   // Notarieller Status-Override (Pessimistic Confirmation gem. § 17 BeurkG / § 19 BNotO)
   const handleOverrideFieldStatus = async (
@@ -230,6 +232,7 @@ function HomeContent() {
         overallStatus={displayedDossier?.overallStatus}
         onLogoClick={handleBackToTable}
         onOpenTeamSettings={handleOpenTeamSettings}
+        onOpenOrganizationGateway={() => setIsGatewayModalOpen(true)}
       />
 
       {/* Sub-Header Breadcrumb */}
@@ -293,6 +296,8 @@ function HomeContent() {
             onBackToTable={handleBackToTable}
             onRetryJob={retryJob}
             isRetrying={isRetrying}
+            onCancelJob={cancelJob}
+            isCancelling={isCancelling}
           />
         )}
 
@@ -328,6 +333,12 @@ function HomeContent() {
 
       {/* Team Settings Dialog Modal */}
       <TeamSettingsModal isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} />
+
+      {/* Organization Gateway Modal (Onboarding für SSO-Benutzer ohne Kanzlei) */}
+      <OrganizationGatewayModal
+        isOpen={isGatewayModalOpen}
+        onClose={() => setIsGatewayModalOpen(false)}
+      />
     </div>
   );
 }

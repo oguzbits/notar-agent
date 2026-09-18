@@ -1,7 +1,6 @@
 import { Download, FileCheck2, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
-import { generatePruefberichtText } from '@/lib/dossier/ui-mapper';
-import { downloadJsonFile, downloadTextFile } from '@/lib/export/download-helper';
+import { downloadJsonFile, downloadTextFile, generatePruefberichtText } from '@/lib/export';
 import { Dossier } from '@/types/dossier';
 
 interface ExportActionsProps {

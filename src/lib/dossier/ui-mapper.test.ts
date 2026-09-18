@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { generatePruefberichtText } from '@/lib/export';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { Dossier, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
@@ -7,7 +8,6 @@ import {
   parseSourceLocations,
   extractFieldObservations,
   extractAllFieldRows,
-  generatePruefberichtText,
 } from './ui-mapper';
 
 function createStubDossier(): Dossier {

@@ -8,8 +8,6 @@ import {
   PROGRESS_UNIT_LABELS,
   DossierJobSchema,
   CreateJobPayloadSchema,
-  getJobCaseType,
-  computeJobProgressPercent,
 } from './jobs';
 
 describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
@@ -18,6 +16,7 @@ describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
     expect(JobStatusSchema.safeParse(JOB_STATUS.PROCESSING).success).toBe(true);
     expect(JobStatusSchema.safeParse(JOB_STATUS.COMPLETED).success).toBe(true);
     expect(JobStatusSchema.safeParse(JOB_STATUS.FAILED).success).toBe(true);
+    expect(JobStatusSchema.safeParse(JOB_STATUS.CANCELLED).success).toBe(true);
     expect(JobStatusSchema.safeParse('UNKNOWN_STATUS').success).toBe(false);
   });
 
@@ -66,14 +65,12 @@ describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
     const result = DossierJobSchema.safeParse(jobRecord);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(getJobCaseType(result.data)).toBe(CASE_TYPES.IMMOBILIENKAUF);
+      expect(result.data.payload.caseType).toBe(CASE_TYPES.IMMOBILIENKAUF);
       expect(result.data.progressDetails?.processedUnits).toBe(2);
-      // 2 von 5 Einheiten = 40 %
-      expect(computeJobProgressPercent(result.data)).toBe(40);
     }
   });
 
-  it('should validate failed job with error message and compute 0% progress', () => {
+  it('should validate failed job with error message', () => {
     const failedJob = {
       id: 'job-err-789',
       status: JOB_STATUS.FAILED,
@@ -92,8 +89,7 @@ describe('Job Queue Lifecycle Schemas (Phase B.1)', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.errorMessage).toBe('PDF konnte nicht dekodiert werden.');
-      expect(getJobCaseType(result.data)).toBe(CASE_TYPES.IMMOBILIENKAUF);
-      expect(computeJobProgressPercent(result.data)).toBe(0);
+      expect(result.data.payload.caseType).toBe(CASE_TYPES.IMMOBILIENKAUF);
     }
   });
 });
