@@ -11,7 +11,9 @@ import {
   getServerSupabase,
   getUniformCaseTitle,
 } from '@/lib/supabase/server';
+import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { AUDIT_ACTIONS } from '@/types/audit';
+import { DB_TABLES } from '@/types/database';
 import { AnalyzeRequestSchema, UpdateDossierRequestSchema, STORAGE_TYPES } from '@/types/dossier';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
@@ -36,9 +38,28 @@ export async function POST(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: msg }, { status: 500 });
     }
 
-    // Kanzlei-Identifikation aus Body oder Header x-organization-id
-    const organizationId =
+    // Authentifizierten Server-Client & Sitzungskontext abrufen
+    const authSupabase = await createServerAuthClient();
+    let resolvedOrgId =
       parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined;
+
+    if (authSupabase) {
+      const {
+        data: { user },
+      } = await authSupabase.auth.getUser();
+
+      if (user && !resolvedOrgId) {
+        const { data: member } = await authSupabase
+          .from(DB_TABLES.ORGANIZATION_MEMBERS)
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (member?.organization_id) {
+          resolvedOrgId = member.organization_id;
+        }
+      }
+    }
 
     // Prüfen, ob eine asynchrone Verarbeitung angefordert wurde (?async=true oder Header x-async: true)
     const isAsync =
@@ -46,8 +67,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       req.headers.get('x-async-mode') === 'true';
 
     if (isAsync) {
-      const jobRepo = getJobRepository();
-      const job = await jobRepo.createJob(parseResult.data, organizationId);
+      const jobRepo = getJobRepository(authSupabase);
+      const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
 
       // Starte Hintergrund-Worker ohne auf Fertigstellung zu blockieren
       void executeDossierJob(job.id);
@@ -81,10 +102,10 @@ export async function POST(req: NextRequest): Promise<Response> {
         },
       });
 
-      const repo = getDossierRepository();
+      const repo = getDossierRepository(authSupabase);
       let persistenceResult;
       if (documentId) {
-        const updateRes = await repo.update(documentId, dossier, organizationId);
+        const updateRes = await repo.update(documentId, dossier, resolvedOrgId);
         const isSupabase = !!getServerSupabase();
         const uniformTitle = getUniformCaseTitle(dossier.caseType, documentId);
         persistenceResult = {
@@ -94,7 +115,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           id: documentId,
         };
       } else {
-        persistenceResult = await repo.save(dossier, organizationId);
+        persistenceResult = await repo.save(dossier, resolvedOrgId);
       }
 
       emitter.sendEvent({

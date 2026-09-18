@@ -63,7 +63,32 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
         isAnalyzing={isStarting}
       />
 
-      <div className="flex justify-end pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          disabled={isStarting}
+          onClick={() => {
+            onFilesChange([
+              {
+                name: 'Kaufvertragsentwurf_Friedrichshain_Muster.txt',
+                type: 'text/plain',
+                size: 4096,
+                content:
+                  'Kaufvertragsentwurf: Verkäufer: Thomas Weber, Käufer: Sabine Klein. Kaufpreis: 485.000 EUR. Grundbuch von Friedrichshain Blatt 4512.',
+                isBase64: false,
+              },
+            ]);
+            onNotesChange(
+              'Kaufvertrag Eigentumswohnung Friedrichshain mit Stellplatz. Erwerb zur Eigennutzung.'
+            );
+          }}
+          className="text-base"
+        >
+          Muster-Kaufvertrag laden
+        </Button>
+
         <Button
           type="button"
           disabled={files.length === 0}

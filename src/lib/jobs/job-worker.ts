@@ -18,6 +18,32 @@ export interface WorkerDependencies {
 const MAX_CONCURRENT_JOBS = 2;
 const limit = pLimit(MAX_CONCURRENT_JOBS);
 
+// Map aktiver AbortController für laufende Jobs zur sofortigen Unterbrechung
+const activeJobControllers = new Map<string, AbortController>();
+
+/**
+ * Bricht einen aktiven oder wartenden Dossier-Job sofort ab:
+ * 1. Signalisiert dem laufenden Worker via AbortController den Abbruch
+ * 2. Aktualisiert den Job-Status in der Datenbank auf CANCELLED
+ */
+export async function cancelDossierJob(
+  jobId: string,
+  deps: { jobRepo?: IJobRepository } = {}
+): Promise<DossierJob | null> {
+  const jobRepo = deps.jobRepo ?? getJobRepository();
+  const activeController = activeJobControllers.get(jobId);
+  if (activeController) {
+    activeController.abort();
+    activeJobControllers.delete(jobId);
+  }
+
+  return jobRepo.updateJobStatus(jobId, {
+    status: JOB_STATUS.CANCELLED,
+    errorMessage: 'Vorgang durch Benutzer abgebrochen.',
+    lockedAt: undefined,
+  });
+}
+
 /**
  * Führt einen asynchronen Dossier-Job aus:
  * 1. Concurrency-Slot via p-limit akquirieren (Drosselung gegen 429 Rate-Limits)
@@ -33,9 +59,32 @@ export async function executeDossierJob(
   const jobRepo = deps.jobRepo ?? getJobRepository();
   const dossierRepo = deps.dossierRepo ?? getDossierRepository();
 
-  return limit(() =>
-    runJobExecution(jobId, jobRepo, dossierRepo, deps.pipelineFn, deps.abortSignal)
-  );
+  const internalController = new AbortController();
+  activeJobControllers.set(jobId, internalController);
+
+  const combinedSignal = deps.abortSignal
+    ? anyAbortSignal([deps.abortSignal, internalController.signal])
+    : internalController.signal;
+
+  try {
+    return await limit(() =>
+      runJobExecution(jobId, jobRepo, dossierRepo, deps.pipelineFn, combinedSignal)
+    );
+  } finally {
+    activeJobControllers.delete(jobId);
+  }
+}
+
+function anyAbortSignal(signals: AbortSignal[]): AbortSignal {
+  const controller = new AbortController();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      return controller.signal;
+    }
+    signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+  return controller.signal;
 }
 
 async function runJobExecution(
@@ -50,8 +99,17 @@ async function runJobExecution(
     return null;
   }
 
+  if (job.status === JOB_STATUS.CANCELLED) {
+    return job;
+  }
+
   if (abortSignal?.aborted) {
-    // Vor Beginn abgebrochen: Zurück auf PENDING
+    // Wenn durch cancelJob bereits CANCELLED gesetzt wurde, beibehalten
+    const current = await jobRepo.getJobById(jobId);
+    if (current?.status === JOB_STATUS.CANCELLED) {
+      return current;
+    }
+    // Vor Beginn durch Shutdown abgebrochen: Zurück auf PENDING
     return jobRepo.updateJobStatus(jobId, {
       status: JOB_STATUS.PENDING,
       lockedAt: undefined,
@@ -167,11 +225,12 @@ async function runJobExecution(
     });
 
     let resultDossierId: string;
+    const orgId = job.organizationId || job.payload.organizationId;
     if (documentId) {
-      await dossierRepo.update(documentId, dossier);
+      await dossierRepo.update(documentId, dossier, orgId);
       resultDossierId = documentId;
     } else {
-      const saveRes = await dossierRepo.save(dossier);
+      const saveRes = await dossierRepo.save(dossier, orgId);
       resultDossierId = saveRes.id;
     }
 
@@ -187,6 +246,12 @@ async function runJobExecution(
       lockedAt: undefined,
     });
   } catch (error: unknown) {
+    // Prüfen, ob der Job explizit abgebrochen wurde
+    const currentJob = await jobRepo.getJobById(jobId);
+    if (currentJob?.status === JOB_STATUS.CANCELLED) {
+      return currentJob;
+    }
+
     if (abortSignal?.aborted) {
       // Wurde durch Graceful Shutdown unterbrochen: Zurückstellen auf PENDING
       return await jobRepo.updateJobStatus(jobId, {

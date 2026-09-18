@@ -13,13 +13,24 @@ export interface KanzleiMemberItem extends KanzleiUserProfile {
 }
 
 interface AuthContextType {
-  organization: Organization;
+  organization: Organization | null;
+  hasActiveOrganization: boolean;
   currentUser: KanzleiUserProfile;
   teamMembers: KanzleiMemberItem[];
   isAuthenticated: boolean;
   switchRole: (newRole: NotaryRole) => void;
   switchUser: (userId: string) => void;
   logout: () => Promise<void>;
+  createOrganization: (data: {
+    name: string;
+    officialSeat: string;
+    chamberDistrict: string;
+  }) => Promise<void>;
+  updateOrganization: (data: {
+    name: string;
+    officialSeat: string;
+    chamberDistrict: string;
+  }) => Promise<void>;
   updateMemberRole: (userId: string, newRole: NotaryRole) => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
   inviteMember: (name: string, email: string, role: NotaryRole) => Promise<void>;
@@ -114,6 +125,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
+  const createOrgMutation = useMutation({
+    mutationFn: async (payload: {
+      name: string;
+      officialSeat: string;
+      chamberDistrict: string;
+    }) => {
+      const res = await fetch('/api/organization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Fehler beim Erstellen der Kanzlei');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      router.refresh();
+    },
+  });
+
+  const updateOrgMutation = useMutation({
+    mutationFn: async (payload: {
+      name: string;
+      officialSeat: string;
+      chamberDistrict: string;
+    }) => {
+      const res = await fetch('/api/organization', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Fehler beim Aktualisieren der Kanzlei');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      router.refresh();
+    },
+  });
+
   const teamMembers: KanzleiMemberItem[] = members.map((m) => ({
     id: m.id,
     name: m.name,
@@ -136,15 +195,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     : FALLBACK_DEFAULT_USER;
 
-  const currentOrg: Organization = sessionData?.organization
-    ? {
-        id: sessionData.organization.id,
-        name: sessionData.organization.name,
-        officialSeat: sessionData.organization.officialSeat,
-        chamberDistrict: sessionData.organization.chamberDistrict,
-        createdAt: '2026-01-01T08:00:00.000Z',
-        updatedAt: '2026-01-01T08:00:00.000Z',
-      }
+  // Wenn der Benutzer explizit angemeldet ist, aber keine Kanzlei hat, ist currentOrg null
+  const hasActiveOrganization = sessionData ? sessionData.hasActiveOrganization : true; // Im un-authentifizierten/Demo-Modus bleibt Fallback-Kanzlei
+
+  const currentOrg: Organization | null = sessionData
+    ? sessionData.organization
+      ? {
+          id: sessionData.organization.id,
+          name: sessionData.organization.name,
+          officialSeat: sessionData.organization.officialSeat,
+          chamberDistrict: sessionData.organization.chamberDistrict,
+          createdAt: '2026-01-01T08:00:00.000Z',
+          updatedAt: '2026-01-01T08:00:00.000Z',
+        }
+      : null
     : DEFAULT_ORGANIZATION;
 
   const switchRole = (newRole: NotaryRole) => {
@@ -175,6 +239,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await logoutMutation.mutateAsync();
   };
 
+  const createOrganization = async (data: {
+    name: string;
+    officialSeat: string;
+    chamberDistrict: string;
+  }) => {
+    await createOrgMutation.mutateAsync(data);
+  };
+
+  const updateOrganization = async (data: {
+    name: string;
+    officialSeat: string;
+    chamberDistrict: string;
+  }) => {
+    await updateOrgMutation.mutateAsync(data);
+  };
+
   const hasRolePermission = (action: PermissionAction): boolean => {
     return hasPermission(currentUser.role, action);
   };
@@ -183,12 +263,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         organization: currentOrg,
+        hasActiveOrganization,
         currentUser,
         teamMembers,
         isAuthenticated: !!sessionData?.user,
         switchRole,
         switchUser,
         logout,
+        createOrganization,
+        updateOrganization,
         updateMemberRole,
         removeMember,
         inviteMember,
@@ -208,4 +291,8 @@ export function useAuth(): AuthContextType {
     throw new Error('useAuth muss innerhalb eines AuthProviders verwendet werden.');
   }
   return context;
+}
+
+export function useOptionalAuth(): AuthContextType | null {
+  return useContext(AuthContext);
 }

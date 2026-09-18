@@ -1,10 +1,11 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DB_TABLES } from '@/types/database';
 import { DocumentRecord } from '@/types/document';
 import { Dossier } from '@/types/dossier';
 
-export const DOCUMENTS_QUERY_KEY = ['documents'] as const;
+export const DOCUMENTS_QUERY_KEY = [DB_TABLES.DOCUMENTS] as const;
 
 async function fetchDocuments(): Promise<DocumentRecord[]> {
   const res = await fetch('/api/documents');

@@ -146,7 +146,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                 durchsuchen
               </span>
             </p>
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="text-muted-foreground mt-1 text-sm">
               Alle gängigen Dokumenten- und Bildformate werden unterstützt
             </p>
           </div>
@@ -154,8 +154,8 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       </div>
 
       {parseError && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3.5 text-base text-red-700">
+          <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{parseError}</span>
         </div>
       )}
@@ -163,31 +163,31 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       {/* Dateiliste */}
       {selectedFiles.length > 0 && (
         <div className="space-y-2">
-          <div className="text-foreground flex items-center justify-between text-xs font-semibold">
+          <div className="text-foreground flex items-center justify-between text-sm font-semibold">
             <span>Ausgewählte Dokumente ({selectedFiles.length}):</span>
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3">
             {selectedFiles.map((file, idx) => {
               const isImg = file.type.startsWith('image/');
               return (
                 <div
                   key={idx}
-                  className="border-border bg-card flex items-center justify-between rounded-lg border p-2.5 text-xs shadow-2xs"
+                  className="border-border bg-card flex items-center justify-between rounded-lg border p-3 shadow-2xs"
                 >
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     {isImg ? (
-                      <ImageIcon className="h-4 w-4 shrink-0 text-sky-500" />
+                      <ImageIcon className="h-4.5 w-4.5 shrink-0 text-sky-500" />
                     ) : (
-                      <FileText className="text-notar-900 h-4 w-4 shrink-0" />
+                      <FileText className="text-notar-900 h-4.5 w-4.5 shrink-0" />
                     )}
                     <div className="truncate">
                       <p
-                        className="text-foreground truncate text-sm font-medium sm:text-base"
+                        className="text-foreground truncate text-base font-medium"
                         title={file.name}
                       >
                         {file.name}
                       </p>
-                      <p className="text-muted-foreground text-xs">
+                      <p className="text-muted-foreground text-sm">
                         {Math.round(file.size / 1024)} KB
                       </p>
                     </div>
@@ -203,7 +203,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                       title="Datei entfernen"
                       aria-label={`Datei ${file.name} entfernen`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4.5 w-4.5" />
                     </button>
                   )}
                 </div>
@@ -249,14 +249,14 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                 {noteList.map((noteText, idx) => (
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-muted-foreground text-2xs font-medium">
+                      <label className="text-muted-foreground text-sm font-medium">
                         {`Notiz #${idx + 1}`}
                       </label>
                       {noteList.length > 1 && !isAnalyzing && (
                         <button
                           type="button"
                           onClick={() => removeNoteAt(idx)}
-                          className="text-muted-foreground hover:text-destructive text-2xs cursor-pointer transition-colors"
+                          className="text-muted-foreground hover:text-destructive cursor-pointer text-sm transition-colors"
                         >
                           Entfernen
                         </button>
@@ -281,9 +281,9 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                     <button
                       type="button"
                       onClick={addNoteField}
-                      className="border-border hover:bg-muted text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                      className="border-border hover:bg-muted text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-base font-medium transition-colors"
                     >
-                      <Plus className="text-notar-900 h-3.5 w-3.5" />
+                      <Plus className="text-notar-900 h-4 w-4" />
                       <span>Weiteres Notizfeld hinzufügen</span>
                     </button>
                   </div>

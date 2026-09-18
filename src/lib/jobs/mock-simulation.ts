@@ -14,10 +14,25 @@ export interface SimulationParams {
   notes: string;
   onStep: (step: number, stepDetail: string) => void;
   stepDelayMs?: number;
+  abortSignal?: AbortSignal;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error('Vorgang abgebrochen'));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new Error('Vorgang abgebrochen'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }
 
 /**
@@ -25,29 +40,29 @@ function delay(ms: number): Promise<void> {
  * Erlaubt das Testen des gesamten Workflows ohne API-Kosten.
  */
 export async function runMockSimulation(params: SimulationParams): Promise<ImmobilienDossier> {
-  const { files, notes, onStep, stepDelayMs = 2500 } = params;
+  const { files, notes, onStep, stepDelayMs = 2500, abortSignal } = params;
   const todayStr = new Date().toISOString().split('T')[0] ?? '2026-09-13';
 
   // Stufe 1: Urkunden- & Sachverhaltserfassung (Texterfassung & Strukturierung)
   onStep(1, 'Dokumentenstruktur analysieren und Textlayer extrahieren...');
-  await delay(Math.round(stepDelayMs * 0.9));
+  await delay(Math.round(stepDelayMs * 0.9), abortSignal);
 
   onStep(1, 'Beteiligte, Flurstücke und Kaufpreisangaben identifizieren...');
-  await delay(Math.round(stepDelayMs * 1.1));
+  await delay(Math.round(stepDelayMs * 1.1), abortSignal);
 
   // Stufe 2: Notarielle Vorprüfung & Plausibilisierung (Rechtsnormen & Konsistenzabgleich)
   onStep(2, 'Notary Auditor: Gesetzliche Prüfnormen (§ 80 GEG, § 17 BeurkG) prüfen...');
-  await delay(Math.round(stepDelayMs * 1.1));
+  await delay(Math.round(stepDelayMs * 1.1), abortSignal);
 
   onStep(2, 'Konsistenzprüfung: Grundbuchstand mit Entwurfsbestimmungen abgleichen...');
-  await delay(Math.round(stepDelayMs * 1.1));
+  await delay(Math.round(stepDelayMs * 1.1), abortSignal);
 
   onStep(2, 'Fälligkeitsvoraussetzungen und Belastungsvollmacht analysieren...');
-  await delay(Math.round(stepDelayMs * 0.9));
+  await delay(Math.round(stepDelayMs * 0.9), abortSignal);
 
   // Stufe 3: Prüfbericht & Cockpit-Aufbereitung
   onStep(3, 'Dossier-Cockpit aufbereiten und Quellenbelege indizieren...');
-  await delay(Math.round(stepDelayMs * 1.0));
+  await delay(Math.round(stepDelayMs * 1.0), abortSignal);
 
   const titleFromNotes = notes.trim()
     ? notes.trim().slice(0, 50)

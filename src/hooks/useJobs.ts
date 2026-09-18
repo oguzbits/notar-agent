@@ -27,6 +27,16 @@ async function apiRetryJob(jobId: string): Promise<void> {
   }
 }
 
+async function apiCancelJob(jobId: string): Promise<void> {
+  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/cancel`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Fehler beim Abbrechen des Jobs');
+  }
+}
+
 export function useJobs() {
   const queryClient = useQueryClient();
   const previousActiveCount = useRef<number>(0);
@@ -68,6 +78,13 @@ export function useJobs() {
     },
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: apiCancelJob,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: JOBS_QUERY_KEY });
+    },
+  });
+
   const failedJobs = jobs.filter((j) => j.status === JOB_STATUS.FAILED);
 
   const retryJob = async (jobId: string): Promise<boolean> => {
@@ -76,6 +93,16 @@ export function useJobs() {
       return true;
     } catch (err) {
       console.error('Job-Retry fehlgeschlagen:', err);
+      return false;
+    }
+  };
+
+  const cancelJob = async (jobId: string): Promise<boolean> => {
+    try {
+      await cancelMutation.mutateAsync(jobId);
+      return true;
+    } catch (err) {
+      console.error('Job-Abbruch fehlgeschlagen:', err);
       return false;
     }
   };
@@ -89,7 +116,9 @@ export function useJobs() {
     jobsError,
     loadJobs,
     retryJob,
+    cancelJob,
     isRetrying: retryMutation.isPending,
+    isCancelling: cancelMutation.isPending,
   };
 }
 

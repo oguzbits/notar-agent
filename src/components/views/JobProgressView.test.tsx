@@ -56,4 +56,25 @@ describe('JobProgressView Component', () => {
     expect(screen.getByText('Dokument konnte nicht dekodiert werden.')).toBeDefined();
     expect(screen.getByText('Prüfung wiederholen')).toBeDefined();
   });
+
+  it('renders cancel button for active jobs and invokes onCancelJob upon confirmation', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    const onCancel = vi.fn().mockResolvedValue(true);
+
+    render(<JobProgressView job={mockJob} onBackToTable={vi.fn()} onCancelJob={onCancel} />);
+
+    const cancelButton = screen.getByText('Vorgang abbrechen');
+    expect(cancelButton).toBeDefined();
+
+    // Click cancel button -> opens ConfirmDialog
+    fireEvent.click(cancelButton);
+
+    expect(screen.getByText('Vorgang wirklich abbrechen?')).toBeDefined();
+
+    // Confirm cancellation
+    const confirmButton = screen.getByText('Ja, abbrechen');
+    fireEvent.click(confirmButton);
+
+    expect(onCancel).toHaveBeenCalledWith('job-999');
+  });
 });

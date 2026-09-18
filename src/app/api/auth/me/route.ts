@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { AuthSessionResponseSchema } from '@/types/auth';
+import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES, NotaryRole } from '@/types/organization';
 
 export const dynamic = 'force-dynamic';
@@ -27,25 +28,27 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
 
     // Profil abrufen
     const { data: profile } = await supabase
-      .from('profiles')
+      .from(DB_TABLES.PROFILES)
       .select('*')
       .eq('id', user.id)
       .single();
 
     // Kanzlei-Mitgliedschaft und Organisation abrufen
     const { data: member } = await supabase
-      .from('organization_members')
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .select('role, organization:organizations(*)')
       .eq('user_id', user.id)
       .single();
 
-    const role: NotaryRole = (member?.role as NotaryRole) || NOTARY_ROLES.NOTAR;
+    const role: NotaryRole = (member?.role as NotaryRole) || NOTARY_ROLES.SACHBEARBEITER;
     const org = member?.organization as {
       id?: string;
       name?: string;
       official_seat?: string;
       chamber_district?: string;
     } | null;
+
+    const hasActiveOrganization = Boolean(org?.id);
 
     const responsePayload = {
       user: {
@@ -59,12 +62,15 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
         title: profile?.title || user.user_metadata?.title,
         role,
       },
-      organization: {
-        id: org?.id || '550e8400-e29b-41d4-a716-446655440000',
-        name: org?.name || 'Notariat Standard Kanzlei',
-        officialSeat: org?.official_seat || 'Münster',
-        chamberDistrict: org?.chamber_district || 'Westfälische Notarkammer',
-      },
+      organization: hasActiveOrganization
+        ? {
+            id: org!.id!,
+            name: org!.name || 'Kanzlei ohne Namen',
+            officialSeat: org!.official_seat || '',
+            chamberDistrict: org!.chamber_district || '',
+          }
+        : null,
+      hasActiveOrganization,
     };
 
     const parsed = AuthSessionResponseSchema.safeParse(responsePayload);

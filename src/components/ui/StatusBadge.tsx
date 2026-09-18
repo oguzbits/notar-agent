@@ -4,6 +4,7 @@ import {
   Clock,
   HelpCircle,
   Loader2,
+  Ban,
   type LucideIcon,
 } from 'lucide-react';
 import React from 'react';
@@ -87,6 +88,12 @@ const statusBadgeConfig: Record<string, BadgeConfig> = {
     className: 'border-destructive/30 bg-destructive/10 text-destructive font-semibold',
     icon: AlertTriangle,
     iconClass: 'text-destructive',
+  },
+  [JOB_STATUS.CANCELLED]: {
+    label: 'Abgebrochen',
+    className: 'border-slate-300 bg-slate-100 text-slate-700 font-semibold',
+    icon: Ban,
+    iconClass: 'text-slate-600',
   },
   [JOB_STATUS.COMPLETED]: {
     label: 'Abgeschlossen',

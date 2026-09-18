@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { RegisterRequestSchema } from '@/types/auth';
+import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES } from '@/types/organization';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const { email, password, fullName, title, organizationName, officialSeat, chamberDistrict } =
       parsed.data;
-
     const supabase = await createServerAuthClient();
 
     if (!supabase) {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 1. Supabase Auth Benutzer anlegen
+    // 1. Auth-Benutzer registrieren
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // 2. Kanzlei-Organisation erstellen
     const { data: orgData, error: orgError } = await supabase
-      .from('organizations')
+      .from(DB_TABLES.ORGANIZATIONS)
       .insert({
         name: organizationName,
         official_seat: officialSeat,
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // 3. Benutzer als Notar/Inhaber zuweisen
-    const { error: memberError } = await supabase.from('organization_members').insert({
+    const { error: memberError } = await supabase.from(DB_TABLES.ORGANIZATION_MEMBERS).insert({
       organization_id: orgData.id,
       user_id: userId,
       role: NOTARY_ROLES.NOTAR,

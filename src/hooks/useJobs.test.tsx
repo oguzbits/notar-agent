@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import React from 'react';
 import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { DOCUMENTS_QUERY_KEY } from '@/hooks/useDocuments';
 import { CASE_TYPES } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 import { useJobs, useJob, jobDetailQueryKey } from './useJobs';
@@ -98,6 +99,31 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
     expect(jobsState[0]?.status).toBe(JOB_STATUS.PENDING);
   });
 
+  it('cancels an active job via cancelJob', async () => {
+    server.use(
+      http.post('/api/jobs/:id/cancel', async ({ params }) => {
+        const id = params.id as string;
+        jobsState = jobsState.map((j) =>
+          j.id === id ? { ...j, status: JOB_STATUS.CANCELLED } : j
+        );
+        return HttpResponse.json({ success: true, message: 'Vorgang abgebrochen' });
+      })
+    );
+
+    const { result } = renderHook(() => useJobs(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.jobs[0]?.status).toBe(JOB_STATUS.PROCESSING);
+    });
+
+    await act(async () => {
+      const success = await result.current.cancelJob('job-123');
+      expect(success).toBe(true);
+    });
+
+    expect(jobsState[0]?.status).toBe(JOB_STATUS.CANCELLED);
+  });
+
   it('fetches a single job by id via useJob and polls until completed', async () => {
     const singleJob: DossierJob = {
       ...sampleJob,
@@ -146,7 +172,7 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
     rerender();
 
     await waitFor(() => {
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['documents'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: DOCUMENTS_QUERY_KEY });
     });
   });
 });

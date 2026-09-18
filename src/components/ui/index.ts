@@ -7,5 +7,7 @@ export type { InputProps } from './Input';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
 export type { CardProps } from './Card';
 export { ErrorBoundary } from './ErrorBoundary';
+export { ConfirmDialog } from './ConfirmDialog';
+export type { ConfirmDialogProps } from './ConfirmDialog';
 export { GoogleIcon } from './icons/GoogleIcon';
 export type { GoogleIconProps } from './icons/GoogleIcon';

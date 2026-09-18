@@ -1,11 +1,13 @@
 'use client';
 
-import { FileText, Loader2, RotateCw, AlertTriangle, ArrowLeft } from 'lucide-react';
-import React from 'react';
+import { FileText, Loader2, RotateCw, AlertTriangle, ArrowLeft, Ban } from 'lucide-react';
+import React, { useState } from 'react';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
+import { formatDateTimeGerman } from '@/lib/formatters';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
 interface JobProgressViewProps {
@@ -17,7 +19,8 @@ interface JobProgressViewProps {
           | typeof JOB_STATUS.PENDING
           | typeof JOB_STATUS.PROCESSING
           | typeof JOB_STATUS.COMPLETED
-          | typeof JOB_STATUS.FAILED;
+          | typeof JOB_STATUS.FAILED
+          | typeof JOB_STATUS.CANCELLED;
         stage?:
           | typeof JOB_STAGES.QUEUED
           | typeof JOB_STAGES.PAGE_SPLITTING
@@ -37,18 +40,24 @@ interface JobProgressViewProps {
           files: Array<{ name: string; size: number }>;
         };
         errorMessage?: string;
+        createdAt?: string;
       };
   onBackToTable: () => void;
   onRetryJob?: (jobId: string) => Promise<boolean | void>;
+  onCancelJob?: (jobId: string) => Promise<boolean | void>;
   isRetrying?: boolean;
+  isCancelling?: boolean;
 }
 
 export const JobProgressView: React.FC<JobProgressViewProps> = ({
   job,
   onBackToTable,
   onRetryJob,
+  onCancelJob,
   isRetrying = false,
+  isCancelling = false,
 }) => {
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   // Map job stage to stepper activeStep (1, 2, or 3)
   const activeStep: 1 | 2 | 3 =
     job.stage === JOB_STAGES.AUDITING ? 2 : job.stage === JOB_STAGES.PERSISTING ? 3 : 1;
@@ -72,13 +81,34 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           </h2>
           <div className="flex items-center gap-2">
             <StatusBadge status={job.status} size="sm" />
-            <span className="text-muted-foreground text-xs">
-              {job.status === JOB_STATUS.PROCESSING ? 'Live-Prüfung aktiv' : 'In Warteschlange'}
-            </span>
+            {job.createdAt && (
+              <span className="text-muted-foreground text-sm">
+                Stand: {formatDateTimeGerman(job.createdAt)}
+                {' Uhr'}
+              </span>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {onCancelJob &&
+            (job.status === JOB_STATUS.PENDING || job.status === JOB_STATUS.PROCESSING) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                disabled={isCancelling}
+                onClick={() => setIsCancelConfirmOpen(true)}
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1.5"
+              >
+                {isCancelling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Ban className="h-4 w-4" />
+                )}
+                <span>Vorgang abbrechen</span>
+              </Button>
+            )}
           <Button
             type="button"
             variant="outline"
@@ -91,6 +121,22 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Abbruch-Meldung bei CANCELLED */}
+      {job.status === JOB_STATUS.CANCELLED && (
+        <div className="border-border bg-muted/30 text-foreground space-y-3 rounded-xl border p-5 shadow-xs">
+          <div className="flex items-start gap-3">
+            <Ban className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold">Vorgang abgebrochen</h3>
+              <p className="text-muted-foreground text-sm">
+                {job.errorMessage ||
+                  'Die Hintergrundverarbeitung wurde durch den Benutzer abgebrochen.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fehlermeldung & Retry-Aktion bei FAILED */}
       {job.status === JOB_STATUS.FAILED && (
@@ -126,6 +172,24 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
           )}
         </div>
       )}
+
+      {/* Sicherheits-Bestätigungsdialog vor Abbruch */}
+      <ConfirmDialog
+        isOpen={isCancelConfirmOpen}
+        onClose={() => setIsCancelConfirmOpen(false)}
+        onConfirm={async () => {
+          setIsCancelConfirmOpen(false);
+          if (onCancelJob) {
+            await onCancelJob(job.id);
+          }
+        }}
+        title="Vorgang wirklich abbrechen?"
+        description="Möchten Sie die laufende Prüfung wirklich beenden? Bereits durchgeführte Analyseschritte werden verworfen."
+        confirmLabel="Ja, abbrechen"
+        cancelLabel="Fortsetzen"
+        variant="danger"
+        isLoading={isCancelling}
+      />
 
       {/* Großer prominenter AgenticWorkflowStepper */}
       <AgenticWorkflowStepper

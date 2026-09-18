@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { parseSseStream } from '@/lib/sse/parse-sse-stream';
+import { useOptionalAuth } from '@/providers/AuthProvider';
 import { Dossier, CaseType, UploadedFilePayload, PersistenceMeta } from '@/types/dossier';
 
 export interface AnalysisStreamResult {
@@ -19,6 +20,8 @@ interface SSEAnalysisEvent {
 }
 
 export function useAnalysisWorkflow() {
+  const auth = useOptionalAuth();
+  const organization = auth?.organization;
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [stepDetail, setStepDetail] = useState<string>('');
@@ -75,10 +78,15 @@ export function useAnalysisWorkflow() {
     setStepDetail('Hintergrund-Job wird angelegt...');
     setErrorMessage(null);
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (organization?.id) {
+      headers['x-organization-id'] = organization.id;
+    }
+
     try {
       const response = await fetch('/api/analyze?async=true', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           files: files.map((f) => ({
             name: f.name,
@@ -89,6 +97,7 @@ export function useAnalysisWorkflow() {
           })),
           caseType,
           notes,
+          organizationId: organization?.id,
         }),
       });
 
@@ -128,10 +137,15 @@ export function useAnalysisWorkflow() {
     setStepDetail('Neue Unterlagen werden vorbereitet...');
     setErrorMessage(null);
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (organization?.id) {
+      headers['x-organization-id'] = organization.id;
+    }
+
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           files: appendFiles.map((f) => ({
             name: f.name,
@@ -144,6 +158,7 @@ export function useAnalysisWorkflow() {
           notes: appendNotes,
           existingDossier: currentDossier,
           documentId: activeDocumentId,
+          organizationId: organization?.id,
         }),
       });
 

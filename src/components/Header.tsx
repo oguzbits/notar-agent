@@ -12,9 +12,14 @@ interface HeaderProps {
   overallStatus?: OverallStatus;
   onLogoClick?: () => void;
   onOpenTeamSettings?: () => void;
+  onOpenOrganizationGateway?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onLogoClick, onOpenTeamSettings }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onLogoClick,
+  onOpenTeamSettings,
+  onOpenOrganizationGateway,
+}) => {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const handleOpenTeam = () => {
@@ -35,7 +40,10 @@ export const Header: React.FC<HeaderProps> = ({ onLogoClick, onOpenTeamSettings 
 
         {/* Rechts: Kanzlei & Rollen-Badge */}
         <div className="flex items-center gap-3">
-          <RoleBadge onOpenTeamSettings={handleOpenTeam} />
+          <RoleBadge
+            onOpenTeamSettings={handleOpenTeam}
+            onOpenOrganizationGateway={onOpenOrganizationGateway}
+          />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTeamRepository } from '@/lib/supabase/server';
+import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { UpdateMemberRoleRequestSchema } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ interface RouteContext {
 export async function PATCH(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const { id } = await context.params;
+    const authSupabase = await createServerAuthClient();
     const orgId = req.headers.get('x-organization-id') || DEFAULT_ORG_ID;
     const body = await req.json();
 
@@ -24,7 +26,7 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
       );
     }
 
-    const repo = getTeamRepository();
+    const repo = getTeamRepository(authSupabase);
     const updated = await repo.updateMemberRole(id, parsed.data.role, orgId);
 
     if (!updated) {
@@ -41,8 +43,9 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
 export async function DELETE(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const { id } = await context.params;
+    const authSupabase = await createServerAuthClient();
     const orgId = req.headers.get('x-organization-id') || DEFAULT_ORG_ID;
-    const repo = getTeamRepository();
+    const repo = getTeamRepository(authSupabase);
 
     const success = await repo.removeMember(id, orgId);
     if (!success) {

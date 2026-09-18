@@ -2,6 +2,7 @@
 
 import { FileText, Search, Plus, Trash2, ExternalLink, Loader2, RotateCw } from 'lucide-react';
 import React, { useState } from 'react';
+import { ConfirmDialog } from '@/components/ui';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
@@ -46,7 +47,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   const canDelete = hasRolePermission(PERMISSION_ACTIONS.DELETE_DOSSIER);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterStatus>(DOCUMENT_FILTERS.ALL);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
 
   const filteredDocuments = documents.filter((doc) => {
@@ -89,16 +91,14 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
     }
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm('Möchten Sie diesen Vorgang wirklich unwiderruflich löschen?')) {
-      return;
-    }
-    setDeletingId(id);
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteDoc) return;
+    setIsDeleting(true);
     try {
-      await onDeleteDocument(id);
+      await onDeleteDocument(pendingDeleteDoc.id);
+      setPendingDeleteDoc(null);
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -363,8 +363,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                           </button>
                           <button
                             type="button"
-                            disabled={deletingId === doc.id || !canDelete}
-                            onClick={(e) => handleDelete(doc.id, e)}
+                            disabled={!canDelete}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingDeleteDoc(doc);
+                            }}
                             className={cn(
                               'flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-red-500',
                               canDelete
@@ -378,11 +381,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             }
                             aria-label={`Vorgang ${doc.title} löschen`}
                           >
-                            {deletingId === doc.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -394,6 +393,28 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           </div>
         )}
       </div>
+
+      {/* Barrierefreier Bestätigungsdialog für das Löschen von Vorgängen (§ 17 BeurkG) */}
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteDoc)}
+        isLoading={isDeleting}
+        onClose={() => setPendingDeleteDoc(null)}
+        onConfirm={handleConfirmDelete}
+        title="Urkundenvorgang löschen?"
+        description={
+          <span>
+            Möchten Sie den Vorgang{' '}
+            <strong className="text-foreground font-semibold">
+              {pendingDeleteDoc?.title || 'diese Akte'}
+            </strong>{' '}
+            wirklich unwiderruflich aus der Kanzleidatenbank löschen? Alle zugehörigen Dokumente und
+            notariellen Prüfmerkmale werden dauerhaft entfernt.
+          </span>
+        }
+        confirmLabel="Unwiderruflich löschen"
+        cancelLabel="Abbrechen"
+        variant="danger"
+      />
     </div>
   );
 };

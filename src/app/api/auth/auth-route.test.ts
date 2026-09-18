@@ -5,6 +5,7 @@ import { POST as logoutRoute } from '@/app/api/auth/logout/route';
 import { GET as meRoute } from '@/app/api/auth/me/route';
 import { POST as registerRoute } from '@/app/api/auth/register/route';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES } from '@/types/organization';
 
 // Mock server auth client
@@ -132,14 +133,14 @@ describe('Auth API Routes', () => {
           getUser: vi.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
         },
         from: vi.fn((table: string) => {
-          if (table === 'profiles') {
+          if (table === DB_TABLES.PROFILES) {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
             };
           }
-          if (table === 'organization_members') {
+          if (table === DB_TABLES.ORGANIZATION_MEMBERS) {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
@@ -161,6 +162,47 @@ describe('Auth API Routes', () => {
       expect(json.user.name).toBe('Dr. Notar');
       expect(json.user.role).toBe(NOTARY_ROLES.NOTAR);
       expect(json.organization.name).toBe('Notariat Westfalen');
+      expect(json.hasActiveOrganization).toBe(true);
+    });
+
+    it('returns organization: null and hasActiveOrganization: false when user has no organization', async () => {
+      const mockUser = { id: 'a0000000-0000-4000-8000-000000000002', email: 'sso-user@kanzlei.de' };
+      const mockProfile = {
+        id: 'a0000000-0000-4000-8000-000000000002',
+        full_name: 'SSO Neu-Benutzer',
+      };
+
+      const mockSupabase = {
+        auth: {
+          getUser: vi.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
+        },
+        from: vi.fn((table: string) => {
+          if (table === DB_TABLES.PROFILES) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+            };
+          }
+          if (table === DB_TABLES.ORGANIZATION_MEMBERS) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } }),
+            };
+          }
+          return { select: vi.fn().mockReturnThis() };
+        }),
+      };
+      mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
+
+      const req = new NextRequest('http://localhost:3000/api/auth/me');
+      const res = await meRoute(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.user.name).toBe('SSO Neu-Benutzer');
+      expect(json.organization).toBeNull();
+      expect(json.hasActiveOrganization).toBe(false);
     });
   });
 
@@ -191,14 +233,14 @@ describe('Auth API Routes', () => {
           }),
         },
         from: vi.fn((table: string) => {
-          if (table === 'organizations') {
+          if (table === DB_TABLES.ORGANIZATIONS) {
             return {
               insert: vi.fn().mockReturnThis(),
               select: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({ data: mockOrg, error: null }),
             };
           }
-          if (table === 'organization_members') {
+          if (table === DB_TABLES.ORGANIZATION_MEMBERS) {
             return {
               insert: vi.fn().mockResolvedValue({ error: null }),
             };
