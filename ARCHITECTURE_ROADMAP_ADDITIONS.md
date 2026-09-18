@@ -537,3 +537,50 @@ graph TD
 - [ ] **Datenbank-Tabelle `organization_invitations`:** Schema mit `organization_id`, `email`, `role`, `token_hash`, `expires_at` und `status` (`PENDING`, `ACCEPTED`, `REVOKED`, `EXPIRED`).
 - [ ] **Einladungs-Management im Team-Cockpit:** Übersicht ausstehender Einladungen mit Aktionen „Erneut senden“ und „Widerrufen“.
 - [ ] **Akzeptierungs-Flow (`/invitations/accept?token=...`):** Valider Beitritts-Workflow mit automatischer Zuordnung zur einladenden Kanzlei.
+
+---
+
+## 16. Enterprise Styling Grundattribute & Design Tokens (Benchmark: Linear, Clerk & Supabase)
+
+- **Priorisierung:** Hohe UX- und Konsistenz-Priorität für das Kanzlei-Frontend (Design-System-Fundament).
+- **Ziel:** Einheitliche, mathematisch harmonische Definition aller visuellen Grundattribute über das gesamte System hinweg, um inkonsistente Schriftgrößen, gestauchte Menüs oder willkürliche Abstände dauerhaft auszuschließen.
+- **Industrie-Referenz:** Orientierung an den führenden Enterprise-B2B-Design-Systemen:
+  - **Linear Design System:** Perfekt austarierte Typografie-Skala, konsistente Rhythmen (`leading`/`tracking`) und edle Schatten/Borders.
+  - **Clerk UI Primitives:** Großzügige, lesbare Overlays, Dropdowns und Formular-Hierarchien.
+  - **Supabase Dashboard:** Klare semantische Kontraste (`card`, `muted`, `accent`), ergonomische Dichte und barrierefreie Farbräume.
+
+```mermaid
+graph TD
+    A["Design Tokens (globals.css)"] --> B["Typografie-Skala (Base 16px, Sm 14px, Lg 18px)"]
+    A --> C["Spacing & Dichte (Kompakt: p-2..3.5 / Formulare: p-6..8)"]
+    A --> D["Elevation & Konturen (shadow-2xs, shadow-md, rounded-xl)"]
+    B & C & D --> E["Wiederverwendbare UI-Primitives (src/components/ui/*)"]
+    E --> F["Fachansichten & Kanzlei-Cockpit (DocumentTable, Modals, Dossier)"]
+```
+
+### Abzudeckende Dimensionen
+
+1. **Typografie-Hierarchie & Zeilenhöhe (Prüfpunkt: Radikale Skalenreduktion):**
+   - **Fragestellung / User-Hypothese:** Brauchen wir im Notarsystem überhaupt noch `text-sm` (14px) oder `text-xs` (12px)? Kann die Anwendung nicht nahezu durchgängig mit souveränen `text-base` (16px) als Mindestgröße arbeiten (wie moderne iPadOS- / macOS- und LegalTech-Oberflächen), um maximale Lesbarkeit bei Akteneinsicht und Urkundenprüfung zu garantieren?
+   - Evaluation, ob `text-sm` und `text-xs` vollständig eliminiert oder ausschließlich auf rein dekorative Zähler beschränkt werden können.
+   - Standard: `text-base` (16px) als primäre, kompromisslose Basisschrift für Fließtext, Tabellen, Formulare und Menüpunkte.
+   - Headings: `text-lg`, `text-xl`, `text-2xl`, `text-3xl` mit sauberem Zeilenrhythmus (`leading-tight`) und dezentem Tracking.
+
+2. **Abstands- & Rhythmus-Skala (Spacing & Density):**
+   - Standardisierte Padding- und Margin-Stufen:
+     - Kompakte Menüs & Overlays: `px-3.5 py-2` bis `px-4 py-3`.
+     - Kanzlei-Karten & Dialoge: `p-6` bis `p-8`.
+
+3. **Elevation & Schatten:**
+   - Definierte Schatten- und Blur-Tokens: `shadow-2xs` für interaktive Trigger, `shadow-md` für Dropdowns/Popovers und `shadow-2xl` + `backdrop-blur-md` für Modals.
+
+4. **Radien & Konturen:**
+   - Konsistente Eckenradien: `rounded-lg` für Controls & Buttons, `rounded-xl`/`rounded-2xl` für Cards und Dialoge mit semantischer Grenzlinien-Kontrastierung (`border-border`).
+
+### Geplante Aufgaben
+
+- [ ] **Typografie-Refactoring & Skalen-Bereinigung:** Untersuchung und Erprobung des Verzichts auf `text-sm` und `text-xs` zugunsten einer durchgängigen `text-base`-Ergonomie (16px Mindestgröße).
+- [ ] **Audit der bestehenden CSS-Tokens:** Bestandsaufnahme aller CSS-Variablen in `src/app/globals.css`.
+- [ ] **Harmonisierung der Primitives:** Abgleich aller Basiskomponenten in `src/components/ui/` (`Input`, `Button`, `Card`, `ConfirmDialog`, `StatusBadge`) gegen die Enterprise-Spezifikation.
+- [ ] **Overlay- & Menü-Standard:** Überprüfung aller Dropdown- und Popover-Menüs im Kanzlei-Dashboard auf Einhaltung der Mindestbreiten (`w-96`) und Schriftgrößen.
+- [ ] **A11y- und Kontrastprüfung:** Validierung von Kontrastverhältnissen (WCAG AAA/AA) im Dark- und Light-Mode.

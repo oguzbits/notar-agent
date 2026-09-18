@@ -406,3 +406,5 @@ graph TD
   - [ ] Fristen- und Wiedervorlagen-Extraktion für den Urkundenvollzug
 - [ ] **C.5 XJustiz / XNP Schnittstellen:**
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
+- [ ] **C.6 Enterprise Styling Grundattribute & Design Tokens:**
+  - _(Detaillierte Spezifikation und Aufgabenplan in [ARCHITECTURE_ROADMAP_ADDITIONS.md §16](./ARCHITECTURE_ROADMAP_ADDITIONS.md#16-enterprise-styling-grundattribute--design-tokens-benchmark-linear-clerk--supabase) hinterlegt)_

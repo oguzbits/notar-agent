@@ -43,8 +43,11 @@
 - **Design System & Typography Invariant (No Ad-Hoc HTML Primitives):**
   - **Primitive First (Zero Ad-Hoc HTML):** In feature views (`src/app/`, `src/components/views/`), never write raw `<input>`, `<select>`, `<label>`, or custom card wrapper divs. Always compose from reusable primitives in `src/components/ui/` (`<Input>`, `<Button>`, `<Card>`, `<CardHeader>`, etc.).
   - **Base Typography Standard:** All primary human-readable content, interactive controls, form inputs, and labels MUST default to `text-base` (16px / 1rem minimum).
-  - **Restricted Scale:** `text-sm` (14px) is strictly reserved for secondary helper captions, timestamps, and compact table cells. `text-xs` is strictly forbidden for body, form fields, and labels; it is only permitted for compact status pills/badges. Headings MUST use standard scale (`text-xl`, `text-2xl`, `text-3xl`) with `font-bold` and `tracking-tight`.
+  - **Restricted Scale:** `text-sm` (14px) is strictly reserved for secondary helper captions, timestamps, compact table cells, and secondary dropdown metadata (e.g. email, official seat, role subtitle). `text-xs` is strictly forbidden for body, form fields, labels, and menu items; it is only permitted for compact status pills/badges. Headings MUST use standard scale (`text-xl`, `text-2xl`, `text-3xl`) with `font-bold` and `tracking-tight`.
   - **Strict Semantic Tokens:** Never use raw Tailwind palette colors (e.g. `bg-slate-100`, `text-blue-500`, `border-gray-200`) in feature views. Exclusively use semantic theme tokens (`bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, and `notar-*` accents).
+- **Axiom of UI/UX Parsimony (Anti-Redundancy Invariant):**
+  - **Single Source of Action:** For any distinct user intent within a view, there must exist exactly one canonical trigger. Competing, duplicate, or parallel interaction paths for the same outcome are strictly prohibited.
+  - **Zero Informational & Functional Waste:** Every rendered control, label, and affordance must possess provable utility. Dead controls, no-op interactions, and obsolete transitional artifacts must be proactively identified, audited, and purged upon any change to the view.
 
 ## 3. The Lifecycle Invariant (Standard Industrial Workflow)
 
