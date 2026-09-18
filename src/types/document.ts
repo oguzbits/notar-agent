@@ -13,7 +13,6 @@ export type CaseStatus = (typeof CASE_STATUS)[keyof typeof CASE_STATUS];
 export const DocumentRecordSchema = z.object({
   id: z.string().min(1, 'ID darf nicht leer sein'),
   organizationId: z
-    .string()
     .uuid()
     .optional()
     .describe('Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'),
@@ -21,6 +20,7 @@ export const DocumentRecordSchema = z.object({
   status: CaseStatusSchema,
   content: DossierSchema,
   created_at: z.string(),
+  updated_at: z.string().optional(),
 });
 
 export type DocumentRecord = z.infer<typeof DocumentRecordSchema>;

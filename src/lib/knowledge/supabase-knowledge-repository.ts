@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
+import { DB_TABLES, Database, TableInsert } from '@/types/database';
 import { HybridSearchQuery, HybridSearchResult, KnowledgeDocument } from '@/types/knowledge';
 
 export type { IKnowledgeRepository };
@@ -10,9 +11,9 @@ export type { IKnowledgeRepository };
  * Fail-Fast: Wirft sofort bei fehlendem Client oder DB-Fehlern (§ 203 StGB & Database-First Invariant).
  */
 export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
-  private supabase: SupabaseClient;
+  private supabase: SupabaseClient<Database>;
 
-  constructor(supabaseClient: SupabaseClient) {
+  constructor(supabaseClient: SupabaseClient<Database>) {
     if (!supabaseClient) {
       throw new Error(
         'SupabaseKnowledgeRepository erfordert einen gültigen SupabaseClient (Fail-Fast).'
@@ -22,9 +23,9 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
   }
 
   async save(doc: KnowledgeDocument): Promise<KnowledgeDocument> {
-    const payload: Record<string, unknown> = {
+    const payload: TableInsert<typeof DB_TABLES.KNOWLEDGE_DOCUMENTS> = {
       id: doc.id,
-      organization_id: doc.organizationId,
+      organization_id: doc.organizationId ?? null,
       category: doc.category,
       legal_basis: doc.legalBasis,
       court_or_authority: doc.courtOrAuthority ?? null,
@@ -35,7 +36,7 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
     };
 
     const { data, error } = await this.supabase
-      .from('knowledge_documents')
+      .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
       .upsert(payload)
       .select('id')
       .single();

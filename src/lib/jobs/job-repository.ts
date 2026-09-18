@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { DB_TABLES, Database, TableInsert, TableUpdate } from '@/types/database';
 import {
   CreateJobPayload,
   DossierJob,
@@ -34,21 +35,20 @@ export interface IJobRepository {
  * Strikte Fehlerbehandlung ohne stillen In-Memory Fallback.
  */
 export class SupabaseJobRepository implements IJobRepository {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient<Database>) {}
 
   async createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob> {
-    const insertData: Record<string, unknown> = {
+    const insertData: TableInsert<typeof DB_TABLES.DOSSIER_JOBS> = {
+      id: crypto.randomUUID(),
       status: JOB_STATUS.PENDING,
       payload,
       retry_count: 0,
       max_retries: 3,
+      organization_id: organizationId ?? null,
     };
-    if (organizationId) {
-      insertData.organization_id = organizationId;
-    }
 
     const { data, error } = await this.supabase
-      .from('dossier_jobs')
+      .from(DB_TABLES.DOSSIER_JOBS)
       .insert(insertData)
       .select('*')
       .single();
@@ -63,7 +63,7 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async getJobById(id: string, organizationId?: string): Promise<DossierJob | null> {
-    let query = this.supabase.from('dossier_jobs').select('*').eq('id', id);
+    let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).select('*').eq('id', id);
 
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
@@ -83,9 +83,10 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null> {
-    const updateData: Record<string, unknown> = {
+    const updateData: TableUpdate<typeof DB_TABLES.DOSSIER_JOBS> = {
       updated_at: new Date().toISOString(),
     };
+
     if (update.status !== undefined) updateData.status = update.status;
     if (update.stage !== undefined) updateData.stage = update.stage;
     if (update.progressDetails !== undefined) updateData.progress_details = update.progressDetails;
@@ -95,7 +96,7 @@ export class SupabaseJobRepository implements IJobRepository {
     if (update.lockedAt !== undefined) updateData.locked_at = update.lockedAt;
 
     const { data, error } = await this.supabase
-      .from('dossier_jobs')
+      .from(DB_TABLES.DOSSIER_JOBS)
       .update(updateData)
       .eq('id', id)
       .select('*')
@@ -111,7 +112,10 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async claimNextPendingJob(organizationId?: string): Promise<DossierJob | null> {
-    let query = this.supabase.from('dossier_jobs').select('*').eq('status', JOB_STATUS.PENDING);
+    let query = this.supabase
+      .from(DB_TABLES.DOSSIER_JOBS)
+      .select('*')
+      .eq('status', JOB_STATUS.PENDING);
 
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
@@ -138,7 +142,7 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async listJobs(organizationId?: string): Promise<DossierJob[]> {
-    let query = this.supabase.from('dossier_jobs').select('*');
+    let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).select('*');
 
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
@@ -178,7 +182,7 @@ export class SupabaseJobRepository implements IJobRepository {
   async pruneCompletedJobs(maxAgeMs = 24 * 60 * 60 * 1000): Promise<number> {
     const cutoffIso = new Date(Date.now() - maxAgeMs).toISOString();
     const { data, error } = await this.supabase
-      .from('dossier_jobs')
+      .from(DB_TABLES.DOSSIER_JOBS)
       .delete()
       .in('status', [JOB_STATUS.COMPLETED, JOB_STATUS.FAILED])
       .lt('updated_at', cutoffIso)
@@ -195,7 +199,7 @@ export class SupabaseJobRepository implements IJobRepository {
     const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
 
     const { data: stuckJobs, error } = await this.supabase
-      .from('dossier_jobs')
+      .from(DB_TABLES.DOSSIER_JOBS)
       .select('*')
       .eq('status', JOB_STATUS.PROCESSING)
       .or(`locked_at.lte.${cutoffIso},and(locked_at.is.null,updated_at.lte.${cutoffIso})`);

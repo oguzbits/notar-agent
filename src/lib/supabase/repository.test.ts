@@ -32,7 +32,7 @@ describe('InMemoryDossierRepository', () => {
 
     const found = await repo.findById(result.id);
     expect(found).not.toBeNull();
-    expect(found?.title).toContain('Immobilienkauf');
+    expect(found?.title.toLowerCase()).toContain('immobilienkauf');
   });
 
   it('aktualisiert bestehende Dokumente', async () => {

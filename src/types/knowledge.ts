@@ -23,9 +23,8 @@ export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[keyof typeof KNOWL
  * Kanzlei-Wissensdokument / DNotI-Gutachten / Präzedenzfall.
  */
 export const KnowledgeDocumentSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   organizationId: z
-    .string()
     .uuid()
     .nullable()
     .describe('Null bei globalen DNotI- und Bundesgerichts-Normen, sonst Kanzlei-isoliert'),
@@ -39,8 +38,8 @@ export const KnowledgeDocumentSchema = z.object({
     .array(z.number())
     .optional()
     .describe('Vektor-Repräsentation (1536 oder 768 Dimensionen)'),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 });
 
 export type KnowledgeDocument = z.infer<typeof KnowledgeDocumentSchema>;
@@ -65,7 +64,7 @@ export const HybridSearchQuerySchema = z.object({
   queryText: z.string().min(1),
   queryEmbedding: z.array(z.number()).optional(),
   category: KnowledgeCategorySchema.optional(),
-  organizationId: z.string().uuid().optional(),
+  organizationId: z.uuid().optional(),
   topK: z.number().int().positive().optional().default(5),
   vectorWeight: z.number().min(0).max(1).optional().default(0.5),
 });

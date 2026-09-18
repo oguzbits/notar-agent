@@ -126,7 +126,7 @@ function createErrorMockSupabase(errorMessage: string) {
 
 describe('SupabaseAuditRepository (Fail-Fast & SSOT)', () => {
   it('throws an error immediately when Supabase fails to append an event (no silent fallback)', async () => {
-    const mockSupabase = createErrorMockSupabase('relation "audit_logs" does not exist');
+    const mockSupabase = createErrorMockSupabase('relation does not exist');
     const { SupabaseAuditRepository } = await import('./audit-repository');
     const repo = new SupabaseAuditRepository(mockSupabase as never);
 
@@ -136,7 +136,7 @@ describe('SupabaseAuditRepository (Fail-Fast & SSOT)', () => {
         action: AUDIT_ACTIONS.DOCUMENT_INGESTED,
         actor: 'Tester',
       })
-    ).rejects.toThrow('Supabase audit fetch error: relation "audit_logs" does not exist');
+    ).rejects.toThrow('Supabase audit fetch error: relation does not exist');
   });
 
   it('throws an error when Supabase fails to fetch history', async () => {

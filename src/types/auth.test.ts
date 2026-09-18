@@ -56,7 +56,7 @@ describe('Auth Contracts (Zod Schemas)', () => {
     expect(parsed.success).toBe(false);
   });
 
-  it('validates AuthSessionResponseSchema correctly', () => {
+  it('validates AuthSessionResponseSchema correctly with organization', () => {
     const validSession = {
       user: {
         id: 'a0000000-0000-4000-8000-000000000001',
@@ -70,8 +70,24 @@ describe('Auth Contracts (Zod Schemas)', () => {
         officialSeat: 'Rocky Beach',
         chamberDistrict: 'Kalifornische Notarkammer',
       },
+      hasActiveOrganization: true,
     };
     const parsed = AuthSessionResponseSchema.safeParse(validSession);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('validates AuthSessionResponseSchema when user has no organization (e.g. after SSO)', () => {
+    const sessionWithoutOrg = {
+      user: {
+        id: 'a0000000-0000-4000-8000-000000000001',
+        name: 'Peter Shaw',
+        email: 'peter@kanzlei.de',
+        role: NOTARY_ROLES.SACHBEARBEITER,
+      },
+      organization: null,
+      hasActiveOrganization: false,
+    };
+    const parsed = AuthSessionResponseSchema.safeParse(sessionWithoutOrg);
     expect(parsed.success).toBe(true);
   });
 });

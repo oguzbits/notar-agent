@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateEnv } from '@/env';
 import { IAuditRepository, SupabaseAuditRepository } from '@/lib/audit/audit-repository';
 import {
@@ -14,6 +14,7 @@ import {
   SupabaseKnowledgeRepository,
 } from '@/lib/knowledge/supabase-knowledge-repository';
 import { ITeamRepository, SupabaseTeamRepository } from '@/lib/team/team-repository';
+import { Database } from '@/types/database';
 import { Dossier } from '@/types/dossier';
 import {
   IDossierRepository,
@@ -71,7 +72,7 @@ const inMemoryAuditRepo = globalThis.__boundedInMemoryAuditRepo;
 const inMemoryKnowledgeRepo = globalThis.__boundedInMemoryKnowledgeRepo;
 const inMemoryTeamRepo = globalThis.__boundedInMemoryTeamRepo;
 
-export function getServerSupabase() {
+export function getServerSupabase(): SupabaseClient<Database> | null {
   const env = validateEnv(process.env);
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
   const supabaseKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -79,7 +80,7 @@ export function getServerSupabase() {
   if (!supabaseUrl || !supabaseKey) {
     return null;
   }
-  return createClient(supabaseUrl, supabaseKey, {
+  return createClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,
     },
@@ -89,8 +90,8 @@ export function getServerSupabase() {
 /**
  * Factory zur Bereitstellung des konfigurierten Dossier-Repositories.
  */
-export function getDossierRepository(): IDossierRepository {
-  const supabase = getServerSupabase();
+export function getDossierRepository(client?: SupabaseClient<Database> | null): IDossierRepository {
+  const supabase = client ?? getServerSupabase();
   if (!supabase) {
     return inMemoryRepo;
   }
@@ -100,8 +101,8 @@ export function getDossierRepository(): IDossierRepository {
 /**
  * Factory zur Bereitstellung des konfigurierten Job-Repositories (Phase B.1 Queue).
  */
-export function getJobRepository(): IJobRepository {
-  const supabase = getServerSupabase();
+export function getJobRepository(client?: SupabaseClient<Database> | null): IJobRepository {
+  const supabase = client ?? getServerSupabase();
   if (!supabase) {
     return inMemoryJobRepo;
   }
@@ -111,8 +112,8 @@ export function getJobRepository(): IJobRepository {
 /**
  * Factory zur Bereitstellung des konfigurierten Audit-Repositories (Phase C.1 Audit-Trail).
  */
-export function getAuditRepository(): IAuditRepository {
-  const supabase = getServerSupabase();
+export function getAuditRepository(client?: SupabaseClient<Database> | null): IAuditRepository {
+  const supabase = client ?? getServerSupabase();
   if (!supabase) {
     return inMemoryAuditRepo;
   }
@@ -122,8 +123,10 @@ export function getAuditRepository(): IAuditRepository {
 /**
  * Factory zur Bereitstellung des konfigurierten Knowledge-Repositories (Phase C.3 RAG).
  */
-export function getKnowledgeRepository(): IKnowledgeRepository {
-  const supabase = getServerSupabase();
+export function getKnowledgeRepository(
+  client?: SupabaseClient<Database> | null
+): IKnowledgeRepository {
+  const supabase = client ?? getServerSupabase();
   if (!supabase) {
     return inMemoryKnowledgeRepo;
   }
@@ -133,8 +136,8 @@ export function getKnowledgeRepository(): IKnowledgeRepository {
 /**
  * Factory zur Bereitstellung des konfigurierten Team-Repositories (Kanzleimitglieder & RBAC).
  */
-export function getTeamRepository(): ITeamRepository {
-  const supabase = getServerSupabase();
+export function getTeamRepository(client?: SupabaseClient<Database> | null): ITeamRepository {
+  const supabase = client ?? getServerSupabase();
   if (!supabase) {
     return inMemoryTeamRepo;
   }

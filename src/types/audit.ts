@@ -37,29 +37,33 @@ export const AuditOverrideDetailsSchema = z.object({
 });
 export type AuditOverrideDetails = z.infer<typeof AuditOverrideDetailsSchema>;
 
+export const AuditLogDetailsSchema = z
+  .object({
+    override: AuditOverrideDetailsSchema.optional(),
+    sourceFingerprints: z.array(AuditSourceFingerprintSchema).optional(),
+    note: z.string().optional(),
+    caseTitle: z.string().optional(),
+    actorRole: z.string().optional(),
+  })
+  .default({});
+
+export type AuditLogDetails = z.infer<typeof AuditLogDetailsSchema>;
+
 export const AuditLogEntrySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   organizationId: z
-    .string()
     .uuid()
+    .nullable()
     .optional()
     .describe('Kanzlei-ID für strikte Mandantentrennung gem. § 203 StGB'),
   documentId: z.string().min(1),
   sequenceNumber: z.number().int().nonnegative(),
   action: AuditActionSchema,
-  timestamp: z.string().datetime(),
+  timestamp: z.iso.datetime(),
   actor: z.string().min(1),
   previousHash: z.string().min(1),
   currentHash: z.string().length(64),
-  details: z
-    .object({
-      override: AuditOverrideDetailsSchema.optional(),
-      sourceFingerprints: z.array(AuditSourceFingerprintSchema).optional(),
-      note: z.string().optional(),
-      caseTitle: z.string().optional(),
-      actorRole: z.string().optional(),
-    })
-    .default({}),
+  details: AuditLogDetailsSchema,
 });
 
 export type AuditLogEntry = z.infer<typeof AuditLogEntrySchema>;

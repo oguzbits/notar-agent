@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { AuditAction, AuditIntegrityResult, AuditLogEntry } from '@/types/audit';
+import { AuditAction, AuditIntegrityResult, AuditLogDetails, AuditLogEntry } from '@/types/audit';
+import { DB_TABLES, Database, TableInsert } from '@/types/database';
 import { calculateAuditRecordHash, GENESIS_HASH, verifyAuditChain } from './audit-crypto';
 
 export interface AppendAuditParams {
@@ -7,7 +8,7 @@ export interface AppendAuditParams {
   organizationId?: string;
   action: AuditAction;
   actor: string;
-  details?: Record<string, unknown>;
+  details?: AuditLogDetails;
   timestamp?: string;
 }
 
@@ -22,12 +23,12 @@ export interface IAuditRepository {
  * Schreibt revisionssicher in die audit_logs-Tabelle mit striktem Fail-Fast bei Datenbankfehlern.
  */
 export class SupabaseAuditRepository implements IAuditRepository {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient<Database>) {}
 
   async appendEvent(params: AppendAuditParams): Promise<AuditLogEntry> {
     // 1. Letzten Eintrag abfragen zur Ermittlung von previousHash & sequenceNumber
     const { data: latestRecords, error: fetchErr } = await this.supabase
-      .from('audit_logs')
+      .from(DB_TABLES.AUDIT_LOGS)
       .select('*')
       .eq('document_id', params.documentId)
       .order('sequence_number', { ascending: false })
@@ -43,6 +44,7 @@ export class SupabaseAuditRepository implements IAuditRepository {
     const timestamp = params.timestamp || new Date().toISOString();
     const details = params.details || {};
 
+    // 2. SHA-256 Hash berechnen
     const currentHash = calculateAuditRecordHash({
       documentId: params.documentId,
       sequenceNumber,
@@ -53,10 +55,8 @@ export class SupabaseAuditRepository implements IAuditRepository {
       details,
     });
 
-    const newId = crypto.randomUUID();
-
-    const insertPayload: Record<string, unknown> = {
-      id: newId,
+    // 3. Atomar in Supabase persistieren
+    const insertPayload: TableInsert<typeof DB_TABLES.AUDIT_LOGS> = {
       document_id: params.documentId,
       sequence_number: sequenceNumber,
       action: params.action,
@@ -65,13 +65,11 @@ export class SupabaseAuditRepository implements IAuditRepository {
       previous_hash: previousHash,
       current_hash: currentHash,
       details,
+      organization_id: params.organizationId ?? null,
     };
-    if (params.organizationId) {
-      insertPayload.organization_id = params.organizationId;
-    }
 
     const { data: inserted, error: insertErr } = await this.supabase
-      .from('audit_logs')
+      .from(DB_TABLES.AUDIT_LOGS)
       .insert(insertPayload)
       .select('*')
       .single();
@@ -97,7 +95,7 @@ export class SupabaseAuditRepository implements IAuditRepository {
   }
 
   async getHistory(documentId: string, organizationId?: string): Promise<AuditLogEntry[]> {
-    let query = this.supabase.from('audit_logs').select('*').eq('document_id', documentId);
+    let query = this.supabase.from(DB_TABLES.AUDIT_LOGS).select('*').eq('document_id', documentId);
 
     if (organizationId) {
       query = query.eq('organization_id', organizationId);

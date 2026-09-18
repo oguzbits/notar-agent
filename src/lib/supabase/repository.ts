@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier';
-import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
+import { createEmptyImmobilienFields, createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
+import { DB_TABLES, Database, TableInsert } from '@/types/database';
 import { CaseStatus, DocumentRecord, CASE_STATUS } from '@/types/document';
 import { Dossier, PersistenceMeta, STORAGE_TYPES } from '@/types/dossier';
 
@@ -26,11 +27,9 @@ export interface IDossierRepository {
   delete(id: string, organizationId?: string): Promise<boolean>;
 }
 
-export function getUniformCaseTitle(caseType: string | undefined, id: string): string {
-  const shortId = id.slice(0, 8);
-  const typeLabel = caseType
-    ? caseType.charAt(0) + caseType.slice(1).toLowerCase().replace(/_/g, ' ')
-    : 'Notarvorgang';
+export function getUniformCaseTitle(caseType?: string, docId?: string): string {
+  const typeLabel = caseType || 'Vorgang';
+  const shortId = docId ? docId.slice(0, 8) : 'Entwurf';
   return `${typeLabel} - ${shortId}`;
 }
 
@@ -43,10 +42,10 @@ export function computeDocumentStatus(dossier: Dossier): CaseStatus {
  * Strikte Fehlerbehandlung ohne stillen In-Memory Fallback.
  */
 export class SupabaseDossierRepository implements IDossierRepository {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient<Database>) {}
 
   async findById(id: string, organizationId?: string): Promise<DocumentRecord | null> {
-    let query = this.supabase.from('documents').select('*').eq('id', id);
+    let query = this.supabase.from(DB_TABLES.DOCUMENTS).select('*').eq('id', id);
 
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
@@ -62,36 +61,41 @@ export class SupabaseDossierRepository implements IDossierRepository {
       return null;
     }
 
-    const doc = data as DocumentRecord;
-    const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
+    const rawContent = data.content;
+    const uniformTitle = getUniformCaseTitle(rawContent?.caseType, data.id);
+    const normalizedContent = rawContent
+      ? normalizeDossier({ ...rawContent, caseTitle: uniformTitle })
+      : createEmptyImmobilienDossier(uniformTitle);
+
     return {
-      ...doc,
+      id: data.id,
       title: uniformTitle,
-      content: doc.content
-        ? normalizeDossier({ ...doc.content, caseTitle: uniformTitle })
-        : doc.content,
+      status: (data.status as CaseStatus) || CASE_STATUS.IN_PROGRESS,
+      content: normalizedContent,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
     };
   }
 
   async save(dossier: Dossier, organizationId?: string): Promise<PersistenceResult> {
-    const normalized = normalizeDossier(dossier);
     const newId = crypto.randomUUID();
+    const normalized = normalizeDossier(dossier);
     const title = getUniformCaseTitle(normalized.caseType, newId);
     normalized.caseTitle = title;
     const status = computeDocumentStatus(normalized);
 
-    const insertPayload: Record<string, unknown> = {
+    const insertPayload: TableInsert<typeof DB_TABLES.DOCUMENTS> = {
       id: newId,
       title,
       status,
-      content: dossier,
+      content: normalized,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...(organizationId ? { organization_id: organizationId } : {}),
     };
-    if (organizationId) {
-      insertPayload.organization_id = organizationId;
-    }
 
     const { data, error } = await this.supabase
-      .from('documents')
+      .from(DB_TABLES.DOCUMENTS)
       .insert(insertPayload)
       .select('id, created_at')
       .single();
@@ -117,7 +121,7 @@ export class SupabaseDossierRepository implements IDossierRepository {
     const status = computeDocumentStatus(normalized);
 
     let query = this.supabase
-      .from('documents')
+      .from(DB_TABLES.DOCUMENTS)
       .update({
         title,
         status,
@@ -140,7 +144,7 @@ export class SupabaseDossierRepository implements IDossierRepository {
   }
 
   async list(organizationId?: string): Promise<DocumentRecord[]> {
-    let query = this.supabase.from('documents').select('*');
+    let query = this.supabase.from(DB_TABLES.DOCUMENTS).select('*');
 
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
@@ -154,27 +158,26 @@ export class SupabaseDossierRepository implements IDossierRepository {
       );
     }
 
-    return (data as DocumentRecord[]).map((doc) => {
-      const uniformTitle = getUniformCaseTitle(doc.content?.caseType, doc.id);
-      const normalizedContent = doc.content
-        ? normalizeDossier({ ...doc.content, caseTitle: uniformTitle })
-        : doc.content;
-      const computedStatus = normalizedContent
-        ? computeDocumentStatus(normalizedContent)
-        : doc.status === CASE_STATUS.DRAFT_READY
-          ? CASE_STATUS.DRAFT_READY
-          : CASE_STATUS.IN_PROGRESS;
+    return data.map((doc) => {
+      const rawContent = doc.content;
+      const uniformTitle = getUniformCaseTitle(rawContent?.caseType, doc.id);
+      const normalizedContent = rawContent
+        ? normalizeDossier({ ...rawContent, caseTitle: uniformTitle })
+        : createEmptyImmobilienDossier(uniformTitle);
+      const computedStatus = computeDocumentStatus(normalizedContent);
       return {
-        ...doc,
+        id: doc.id,
         title: uniformTitle,
         content: normalizedContent,
         status: computedStatus,
+        created_at: doc.created_at,
+        updated_at: doc.updated_at,
       };
     });
   }
 
   async delete(id: string, organizationId?: string): Promise<boolean> {
-    let query = this.supabase.from('documents').delete().eq('id', id);
+    let query = this.supabase.from(DB_TABLES.DOCUMENTS).delete().eq('id', id);
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
     }

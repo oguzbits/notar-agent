@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { z } from 'zod';
 import { TeamMember, InviteMemberRequest } from '@/types/auth';
-import { NotaryRole, NotaryRoleSchema } from '@/types/organization';
+import { DB_TABLES, Database } from '@/types/database';
+import { NotaryRole } from '@/types/organization';
 
 export interface ITeamRepository {
   listMembers(organizationId: string): Promise<TeamMember[]>;
@@ -15,61 +15,61 @@ export interface ITeamRepository {
   removeMember(id: string, organizationId: string): Promise<boolean>;
 }
 
-const OrgMemberRowSchema = z.object({
-  id: z.string().uuid(),
-  organization_id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  role: NotaryRoleSchema,
-  joined_at: z.string(),
-  profiles: z
-    .object({
-      full_name: z.string().nullable().optional(),
-      email: z.string().nullable().optional(),
-      title: z.string().nullable().optional(),
-    })
-    .nullable()
-    .optional(),
-});
-
-type OrgMemberRow = z.infer<typeof OrgMemberRowSchema>;
-
 export class SupabaseTeamRepository implements ITeamRepository {
-  constructor(private readonly supabase: SupabaseClient) {}
+  constructor(private readonly supabase: SupabaseClient<Database>) {}
 
   async listMembers(organizationId: string): Promise<TeamMember[]> {
-    const { data, error } = await this.supabase
-      .from('organization_members')
-      .select(
-        'id, organization_id, user_id, role, joined_at, profiles:user_id(full_name, email, title)'
-      )
+    const { data: members, error: membersError } = await this.supabase
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .select('id, organization_id, user_id, role, joined_at')
       .eq('organization_id', organizationId)
       .order('joined_at', { ascending: true });
 
-    if (error) {
-      throw new Error(`Failed to list organization members: ${error.message}`);
+    if (membersError) {
+      throw new Error(`Failed to list organization members: ${membersError.message}`);
     }
 
-    const parsedRows = z.array(OrgMemberRowSchema).safeParse(data || []);
-    const rows: OrgMemberRow[] = parsedRows.success ? parsedRows.data : [];
+    if (!members || members.length === 0) {
+      return [];
+    }
 
-    return rows.map((row) => ({
-      id: row.id,
-      organizationId: row.organization_id,
-      userId: row.user_id,
-      role: row.role,
-      joinedAt: row.joined_at,
-      name: row.profiles?.full_name || 'Kanzleimitglied',
-      email: row.profiles?.email || 'mitarbeiter@kanzlei.de',
-      title: row.profiles?.title || undefined,
-    }));
+    // Hole Profile der zugehörigen Benutzer
+    const userIds = members.map((m) => m.user_id).filter(Boolean) as string[];
+    let profilesMap = new Map<
+      string,
+      { full_name: string | null; email: string | null; title: string | null }
+    >();
+
+    if (userIds.length > 0) {
+      const { data: profiles } = await this.supabase
+        .from(DB_TABLES.PROFILES)
+        .select('id, full_name, email, title')
+        .in('id', userIds);
+
+      if (profiles) {
+        profilesMap = new Map(profiles.map((p) => [p.id, p]));
+      }
+    }
+
+    return members.map((row) => {
+      const profile = row.user_id ? profilesMap.get(row.user_id) : undefined;
+      return {
+        id: row.id,
+        organizationId: row.organization_id,
+        userId: row.user_id,
+        role: row.role as NotaryRole,
+        joinedAt: row.joined_at,
+        name: profile?.full_name || 'Kanzleimitglied',
+        email: profile?.email || 'mitarbeiter@kanzlei.de',
+        title: profile?.title || undefined,
+      };
+    });
   }
 
   async getMemberById(id: string, organizationId: string): Promise<TeamMember | null> {
-    const { data, error } = await this.supabase
-      .from('organization_members')
-      .select(
-        'id, organization_id, user_id, role, joined_at, profiles:user_id(full_name, email, title)'
-      )
+    const { data: member, error } = await this.supabase
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .select('id, organization_id, user_id, role, joined_at')
       .eq('id', id)
       .eq('organization_id', organizationId)
       .maybeSingle();
@@ -77,21 +77,28 @@ export class SupabaseTeamRepository implements ITeamRepository {
     if (error) {
       throw new Error(`Failed to get member: ${error.message}`);
     }
-    if (!data) return null;
+    if (!member) return null;
 
-    const parsed = OrgMemberRowSchema.safeParse(data);
-    if (!parsed.success) return null;
-    const row = parsed.data;
+    let profile: { full_name: string | null; email: string | null; title: string | null } | null =
+      null;
+    if (member.user_id) {
+      const { data: p } = await this.supabase
+        .from(DB_TABLES.PROFILES)
+        .select('full_name, email, title')
+        .eq('id', member.user_id)
+        .maybeSingle();
+      profile = p;
+    }
 
     return {
-      id: row.id,
-      organizationId: row.organization_id,
-      userId: row.user_id,
-      role: row.role,
-      joinedAt: row.joined_at,
-      name: row.profiles?.full_name || 'Kanzleimitglied',
-      email: row.profiles?.email || 'mitarbeiter@kanzlei.de',
-      title: row.profiles?.title || undefined,
+      id: member.id,
+      organizationId: member.organization_id,
+      userId: member.user_id,
+      role: member.role as NotaryRole,
+      joinedAt: member.joined_at,
+      name: profile?.full_name || 'Kanzleimitglied',
+      email: profile?.email || 'mitarbeiter@kanzlei.de',
+      title: profile?.title || undefined,
     };
   }
 
@@ -100,41 +107,46 @@ export class SupabaseTeamRepository implements ITeamRepository {
     newRole: NotaryRole,
     organizationId: string
   ): Promise<TeamMember | null> {
-    const { data, error } = await this.supabase
-      .from('organization_members')
+    const { data: updated, error } = await this.supabase
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .update({ role: newRole })
       .eq('id', id)
       .eq('organization_id', organizationId)
-      .select(
-        'id, organization_id, user_id, role, joined_at, profiles:user_id(full_name, email, title)'
-      )
+      .select('id, organization_id, user_id, role, joined_at')
       .maybeSingle();
 
     if (error) {
       throw new Error(`Failed to update member role: ${error.message}`);
     }
-    if (!data) return null;
+    if (!updated) return null;
 
-    const parsed = OrgMemberRowSchema.safeParse(data);
-    if (!parsed.success) return null;
-    const row = parsed.data;
+    let profile: { full_name: string | null; email: string | null; title: string | null } | null =
+      null;
+    if (updated.user_id) {
+      const { data: p } = await this.supabase
+        .from(DB_TABLES.PROFILES)
+        .select('full_name, email, title')
+        .eq('id', updated.user_id)
+        .maybeSingle();
+      profile = p;
+    }
 
     return {
-      id: row.id,
-      organizationId: row.organization_id,
-      userId: row.user_id,
-      role: row.role,
-      joinedAt: row.joined_at,
-      name: row.profiles?.full_name || 'Kanzleimitglied',
-      email: row.profiles?.email || 'mitarbeiter@kanzlei.de',
-      title: row.profiles?.title || undefined,
+      id: updated.id,
+      organizationId: updated.organization_id,
+      userId: updated.user_id,
+      role: updated.role as NotaryRole,
+      joinedAt: updated.joined_at,
+      name: profile?.full_name || 'Kanzleimitglied',
+      email: profile?.email || 'mitarbeiter@kanzlei.de',
+      title: profile?.title || undefined,
     };
   }
 
   async inviteMember(data: InviteMemberRequest, organizationId: string): Promise<TeamMember> {
     const generatedUserId = crypto.randomUUID();
     const { data: inserted, error } = await this.supabase
-      .from('organization_members')
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .insert({
         organization_id: organizationId,
         user_id: generatedUserId,
@@ -162,7 +174,7 @@ export class SupabaseTeamRepository implements ITeamRepository {
 
   async removeMember(id: string, organizationId: string): Promise<boolean> {
     const { error } = await this.supabase
-      .from('organization_members')
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .delete()
       .eq('id', id)
       .eq('organization_id', organizationId);

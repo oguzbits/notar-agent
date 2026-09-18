@@ -28,12 +28,12 @@ export type PermissionAction = (typeof PERMISSION_ACTIONS)[keyof typeof PERMISSI
  * Kanzlei-Benutzerprofil für die aktive Session.
  */
 export const KanzleiUserProfileSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1),
-  email: z.string().email(),
+  email: z.email(),
   title: z.string().optional(),
   role: NotaryRoleSchema,
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: z.url().optional(),
 });
 
 export type KanzleiUserProfile = z.infer<typeof KanzleiUserProfileSchema>;
@@ -42,21 +42,21 @@ export type KanzleiUserProfile = z.infer<typeof KanzleiUserProfileSchema>;
  * Team-Mitglied für API-Responses und Kanzlei-Listen.
  */
 export const TeamMemberSchema = z.object({
-  id: z.string().uuid(),
-  organizationId: z.string().uuid(),
-  userId: z.string().uuid(),
+  id: z.uuid(),
+  organizationId: z.uuid(),
+  userId: z.uuid().nullable().optional(),
   name: z.string().min(1),
-  email: z.string().email(),
+  email: z.email(),
   title: z.string().optional(),
   role: NotaryRoleSchema,
-  joinedAt: z.string().datetime(),
+  joinedAt: z.iso.datetime(),
 });
 
 export type TeamMember = z.infer<typeof TeamMemberSchema>;
 
 export const InviteMemberRequestSchema = z.object({
   name: z.string().min(1, 'Name ist erforderlich'),
-  email: z.string().email('Gültige E-Mail erforderlich'),
+  email: z.email('Gültige E-Mail erforderlich'),
   role: NotaryRoleSchema,
   title: z.string().optional(),
 });
@@ -73,7 +73,7 @@ export type UpdateMemberRoleRequest = z.infer<typeof UpdateMemberRoleRequestSche
  * Login-Payload (E-Mail + Passwort oder Magic-Link).
  */
 export const LoginRequestSchema = z.object({
-  email: z.string().email('Gültige E-Mail-Adresse erforderlich'),
+  email: z.email('Gültige E-Mail-Adresse erforderlich'),
   password: z.string().min(6, 'Passwort muss mindestens 6 Zeichen lang sein').optional(),
   redirectTo: z.string().optional(),
 });
@@ -98,7 +98,7 @@ export type LoginRequest = z.infer<typeof LoginRequestSchema>;
  * Registrierungs-Payload für neue Kanzlei & Inhaber/Notar.
  */
 export const RegisterRequestSchema = z.object({
-  email: z.string().email('Gültige E-Mail-Adresse erforderlich'),
+  email: z.email('Gültige E-Mail-Adresse erforderlich'),
   password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen lang sein'),
   fullName: z.string().min(2, 'Vollständiger Name erforderlich'),
   title: z.string().optional(),
@@ -110,16 +110,41 @@ export const RegisterRequestSchema = z.object({
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
 
 /**
+ * Payload zur Erstellung einer Kanzlei durch einen bereits authentifizierten Benutzer (z. B. nach SSO).
+ */
+export const CreateOrganizationRequestSchema = z.object({
+  name: z.string().min(2, 'Kanzleiname muss mindestens 2 Zeichen lang sein'),
+  officialSeat: z.string().min(2, 'Amtssitz muss mindestens 2 Zeichen lang sein'),
+  chamberDistrict: z.string().min(2, 'Notarkammerbezirk muss mindestens 2 Zeichen lang sein'),
+});
+
+export type CreateOrganizationRequest = z.infer<typeof CreateOrganizationRequestSchema>;
+
+/**
+ * Payload zur Aktualisierung von Kanzlei-Stammdaten.
+ */
+export const UpdateOrganizationRequestSchema = z.object({
+  name: z.string().min(2, 'Kanzleiname muss mindestens 2 Zeichen lang sein'),
+  officialSeat: z.string().min(2, 'Amtssitz muss mindestens 2 Zeichen lang sein'),
+  chamberDistrict: z.string().min(2, 'Notarkammerbezirk muss mindestens 2 Zeichen lang sein'),
+});
+
+export type UpdateOrganizationRequest = z.infer<typeof UpdateOrganizationRequestSchema>;
+
+/**
  * Authentifizierte Session-Info Response.
  */
 export const AuthSessionResponseSchema = z.object({
   user: KanzleiUserProfileSchema,
-  organization: z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    officialSeat: z.string(),
-    chamberDistrict: z.string(),
-  }),
+  organization: z
+    .object({
+      id: z.uuid(),
+      name: z.string(),
+      officialSeat: z.string(),
+      chamberDistrict: z.string(),
+    })
+    .nullable(),
+  hasActiveOrganization: z.boolean(),
 });
 
 export type AuthSessionResponse = z.infer<typeof AuthSessionResponseSchema>;
