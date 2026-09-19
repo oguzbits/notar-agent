@@ -34,6 +34,15 @@ export const KnowledgeDocumentSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
   triggerKeywords: z.array(z.string()).default([]),
+  isGlobal: z
+    .boolean()
+    .default(false)
+    .optional()
+    .describe('Wenn true, wird die Regel für den Vorgangstyp immer berücksichtigt'),
+  suggestedAction: z
+    .string()
+    .optional()
+    .describe('Optionale Handlungsempfehlung bei Beanstandung/Mangel'),
   embedding: z
     .array(z.number())
     .optional()
@@ -41,7 +50,6 @@ export const KnowledgeDocumentSchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
-
 export type KnowledgeDocument = z.infer<typeof KnowledgeDocumentSchema>;
 
 /**

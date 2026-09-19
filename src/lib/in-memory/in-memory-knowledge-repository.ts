@@ -1,6 +1,10 @@
 import { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
-import { GLOBAL_NOTARY_KNOWLEDGE_DOCUMENTS } from '@/lib/knowledge/seed-knowledge';
-import { HybridSearchQuery, HybridSearchResult, KnowledgeDocument } from '@/types/knowledge';
+import {
+  HybridSearchQuery,
+  HybridSearchResult,
+  KNOWLEDGE_CATEGORIES,
+  KnowledgeDocument,
+} from '@/types/knowledge';
 
 /**
  * Berechnet den Kosinus-Ähnlichkeitswert zweier Vektoren (Wert zwischen 0 und 1).
@@ -119,8 +123,10 @@ export function performHybridSearch(
 export class InMemoryKnowledgeRepository implements IKnowledgeRepository {
   private documents: KnowledgeDocument[] = [];
 
-  constructor() {
-    this.seed(GLOBAL_NOTARY_KNOWLEDGE_DOCUMENTS);
+  constructor(initialDocs: KnowledgeDocument[] = []) {
+    if (initialDocs.length > 0) {
+      this.seed(initialDocs);
+    }
   }
 
   seed(docs: KnowledgeDocument[]): void {
@@ -144,5 +150,15 @@ export class InMemoryKnowledgeRepository implements IKnowledgeRepository {
       : accessibleDocs;
 
     return performHybridSearch(filteredDocs, query);
+  }
+
+  async getStatutoryRules(organizationId?: string | null): Promise<KnowledgeDocument[]> {
+    return this.documents.filter((doc) => {
+      const isAccessible =
+        doc.organizationId === null || (organizationId && doc.organizationId === organizationId);
+      return (
+        isAccessible && (doc.isGlobal || doc.category === KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM)
+      );
+    });
   }
 }

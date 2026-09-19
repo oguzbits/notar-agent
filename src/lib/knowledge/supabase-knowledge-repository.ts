@@ -1,7 +1,12 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import { DB_TABLES, Database, TableInsert } from '@/types/database';
-import { HybridSearchQuery, HybridSearchResult, KnowledgeDocument } from '@/types/knowledge';
+import {
+  HybridSearchQuery,
+  HybridSearchResult,
+  KNOWLEDGE_CATEGORIES,
+  KnowledgeDocument,
+} from '@/types/knowledge';
 
 export type { IKnowledgeRepository };
 
@@ -80,6 +85,8 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
         triggerKeywords: Array.isArray(row.trigger_keywords)
           ? (row.trigger_keywords as string[])
           : [],
+        isGlobal: Boolean(row.is_global ?? false),
+        suggestedAction: row.suggested_action ? String(row.suggested_action) : undefined,
         createdAt: String(row.created_at || new Date().toISOString()),
         updatedAt: String(row.updated_at || new Date().toISOString()),
       },
@@ -87,6 +94,44 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
       vectorScore: Number(row.vector_score ?? 0),
       combinedScore: Number(row.combined_score ?? 0),
       matchSource: (row.match_source as HybridSearchResult['matchSource']) ?? 'HYBRID_FUSION',
+    }));
+  }
+
+  async getStatutoryRules(organizationId?: string | null): Promise<KnowledgeDocument[]> {
+    let query = this.supabase
+      .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
+      .select('*')
+      .eq('category', KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM);
+
+    if (organizationId) {
+      query = query.or(`organization_id.is.null,organization_id.eq.${organizationId}`);
+    } else {
+      query = query.is('organization_id', null);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) {
+      throw new Error(
+        `Supabase getStatutoryRules fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
+    }
+
+    const rows = data as Record<string, unknown>[];
+    return rows.map((row) => ({
+      id: String(row.id),
+      organizationId: row.organization_id ? String(row.organization_id) : null,
+      category: row.category as KnowledgeDocument['category'],
+      legalBasis: String(row.legal_basis),
+      courtOrAuthority: row.court_or_authority ? String(row.court_or_authority) : undefined,
+      title: String(row.title),
+      content: String(row.content),
+      triggerKeywords: Array.isArray(row.trigger_keywords)
+        ? (row.trigger_keywords as string[])
+        : [],
+      isGlobal: Boolean(row.is_global ?? false),
+      suggestedAction: row.suggested_action ? String(row.suggested_action) : undefined,
+      createdAt: String(row.created_at || new Date().toISOString()),
+      updatedAt: String(row.updated_at || new Date().toISOString()),
     }));
   }
 }

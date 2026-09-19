@@ -4,8 +4,8 @@ import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
 import { normalizeDossier } from '@/lib/dossier';
 import {
-  formatRulesForPrompt,
-  selectRelevantAuditRules,
+  formatKnowledgeForPrompt,
+  selectApplicableKnowledge,
 } from '@/lib/knowledge/rules/rule-selector';
 import { getKnowledgeRepository } from '@/lib/supabase/server';
 import { CaseType, Dossier, OverallStatus, UploadedFilePayload } from '@/types/dossier';
@@ -102,15 +102,7 @@ ${formattedNotes}
   // =========================================================================
   onStep(2, 'Stufe 2: Notarielle Vorprüfung, Fristen & Plausibilisierung...');
 
-  const relevantRules = selectRelevantAuditRules({
-    caseType,
-    fields: parsedExtractionRaw?.fields as Record<string, unknown> | undefined,
-    detectedDocuments: parsedExtractionRaw?.detectedDocuments as
-      Array<{ fileName?: string; documentType?: string }> | undefined,
-    notes: notesSection,
-  });
-
-  // C.3 Erweitertes RAG: Kanzlei- & DNotI-Wissensabruf
+  // C.3 Erweitertes RAG & Gesetzliche Prüfnormen aus IKnowledgeRepository
   const knowledgeRepo = getKnowledgeRepository();
   const rawDocs = parsedExtractionRaw?.detectedDocuments;
   const docNames = Array.isArray(rawDocs)
@@ -123,6 +115,17 @@ ${formattedNotes}
         .filter(Boolean)
     : [];
 
+  const selectionContext = {
+    caseType,
+    fields: parsedExtractionRaw?.fields as Record<string, unknown> | undefined,
+    detectedDocuments: parsedExtractionRaw?.detectedDocuments as
+      Array<{ fileName?: string; documentType?: string }> | undefined,
+    notes: notesSection,
+  };
+
+  const statutoryRules = await knowledgeRepo.getStatutoryRules(params.organizationId);
+  const relevantStatutory = selectApplicableKnowledge(statutoryRules, selectionContext);
+
   const searchTerms = [caseType, notesSection, ...docNames].filter(Boolean).join(' ');
 
   const knowledgeResults = await knowledgeRepo.search({
@@ -131,7 +134,7 @@ ${formattedNotes}
     topK: 3,
   });
 
-  const rulesSection = formatRulesForPrompt(relevantRules, knowledgeResults);
+  const rulesSection = formatKnowledgeForPrompt(relevantStatutory, knowledgeResults);
 
   const auditorContextPrompt = `Heutiges Bearbeitungsdatum: ${todayStr}
 VORGANGSTYP: ${caseType}

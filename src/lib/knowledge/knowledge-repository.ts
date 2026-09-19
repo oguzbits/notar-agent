@@ -6,4 +6,5 @@ import { HybridSearchQuery, HybridSearchResult, KnowledgeDocument } from '@/type
 export interface IKnowledgeRepository {
   search(query: HybridSearchQuery): Promise<HybridSearchResult[]>;
   save(doc: KnowledgeDocument): Promise<KnowledgeDocument>;
+  getStatutoryRules(organizationId?: string | null): Promise<KnowledgeDocument[]>;
 }

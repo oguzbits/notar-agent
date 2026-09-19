@@ -98,4 +98,40 @@ describe('SupabaseKnowledgeRepository', () => {
       'Supabase knowledge search fehlgeschlagen: Postgres RPC Timeout'
     );
   });
+
+  it('delegates to Supabase query in getStatutoryRules and filters by organization', async () => {
+    const mockData = [
+      {
+        id: doc.id,
+        organization_id: null,
+        category: KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM,
+        legal_basis: '§ 21 BeurkG',
+        court_or_authority: null,
+        title: 'Grundbuchstand',
+        content: 'Grundbucheinsicht erforderlich.',
+        trigger_keywords: ['grundbuch'],
+        is_global: true,
+        suggested_action: 'Einsicht nehmen',
+        created_at: doc.createdAt,
+        updated_at: doc.updatedAt,
+      },
+    ];
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            or: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+            is: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+          }),
+        }),
+      }),
+    };
+
+    const repo = new SupabaseKnowledgeRepository(mockSupabase as never);
+    const rules = await repo.getStatutoryRules('org-123');
+    expect(rules).toHaveLength(1);
+    expect(rules[0]?.title).toBe('Grundbuchstand');
+    expect(rules[0]?.isGlobal).toBe(true);
+  });
 });

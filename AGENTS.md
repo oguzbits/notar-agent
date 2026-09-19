@@ -11,7 +11,7 @@ The codebase strictly enforces unidirectional data flow and clear execution boun
   - Strict typing: `strict: true`, zero `any`, zero unvalidated `as`, zero double type assertions (`as unknown as`).
 - **`src/lib/` (Pure Core Logic & Services):**
   - **Pure domain logic:** Deterministic calculations, status mutations, and business rules belong in pure functions here.
-  - **Policy vs. Mechanism:** Technical structures live in `src/lib/dossier/`; legal rules, deadlines, and criteria live strictly in `src/lib/knowledge/`.
+  - **Policy vs. Mechanism (Zero Domain Knowledge in Code):** Technical structures live in `src/lib/dossier/`; technical matching, ranking, and prompt formatting mechanisms live in `src/lib/knowledge/`. Substantive legal rules, guidelines, deadlines, and criteria are strictly domain data and MUST NEVER be hardcoded as static string constants in application code. They reside exclusively in the database knowledge store (PostgreSQL `knowledge_documents` accessed via `IKnowledgeRepository`).
   - **Fail-Fast Repositories:** Database repositories (`Supabase*`) must throw runtime exceptions on error. No silent swallowing of DB errors and zero fallback to transient in-memory state in production code.
 - **`src/app/api/` (Thin I/O Adapters):**
   - Route handlers only parse input with Zod, verify server authentication, delegate to `src/lib/`, and format responses.
@@ -42,8 +42,8 @@ Every feature and modification must satisfy these technical invariants:
      - _Pending/Mutating State:_ Disabled controls and loading spinners on buttons to prevent double-submits.
 4. **Auditability & Provenance (§ 17 BeurkG):**
    - Critical domain mutations (status overrides, exports, role changes) must be permanently logged in an append-only audit trail with actor, timestamp, reason, and cryptographic hash-chaining.
-5. **Zero Hardcoded Data:**
-   - Person, team, client, and notary organizational data must never be hardcoded into application source code. Test fixtures belong exclusively in isolated test files (`*.test.ts`) or in `seed.sql`.
+5. **Zero Hardcoded Data & Domain Knowledge:**
+   - Person, team, client, and notary organizational data, as well as substantive legal audit rules and statutory instructions, must never be hardcoded into application source code. All domain knowledge resides exclusively in PostgreSQL (`knowledge_documents` table via database migrations). Test fixtures belong exclusively in isolated test files (`*.test.ts`).
 6. **Domain Language & UI Agnosticism:**
    - Technical AI mechanisms (RAG, vector, tokens, embeddings, pipeline stages) must never leak into user-facing UI. User-visible texts must strictly use canonical German notary terminology from `src/lib/dossier/constants.ts`.
    - Legal codes or paragraph references (e.g. § 203 StGB, DSGVO) must not be displayed as decorative marketing slogans in UI headers or badges.

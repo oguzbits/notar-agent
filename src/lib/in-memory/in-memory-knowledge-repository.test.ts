@@ -20,6 +20,7 @@ describe('InMemoryKnowledgeRepository & In-Memory Hybrid Search Helpers', () => 
     content:
       'Das Registergericht Hamburg beanstandet Beschlüsse ohne tagesaktuellen Handelsregisterauszug.',
     triggerKeywords: ['gmbh', 'hamburg', 'registerauszug'],
+    isGlobal: true,
     embedding: [1, 0, 0],
     createdAt: '2026-09-16T08:00:00.000Z',
     updatedAt: '2026-09-16T08:00:00.000Z',
@@ -100,5 +101,13 @@ describe('InMemoryKnowledgeRepository & In-Memory Hybrid Search Helpers', () => 
     expect(firstResult.bm25Score).toBeGreaterThan(0);
     expect(firstResult.vectorScore).toBeGreaterThan(0.8);
     expect(firstResult.matchSource).toBe('HYBRID_FUSION');
+  });
+
+  it('retrieves statutory rules and respects global and tenant boundary', async () => {
+    const rules = await repository.getStatutoryRules('550e8400-e29b-41d4-a716-446655440000');
+    expect(rules).toBeDefined();
+    expect(rules.length).toBeGreaterThan(0);
+    // Kanzlei B document darf nicht enthalten sein
+    expect(rules.map((r) => r.id)).not.toContain(doc3.id);
   });
 });
