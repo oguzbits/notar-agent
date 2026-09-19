@@ -584,3 +584,45 @@ graph TD
 - [ ] **Harmonisierung der Primitives:** Abgleich aller Basiskomponenten in `src/components/ui/` (`Input`, `Button`, `Card`, `ConfirmDialog`, `StatusBadge`) gegen die Enterprise-Spezifikation.
 - [ ] **Overlay- & Menü-Standard:** Überprüfung aller Dropdown- und Popover-Menüs im Kanzlei-Dashboard auf Einhaltung der Mindestbreiten (`w-96`) und Schriftgrößen.
 - [ ] **A11y- und Kontrastprüfung:** Validierung von Kontrastverhältnissen (WCAG AAA/AA) im Dark- und Light-Mode.
+
+---
+
+## 17. Storybook Component Workbench & Living Styleguide (Benchmark: GitHub Primer, Radix UI & Supabase UI)
+
+- **Priorisierung:** Nachgelagertes Developer-Experience- und QA-Modul (optimale Ergänzung zu Modul 16 „Enterprise Styling & Design Tokens“).
+- **Ziel:** Isolierte Entwicklungs- und Dokumentationsumgebung für alle Kanzlei-UI-Primitives (`src/components/ui/*`) und zusammengesetzten Notar-Dossier-Komponenten.
+- **Ausgangslage:** UI-Komponenten werden bisher ausschließlich im Kontext laufender Next.js-Routen, Server-Sessions und voller Fach-Views entwickelt. Randfälle, Barrierefreiheit (a11y) und der geforderte 4-Zustände-Quadrant (_Empty_, _Loading/Skeleton_, _Error/Retry_, _Mutating/Pending_) lassen sich im vollen App-Kontext nur mit manuellem Aufwand reproduzieren.
+- **Industrie-Referenz:**
+  - **GitHub Primer ViewComponent / Storybook:** Reines Katalogisieren wiederverwendbarer Design-Tokens und atomarer Primitives.
+  - **Radix UI & Shadcn Registry:** Saubere Trennung von Headless-Logik und Theme-Tokens mit interaktiven Controls.
+  - **Supabase UI / Dashboard System:** Living Styleguide mit Accessibility-Addon und Dark-/Light-Mode Umschaltung.
+
+```mermaid
+graph TD
+    A["Storybook Workbench (@storybook/nextjs)"] --> B["UI Primitives (Button, Input, Card, Modal, Badge)"]
+    A --> C["Dossier Organisms (StatusBadge, SourceBadge, EmptyState, Skeleton)"]
+    B & C --> D["Complete State Quadrant Story-Coverage"]
+    D --> E["Automatisierte a11y Checks (@storybook/addon-a11y / axe)"]
+    D --> F["Visuelle Dokumentation für Kanzlei-Design-Tokens"]
+```
+
+### Kernfunktionen & Mehrwerte
+
+1. **Garantie des Complete State Quadrant (Invariante gem. AGENTS.md):**
+   - Jede asynchrone Komponente erhält definierte Story-Zustände:
+     - _Empty State_ (mit Notar-CTA)
+     - _Loading State_ (Accessible Skeletons ohne Layout Shifts)
+     - _Error State_ (inkl. Retry-Trigger)
+     - _Mutating/Pending State_ (Disabled Controls & Spinners)
+2. **Automatisierte Accessibility-Prüfung (a11y):**
+   - Integration von `@storybook/addon-a11y` (Axe Core Engine) zur automatischen Validierung von WCAG 2.1 AA/AAA Kontrasten, Tastaturfokus und Screenreader-Labels.
+3. **Theme & Skalierungs-Matrix:**
+   - Direktes Umschalten zwischen Light- und Dark-Theme sowie Visualisierung der `text-base` (16px) Mindestskala und Viewport-Breiten.
+
+### Geplante Aufgaben
+
+- [ ] **Storybook Setup:** Installation von Storybook für Next.js (`@storybook/nextjs`) mit Tailwind CSS v4 / PostCSS-Integration.
+- [ ] **Theme- & Font-Decorator:** Einbindung der Kanzlei-Theme-Provider und Schriftarten in `.storybook/preview.ts`.
+- [ ] **Core Primitives Coverage:** Stories für alle atomaren UI-Bausteine in `src/components/ui/` (`Button`, `Input`, `Card`, `ConfirmDialog`, `StatusBadge`).
+- [ ] **State-Quadrant Stories:** Dokumentation von Loading-, Error- und Empty-States für Kanzlei-Dossier-Komponenten.
+- [ ] **Accessibility-Pipeline:** Aktivierung des `@storybook/addon-a11y` zur automatischen Prüfung auf Barrierefreiheit im CI/CD-Prozess.
