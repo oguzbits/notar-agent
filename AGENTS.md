@@ -87,6 +87,7 @@ _(Fast Path Exception: Pure CSS styling, copy changes in leaf components, or mar
 - **Surgical Implementation:** Minimal diff satisfying tests and compiler checks.
 - **Quality Gates:** `npm run check` (Type-check, Lint, Depcruise, Knip, Magic Strings, Duplication) and `npm test` passing with 0 errors.
 - **Visual Self-Verification:** UI changes must be inspected via headless browser / Playwright to confirm zero CLS and responsive hierarchy before completion.
+- **Supabase MCP Database Sync:** When a task introduces or modifies database migrations (`supabase/migrations/*.sql`), always inspect the project via the Supabase MCP tools (`apply_migration` / `execute_sql`). Either apply and verify the migration live using Supabase MCP, OR explicitly flag it as an open item in the DoD receipt under `Explicitly Out-of-Scope`. Never leave a database sync implicit or unaddressed.
 - **Zero Unauthorized Git Commits:** Never run `git commit` or `git push` autonomously. Always present verified changes and await explicit user confirmation.
 
 ### C. Definition of Done (DoD) Receipt
@@ -103,7 +104,8 @@ Every functional task concludes with this verified receipt:
 - [x] **Design System & A11y:** (Primitives only, semantic theme tokens, base typography, ARIA)
 - [x] **Quality Gates & Tests:** (X tests passing, npm run check 0 errors, npm test 100% green)
 - [x] **Database Migration & Sync:** [NOT_REQUIRED | DECLARATION_STAGED | LIVE_MUTATION_APPLIED]
+  - _Hard Rule:_ If `DECLARATION_STAGED` is chosen, the remote execution MUST be listed as an open unchecked item `- [ ] Pending Live DB Migration:` under **Explicitly Out-of-Scope**, including the exact migration file and project ref, OR actively executed via Supabase MCP with user confirmation. Never mark a staged migration as complete without flagging the missing live sync.
 - [x] **Visual UI Verification:** [NOT_APPLICABLE | VERIFIED via screenshot/inspection]
 - [x] **Language & Copywriting:** (100% canonical German notary terminology, zero Denglisch)
-- [ ] **Explicitly Out-of-Scope:** [Deferred items / next steps]
+- [ ] **Explicitly Out-of-Scope:** [Deferred items / next steps / pending migrations]
 ```
