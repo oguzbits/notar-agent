@@ -392,6 +392,19 @@ export type GmbhFields = z.infer<typeof GmbhFieldsSchema>;
 // 3. ALLGEMEINE STRUKTUREN & GESAMTDOSSIER
 // ==========================================
 
+export const NOTAR_DOCUMENT_TYPES = {
+  GRUNDBUCHAUSZUG: 'Grundbuchauszug',
+  ENERGIEAUSWEIS: 'Energieausweis',
+  KAUFVERTRAGSENTWURF: 'Kaufvertragsentwurf / Kaufangebot',
+  MIETUEBERSICHT: 'Mietliste / Mietvertrag',
+  HANDELSREGISTER: 'Handelsregisterauszug',
+  PERSONALAUSWEIS: 'Ausweisdokument',
+  BEARBEITUNGSNOTIZ: 'Bearbeitungsvermerk / Notiz',
+  SONSTIGES: 'Sonstiges Dokument',
+} as const;
+
+export type NotarDocumentType = (typeof NOTAR_DOCUMENT_TYPES)[keyof typeof NOTAR_DOCUMENT_TYPES];
+
 export const DOCUMENT_RELIABILITY = {
   HIGH: 'HIGH',
   MEDIUM: 'MEDIUM',

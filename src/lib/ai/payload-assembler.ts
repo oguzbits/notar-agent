@@ -1,4 +1,9 @@
 import {
+  DocumentTriageResult,
+  formatTriageManifestForPrompt,
+  triageDocument,
+} from '@/lib/files/document-triage';
+import {
   PdfStreamType,
   PDF_STREAM_TYPES,
   classifyPdfStream,
@@ -77,26 +82,27 @@ ${notesSection}${
       : ''
   }`;
 
-  const promptParts: MultimodalPromptPart[] = [
-    {
-      type: 'text',
-      text: contextHeader,
-    },
-  ];
+  const triageList: DocumentTriageResult[] = [];
+  const filePromptParts: MultimodalPromptPart[] = [];
 
   for (const file of files) {
     if (file.isBase64 && file.type.startsWith('image/')) {
       const rawBase64 = (file.content || '').replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
-      promptParts.push({
+      filePromptParts.push({
         type: 'file',
         data: rawBase64,
         mediaType: file.type,
         filename: file.name,
       });
-      promptParts.push({
+      filePromptParts.push({
         type: 'text',
         text: `\n[Obiges Bild gehört zu Datei: "${file.name}"]\n`,
       });
+      triageList.push(
+        triageDocument({
+          fileName: file.name,
+        })
+      );
     } else if (
       file.isBase64 &&
       (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
@@ -127,35 +133,64 @@ ${notesSection}${
       // DUAL-STREAM INGESTION:
       // 1. Unicode-Textlayer injizieren
       if (extractedText && extractedText.trim()) {
-        promptParts.push({
+        filePromptParts.push({
           type: 'text',
           text: `\n=== DIREKTER UNICODE-TEXTLAYER AUS "${file.name}" (MATHEMATISCH EXAKT FÜR BETRÄGE, IBAN, FLURSTÜCKE) ===\n${extractedText}\n=== ENDE TEXTLAYER AUS "${file.name}" ===\n`,
         });
       }
 
       // 2. Multimodale PDF-Übergabe für visuelle Siegel, Stempel, Handschriften
-      promptParts.push({
+      filePromptParts.push({
         type: 'file',
         data: rawBase64,
         mediaType: 'application/pdf',
         filename: file.name,
       });
-      promptParts.push({
+      filePromptParts.push({
         type: 'text',
         text: `\n[Obiges PDF-Dokument: "${file.name}" | Modus: ${streamType}]\n`,
       });
+
+      triageList.push(
+        triageDocument({
+          fileName: file.name,
+          textContent: extractedText || '',
+        })
+      );
     } else if (file.content) {
-      promptParts.push({
+      filePromptParts.push({
         type: 'text',
         text: `\n=== START DATEI: "${file.name}" ===\n${file.content}\n=== ENDE DATEI: "${file.name}" ===\n`,
       });
+      triageList.push(
+        triageDocument({
+          fileName: file.name,
+          textContent: file.content,
+        })
+      );
     } else {
-      promptParts.push({
+      filePromptParts.push({
         type: 'text',
         text: `\n=== DATEI: "${file.name}" (Metadaten vorhanden) ===\n`,
       });
+      triageList.push(
+        triageDocument({
+          fileName: file.name,
+        })
+      );
     }
   }
 
-  return promptParts;
+  const triageManifest = formatTriageManifestForPrompt(triageList);
+  if (triageManifest) {
+    contextHeader = `${triageManifest}\n${contextHeader}`;
+  }
+
+  return [
+    {
+      type: 'text',
+      text: contextHeader,
+    },
+    ...filePromptParts,
+  ];
 }

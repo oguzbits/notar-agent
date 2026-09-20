@@ -22,43 +22,42 @@ Für den **Produktivbetrieb in Notariaten** mit täglichen Lastspitzen, Großakt
 
 ## 2. Fachliche Kern-Module (The Notary Core)
 
-### 2.1 RAG-gestützter Notary Auditor (Stufe-2-Optimierung)
+### 2.1 Enterprise Legal Processing Pipeline & Notary Auditor (5-Stufen-Architektur)
 
-- **Zielkomponente:** `Notary Auditor & Reconciler` in `src/app/api/analyze/route.ts`
-- **Kernnutzen:** **70–90 % Token-Ersparnis**, maximale **Deterministik** und rechtssichere Begründungen mit Paragraphenbelegen.
+- **Zielkomponente:** `Notary Auditor & Reconciler` in `src/app/api/analyze/route.ts` & `src/lib/ai/pipeline.ts`
+- **Architektur-Spezifikation:** [docs/architecture/enterprise-legal-processing.md](./docs/architecture/enterprise-legal-processing.md)
+- **Kernnutzen:** **Maximale juristische Verlässlichkeit (Zero Hallucinations bei Zahlen & Fristen)**, **70–90 % Kostenersparnis durch Gemini Flash Kontext-Caching** und lückenlose Beweissicherung.
 
-#### Problem im Status Quo
-
-Aktuell prüft Stufe 2 mit statischen Faustregeln im Prompt (z. B. 10 Jahre GEG, § 21 BeurkG).
-
-- **Prompt-Bloat:** Sondergesetze (MoPeG für GbRs, MaBV-Raten, Sanierungsvermerke nach § 144 BauGB) können nicht alle statisch im Prompt stehen, ohne Token-Kosten und Kontextgrenzen zu sprengen.
-- **Ungenaue Nachforderungen:** Fehlen Belege, moniert das System oft generisch (_„Vollmacht fehlt“_ statt _„Registerauszug gem. § 12 HGB nötig“_).
-
-#### Lösung: Deterministisches Just-in-Time Retrieval
-
-Statt eines unübersehbaren „Mega-Prompts“ holt sich Stufe 2 **nur die Regeln, die zum konkreten Fall passen**:
+#### Das 5-Stufen Enterprise-Modell (Harvey AI / Robin AI / CoCounsel Benchmark)
 
 ```mermaid
-graph LR
-    A["Stufe 1 Dossier (JSON)"] --> B{"Context Selector"}
-    B -->|"GmbH / KG erkannt"| C["§ 12 HGB Prüfnormen"]
-    B -->|"Ratenzahlung / Bau"| D["§ 3 MaBV Staffel-Regeln"]
-    B -->|"GbR erkannt"| E["MoPeG / eGbR-Vorgaben"]
-    C & D & E --> F["Schlanker Stufe 2 Prompt"]
-    F --> G["Auditierte Entscheidung mit Paragraphenbelegen"]
+graph TD
+    A[Akten-Upload: Scans, PDFs, Notizen] --> B[1. Pre-Flight Ingestion Gateway: OCR-Quality, Typ-Triage, Relevanz]
+    B --> C[2. Dual-Stream Extraction: Unicode-Text + High-Res Vision für Siegel/Handschrift]
+    C --> D[3. Fact Store: Unteilbare Fakten mit Text-to-Bounding-Box Provenienz]
+    D --> E[4. Dual-Engine Verification: Deterministische Code-Engine + LLM-Rechtsauditor]
+    E --> F[5. Governance & Gate: Zod-Verträge, Confidence-Scoring, Inquiries]
 ```
 
-#### Wissensbasis (3 Säulen)
+#### Kosten- & Latenz-Hebel: Gemini Flash & Kontext-Caching
 
-1. **Gesetzliche Prüfnormen:** BGB, BeurkG, GBO, GEG (10-Jahres-Frist), MaBV, HGB.
+- **Gemini Flash Pricing:** $0,75 / 1 Mio. Input, $3,75 / 1 Mio. Output.
+- **Kontext-Caching:** $0,075 / 1 Mio. Cached Input (-90 % Kosten!), $0,50 / 1 Mio. Tokens/Std. Speicherpreis.
+- **Akten-Ökonomie:** 40-seitige Notarakte kostet beim Erstupload ca. $0,054 (5 Cent). Jede Nachreichung oder Reconciler-Stufe kostet dank Kontext-Caching unter **$0,008 (< 1 Cent)**.
+- **Volle Vision-Sicherheit:** Durch die extrem günstigen Token-Preise müssen keine gefährlichen Kompromisse bei Scans oder Handschriften eingegangen werden – jede Seite wird multimodal voll verarbeitet.
+
+#### Wissensbasis (Database-First SSOT)
+
+1. **Gesetzliche Prüfnormen:** BGB, BeurkG, GBO, GEG (10-Jahres-Frist), MaBV, HGB (in `knowledge_documents`).
 2. **Kanzlei-Standards:** Interne Checklisten nach Vorgangstyp (Gewerbekauf, Überlassung, WEG).
-3. **Zwischenverfügungs-Prävention:** Historische Beanstandungen lokaler Grundbuchämter (z. B. Klauselerfordernisse spezifischer Amtsgerichte).
+3. **Zwischenverfügungs-Prävention:** DNotI-Gutachten und historische Beanstandungen lokaler Grundbuchämter.
 
-#### Phasenweise Umsetzung
+#### Phasenweise Umsetzung der 5-Stufen-Pipeline
 
-- **Phase 1 (Quick Win):** [x] **Fertiggestellt & Verifiziert** — Lokale strukturierte Checklisten in `src/lib/knowledge/rules/` (`rules-registry.ts`, `rule-selector.ts`), deterministisch in Stufe 2 Prompt injiziert (`pipeline.ts`) mit 100 % Unit-Test-Abdeckung (`rule-selector.test.ts`).
-- **Phase 2 (Erweitert):** [ ] Hybrid Search (BM25 für Paragraphen + `pgvector` in Supabase) für Kanzleisammlungen und DNotI-Gutachten.
-- **Phase 3 (Enterprise):** [ ] Mandantenisolierte Kanzlei-Wissensbasis mit PostgreSQL Row-Level Security (§ 18 BNotO / § 203 StGB).
+- **Phase 1 (Quick Win):** [x] **Fertiggestellt & Verifiziert** — Database-First SSOT in PostgreSQL (`knowledge_documents`), Code vollständig frei von Gesetzes-Strings, dynamische Injektion in Stufe 2 via `rule-selector.ts`.
+- **Phase 2 (Dual-Engine Guardrails & Zod Contract):** [ ] Deterministische Guardrails (Fristen & Mathematik in TS), Zod-Verträge zwischen Stufe 1 & Stufe 2, Entity-Reconciliation.
+- **Phase 3 (Pre-Flight Gateway & Gemini Kontext-Caching):** [ ] Dokumenten-Triage & Relevanz-Prüfung vor Extraktion, Gemini Ephemeral Context Caching für Stufe-1/Stufe-2 Wiederverwendung.
+- **Phase 4 (Deep Provenance):** [ ] Paginierte Beleg-Verankerung auf dem PDF-Textlayer für 1-Klick-Auditing.
 
 ---
 

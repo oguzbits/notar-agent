@@ -1,5 +1,5 @@
 import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
-import { Dossier, DOCUMENT_RELIABILITY } from '@/types/dossier';
+import { Dossier, DOCUMENT_RELIABILITY, NOTAR_DOCUMENT_TYPES } from '@/types/dossier';
 import { getDossierFieldsRecord } from './state';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
@@ -56,7 +56,7 @@ export function normalizeDossier(
     }
 
     // 1b. Fachlich-juristische Konsistenz- & Plausibilitäts-Guardrails anwenden
-    applyNotaryDomainGuardrails(fieldsObj);
+    applyNotaryDomainGuardrails(fieldsObj, { referenceDate });
   }
 
   // 2. detectedDocuments bereinigen
@@ -114,7 +114,7 @@ export function normalizeDossier(
     const noteName = `Notiz #${idx + 1}`;
     noteDocs.push({
       fileName: noteName,
-      documentType: 'Bearbeitungsvermerk / Notiz',
+      documentType: NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ,
       date: todayIso,
       pageCount: 1,
       reliability: DOCUMENT_RELIABILITY.LOW,

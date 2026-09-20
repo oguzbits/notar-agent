@@ -5,6 +5,7 @@ import {
   FIELD_STATUS,
   OVERALL_STATUS,
   DOCUMENT_RELIABILITY,
+  NOTAR_DOCUMENT_TYPES,
   INQUIRY_PRIORITY,
   INQUIRY_RECIPIENT,
 } from '@/types/dossier';
@@ -17,21 +18,22 @@ function createBaseDossier(): Dossier {
     overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
     executiveSummary: 'Erstanalyse mit offenen Nachforderungen.',
     userNotes: ['Erstes Anschreiben mit Vorangebot 400.000 EUR.'],
-    fieldStatusMap: {
-      kaeufer: FIELD_STATUS.NEEDS_REVIEW,
-      energieausweis: FIELD_STATUS.OUTDATED,
-    },
     fields: {
-      kaeufer: {
-        note: 'Handelsregisterauszug noch nicht vorgelegt.',
-      },
       kaufpreis: {
+        status: FIELD_STATUS.NEEDS_REVIEW,
         data: {
-          previousOffers: [380000],
-          priceEvolutionSummary: 'Nachverhandlung',
+          amountInFigures: 400000,
+          amountInWords: 'Vierhunderttausend Euro',
         },
+        source: {
+          fileName: 'Notiz #1',
+          pageNumber: 0,
+          snippet: 'Angebot 400.000 EUR',
+        },
+        note: 'Vorläufiges Angebot',
       },
       energieausweis: {
+        status: FIELD_STATUS.OUTDATED,
         data: {
           validUntil: '2020-01-01',
           isExpired: true,
@@ -41,7 +43,7 @@ function createBaseDossier(): Dossier {
     detectedDocuments: [
       {
         fileName: 'Notiz #1',
-        documentType: 'Bearbeitungsvermerk / Notiz',
+        documentType: NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ,
         date: '2026-09-01',
         pageCount: 1,
         reliability: DOCUMENT_RELIABILITY.LOW,

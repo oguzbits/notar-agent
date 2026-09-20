@@ -7,6 +7,7 @@ import {
   INQUIRY_PRIORITY,
   INQUIRY_RECIPIENT,
   DOCUMENT_RELIABILITY,
+  NOTAR_DOCUMENT_TYPES,
   Dossier,
   isImmobilienDossier,
 } from '@/types/dossier';
@@ -182,7 +183,7 @@ describe('dossier-merger', () => {
       detectedDocuments: [
         {
           fileName: 'grundbuchauszug_neu.pdf',
-          documentType: 'Grundbuchauszug',
+          documentType: NOTAR_DOCUMENT_TYPES.GRUNDBUCHAUSZUG,
           date: '2026-03-10',
           pageCount: 3,
           reliability: DOCUMENT_RELIABILITY.HIGH,

@@ -3,12 +3,21 @@ import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
 import { normalizeDossier } from '@/lib/dossier';
+import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
 import {
   formatKnowledgeForPrompt,
   selectApplicableKnowledge,
 } from '@/lib/knowledge/rules/rule-selector';
 import { getKnowledgeRepository } from '@/lib/supabase/server';
-import { CaseType, Dossier, OverallStatus, UploadedFilePayload } from '@/types/dossier';
+import {
+  CaseType,
+  Dossier,
+  GenericFieldDossier,
+  NOTAR_DOCUMENT_TYPES,
+  OverallStatus,
+  UploadedFilePayload,
+} from '@/types/dossier';
+import { AuditorStageOutputSchema, ExtractionStageOutputSchema } from '@/types/pipeline';
 
 export interface PipelineParams {
   files: UploadedFilePayload[];
@@ -61,7 +70,7 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
 ${formattedNotes}
 (WICHTIGE ANWEISUNG FÜR QUELLEN UND DOKUMENTE:
 - Belege aus diesen Notizen MÜSSEN als source.fileName prägnant den Bezeichner "Notiz #${existingNoteCount + 1}" (bzw. die entsprechende Nummer) erhalten.
-- Jede dieser Notizen MUSS zwingend auch in 'detectedDocuments' als Typ "Bearbeitungsvermerk / Notiz" mit aktuellem Tagesdatum aufgeführt werden.
+- Jede dieser Notizen MUSS zwingend auch in 'detectedDocuments' als Typ "${NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ}" mit aktuellem Tagesdatum aufgeführt werden.
 - Fasse diese Notizen NIEMALS zusammen oder kürze sie ab! Der Text muss exakt 1:1 im vollen Originalwortlaut wiedergegeben werden.)\n\n`;
   }
 
@@ -95,7 +104,73 @@ ${formattedNotes}
     temperature: 0.1,
   });
 
-  const parsedExtractionRaw = cleanAndParseJson<Record<string, unknown>>(extractionText);
+  const extractionTextResult = extractionText;
+  let rawExtractionJson = cleanAndParseJson<Record<string, unknown>>(extractionTextResult);
+  let validatedExtraction = ExtractionStageOutputSchema.safeParse(rawExtractionJson);
+
+  // Self-Correction Reflection Pass (Enterprise-Grade Fault Tolerance):
+  // Falls das Stufe-1-JSON strukturell invalide ist oder Zod-Fehler wirft,
+  // führen wir genau einen gezielten Reflection-Turn durch, um die Integrität zu reparieren.
+  if (!validatedExtraction.success) {
+    const errorDetails = validatedExtraction.error.issues
+      .map((iss) => `- Pfad "${iss.path.join('.')}": ${iss.message}`)
+      .join('\n');
+
+    try {
+      const { text: repairedText } = await generateText({
+        model,
+        instructions: extractionInstructions,
+        messages: [
+          {
+            role: 'user',
+            content: userPromptParts,
+          },
+          {
+            role: 'assistant',
+            content: extractionTextResult,
+          },
+          {
+            role: 'user',
+            content: `KORREKTUR-AUFFORDERUNG: Das zuvor ausgegebene JSON entspricht nicht vollständig dem geforderten Schema.
+Folgende Schema-Inkonsistenzen wurden festgestellt:
+${errorDetails}
+
+Bitte korrigiere die Struktur und gib das vollständige, valide JSON-Objekt ohne Markdown-Ummantelung aus.`,
+          },
+        ],
+        temperature: 0.0,
+      });
+
+      const repairedJson = cleanAndParseJson<Record<string, unknown>>(repairedText);
+      const revalidated = ExtractionStageOutputSchema.safeParse(repairedJson);
+      if (revalidated.success) {
+        rawExtractionJson = repairedJson;
+        validatedExtraction = revalidated;
+      }
+    } catch (reflectionErr: unknown) {
+      console.warn(
+        '[pipeline] Self-Correction Reflection Pass für Stufe 1 fehlgeschlagen:',
+        reflectionErr
+      );
+    }
+  }
+
+  const parsedExtractionRaw: Record<string, unknown> = validatedExtraction.success
+    ? validatedExtraction.data
+    : rawExtractionJson || {};
+
+  // PRE-AUDIT DETERMINISTIC GUARDRAILS:
+  // Fristen (10 Jahre GEG), Arithmetik (Parzellenflächen, Mieten) & Entity-Reconciliation
+  // VOR Stufe 2 ausführen, damit der Auditor auf mathematisch verifizierten Daten arbeitet!
+  if (parsedExtractionRaw.fields && typeof parsedExtractionRaw.fields === 'object') {
+    applyNotaryDomainGuardrails(
+      parsedExtractionRaw.fields as Record<
+        string,
+        GenericFieldDossier<Record<string, unknown>> | undefined
+      >,
+      { referenceDate: new Date() }
+    );
+  }
 
   // =========================================================================
   // STUFE 2: Notary Auditor & Reconciler Agent (JIT-Regel-Retrieval & Delta)
@@ -144,7 +219,7 @@ Hier ist das vorläufig extrahierte Roh-Dossier aus Stufe 1 (Ingestion & Extract
 ${JSON.stringify(parsedExtractionRaw, null, 2)}
 \`\`\`
 
-${rulesSection}
+${notesSection ? `${notesSection}\n` : ''}${rulesSection}
 ${
   existingDossier
     ? `=== BESTEHENDES VORGANGSDOSSIER VOR DIESER NACHREICHUNG ===
@@ -165,7 +240,11 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     temperature: 0.1,
   });
 
-  const parsedAuditorRaw = cleanAndParseJson<Record<string, unknown>>(auditorText);
+  const rawAuditorJson = cleanAndParseJson<Record<string, unknown>>(auditorText);
+  const validatedAuditor = AuditorStageOutputSchema.safeParse(rawAuditorJson);
+  const parsedAuditorRaw = (
+    validatedAuditor.success ? validatedAuditor.data : rawAuditorJson || {}
+  ) as Record<string, unknown>;
 
   // Reconciler-Format auflösen (Full Dossier vs. Delta-Modus)
   const isFullDossier =

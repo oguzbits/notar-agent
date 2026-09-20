@@ -8,6 +8,7 @@ import {
   FIELD_STATUS,
   OVERALL_STATUS,
   DOCUMENT_RELIABILITY,
+  NOTAR_DOCUMENT_TYPES,
 } from '@/types/dossier';
 import { normalizeDossier } from './normalizer';
 
@@ -19,11 +20,11 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
       detectedDocuments: [
         {
           fileName: 'grundbuch.pdf',
-          documentType: 'Grundbuchauszug',
+          documentType: NOTAR_DOCUMENT_TYPES.GRUNDBUCHAUSZUG,
           date: '2024-01-01',
           pageCount: 2,
           reliability: DOCUMENT_RELIABILITY.HIGH,
-          summary: 'Grundbuchauszug',
+          summary: NOTAR_DOCUMENT_TYPES.GRUNDBUCHAUSZUG,
         },
       ],
       overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
@@ -70,7 +71,9 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
     // Notizen werden in detectedDocuments einsortiert (Notiz #1 an erster Stelle)
     expect(normalized.detectedDocuments.length).toBe(2);
     expect(normalized.detectedDocuments[0]?.fileName).toBe('Notiz #1');
-    expect(normalized.detectedDocuments[0]?.documentType).toBe('Bearbeitungsvermerk / Notiz');
+    expect(normalized.detectedDocuments[0]?.documentType).toBe(
+      NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ
+    );
     expect(normalized.detectedDocuments[1]?.fileName).toBe('grundbuch.pdf');
   });
 
@@ -152,7 +155,9 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
     const normalized = normalizeDossier(testDossier) as ImmobilienDossier;
     const fields = normalized.fields;
     expect(fields.verkaeufer.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
-    expect(fields.verkaeufer.note).toContain('Erbnachweis (§ 35 GBO) oder Vollmacht erforderlich');
+    expect(fields.verkaeufer.note).toContain(
+      'Nachweis der Verfügungsbefugnis oder Erbnachweis erforderlich'
+    );
   });
 
   it('should downgrade corporate parties to NEEDS_REVIEW when official register proof is missing', () => {

@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { SYNTHETIC_KAUFVERTRAG_RAW, SYNTHETIC_BEARBEITER_NOTIZ } from './fixtures/test-files';
+import { IMMOBILIEN_FIELD_METADATA } from '../src/lib/dossier/constants';
 import { CASE_STATUS } from '../src/lib/supabase/repository';
 import {
   CASE_TYPES,
   FIELD_STATUS,
   OVERALL_STATUS,
   DOCUMENT_RELIABILITY,
+  NOTAR_DOCUMENT_TYPES,
   INQUIRY_PRIORITY,
   INQUIRY_RECIPIENT,
   STORAGE_TYPES,
@@ -30,14 +32,14 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
       detectedDocuments: [
         {
           fileName: 'kaufvertrag_entwurf.txt',
-          documentType: 'Kaufvertragsentwurf',
+          documentType: NOTAR_DOCUMENT_TYPES.KAUFVERTRAGSENTWURF,
           date: '2026-09-13',
           pageCount: 1,
           reliability: DOCUMENT_RELIABILITY.HIGH,
         },
         {
           fileName: 'Notiz #1',
-          documentType: 'Bearbeitungsvermerk / Notiz',
+          documentType: NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ,
           date: '2026-09-13',
           pageCount: 1,
           reliability: DOCUMENT_RELIABILITY.LOW,
@@ -352,10 +354,12 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
     await expect(page.locator('tr').filter({ hasText: 'Käufer' }).first()).toBeVisible();
     await expect(page.locator('tr').filter({ hasText: 'Grundbuch' }).first()).toBeVisible();
     await expect(page.locator('tr').filter({ hasText: 'Kaufpreis' }).first()).toBeVisible();
-    await expect(page.locator('tr').filter({ hasText: 'Energieausweis' }).first()).toBeVisible();
+    const energieTitle =
+      IMMOBILIEN_FIELD_METADATA.energieausweis?.title ?? NOTAR_DOCUMENT_TYPES.ENERGIEAUSWEIS;
+    await expect(page.locator('tr').filter({ hasText: energieTitle }).first()).toBeVisible();
 
     // 9. Human-in-the-Loop Status-Override: Energieausweis manuell auf "Belegt" setzen
-    const rowEnergy = page.locator('tr').filter({ hasText: 'Energieausweis' }).first();
+    const rowEnergy = page.locator('tr').filter({ hasText: energieTitle }).first();
     const selectDropdown = rowEnergy.locator('select');
     await expect(selectDropdown).toBeVisible();
     await expect(selectDropdown).toHaveValue(FIELD_STATUS.NEEDS_REVIEW);
