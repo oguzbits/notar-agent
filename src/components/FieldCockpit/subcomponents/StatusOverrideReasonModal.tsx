@@ -42,7 +42,7 @@ const ReasonDialogContent: React.FC<{
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
+              <div className="bg-notar-200 text-notar-950 dark:bg-notar-950/60 dark:text-notar-300 flex h-9 w-9 items-center justify-center rounded-lg">
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div>
@@ -70,9 +70,9 @@ const ReasonDialogContent: React.FC<{
             className="text-muted-foreground text-sm leading-relaxed"
           >
             Sie markieren dieses Feld als{' '}
-            <strong className="text-emerald-700 dark:text-emerald-400">„Belegt“</strong>. Für die
-            revisionssichere Kanzleiakte und den gerichtsfesten Prüfbericht muss der Grund für die
-            Freigabe dokumentiert werden (z. B.{' '}
+            <strong className="text-notar-900 dark:text-notar-400 font-semibold">„Belegt“</strong>.
+            Für die revisionssichere Kanzleiakte und den gerichtsfesten Prüfbericht muss der Grund
+            für die Freigabe dokumentiert werden (z. B.{' '}
             <em>„Originaler Erbschein lag bei Beurkundung vor“</em>).
           </Dialog.Description>
 

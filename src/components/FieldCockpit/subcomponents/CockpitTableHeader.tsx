@@ -11,7 +11,7 @@ export const CockpitTableHeader: React.FC<CockpitTableHeaderProps> = ({
   onToggleAll,
 }) => {
   return (
-    <thead className="text-muted-foreground border-border border-b bg-slate-50/80 text-sm font-semibold dark:bg-slate-900/50">
+    <thead className="text-muted-foreground border-border bg-muted/40 border-b text-sm font-semibold">
       <tr>
         <th className="w-10 min-w-10 px-2 py-3 text-center">#</th>
         <th className="w-36 min-w-36 px-3 py-3 leading-tight">Pflichtfeld</th>

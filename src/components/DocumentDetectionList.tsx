@@ -45,7 +45,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
   return (
     <div className="border-border bg-card overflow-x-auto rounded-lg border shadow-xs">
       <table className="w-full table-auto text-left text-base">
-        <thead className="text-muted-foreground border-border border-b bg-slate-50/80 text-sm font-semibold dark:bg-slate-900/50">
+        <thead className="text-muted-foreground border-border bg-muted/40 border-b text-sm font-semibold">
           <tr>
             {/* 1. Index */}
             <th className="w-10 min-w-10 px-2 py-3 text-center">#</th>
@@ -67,13 +67,15 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
               <button
                 type="button"
                 onClick={toggleAllSummaries}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-notar-900 inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors focus-visible:ring-2"
                 title={isAllExpanded ? 'Alle Details einklappen' : 'Alle Details aufklappen'}
+                aria-label={isAllExpanded ? 'Alle Details einklappen' : 'Alle Details aufklappen'}
+                aria-expanded={isAllExpanded}
               >
                 {isAllExpanded ? (
-                  <ChevronUp className="h-3.5 w-3.5" />
+                  <ChevronUp className="h-4 w-4" />
                 ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-4 w-4" />
                 )}
               </button>
             </th>
@@ -142,7 +144,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                 <td className="w-52 min-w-52 px-3 py-2.5 leading-snug break-words">
                   <div className="flex items-start gap-2">
                     {isNote ? (
-                      <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <StickyNote className="text-google-yellow mt-0.5 h-4 w-4 shrink-0" />
                     ) : (
                       <FileText className="text-notar-900 mt-0.5 h-4 w-4 shrink-0" />
                     )}
@@ -159,19 +161,19 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                       className={cn(
                         'rounded-md px-2 py-1 text-xs font-medium sm:text-sm',
                         isNote
-                          ? 'border border-amber-300 bg-amber-100 text-amber-900'
+                          ? 'border-border bg-muted text-foreground border font-semibold'
                           : 'bg-muted text-foreground'
                       )}
                     >
                       {doc.documentType}
                     </span>
                     {doc.reliability === DOCUMENT_RELIABILITY.UNRELATED && (
-                      <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                      <span className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-2 py-0.5 text-xs font-semibold">
                         Ohne Vorgangsbezug
                       </span>
                     )}
                     {doc.reliability === DOCUMENT_RELIABILITY.OBSOLETE && (
-                      <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                      <span className="border-border bg-muted text-muted-foreground rounded-md border px-2 py-0.5 text-xs font-semibold">
                         Obsolet
                       </span>
                     )}
@@ -185,7 +187,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                   ) : isExpanded ? (
                     <div className="space-y-1">
                       {isNote && (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-amber-300/80 bg-amber-100/90 px-2 py-0.5 text-xs font-semibold text-amber-900 sm:text-sm">
+                        <span className="border-border bg-muted/80 text-foreground inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold sm:text-sm">
                           1:1 Originaltext (ungekürzt)
                         </span>
                       )}
@@ -205,7 +207,7 @@ export const DocumentDetectionList: React.FC<DocumentDetectionListProps> = ({ do
                   ) : (
                     <div className="space-y-1">
                       {isNote && (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 sm:text-sm">
+                        <span className="border-border bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium sm:text-sm">
                           Notiz gekürzt
                         </span>
                       )}

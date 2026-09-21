@@ -26,11 +26,11 @@ export const StatusOverrideDropdown: React.FC<StatusOverrideDropdownProps> = ({
           status === FIELD_STATUS.VERIFIED &&
             'border-notar-400 bg-notar-200 text-notar-950 focus:ring-notar-900',
           status === FIELD_STATUS.NEEDS_REVIEW &&
-            'border-amber-300 bg-amber-50 text-amber-950 focus:ring-amber-500',
+            'border-warning/40 bg-warning/10 text-foreground focus:ring-warning',
           status === FIELD_STATUS.OUTDATED &&
-            'border-orange-300 bg-orange-50 text-orange-950 focus:ring-orange-500',
+            'border-google-yellow/50 bg-google-yellow/10 text-foreground focus:ring-google-yellow',
           status === FIELD_STATUS.MISSING &&
-            'border-slate-200 bg-slate-100 text-slate-700 focus:ring-slate-400',
+            'border-border bg-muted text-muted-foreground focus:ring-ring',
           isUpdating && 'cursor-wait opacity-60'
         )}
         title={isUpdating ? 'Wird im Kanzleidossier gespeichert...' : 'Status dieses Feldes ändern'}
@@ -43,7 +43,7 @@ export const StatusOverrideDropdown: React.FC<StatusOverrideDropdownProps> = ({
         <option value={FIELD_STATUS.MISSING}>{STATUS_LABELS_DE[FIELD_STATUS.MISSING]}</option>
       </select>
       {isUpdating ? (
-        <Loader2 className="pointer-events-none absolute right-2 h-4 w-4 animate-spin text-slate-600 dark:text-slate-300" />
+        <Loader2 className="text-muted-foreground pointer-events-none absolute right-2 h-4 w-4 animate-spin" />
       ) : (
         <ChevronDown className="pointer-events-none absolute right-2 h-4 w-4 opacity-60" />
       )}

@@ -154,7 +154,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       </div>
 
       {parseError && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3.5 text-base text-red-700">
+        <div className="border-destructive/20 bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg border p-3.5 text-base">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{parseError}</span>
         </div>
@@ -176,7 +176,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     {isImg ? (
-                      <ImageIcon className="h-4.5 w-4.5 shrink-0 text-sky-500" />
+                      <ImageIcon className="text-google-blue h-4.5 w-4.5 shrink-0" />
                     ) : (
                       <FileText className="text-notar-900 h-4.5 w-4.5 shrink-0" />
                     )}
@@ -199,7 +199,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                         e.stopPropagation();
                         removeFile(idx);
                       }}
-                      className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-red-500"
+                      className="text-muted-foreground hover:text-destructive focus-visible:ring-destructive cursor-pointer rounded-md p-1.5 transition-colors focus-visible:ring-2"
                       title="Datei entfernen"
                       aria-label={`Datei ${file.name} entfernen`}
                     >

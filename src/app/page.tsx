@@ -222,7 +222,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="bg-background text-foreground selection:bg-notar-300 flex min-h-screen flex-col font-sans antialiased selection:text-slate-900">
+    <div className="bg-background text-foreground selection:bg-notar-300 selection:text-notar-950 flex min-h-screen flex-col font-sans antialiased">
       <Header
         caseNumber={session.persistenceInfo?.caseNumber || activeRecord?.title}
         storageType={

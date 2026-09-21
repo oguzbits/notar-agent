@@ -68,7 +68,7 @@ export const VerkaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isComp
         <div className="flex items-center gap-1.5 pt-1">
           <span className="text-foreground font-medium">Nachweise vorliegend:</span>{' '}
           {data?.representationProofProvided ? (
-            <span className="font-semibold text-emerald-800">Vollständig</span>
+            <span className="text-notar-900 dark:text-notar-300 font-semibold">Vollständig</span>
           ) : (
             <span className="text-muted-foreground">—</span>
           )}
@@ -117,7 +117,9 @@ export const KaeuferItemContent: React.FC<FieldItemProps> = ({ fields, isCompact
         <p>
           <strong className="text-foreground">Amtlicher Nachweis:</strong>{' '}
           {data?.hasOfficialRegisterProof ? (
-            <span className="font-semibold text-emerald-800">Amtlicher HR-Auszug liegt vor</span>
+            <span className="text-notar-900 dark:text-notar-300 font-semibold">
+              Amtlicher HR-Auszug liegt vor
+            </span>
           ) : (
             <span className="text-muted-foreground">—</span>
           )}
@@ -245,7 +247,9 @@ export const FinanzierungItemContent: React.FC<FieldItemProps> = ({ fields, isCo
         <p>
           <strong className="text-foreground">Finanzierungsvollmacht im Vertrag:</strong>{' '}
           {data?.requiresFinancingPowerOfAttorney ? (
-            <span className="font-semibold text-emerald-800">Ja (Standardklausel)</span>
+            <span className="text-notar-900 dark:text-notar-300 font-semibold">
+              Ja (Standardklausel)
+            </span>
           ) : (
             <span className="text-muted-foreground">—</span>
           )}
@@ -332,7 +336,7 @@ export const EnergieausweisItemContent: React.FC<FieldItemProps> = ({ fields, is
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Zap className="h-4.5 w-4.5 shrink-0 text-amber-600" />
+        <Zap className="text-google-yellow h-4.5 w-4.5 shrink-0" />
         <span className="text-foreground text-base font-semibold">
           {data?.certificateType && data.certificateType !== ENERGIEAUSWEIS_TYPES.UNBEKANNT
             ? data.certificateType
@@ -348,7 +352,7 @@ export const EnergieausweisItemContent: React.FC<FieldItemProps> = ({ fields, is
         <p>
           <strong className="text-foreground">Gültig bis:</strong>{' '}
           {formatDateGerman(data?.validUntil)}{' '}
-          {data?.isExpired && <span className="font-semibold text-rose-700">(ABGELAUFEN)</span>}
+          {data?.isExpired && <span className="text-destructive font-semibold">(ABGELAUFEN)</span>}
         </p>
         <p>
           <strong className="text-foreground">Energieträger:</strong>{' '}

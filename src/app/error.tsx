@@ -36,15 +36,16 @@ export default function ErrorPage({
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <Button
           type="button"
+          variant="primary"
+          size="md"
+          leftIcon={<RotateCcw className="h-4 w-4" aria-hidden="true" />}
           onClick={() => reset()}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
         >
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
           Ansicht wiederherstellen
         </Button>
         <Link
           href="/"
-          className="bg-background text-foreground hover:bg-muted inline-flex items-center justify-center rounded-md border border-slate-200 px-4 py-2 text-base font-semibold shadow-xs transition-colors"
+          className="border-border bg-background text-foreground hover:bg-muted inline-flex items-center justify-center rounded-md border px-4 py-2 text-base font-semibold shadow-xs transition-colors"
         >
           Zur Startseite
         </Link>

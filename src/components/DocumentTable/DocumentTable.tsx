@@ -244,7 +244,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                       {/* Typ */}
                       <td className="text-muted-foreground px-4 py-3.5">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 sm:text-sm">
+                        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm">
                           {job.payload.caseType}
                         </span>
                       </td>
@@ -331,7 +331,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                       {/* Typ */}
                       <td className="text-muted-foreground px-4 py-3.5">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 sm:text-sm">
+                        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm">
                           {doc.content?.caseType
                             ? doc.content.caseType.charAt(0) +
                               doc.content.caseType.slice(1).toLowerCase().replace(/_/g, ' ')
@@ -369,7 +369,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               setPendingDeleteDoc(doc);
                             }}
                             className={cn(
-                              'flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-red-500',
+                              'focus-visible:ring-destructive flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2',
                               canDelete
                                 ? 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
                                 : 'text-muted-foreground cursor-not-allowed opacity-30'

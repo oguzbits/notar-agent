@@ -136,9 +136,17 @@ const eslintConfig = defineConfig([
       // @shadcn/lint: Design System & Primitive-First Enforcement (AGENTS.md Section 3)
       'shadcn/require-static-classes': 'error',
       'shadcn/no-inline-styles': 'error',
-      'shadcn/no-arbitrary-values': ['warn', { allow: ['[overflow-wrap:anywhere]'] }],
-      'shadcn/no-raw-colors': 'warn',
-      'shadcn/no-restyle': ['warn', { allow: ['layout'] }],
+      'shadcn/no-arbitrary-values': ['error', { allow: ['[overflow-wrap:anywhere]'] }],
+      'shadcn/no-raw-colors': 'error',
+      'shadcn/no-restyle': [
+        'error',
+        {
+          allow: ['layout'],
+          contracts: [
+            { pattern: '^Card', allow: ['layout', 'spacing'] },
+          ],
+        },
+      ],
     },
   },
   {

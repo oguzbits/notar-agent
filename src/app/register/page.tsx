@@ -77,7 +77,7 @@ export default function RegisterPage() {
 
       {/* Main Card */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
-        <Card className="px-6 py-8 shadow-sm sm:px-10">
+        <Card className="px-6 py-8 sm:px-10">
           {isSuccess ? (
             <div className="space-y-4 py-8 text-center">
               <div className="bg-notar-100 text-notar-900 border-notar-300 mx-auto flex h-14 w-14 items-center justify-center rounded-full border">
@@ -96,7 +96,7 @@ export default function RegisterPage() {
               {errorMsg && (
                 <div
                   role="alert"
-                  className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3.5 text-base text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+                  className="border-destructive/20 bg-destructive/10 text-destructive flex items-start gap-3 rounded-lg border p-3.5 text-base"
                 >
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                   <span>{errorMsg}</span>

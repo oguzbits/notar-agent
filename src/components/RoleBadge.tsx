@@ -49,7 +49,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           'border-border bg-card/90 hover:bg-muted/70 focus:ring-notar-900 flex cursor-pointer items-center gap-3 rounded-xl border py-1.5 pr-3.5 pl-2 shadow-xs transition-colors focus:ring-2 focus:outline-none',
-          !hasActiveOrganization && 'border-amber-500/50 bg-amber-50/60 dark:bg-amber-950/20'
+          !hasActiveOrganization && 'border-destructive/40 bg-destructive/5'
         )}
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -61,7 +61,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-sm font-bold tracking-tight',
             hasActiveOrganization
               ? 'bg-notar-100 text-notar-900 border-notar-300 dark:bg-notar-950 dark:text-notar-100 dark:border-notar-800'
-              : 'border-amber-400 bg-amber-100 text-amber-900 dark:border-amber-600 dark:bg-amber-900 dark:text-amber-100'
+              : 'border-destructive/40 bg-destructive/10 text-destructive'
           )}
         >
           {initials}
@@ -116,7 +116,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="text-base font-bold text-amber-600 dark:text-amber-400">
+                <div className="text-destructive text-base font-bold">
                   Keine Notarkanzlei zugewiesen
                 </div>
                 <p className="text-muted-foreground text-sm leading-relaxed">
@@ -152,7 +152,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
             </div>
             {authorityDescription && (
               <div className="text-muted-foreground mt-2 flex items-center gap-1.5 text-sm">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <ShieldCheck className="text-notar-700 dark:text-notar-400 h-4 w-4 shrink-0" />
                 <span>{authorityDescription}</span>
               </div>
             )}

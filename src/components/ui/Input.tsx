@@ -66,7 +66,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               rightIcon ? 'pr-10' : 'pr-3.5',
               error
                 ? 'border-destructive focus:ring-destructive'
-                : 'border-input hover:border-slate-400 dark:hover:border-slate-600',
+                : 'border-input hover:border-foreground/30 focus:border-transparent',
               className
             )}
             {...props}

@@ -23,6 +23,7 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-warning: hsl(var(--warning));
 
   --color-notar-50: #ffffff;
   --color-notar-100: #fdfffd;

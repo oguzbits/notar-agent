@@ -13,7 +13,7 @@ export default function GlobalError({
     <html lang="de" className="h-full">
       <body className="bg-background text-foreground flex min-h-full flex-col items-center justify-center p-6 font-sans">
         <div className="flex max-w-md flex-col items-center text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+          <div className="bg-destructive/10 text-destructive mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
             <svg
               className="h-7 w-7"
               fill="none"
@@ -29,21 +29,21 @@ export default function GlobalError({
               />
             </svg>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
+          <h1 className="text-foreground text-xl font-bold tracking-tight sm:text-2xl">
             Kritischer Anwendungsfehler
           </h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-muted-foreground mt-2 text-sm">
             Die Grundstruktur der Anwendung ist auf einen Ausnahmefehler gestoßen.
           </p>
           {error.message && (
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 font-mono text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <div className="border-border bg-muted/50 text-muted-foreground mt-4 rounded-lg border px-3.5 py-2 font-mono text-xs">
               {error.message}
             </div>
           )}
           <button
             type="button"
             onClick={() => reset()}
-            className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+            className="bg-notar-500 text-notar-950 hover:bg-notar-600 focus-visible:ring-notar-900 mt-6 inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2 text-base font-semibold shadow-xs transition-colors focus-visible:ring-2 focus-visible:outline-hidden"
           >
             Anwendung neu laden
           </button>

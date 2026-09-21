@@ -61,10 +61,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             type="button"
             variant="outline"
             size="sm"
+            leftIcon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={this.handleReset}
-            className="mt-4 gap-1.5"
+            className="mt-4"
           >
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
             Erneut versuchen
           </Button>
         </div>

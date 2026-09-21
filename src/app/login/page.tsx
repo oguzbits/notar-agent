@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import React, { useState } from 'react';
 import { BrandLogo } from '@/components/BrandLogo';
-import { Button, Input, Card, GoogleIcon } from '@/components/ui';
+import { Button, Input, Card, CardContent, GoogleIcon } from '@/components/ui';
 import { useAuthActions } from '@/hooks/useAuthActions';
 
 export default function LoginPage() {
@@ -48,96 +48,98 @@ export default function LoginPage() {
 
       {/* Main Card */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <Card className="px-6 py-8 shadow-sm sm:px-10">
-          {/* Error Message */}
-          {error && (
-            <div
-              role="alert"
-              className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3.5 text-base text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
-            >
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Google SSO Button */}
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              isLoading={isLoadingSso}
-              onClick={loginWithGoogleSso}
-              className="bg-card hover:bg-muted text-foreground border-border w-full justify-center font-medium"
-              leftIcon={<GoogleIcon className="h-5 w-5" />}
-            >
-              Mit Google anmelden
-            </Button>
-          </div>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="border-border w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-card text-muted-foreground px-3">
-                oder mit E-Mail und Passwort
-              </span>
-            </div>
-          </div>
-
-          {/* Password Form */}
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              label="E-Mail-Adresse"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@kanzlei.de"
-              leftIcon={<Mail className="h-5 w-5" />}
-            />
-
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              label="Passwort"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              leftIcon={<Lock className="h-5 w-5" />}
-            />
-
-            <div className="pt-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                isLoading={isLoadingPassword}
-                className="w-full justify-center"
-                rightIcon={<ArrowRight className="h-5 w-5" />}
+        <Card>
+          <CardContent className="p-6 sm:p-10">
+            {/* Error Message */}
+            {error && (
+              <div
+                role="alert"
+                className="border-destructive/20 bg-destructive/10 text-destructive mb-6 flex items-start gap-3 rounded-lg border p-3.5 text-base"
               >
-                Anmelden
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Google SSO Button */}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                isLoading={isLoadingSso}
+                onClick={loginWithGoogleSso}
+                className="w-full justify-center"
+                leftIcon={<GoogleIcon className="h-5 w-5" />}
+              >
+                Mit Google anmelden
               </Button>
             </div>
-          </form>
 
-          {/* Footer Registration Link */}
-          <div className="border-border mt-8 border-t pt-5 text-center">
-            <p className="text-muted-foreground text-base">
-              Neu bei Notar Agent?{' '}
-              <Link href="/register" className="text-notar-900 font-semibold hover:underline">
-                Neue Kanzlei registrieren
-              </Link>
-            </p>
-          </div>
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="border-border w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-card text-muted-foreground px-3">
+                  oder mit E-Mail und Passwort
+                </span>
+              </div>
+            </div>
+
+            {/* Password Form */}
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                label="E-Mail-Adresse"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@kanzlei.de"
+                leftIcon={<Mail className="h-5 w-5" />}
+              />
+
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                label="Passwort"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                leftIcon={<Lock className="h-5 w-5" />}
+              />
+
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  isLoading={isLoadingPassword}
+                  className="w-full justify-center"
+                  rightIcon={<ArrowRight className="h-5 w-5" />}
+                >
+                  Anmelden
+                </Button>
+              </div>
+            </form>
+
+            {/* Footer Registration Link */}
+            <div className="border-border mt-8 border-t pt-5 text-center">
+              <p className="text-muted-foreground text-base">
+                Neu bei Notar Agent?{' '}
+                <Link href="/register" className="text-notar-900 font-semibold hover:underline">
+                  Neue Kanzlei registrieren
+                </Link>
+              </p>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>

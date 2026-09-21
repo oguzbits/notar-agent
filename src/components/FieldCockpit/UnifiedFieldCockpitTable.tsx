@@ -87,7 +87,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
             Entwurfsreife erfordert: Alle 10 Pflichtfelder mit Status „Belegt“
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+          <span className="text-notar-900 dark:text-notar-300 inline-flex items-center gap-1 text-sm font-semibold">
             <span>✓ Entwurfsreife erreicht</span>
           </span>
         )}
@@ -95,15 +95,15 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
 
       {/* Reifegrad-Wegweiser: Zeigt konkret, welche Felder noch fehlen */}
       {readiness.stage !== READINESS_STAGES.READY && missingOrReviewRows.length > 0 && (
-        <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/20">
+        <div className="border-border/80 bg-muted/40 rounded-lg border p-3.5">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-200 text-sm font-bold text-amber-900 dark:bg-amber-800 dark:text-amber-100">
+            <span className="bg-foreground text-background text-2xs mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold">
               !
             </span>
             <div className="space-y-2">
-              <p className="text-base leading-relaxed text-amber-950 dark:text-amber-200">
+              <p className="text-foreground text-base leading-relaxed">
                 Damit dieser Vorgang{' '}
-                <strong className="font-semibold text-emerald-800 dark:text-emerald-300">
+                <strong className="text-notar-900 dark:text-notar-300 font-bold">
                   „Entwurfsreif“
                 </strong>{' '}
                 wird, müssen folgende {missingOrReviewRows.length} Felder geklärt und auf{' '}
@@ -118,11 +118,11 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                     key={r.fieldKey}
                     type="button"
                     onClick={() => toggleFieldExpand(r.fieldKey)}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-amber-300 bg-white/90 px-3 py-1 text-sm font-semibold text-amber-900 shadow-2xs transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-slate-900/80 dark:text-amber-200"
+                    className="border-border bg-card text-foreground hover:bg-muted/70 inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1 text-sm font-semibold shadow-2xs transition-colors"
                     title={`Zu „${r.fieldTitle}“ springen / Details anzeigen`}
                   >
                     <span>{r.fieldTitle}</span>
-                    <span className="text-xs font-normal text-amber-700 dark:text-amber-400">
+                    <span className="text-muted-foreground text-xs font-normal">
                       ({STATUS_LABELS_DE[r.status]})
                     </span>
                   </button>
@@ -137,7 +137,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
       {summary && (
         <div className="bg-muted/40 border-border/60 rounded-lg border px-3 py-2 text-base">
           <div className="text-foreground mb-1 flex items-center gap-1.5 font-semibold">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+            <span className="bg-muted-foreground h-1.5 w-1.5 rounded-full"></span>
             <span>Gesamteinschätzung &amp; Bearbeitungsstand</span>
           </div>
           {summary.includes(';') || summary.includes('. ') ? (
@@ -149,12 +149,12 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                 .map((sentence, idx) => (
                   <li key={idx} className="flex items-start gap-1.5">
                     <span className="text-muted-foreground mt-0.5 select-none">•</span>
-                    <span className="text-slate-800 dark:text-slate-200">{sentence}</span>
+                    <span className="text-foreground">{sentence}</span>
                   </li>
                 ))}
             </ul>
           ) : (
-            <p className="leading-snug text-slate-800 dark:text-slate-200">{summary}</p>
+            <p className="text-foreground leading-snug">{summary}</p>
           )}
         </div>
       )}

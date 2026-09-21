@@ -55,9 +55,9 @@ export const ExportActions: React.FC<ExportActionsProps> = ({ dossier, documentI
         title="Revisionssicheren Prüfbericht inklusive Audit-Trail (§ 17 ff. BeurkG) herunterladen"
       >
         {isExportingReport ? (
-          <Loader2 className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-300" />
+          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
         ) : (
-          <FileCheck2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+          <FileCheck2 className="text-notar-700 dark:text-notar-400 h-4 w-4" />
         )}
         <span>Prüfbericht (§ 17 BeurkG)</span>
       </button>
