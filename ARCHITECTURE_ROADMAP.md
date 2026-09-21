@@ -58,6 +58,7 @@ graph TD
 - **Phase 2 (Dual-Engine Guardrails & Zod Contract):** [ ] Deterministische Guardrails (Fristen & Mathematik in TS), Zod-Verträge zwischen Stufe 1 & Stufe 2, Entity-Reconciliation.
 - **Phase 3 (Pre-Flight Gateway & Gemini Kontext-Caching):** [ ] Dokumenten-Triage & Relevanz-Prüfung vor Extraktion, Gemini Ephemeral Context Caching für Stufe-1/Stufe-2 Wiederverwendung.
 - **Phase 4 (Deep Provenance):** [ ] Paginierte Beleg-Verankerung auf dem PDF-Textlayer für 1-Klick-Auditing.
+- **Phase 5 (Enterprise Ingestion & Extraction Overhaul):** [ ] Serverless-native Modernisierung von Stufe 1 (100 % Vercel + Supabase kompatibel, zero extra Container): Modulare, flache Sub-Schemas & „Reasoning-First“-Pattern (Schutz vor Thinking Degradation / Datenverlust), Gemini Flash Multimodal Vision für Tabellen & Google `diff-match-patch` für 100 % Belegnachweis (§ 17 BeurkG).
 
 ---
 
@@ -380,11 +381,11 @@ graph TD
 
 ### Übersicht der Phasen & Umsetzungsstatus
 
-| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                                                                        |
-| :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>• [ ] **A.4 Agentic Eval Suite & Real-World Testkorpus**<br>• [ ] **A.5 Promptfoo Evaluation Dashboard**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                  |
-| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [x] **B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper**<br>• [ ] B.5 Multi-LLM Provider-Adapter   |
-| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [x] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB)**<br>• [x] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
+| Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>• [ ] **A.4 Agentic Eval Suite & Real-World Testkorpus**<br>• [ ] **A.5 Promptfoo Evaluation Dashboard**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                                  |
+| **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [x] **B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper**<br>• [ ] B.5 Multi-LLM Provider-Adapter<br>• [ ] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, diff-match-patch)** |
+| **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [x] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB)**<br>• [x] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO                                                                                                 |
 
 ### Detaillierter Fortschrittstracker (Phase A)
 
@@ -451,6 +452,26 @@ graph TD
   - [ ] `SUPABASE_WEBHOOK_SECRET="8f502e1289c87f03a0168939134332a4ffb7aaf92649f35aca1426536ef3e36c"` im Hosting-Environment hinterlegen
   - [ ] Webhook `dossier-jobs-processor` unter Supabase Dashboard **Database > Webhooks** auf `https://<domain>/api/jobs/process-webhook` mit Header `x-webhook-secret` aktivieren
 - [ ] **B.7 Multi-LLM Provider-Adapter**
+- [ ] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, diff-match-patch):**
+  - [ ] **B.8.1 Vercel AI SDK Core Refactoring (Reasoning-First & Flache Sub-Schemas):**
+    - [ ] Ablösung handgeschriebener JSON-Bereinigung (`cleanAndParseJson`) und fehleranfälliger Reflection-Turns
+    - [ ] **Schutz vor Thinking Degradation & Datenverlust:** Verzicht auf ein einzelnes gigantisches 500-Zeilen-Monolith-Schema. Implementierung des **„Reasoning-First“-Patterns** (Freies juristisches Denken & Analyse im `analysisAndReasoning`-Feld VOR der Bindung an Typen/Enums)
+    - [ ] Verwendung von **modularen, flachen Zod-Sub-Schemas** pro Dokumenttyp (z. B. `GrundbuchExtractionSchema`, `EnergieausweisSchema`) statt globalem Monster-Schema
+    - [ ] Standardisierung von Multi-Step Tool-Aufrufen für deterministische Zwischenprüfungen
+  - [ ] **B.8.2 Deterministisches Zitat-Grounding via `diff-match-patch` (§ 17 BeurkG Provenance):**
+    - [ ] Integration der Google `diff-match-patch` Library (schlankes 10-KB TypeScript-Paket) für bit- und zeichengenaue Fundstellen-Verifikation von `source.snippet` auf der angegebenen PDF-Seite
+    - [ ] Automatisches Bereinigen von Zeilenumbrüchen/Schnittstellen; Flaggen als `NEEDS_REVIEW` bei nicht auffindbaren Zitaten (Anti-Halluzination)
+  - [ ] **B.8.3 Native Dual-Stream Vision-Fusion & Gemini Context Caching:**
+    - [ ] 100 % Serverless-Kompatibilität auf Vercel + Supabase (Verzicht auf schwere Python/PyTorch-Container wie Docling)
+    - [ ] Verlustfreier Unicode-Textlayer (`unpdf`) für digitale Textseiten (0 ms Kaltstart, 0 € Serverkosten) kombiniert mit selektiver **Gemini 3.8 Flash Vision** für komplexe Tabellen (Grundbuch, Mietlisten) und Siegel/Handschriften
+    - [ ] **Gemini Ephemeral Context Caching:** Zwischenspeichern des Dokumenten-Kontexts bei Akten > 32k Tokens $\rightarrow$ **90 % Kostenersparnis** bei Reconciler-Schritten und Nachreichungen; TTFT sinkt auf < 2s
+  - [ ] **B.8.4 Triage-gestütztes Dokumenten-Routing & Page-Windowing:**
+    - [ ] **Anti-„Lost in the Middle“:** Aufteilung umfangreicher Akten (50–150 Seiten) in logische Dokumenten-Slices oder 10–15-Seiten-Fenster, um 100 % Recall-Genauigkeit auch in der Dokumentenmitte zu garantieren
+    - [ ] Gezielte Extraktion domänenspezifischer Pflichtfelder pro Dokumenttyp via spezialisierter Sub-Prompts
+    - [ ] Deterministische Map-Reduce Zusammenführung vor Stufe 2
+  - [ ] **B.8.5 Pre-Flight Resolution & Contrast Enhancement (Vision-Härtung):**
+    - [ ] Automatischer Kontrast- und DPI-Check vor dem Senden an multimodale Modelle (Erkennung verwaschener historischer Grundbuch-Scans oder kontrastarmer Kopien)
+    - [ ] Leichtgewichtige Bildoptimierung (Kontrastspreizung / Grayscale-Thresholding) in TypeScript, um Ziffernfehler bei Flurstücken (`108/4` vs. `108/1`) zuverlässig zu verhindern
 
 ### Detaillierter Fortschrittstracker (Phase C: Enterprise Compliance & Ökosystem)
 
