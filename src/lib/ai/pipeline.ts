@@ -19,6 +19,12 @@ import {
 } from '@/types/dossier';
 import { AuditorStageOutputSchema, ExtractionStageOutputSchema } from '@/types/pipeline';
 
+export interface PipelineTokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 export interface PipelineParams {
   files: UploadedFilePayload[];
   caseType: CaseType;
@@ -29,6 +35,7 @@ export interface PipelineParams {
   extractionInstructions: SystemModelMessage;
   auditorInstructions: SystemModelMessage;
   onStep: (step: number, stepDetail: string) => void;
+  onUsage?: (usage: PipelineTokenUsage) => void;
 }
 
 /**
@@ -46,7 +53,11 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
     extractionInstructions,
     auditorInstructions,
     onStep,
+    onUsage,
   } = params;
+
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -92,7 +103,7 @@ ${formattedNotes}
       : undefined,
   });
 
-  const { text: extractionText } = await generateText({
+  const extractionResult = await generateText({
     model,
     instructions: extractionInstructions,
     messages: [
@@ -104,7 +115,12 @@ ${formattedNotes}
     temperature: 0.1,
   });
 
-  const extractionTextResult = extractionText;
+  if (extractionResult.usage) {
+    totalPromptTokens += extractionResult.usage.inputTokens || 0;
+    totalCompletionTokens += extractionResult.usage.outputTokens || 0;
+  }
+
+  const extractionTextResult = extractionResult.text;
   let rawExtractionJson = cleanAndParseJson<Record<string, unknown>>(extractionTextResult);
   let validatedExtraction = ExtractionStageOutputSchema.safeParse(rawExtractionJson);
 
@@ -117,7 +133,7 @@ ${formattedNotes}
       .join('\n');
 
     try {
-      const { text: repairedText } = await generateText({
+      const repairedResult = await generateText({
         model,
         instructions: extractionInstructions,
         messages: [
@@ -141,7 +157,12 @@ Bitte korrigiere die Struktur und gib das vollständige, valide JSON-Objekt ohne
         temperature: 0.0,
       });
 
-      const repairedJson = cleanAndParseJson<Record<string, unknown>>(repairedText);
+      if (repairedResult.usage) {
+        totalPromptTokens += repairedResult.usage.inputTokens || 0;
+        totalCompletionTokens += repairedResult.usage.outputTokens || 0;
+      }
+
+      const repairedJson = cleanAndParseJson<Record<string, unknown>>(repairedResult.text);
       const revalidated = ExtractionStageOutputSchema.safeParse(repairedJson);
       if (revalidated.success) {
         rawExtractionJson = repairedJson;
@@ -233,14 +254,27 @@ ${JSON.stringify(existingDossier.inquiries || [], null, 2)}
 Führe nun die notarielle Endkontrolle, Plausibilisierung und rechtliche Prüfung gemäß deinen Reconciler-Richtlinien durch.
 Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconciled Full Dossier oder im Delta-Format unter 'modifications').`;
 
-  const { text: auditorText } = await generateText({
+  const auditorResult = await generateText({
     model,
     instructions: auditorInstructions,
     prompt: auditorContextPrompt,
     temperature: 0.1,
   });
 
-  const rawAuditorJson = cleanAndParseJson<Record<string, unknown>>(auditorText);
+  if (auditorResult.usage) {
+    totalPromptTokens += auditorResult.usage.inputTokens || 0;
+    totalCompletionTokens += auditorResult.usage.outputTokens || 0;
+  }
+
+  if (onUsage) {
+    onUsage({
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+      totalTokens: totalPromptTokens + totalCompletionTokens,
+    });
+  }
+
+  const rawAuditorJson = cleanAndParseJson<Record<string, unknown>>(auditorResult.text);
   const validatedAuditor = AuditorStageOutputSchema.safeParse(rawAuditorJson);
   const parsedAuditorRaw = (
     validatedAuditor.success ? validatedAuditor.data : rawAuditorJson || {}
@@ -252,15 +286,18 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     typeof parsedAuditorRaw === 'object' &&
     'fields' in parsedAuditorRaw &&
     parsedAuditorRaw.fields &&
-    typeof parsedAuditorRaw.fields === 'object';
+    typeof parsedAuditorRaw.fields === 'object' &&
+    !('modifications' in parsedAuditorRaw);
 
-  const parsedAuditorModifications = (
-    isFullDossier
-      ? parsedAuditorRaw.fields
-      : parsedAuditorRaw.modifications && typeof parsedAuditorRaw.modifications === 'object'
-        ? parsedAuditorRaw.modifications
-        : {}
-  ) as Record<string, unknown>;
+  const parsedAuditorModifications: Record<
+    string,
+    GenericFieldDossier<Record<string, unknown>>
+  > = isFullDossier
+    ? (parsedAuditorRaw.fields as Record<string, GenericFieldDossier<Record<string, unknown>>>)
+    : (parsedAuditorRaw?.modifications as Record<
+        string,
+        GenericFieldDossier<Record<string, unknown>>
+      >) || {};
 
   const auditorOverallStatus =
     typeof parsedAuditorRaw.overallStatus === 'string'

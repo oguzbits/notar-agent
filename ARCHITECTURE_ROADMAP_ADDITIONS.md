@@ -626,3 +626,45 @@ graph TD
 - [ ] **Core Primitives Coverage:** Stories für alle atomaren UI-Bausteine in `src/components/ui/` (`Button`, `Input`, `Card`, `ConfirmDialog`, `StatusBadge`).
 - [ ] **State-Quadrant Stories:** Dokumentation von Loading-, Error- und Empty-States für Kanzlei-Dossier-Komponenten.
 - [ ] **Accessibility-Pipeline:** Aktivierung des `@storybook/addon-a11y` zur automatischen Prüfung auf Barrierefreiheit im CI/CD-Prozess.
+
+---
+
+## 18. Promptfoo Evaluation Matrix & Web-Dashboard (Benchmark: Enterprise LLMOps)
+
+- **Priorisierung:** Vertiefendes Qualitäts- und Verifikations-Modul (Erweiterung zu Roadmap Phase A.4 / A.5).
+- **Ziel:** Visuelle Matrix-Gegenüberstellung verschiedener Prompt-Varianten und LLM-Modelle (Gemini 3.8 Flash vs. Claude 3.5 Sonnet vs. GPT-4o) im interaktiven Web-Dashboard zur Vermeidung von Regressionen bei Prompt-Änderungen.
+- **Ausgangslage:** Unser In-Repo-Evaluations-Runner (`scripts/eval-pipeline.ts`) liefert bereits alle Kern-Metriken (P50–P99 Latenz, Ground-Truth-Genauigkeit, Token-Ökonomie). Für die Zusammenarbeit im Team und iterative Prompt-Verfeinerungen fehlt jedoch ein grafischer Side-by-Side-Vergleich, der Prompt-Variationen transparent nebeneinander darstellt.
+- **Industrie-Referenz:**
+  - **Promptfoo Open-Source:** De-facto Standard im Node/TypeScript-Ökosystem für deterministisches Prompt-Testing und LLM-Evaluationen.
+  - **Braintrust / Langfuse:** Enterprise-Tracing und Model-Graded Evaluations.
+
+```mermaid
+graph TD
+    A["promptfooconfig.yaml"] --> B["Prompt-Varianten (v1 vs. v2 vs. v3)"]
+    A --> C["Modell-Matrix (Gemini 3.8 Flash, Claude 3.5 Sonnet, GPT-4o)"]
+    A --> D["Referenz-Akten (Golden Dataset)"]
+    B & C & D --> E["Promptfoo Test Engine"]
+    E --> F["Notar Custom Assertions (src/test/eval/scorer.ts)"]
+    F --> G["Web-Dashboard (npx promptfoo view)"]
+    F --> H["CI/CD Quality Gate (Exit-Code 1 bei Regression)"]
+```
+
+### Kernfunktionen & Mehrwerte
+
+1. **Visueller Side-by-Side Vergleich (`npx promptfoo view`):**
+   - Farbige Matrix aller 5 Referenzakten mit direkter Ansicht von Prompt-Diffs, Token-Verbräuchen und Antwortzeiten.
+2. **Multi-Modell Benchmarking:**
+   - Gleichzeitige Ausführung desselben Testfalls gegen verschiedene Provider, um Qualität und Wirtschaftlichkeit direkt abzuwägen.
+3. **Wiederverwendung unserer Notar-Infrastruktur:**
+   - 100 % nahtlose Weiternutzung unserer Zod-Schemas, 10-Pflichtfelder-Regeln und mathematischen Guardrails als TypeScript-Assertions in Promptfoo.
+4. **Hermetischer Datenschutz (§ 203 StGB):**
+   - Läuft vollständig lokal ohne SaaS-Account oder Datenabfluss an Drittanbieter.
+
+### Geplante Aufgaben
+
+- [ ] **Promptfoo Setup:** Installation von `promptfoo` als Dev-Dependency (`npm i -D promptfoo`).
+- [ ] **Konfigurationsdatei:** Anlegen von `promptfooconfig.yaml` mit Verknüpfung zu `src/test/eval/golden-dataset.ts`.
+- [ ] **Custom Assertion Adapter:** Kapselung von `scoreDossierAgainstGroundTruth()` aus `src/test/eval/scorer.ts` als wiederverwendbare Promptfoo-Assertion.
+- [ ] **Multi-Provider Testmatrix:** Konfiguration von Provider-Endpunkten für Gemini 3.8 Flash und Claude 3.5 Sonnet.
+- [ ] **NPM-Skripte:** Hinzufügen von `"eval:promptfoo": "promptfoo eval"` und `"eval:view": "promptfoo view"` in `package.json`.
+- [ ] **CI/CD Integration:** Einbindung in die GitHub Actions / Husky Quality Gates als optionaler Regression-Check.

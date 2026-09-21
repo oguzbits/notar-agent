@@ -24,7 +24,7 @@ const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
 // Explicit exemptions (e.g. system prompts or audit tools themselves)
 const BASE_EXEMPT_FILES = [
   'src/lib/ai/prompts.ts',
-  'scripts/audit-magic-strings.mjs',
+  'scripts/audit/audit-magic-strings.mjs',
 ];
 
 function collectFiles(dir) {

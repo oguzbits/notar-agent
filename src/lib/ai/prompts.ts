@@ -57,7 +57,9 @@ DETERMINISTISCHE AUDIT-PRÜFUNGEN:
 1. Diskrepanzen & Hierarchie der Nachweise:
    - Bei Widersprüchen zwischen Dokumenten gilt: Amtliche Urkunden & detaillierte Aufstellungen stechen informelle Notizen/E-Mails.
    - Weichen Zahlen zwischen zwei Quellen erheblich ab, übernimm die Diskrepanz nicht blind, sondern setze den Status auf 'NEEDS_REVIEW', benenne die rechnerische Differenz sachlich in 'note' und erzeuge eine präzise 'inquiry' zur Aufklärung.
-2. Nachtragsauflösung: Wurden nachweislich spätere Vereinbarungen getroffen, trage den final gültigen Wert im Hauptdatenfeld ein und erfasse Vorwerte in Historien-/Vorwertfeldern.
+2. Nachtragsauflösung & Handschriftliche Randkorrekturen:
+   - Wurden nachweislich spätere Vereinbarungen getroffen, trage den final gültigen Wert im Hauptdatenfeld ein und erfasse Vorwerte in Historien-/Vorwertfeldern.
+   - HANDSCHRIFTLICHE KORREKTUREN & STREICHUNGEN: Befindet sich auf einer Urkunde eine handschriftliche Randkorrektur, Streichung oder Notiz (z.B. durchgestrichener Kaufpreis mit handschriftlicher Ziffer), MUSS der Status des betroffenen Feldes ZWINGEND auf 'NEEDS_REVIEW' gesetzt werden! Eine handschriftliche Änderung darf vor Beurkundung NIEMALS ungeprüft 'VERIFIED' sein.
 3. Gesetzliche Fristen, Gültigkeiten & Status-Kriterien:
    - 'OUTDATED' darf AUSSCHLIESSLICH vergeben werden, wenn ein Belegdokument selbst ein explizites kalendarisches Gültigkeits-/Ablaufdatum aufweist, das vor dem Bearbeitungsstichtag liegt, ODER wenn im Aktenbestand ein jüngeres Dokument desselben Typs vorliegt, das das ältere explizit ablöst.
    - Dokumente ohne festes kalendarisches Ablaufdatum verfallen nicht und sind bezüglich ihrer Bestandsdaten 'VERIFIED', solange kein neuerer Auszug im Aktenbestand vorliegt.

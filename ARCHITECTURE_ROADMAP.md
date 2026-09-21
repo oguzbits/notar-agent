@@ -126,7 +126,32 @@ graph LR
   - Zwingende Pflichtbegründung bei manuellem Überschreiben von Warnungen (`NEEDS_REVIEW` -> `VERIFIED`).
   - SHA-256-Fingerprint der zugrundeliegenden Quelldatei.
 
-### 3.3 Zero-Data-Retention (ZDR) Vertragskonfiguration (Ausgelagert ins Backlog)
+### 3.3 Agentic Workflow Evaluation & Benchmark Suite (Latenz-Perzentile, Real-World-Korpus & Promptfoo)
+
+Um iterative Code- und Prompt-Anpassungen im 2-Stufen-Agentic-Workflow verlässlich und quantitativ zu bewerten, besitzt das System eine dedizierte Evaluations- und Benchmark-Suite:
+
+1. **Synthetisches Referenz-Dataset (Ground Truth):**
+   - 5 kanonische synthetische Text-Referenzakten in `src/test/eval/golden-dataset.ts` decken Standardfälle, Erbenwidersprüche, abgelaufene Fristen (§ 80 GEG), Flächendiskrepanzen und Miet-Arithmetik ab.
+   - Vollständige Isolierung vom echten Kanzleibetrieb (§ 203 StGB: Testdaten berühren niemals Produktionsdatenbanken).
+2. **Enterprise Real-World Testkorpus (Dreckeffekte & Bildträger):**
+   - **Reale Kanzleistörungen:** Gezielte Testfälle mit unscharfen Personalausweiskopien, schiefen und kontrastarmen Scans, unleserlichen Stempeln/Siegeln und handschriftlichen Randnotizen auf Urkundenseiten.
+   - **Defekte & unvollständige Anhänge:** Fehlende Seiten in Grundbuchauszügen und unvollständige Vollmachten.
+   - **Nachforderungs-Validierung:** Verifikation, dass das Modell bei unleserlichen Belegen deterministisch `NEEDS_REVIEW` setzt und eine präzise Nachforderung (`inquiries`) an die Sachbearbeitung auslöst.
+3. **Quantitative Ziel-Metriken (Quality Gates):**
+   - **Genauigkeit (Ground Truth Accuracy):** Soll $\ge$ 95.0 % Feld-Übereinstimmung der 10 Pflichtfelder.
+   - **Provenance Coverage:** Soll 100.0 % (jede Extraktion mit Quelldatei und Beleg-Snippet belegt).
+   - **Guardrail-Trefferquote:** Soll 100.0 % (Fristen und Widersprüche deterministisch abgefangen).
+   - **Latenz-Perzentile:** P50 (Median), P90, P95 und P99 (Worst-Case) aufgeschlüsselt nach Stufe 1 (Extraktion) und Stufe 2 (Auditor).
+   - **Token-Ökonomie & Kostenprojektion:** Exakte Berechnung des Token-Verbrauchs und Hochrechnung der Vorgangskosten (z. B. Gemini 3.8 Flash Tarif: 0,075 $ / M Input, 0,30 $ / M Output).
+4. **Automatisierte In-Repo-Ausführung (`npm run eval`):**
+   - 0,00 € Offline-Replay-Modus in < 20 ms für CI/CD-Pre-Commit-Schutz.
+   - Live-Modus (`npm run eval:live`) mit Cooldown und Rate-Limit-Schutz gegen Google AI Studio.
+5. **Nächster Ausbauschritt: `promptfoo` Matrix- & Dashboard-Integration:**
+   - Evaluierung und Integration des Open-Source-Standards `promptfoo` (`npm i -D promptfoo`) als alternatives CI/CD- und Visualisierungs-Tool.
+   - Erstellung einer `promptfooconfig.yaml` zur Gegenüberstellung verschiedener Prompts und Modelle (z. B. Gemini 3.8 Flash vs. Claude 3.5 Sonnet vs. GPT-4o) im lokalen Browser-Dashboard (`npx promptfoo view`).
+   - Wiederverwendung der bestehenden Notar-Scorer (`src/test/eval/scorer.ts`) als typisierte Custom-Assertions in Promptfoo.
+
+### 3.4 Zero-Data-Retention (ZDR) Vertragskonfiguration (Ausgelagert ins Backlog)
 
 > _Hinweis: Die vertragliche Konfiguration von ZDR-Vereinbarungen (Cloud Contractual mit Anthropic / AWS / Google Cloud) wurde ins Backlog ausgelagert (siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md)). Der technische Revisionsschutz ist durch Phase C.1 (Append-Only Audit-Trail) vollständig realisiert._
 
@@ -336,7 +361,7 @@ graph TD
 
 | Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                                                                        |
 | :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                                              |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>• [ ] **A.4 Agentic Eval Suite & Real-World Testkorpus**<br>• [ ] **A.5 Promptfoo Evaluation Dashboard**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                  |
 | **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [x] **B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper**<br>• [ ] B.5 Multi-LLM Provider-Adapter   |
 | **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [x] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB)**<br>• [x] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO |
 
@@ -358,6 +383,25 @@ graph TD
   - [x] Playwright-Konfiguration mit WebServer-Integration & Chromium Browser (`playwright.config.ts`, `npm run test:e2e`)
 - [ ] **A.3 Word-Urkunden-Engine (`.docx`):**
   - _Ausgelagert ins Backlog / siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md)_
+- [ ] **A.4 Agentic Workflow Evaluation & Enterprise Benchmark Suite:**
+  - [x] **A.4.1 Baseline-Scorer & Runner (Fundament):**
+    - [x] Synthetisches Golden Dataset mit 5 Text-Referenzakten (`src/test/eval/golden-dataset.ts`)
+    - [x] Exakter Scorer mit Latenz-Perzentilen (P50, P90, P95, P99), Provenance-Quote & Guardrail-Hits (`src/test/eval/scorer.ts`, `scorer.test.ts`)
+    - [x] Automatisierter Runner mit 0,00 € Offline-Replay & Live-Modus (`scripts/eval-pipeline.ts`, `npm run eval`, `npm run eval:live`)
+    - [x] Token-Verbrauchs-Tracking in beiden Pipeline-Stufen und Gemini 3.8 Flash Kostenrechner
+  - [ ] **A.4.2 Enterprise Real-World Testkorpus (Dreckeffekte & Bildträger):**
+    - [ ] Bilddateien / Scans mit realistischen Störungen (unscharfe Personalausweiskopien, schiefe Scans, niedriger Kontrast)
+    - [ ] Handschriftliche Randvermerke und Notar-Notizen auf Urkundenseiten
+    - [ ] Defekte / unvollständige Dokumente (fehlende Seiten, unleserliche Stempel/Siegel)
+    - [ ] Verifikation der Nachforderungs-Logik: Erzwingt das System bei unleserlichen Belegen korrekt `NEEDS_REVIEW` + `inquiries`?
+  - [ ] **A.4.3 Multimodal- & OCR-Stresstest:**
+    - [ ] Benchmark der Dual-Stream Ingestion unter Last gegen problematische PDFs & Bildanhänge
+- [ ] **A.5 Promptfoo Evaluation Matrix & Web-Dashboard:**
+  - [ ] `promptfoo` CLI & Test-Runner als Dev-Dependency einbinden (`npm i -D promptfoo`)
+  - [ ] Deklarative Konfiguration (`promptfooconfig.yaml`) für Multi-Modell-Vergleiche (Gemini 3.8 Flash vs. Claude 3.5 Sonnet vs. GPT-4o)
+  - [ ] Integration der Notar-Scorer (`src/test/eval/scorer.ts`) als typisierte Custom-Assertions in Promptfoo
+  - [ ] Lokales Web-Dashboard (`npx promptfoo view`) zum visuellen Vergleich von Prompt-Iterationen und Regressionserkennung
+  - [ ] CI/CD Quality-Gate: Automatischer Abbruch bei Genauigkeitsabfall unter 95 % oder P95-Latenzspitzen > 45s
 
 ### Detaillierter Fortschrittstracker (Phase B: Asynchrone Skalierung)
 

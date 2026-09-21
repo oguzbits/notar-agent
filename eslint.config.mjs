@@ -125,6 +125,13 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Bild- und Scan-Fixtures generieren SVG- und Canvas-Farben direkt (Hex-Codes für Tinte, Papier, Siegel)
+    files: ['scripts/fixtures/**', 'src/test/fixtures/**'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', '.agents/**']),
 ]);

@@ -13,6 +13,8 @@ export const ServerEnvSchema = z.object({
   ANTHROPIC_API_KEY: optionalTrimmedString,
   GEMINI_API_KEY: optionalTrimmedString,
   GOOGLE_GENERATIVE_AI_API_KEY: optionalTrimmedString,
+  EVAL_GEMINI_API_KEY: optionalTrimmedString,
+  EVAL_AI_MODEL: optionalTrimmedString.default('gemini-1.5-flash'),
   AI_MODEL: optionalTrimmedString.default('claude-haiku-4-5'),
   AI_PROVIDER: optionalTrimmedString,
   MOCK_AI: z.preprocess(

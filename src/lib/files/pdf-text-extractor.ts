@@ -6,7 +6,8 @@ import { extractText } from 'unpdf';
  */
 export async function extractPdfUnicodeText(buffer: Buffer | Uint8Array): Promise<string> {
   try {
-    const uint8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const uint8 = new Uint8Array(buffer.byteLength);
+    uint8.set(buffer);
     const result = await extractText(uint8);
     if (Array.isArray(result.text)) {
       return result.text.join('\n').trim();

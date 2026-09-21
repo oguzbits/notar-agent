@@ -111,9 +111,16 @@ export function applyNotaryDomainGuardrails(
     const eResult = EnergieausweisDataSchema.partial().safeParse(energieField.data);
     if (eResult.success && eResult.data.validUntil) {
       const validUntilClean = eResult.data.validUntil.trim().slice(0, 10);
-      // Validierung auf Standard-ISO JJJJ-MM-TT
+      let isoDate = '';
       if (/^\d{4}-\d{2}-\d{2}$/.test(validUntilClean)) {
-        if (validUntilClean < refDateIso) {
+        isoDate = validUntilClean;
+      } else if (/^\d{2}\.\d{2}\.\d{4}$/.test(validUntilClean)) {
+        const [day, month, year] = validUntilClean.split('.');
+        isoDate = `${year}-${month}-${day}`;
+      }
+
+      if (isoDate) {
+        if (isoDate < refDateIso) {
           energieField.status = FIELD_STATUS.OUTDATED;
           energieField.data.isExpired = true;
           if (!energieField.note || !energieField.note.includes('abgelaufen')) {

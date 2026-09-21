@@ -1,4 +1,4 @@
-import { startWorkerDaemon } from '../src/lib/jobs/job-daemon';
+import { startWorkerDaemon } from '../../src/lib/jobs/job-daemon';
 
 console.info('====================================================');
 console.info('Notar Agent Queue Worker Daemon gestartet');

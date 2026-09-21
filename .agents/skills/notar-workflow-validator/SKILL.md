@@ -50,6 +50,24 @@ Kein Sachverhalt darf ohne Nachweis als rechtssicher gelten:
 
 ---
 
+### 4. Real-World Test-Corpus & Multimodale Benchmarks
+
+Für Belastungstests und Model-Evaluations existiert ein verbindlicher Referenz-Datensatz in `test-akten/` (dokumentiert in `test-akten/README.md`):
+
+- `01_unscharfer_personalausweis_scan.png`: Stress-Test für Unschärfe/Verwacklung (Soll: `NEEDS_REVIEW` ohne Halluzination).
+- `01_scharfer_personalausweis_referenz.png`: Scharfe Gegenprobe (Soll: `VERIFIED`).
+- `02_fehlende_grundbuchseiten_scan.png`: Unvollständiges Grundbuchamt-Dokument ohne Abt. I (Soll: `NEEDS_REVIEW`, § 21 BeurkG Sperre).
+- `03_handschriftliche_kaufpreiskorrektur_scan.png`: Urkunde mit handschriftlicher Stift-Korrektur (Soll: 425.000 € statt 450.000 €).
+- `04_standard_kaufvertrag.pdf`: Vollständiger Referenzvertrag.
+
+Befehl für den Offline-Benchmark (0,00 € Kosten):
+
+```bash
+npm run eval
+```
+
+---
+
 ## Validierungs-Befehle
 
 Um die Konsistenz schnell zu prüfen:
@@ -58,9 +76,12 @@ Um die Konsistenz schnell zu prüfen:
 # 1. Type-Check und Build
 npm run build
 
-# 2. Reifegrad- und Delta-Tests ausführen
-npx vitest run src/lib/dossier-readiness.test.ts src/lib/user-journey-delta.test.ts
+# 2. Alle Quality Gates (Types, Lints, Knip, Magic Strings, Duplication)
+npm run check
 
-# 3. Alle Unit-Tests prüfen
+# 3. Unit- und Integrationstests
 npm test
+
+# 4. Agentic Benchmark & Eval-Pipeline
+npm run eval
 ```
