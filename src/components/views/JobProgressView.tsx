@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Loader2, RotateCw, AlertTriangle, ArrowLeft, Ban } from 'lucide-react';
+import { FileText, RotateCw, AlertTriangle, ArrowLeft, Ban } from 'lucide-react';
 import React, { useState } from 'react';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { Button } from '@/components/ui/Button';
@@ -98,26 +98,21 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                 variant="ghost"
                 size="md"
                 disabled={isCancelling}
+                isLoading={isCancelling}
+                leftIcon={<Ban className="h-4 w-4" />}
                 onClick={() => setIsCancelConfirmOpen(true)}
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1.5"
               >
-                {isCancelling ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Ban className="h-4 w-4" />
-                )}
-                <span>Vorgang abbrechen</span>
+                Vorgang abbrechen
               </Button>
             )}
           <Button
             type="button"
             variant="outline"
             size="md"
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
             onClick={onBackToTable}
-            className="flex items-center gap-1.5"
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Zur Übersicht</span>
+            Zur Übersicht
           </Button>
         </div>
       </div>
@@ -158,15 +153,11 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                 variant="outline"
                 size="sm"
                 disabled={isRetrying}
+                isLoading={isRetrying}
+                leftIcon={<RotateCw className="h-4 w-4" />}
                 onClick={() => onRetryJob(job.id)}
-                className="border-destructive/40 text-destructive hover:bg-destructive/20 gap-2"
               >
-                {isRetrying ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RotateCw className="h-4 w-4" />
-                )}
-                <span>Prüfung wiederholen</span>
+                Prüfung wiederholen
               </Button>
             </div>
           )}

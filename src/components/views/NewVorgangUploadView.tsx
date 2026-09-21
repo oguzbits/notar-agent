@@ -41,14 +41,14 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
 
       {/* Fehlermeldung nur im Upload-Kontext anzeigen */}
       {errorMessage && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-base text-red-800">
+        <div className="border-destructive/20 bg-destructive/10 text-destructive flex items-start justify-between gap-3 rounded-xl border p-4 text-base">
           <div>
             <strong>Prüfung fehlgeschlagen:</strong> {errorMessage}
           </div>
           <button
             type="button"
             onClick={onClearError}
-            className="text-red-600 hover:text-red-800"
+            className="text-destructive/80 hover:text-destructive cursor-pointer"
             aria-label="Fehlermeldung schließen"
           >
             <X className="h-4 w-4" />
@@ -84,7 +84,6 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
               'Kaufvertrag Eigentumswohnung Friedrichshain mit Stellplatz. Erwerb zur Eigennutzung.'
             );
           }}
-          className="text-base"
         >
           Muster-Kaufvertrag laden
         </Button>
@@ -95,7 +94,6 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
           isLoading={isStarting}
           onClick={onSubmit}
           size="md"
-          className="px-5 py-2.5 text-base"
         >
           {isStarting ? 'Vorgang wird gestartet...' : 'Unterlagen prüfen'}
         </Button>

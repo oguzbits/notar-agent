@@ -184,14 +184,14 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
             {activeTab === 'stammdaten' && (
               <div className="space-y-5">
                 {orgError && (
-                  <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                  <div className="border-destructive/20 bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg border p-3 text-sm">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>{orgError}</span>
                   </div>
                 )}
                 {orgSaveSuccess && (
-                  <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    <Check className="h-4 w-4 shrink-0" />
+                  <div className="border-notar-500/30 bg-notar-200/50 text-notar-950 dark:bg-notar-950/40 dark:text-notar-300 dark:border-notar-800/50 flex items-center gap-2 rounded-lg border p-3 text-sm">
+                    <Check className="text-notar-700 dark:text-notar-400 h-4 w-4 shrink-0" />
                     <span>Kanzlei-Stammdaten wurden erfolgreich aktualisiert.</span>
                   </div>
                 )}
@@ -318,9 +318,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
                     </div>
 
                     {inviteError && (
-                      <p className="text-sm font-medium text-red-600 dark:text-red-400">
-                        {inviteError}
-                      </p>
+                      <p className="text-destructive text-sm font-medium">{inviteError}</p>
                     )}
 
                     <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
@@ -446,7 +444,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
                               <button
                                 type="button"
                                 onClick={() => removeMember(member.id)}
-                                className="text-muted-foreground cursor-pointer rounded-lg p-2 transition-colors hover:text-red-600"
+                                className="text-muted-foreground hover:text-destructive cursor-pointer rounded-lg p-2 transition-colors"
                                 title={`${member.name} entfernen`}
                                 aria-label={`${member.name} entfernen`}
                               >

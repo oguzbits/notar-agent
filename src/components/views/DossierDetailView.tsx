@@ -130,14 +130,14 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
 
           {/* Fehlermeldung beim Nachreichen */}
           {errorMessage && (
-            <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-base text-red-800">
+            <div className="border-destructive/20 bg-destructive/10 text-destructive mb-4 flex items-start justify-between gap-3 rounded-xl border p-4 text-base">
               <div>
                 <strong>Aktualisierung fehlgeschlagen:</strong> {errorMessage}
               </div>
               <button
                 type="button"
                 onClick={onClearError}
-                className="text-red-600 hover:text-red-800"
+                className="text-destructive/80 hover:text-destructive cursor-pointer"
                 aria-label="Fehlermeldung schließen"
               >
                 <X className="h-4 w-4" />
@@ -194,8 +194,8 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
       {/* Die zwei klar getrennten Hauptbereiche des Vorgangs (Master-Cockpit + Aktenbestand) */}
       <div className="space-y-4 pt-0.5">
         {/* BEREICH 1: Notarielles Prüf-Cockpit & Pflichtangaben */}
-        <section className="bg-card overflow-hidden rounded-xl border border-slate-200/90 shadow-xs transition-all">
-          <div className="border-b border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 sm:px-4">
+        <section className="bg-card border-border overflow-hidden rounded-xl border shadow-xs transition-all">
+          <div className="border-border/80 bg-muted/40 border-b px-3.5 py-2.5 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <span className="bg-notar-900 text-2xs flex h-5 w-5 shrink-0 items-center justify-center rounded font-bold text-white shadow-xs">
@@ -208,7 +208,8 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
                     </h2>
                   </div>
                   <p className="text-muted-foreground text-base">
-                    Reifegrad, Befunde, Quellenbelege und vertragliche Fachdaten im direkten Zugriff
+                    Verbindlicher Stand der 10 Pflichtfelder mit Belegnachweisen und
+                    Reifegrad-Bewertung.
                   </p>
                 </div>
               </div>
@@ -218,16 +219,18 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
                   type="button"
                   onClick={handleCopyPruefbericht}
                   title="Vollständigen Prüfbericht mit allen Quellen für Zwischenablage kopieren"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-base font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+                  className="border-border bg-card text-foreground hover:bg-muted/60 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-base font-medium shadow-xs transition-colors"
                 >
                   {hasCopiedPruefbericht ? (
                     <>
-                      <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-emerald-700 dark:text-emerald-400">Kopiert!</span>
+                      <Check className="text-notar-700 dark:text-notar-400 h-4 w-4" />
+                      <span className="text-notar-900 dark:text-notar-300 font-semibold">
+                        Kopiert!
+                      </span>
                     </>
                   ) : (
                     <>
-                      <Copy className="h-4 w-4 text-slate-500" />
+                      <Copy className="text-muted-foreground h-4 w-4" />
                       <span>Prüfbericht kopieren</span>
                     </>
                   )}
@@ -251,11 +254,11 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
         </section>
 
         {/* BEREICH 2: Vorgelegte Unterlagen & Aktenbestand */}
-        <section className="bg-card overflow-hidden rounded-xl border border-slate-200/90 shadow-xs transition-all">
-          <div className="border-b border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 sm:px-4">
+        <section className="bg-card border-border overflow-hidden rounded-xl border shadow-xs transition-all">
+          <div className="border-border/80 bg-muted/40 border-b px-3.5 py-2.5 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-700 text-xs font-bold text-white shadow-xs">
+                <span className="bg-foreground text-background text-2xs flex h-5 w-5 shrink-0 items-center justify-center rounded font-bold shadow-xs">
                   2
                 </span>
                 <div>
