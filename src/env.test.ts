@@ -36,6 +36,7 @@ describe('env validation', () => {
     process.env.MOCK_AI = 'true';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb-anon-key';
+    process.env.SUPABASE_WEBHOOK_SECRET = 'secret-token-abc';
 
     const env = validateEnv(process.env);
     expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-test-123');
@@ -44,6 +45,7 @@ describe('env validation', () => {
     expect(env.MOCK_AI).toBe(true);
     expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe('https://example.supabase.co');
     expect(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).toBe('sb-anon-key');
+    expect(env.SUPABASE_WEBHOOK_SECRET).toBe('secret-token-abc');
   });
 
   it('falls back to SUPABASE_URL if NEXT_PUBLIC_SUPABASE_URL is not set', () => {

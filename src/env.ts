@@ -26,6 +26,7 @@ export const ServerEnvSchema = z.object({
   SUPABASE_URL: optionalTrimmedString,
   NEXT_PUBLIC_SUPABASE_URL: optionalTrimmedString,
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optionalTrimmedString,
+  SUPABASE_WEBHOOK_SECRET: optionalTrimmedString,
 });
 
 export type Env = z.infer<typeof ServerEnvSchema>;

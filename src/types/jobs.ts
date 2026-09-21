@@ -117,3 +117,17 @@ export const RetryJobRequestSchema = z.object({
 export type RetryJobRequest = z.infer<typeof RetryJobRequestSchema>;
 
 export type DossierJob = z.infer<typeof DossierJobSchema>;
+
+export const SupabaseJobWebhookPayloadSchema = z.object({
+  type: z.enum(['INSERT', 'UPDATE', 'DELETE']),
+  table: z.literal('dossier_jobs'),
+  schema: z.string().default('public'),
+  record: z.object({
+    id: z.string(),
+    status: JobStatusSchema,
+    organization_id: z.string().uuid().optional(),
+  }),
+  old_record: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+export type SupabaseJobWebhookPayload = z.infer<typeof SupabaseJobWebhookPayloadSchema>;

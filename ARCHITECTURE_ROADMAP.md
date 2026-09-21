@@ -257,6 +257,27 @@ Im Prototyp wird die Hintergrundverarbeitung über `void executeDossierJob(job.i
    - Stürzt ein Worker-Container während einer laufenden Analyse unerwartet ab (z. B. Out-of-Memory oder VM-Neustart), bleibt der Job nicht dauerhaft auf `PROCESSING` blockiert.
    - Ein periodischer Sweeper prüft `locked_at`: Ist ein Job länger als das konfigurierte Lease-Timeout (z. B. 5 Minuten) im Status `PROCESSING` ohne Lebenszeichen, wird er automatisch zur Wiederholung freigegeben (`status = 'PENDING'`, Retry-Zähler erhöht) oder nach 3 Fehlversuchen als `FAILED` markiert.
 
+### 5.4 Serverlose Event-Orchestrierung via Supabase Database Webhooks (Enterprise-Standard)
+
+Um dauerhaft laufende Polling-Prozesse (`setInterval(2000)`) abzulösen, ist die Architektur auf native **Supabase Database Webhooks** umgestellt:
+
+- **Ereignisgesteuerte Aktivierung:** Sobald ein Job mit Status `PENDING` erstellt wird, feuert ein PostgreSQL-Trigger (`trigger_dossier_job_pending`) via Supabase einen HTTP POST-Aufruf an `/api/jobs/process-webhook`.
+- **Kryptografische Absicherung:** Authentifizierung über Header `x-webhook-secret` gegen das generierte `SUPABASE_WEBHOOK_SECRET`.
+
+#### Anleitung zur Live-Schaltung nach Deployment (Checkliste):
+
+1. **Applikation bereitstellen (Domain erhalten):**
+   - App auf Vercel, Hetzner oder Dokploy deployen (z. B. Domain `https://mein-notariat.vercel.app`).
+2. **Umgebungsvariablen im Hosting-Dashboard hinterlegen:**
+   - `SUPABASE_WEBHOOK_SECRET="8f502e1289c87f03a0168939134332a4ffb7aaf92649f35aca1426536ef3e36c"`
+3. **Webhook im Supabase Dashboard aktivieren:**
+   - Navigiere zu: **Database > Webhooks** $\rightarrow$ **Create a Webhook**.
+   - **Name:** `dossier-jobs-processor`
+   - **Table:** `dossier_jobs`
+   - **Events:** `Insert`, `Update`
+   - **Target URL:** `https://<deine-produktions-domain>/api/jobs/process-webhook`
+   - **HTTP Header:** Name `x-webhook-secret`, Wert `8f502e1289c87f03a0168939134332a4ffb7aaf92649f35aca1426536ef3e36c`.
+
 ---
 
 ## 6. Mandantenfähigkeit (Multi-Tenancy) & Kanzlei-Isolation (§ 203 StGB)
@@ -420,7 +441,16 @@ graph TD
 - [x] **B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper:**
   - [x] Eigenständiger Node.js-Worker-Runner mit Graceful Shutdown (`SIGTERM`/`SIGINT`)
   - [x] Periodischer Orphan-Recovery-Sweeper (Reaktivierung verwaister `PROCESSING`-Jobs nach Lease-Timeout)
-- [ ] **B.5 Multi-LLM Provider-Adapter**
+- [x] **B.5 Serverlose Event-Orchestrierung via Supabase Database Webhooks (Code & DB-Trigger):**
+  - [x] Shared-Secret Authentifizierung & Zod-Webhook-Schema (`SupabaseJobWebhookPayloadSchema`)
+  - [x] Thin I/O Route Handler `POST /api/jobs/process-webhook` mit 100% TDD-Abdeckung
+  - [x] PostgreSQL Realtime-Trigger Migration (`20260921203000_dossier_jobs_webhook_trigger.sql`) via Supabase MCP live scharfgeschaltet
+  - [x] Bereinigung des Legacy-Polling-Workers (`run-worker.ts`)
+- [ ] **B.6 Post-Deployment Webhook-Aktivierung im Supabase Dashboard:**
+  - [ ] Applikation auf Vercel / Hetzner deployen und finale Produktions-Domain erfassen
+  - [ ] `SUPABASE_WEBHOOK_SECRET="8f502e1289c87f03a0168939134332a4ffb7aaf92649f35aca1426536ef3e36c"` im Hosting-Environment hinterlegen
+  - [ ] Webhook `dossier-jobs-processor` unter Supabase Dashboard **Database > Webhooks** auf `https://<domain>/api/jobs/process-webhook` mit Header `x-webhook-secret` aktivieren
+- [ ] **B.7 Multi-LLM Provider-Adapter**
 
 ### Detaillierter Fortschrittstracker (Phase C: Enterprise Compliance & Ökosystem)
 
