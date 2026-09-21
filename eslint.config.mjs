@@ -1,3 +1,4 @@
+import { plugin as shadcnPlugin } from '@shadcn/lint';
 import pluginQuery from '@tanstack/eslint-plugin-query';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
@@ -13,6 +14,14 @@ const eslintConfig = defineConfig([
     plugins: {
       'unused-imports': unusedImports,
       import: importPlugin,
+      shadcn: shadcnPlugin,
+    },
+    settings: {
+      shadcn: {
+        ui: '@/components/ui',
+        mergeFunctions: ['cn'],
+        note: 'Befolge die AGENTS.md Design-System-Regeln: Nutze ausschließlich semantische Tokens und Primitives aus @/components/ui.',
+      },
     },
     rules: {
       // Automatische Bereinigung unbenutzter Imports via eslint --fix
@@ -123,6 +132,20 @@ const eslintConfig = defineConfig([
             'Redundant type alias forbidden: Direct 1:1 type aliasing (`type A = B;`) is forbidden. Use the canonical type directly.',
         },
       ],
+
+      // @shadcn/lint: Design System & Primitive-First Enforcement (AGENTS.md Section 3)
+      'shadcn/require-static-classes': 'error',
+      'shadcn/no-inline-styles': 'error',
+      'shadcn/no-arbitrary-values': ['warn', { allow: ['[overflow-wrap:anywhere]'] }],
+      'shadcn/no-raw-colors': 'warn',
+      'shadcn/no-restyle': ['warn', { allow: ['layout'] }],
+    },
+  },
+  {
+    // layout.tsx setzt Browser-Root-Defaults (z.B. colorScheme)
+    files: ['src/app/layout.tsx'],
+    rules: {
+      'shadcn/no-inline-styles': 'off',
     },
   },
   {

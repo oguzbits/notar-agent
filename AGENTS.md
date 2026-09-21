@@ -58,8 +58,9 @@ Every feature and modification must satisfy these technical invariants:
   - Standard scale: All primary body copy, interactive controls, form inputs, and labels MUST default to `text-base` (16px / 1rem minimum).
   - Restricted scale: `text-sm` (14px) is strictly reserved for secondary helper captions, timestamps, and compact table cells. `text-xs` is forbidden for body text and labels (only allowed for compact status pills/badges).
   - Headings must use standard scale (`text-xl`, `text-2xl`, `text-3xl`) with `font-bold` and `tracking-tight`.
-- **Strict Semantic Tokens:**
+- **Strict Semantic Tokens & Automated Enforcement (`@shadcn/lint`):**
   - Never use raw Tailwind palette colors (e.g. `bg-slate-100`, `text-blue-500`) in feature views. Exclusively use semantic theme tokens (`bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, and `notar-*` accents).
+  - Enforced automatically via `@shadcn/lint` (`shadcn/no-raw-colors`, `shadcn/no-restyle`, `shadcn/no-arbitrary-values`, `shadcn/no-inline-styles`, `shadcn/require-static-classes`). Never introduce new raw palette colors or bypass `@/components/ui` primitives.
 - **Single Source of Action (Anti-Redundancy):**
   - For any distinct user intent within a view, there must exist exactly one canonical trigger. Competing or duplicate interaction paths for the same outcome are prohibited. Dead controls must be purged immediately.
 
