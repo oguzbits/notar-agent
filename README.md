@@ -55,9 +55,25 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 > - **Wann sind sie weg?** Die Daten bleiben beim normalen Browsen und Neuladen der Seite erhalten. Sie werden erst zurückgesetzt, wenn der Terminal-Prozess (`npm run dev`) gestoppt bzw. beendet wird.
 > - **Vorteil:** Du kannst sofort loslegen – du brauchst lediglich deinen `ANTHROPIC_API_KEY`.
 
-### 3.1 Supabase einrichten (Optional für persistente Speicherung)
+### 3.1 Lokale Supabase-Entwicklung via Docker (Empfohlen)
 
-Falls Vorgänge dauerhaft in einer PostgreSQL-Datenbank gespeichert werden sollen:
+Das Projekt unterstützt eine vollständig isolierte, lokale Supabase-Instanz (PostgreSQL 17, Storage, Auth, Studio) via Docker:
+
+1. **Docker Desktop starten.**
+2. **Lokale Supabase starten:**
+   ```bash
+   npm run db:start
+   ```
+   _Startet alle Container und wendet automatisch alle Migrationen in `supabase/migrations/` an._
+3. **Supabase Studio (Web UI):** Im Browser unter [http://localhost:54323](http://localhost:54323) aufrufen, um Tabellen, Daten und RLS-Policies visuell zu inspizieren.
+4. **Nützliche Befehle:**
+   - `npm run db:reset`: Setzt die lokale Datenbank vollständig zurück und führt alle Migrationen frisch aus.
+   - `npm run db:lint`: Prüft das Datenbankschema auf Security- und RLS-Fehler.
+   - `npm run db:stop`: Stoppt die lokalen Container.
+
+### 3.2 Supabase Cloud einrichten (Optional für persistente Staging/Prod-Umgebung)
+
+Falls Vorgänge alternativ in einem externen Supabase-Cloud-Projekt gespeichert werden sollen:
 
 1. **Supabase-Projekt anlegen:** Erstelle ein kostenloses Projekt unter [supabase.com](https://supabase.com).
 2. **Tabelle anlegen:** Öffne im Supabase-Dashboard den **SQL Editor** und führe folgendes Schema aus:

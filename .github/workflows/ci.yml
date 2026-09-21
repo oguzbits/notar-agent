@@ -65,3 +65,24 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+
+  supabase-migration-and-rls-check:
+    name: Supabase Docker Migration & Determinism Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase Local Containers (Docker)
+        run: supabase start
+
+      - name: Verify Clean Migration Run & Reset
+        run: supabase db reset
+
+      - name: Lint Database Schema & Security
+        run: supabase db lint
