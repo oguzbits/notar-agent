@@ -113,21 +113,50 @@ trailer << /Root 1 0 R >>
       notesSection: '',
     });
 
-    // Parts sollten enthalten:
-    // 0: Header
-    // 1: Textlayer (da classifyPdfStream & extractPdfUnicodeText den Text erkennen)
-    // 2: Multimodaler File Part für Vision
-    // 3: Modus-Label Text
-    expect(parts.length).toBeGreaterThanOrEqual(3);
+    // Bei digital-born Text-PDFs wird kein redundanter base64-File-Part erzeugt (Token-Optimierung)
+    const filePart = parts.find(
+      (p) => p.type === 'file' && (p as { mediaType?: string }).mediaType === 'application/pdf'
+    );
+    expect(filePart).toBeUndefined();
+
+    const textParts = parts.filter((p) => p.type === 'text') as { type: 'text'; text: string }[];
+    const hasTextLayer = textParts.some((p) => p.text.includes('Flurstueck 42'));
+    expect(hasTextLayer).toBe(true);
+
+    const hasStreamLabel = textParts.some((p) => p.text.includes('kaufvertrag.pdf'));
+    expect(hasStreamLabel).toBe(true);
+  });
+
+  it('attaches multimodal file part for scanned PDFs without readable text layer', async () => {
+    // Leeres PDF ohne Textlayer
+    const scannedPdf = `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] >> endobj
+trailer << /Root 1 0 R >>
+%%EOF`;
+    const pdfBase64 = Buffer.from(scannedPdf, 'utf-8').toString('base64');
+
+    const files: UploadedFilePayload[] = [
+      {
+        name: 'scan_urkunde.pdf',
+        type: 'application/pdf',
+        size: 2048,
+        isBase64: true,
+        content: `data:application/pdf;base64,${pdfBase64}`,
+      },
+    ];
+
+    const parts = await assembleExtractionPromptParts({
+      files,
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notesSection: '',
+    });
 
     const filePart = parts.find(
       (p) => p.type === 'file' && (p as { mediaType?: string }).mediaType === 'application/pdf'
     );
     expect(filePart).toBeDefined();
-
-    const textParts = parts.filter((p) => p.type === 'text') as { type: 'text'; text: string }[];
-    const hasStreamLabel = textParts.some((p) => p.text.includes('kaufvertrag.pdf'));
-    expect(hasStreamLabel).toBe(true);
   });
 
   it('includes existing dossier instructions when in delta mode', async () => {

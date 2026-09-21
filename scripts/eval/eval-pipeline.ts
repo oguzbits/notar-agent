@@ -72,6 +72,29 @@ if (process.env.NODE_ENV === 'production') {
 const args = process.argv.slice(2);
 const isLiveMode = args.includes('--mode=live');
 const iterations = args.includes('--runs=3') ? 3 : 1;
+const isSmokeMode = args.includes('--smoke');
+const caseFilterArg = args.find((a) => a.startsWith('--case='));
+const caseFilter = caseFilterArg ? caseFilterArg.split('=')[1] : null;
+
+// Filtern der Testfälle
+let testCases = GOLDEN_DATASET;
+if (caseFilter) {
+  testCases = GOLDEN_DATASET.filter(
+    (tc) =>
+      tc.id.toLowerCase() === caseFilter.toLowerCase() ||
+      tc.id.toLowerCase().includes(caseFilter.toLowerCase())
+  );
+  if (testCases.length === 0) {
+    console.error(`❌ Kein Testfall gefunden mit Filter: "${caseFilter}"`);
+    console.error(`Verfügbare Testfälle: ${GOLDEN_DATASET.map((c) => c.id).join(', ')}`);
+    process.exit(1);
+  }
+} else if (isSmokeMode) {
+  // Smoke-Test: 2 repräsentative Kernfälle (fall-03: Handschrift/Scan + fall-06: GEG-Fristen)
+  testCases = GOLDEN_DATASET.filter(
+    (tc) => tc.id.startsWith('fall-03') || tc.id.startsWith('fall-06')
+  );
+}
 
 console.log('=============================================================================');
 console.log('                 NOTARPARTNER AGENTIC EVAL & BENCHMARK SUITE                ');
@@ -79,10 +102,15 @@ console.log('===================================================================
 console.log(
   `Modus:       ${isLiveMode ? 'LIVE (Google AI Studio Free Tier via EVAL_GEMINI_API_KEY)' : 'MOCK / OFFLINE REPLAY (0,00 € Kosten)'}`
 );
+if (caseFilter) {
+  console.log(`Filter:      Einzelfall "${caseFilter}" (${testCases.length} Fall aktiv)`);
+} else if (isSmokeMode) {
+  console.log(`Filter:      SMOKE MODE (2 Kernfälle aktiv: fall-03, fall-06)`);
+}
 console.log(
-  `Durchläufe:  ${iterations}x pro Testfall (${GOLDEN_DATASET.length * iterations} Vorgänge gesamt)`
+  `Durchläufe:  ${iterations}x pro Testfall (${testCases.length * iterations} Vorgänge gesamt)`
 );
-console.log(`Datensatz:   ${GOLDEN_DATASET.length} synthetische Referenzakten (Ground Truth)`);
+console.log(`Testfälle:   ${testCases.map((tc) => tc.id).join(', ')}`);
 console.log('-----------------------------------------------------------------------------\n');
 
 interface RunResult {
@@ -167,7 +195,7 @@ async function runEvaluation() {
   for (let run = 1; run <= iterations; run++) {
     console.log(`\n▶ Starte Durchlauf ${run}/${iterations}...`);
 
-    for (const testCase of GOLDEN_DATASET) {
+    for (const testCase of testCases) {
       const stepTimings: Record<string, number> = {};
       const tStart = performance.now();
       let step1DurationMs = 0;

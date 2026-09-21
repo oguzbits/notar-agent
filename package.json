@@ -23,6 +23,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "npx tsx scripts/eval/eval-pipeline.ts",
+    "eval:smoke": "npx tsx scripts/eval/eval-pipeline.ts --mode=live --smoke",
     "eval:live": "npx tsx scripts/eval/eval-pipeline.ts --mode=live --runs=1",
     "eval:live:full": "npx tsx scripts/eval/eval-pipeline.ts --mode=live --runs=3",
     "test:e2e": "playwright test --last-failed-file=/dev/null; rm -rf test-results",

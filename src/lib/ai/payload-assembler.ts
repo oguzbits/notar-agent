@@ -130,8 +130,8 @@ ${notesSection}${
         }
       }
 
-      // DUAL-STREAM INGESTION:
-      // 1. Unicode-Textlayer injizieren
+      // ADAPTIVE MULTIMODAL INGESTION:
+      // 1. Unicode-Textlayer injizieren (sofern vorhanden)
       if (extractedText && extractedText.trim()) {
         filePromptParts.push({
           type: 'text',
@@ -139,17 +139,30 @@ ${notesSection}${
         });
       }
 
-      // 2. Multimodale PDF-Übergabe für visuelle Siegel, Stempel, Handschriften
-      filePromptParts.push({
-        type: 'file',
-        data: rawBase64,
-        mediaType: 'application/pdf',
-        filename: file.name,
-      });
-      filePromptParts.push({
-        type: 'text',
-        text: `\n[Obiges PDF-Dokument: "${file.name}" | Modus: ${streamType}]\n`,
-      });
+      // 2. Multimodale PDF-Übergabe nur für visuelle Siegel, Stempel, Handschriften (Scans/Hybride)
+      //    oder wenn kein Unicode-Text extrahiert werden konnte.
+      const requiresVisualInspection =
+        streamType !== PDF_STREAM_TYPES.DIGITAL_BORN_TEXT ||
+        !extractedText ||
+        extractedText.trim().length === 0;
+
+      if (requiresVisualInspection) {
+        filePromptParts.push({
+          type: 'file',
+          data: rawBase64,
+          mediaType: 'application/pdf',
+          filename: file.name,
+        });
+        filePromptParts.push({
+          type: 'text',
+          text: `\n[Obiges PDF-Dokument: "${file.name}" | Modus: ${streamType}]\n`,
+        });
+      } else {
+        filePromptParts.push({
+          type: 'text',
+          text: `\n[PDF-Dokument: "${file.name}" vollständig als hochpräziser Unicode-Textlayer verarbeitet | Modus: ${streamType}]\n`,
+        });
+      }
 
       triageList.push(
         triageDocument({

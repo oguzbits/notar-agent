@@ -237,7 +237,7 @@ VORGANGSTYP: ${caseType}
 
 Hier ist das vorläufig extrahierte Roh-Dossier aus Stufe 1 (Ingestion & Extraction Agent):
 \`\`\`json
-${JSON.stringify(parsedExtractionRaw, null, 2)}
+${JSON.stringify(parsedExtractionRaw)}
 \`\`\`
 
 ${notesSection ? `${notesSection}\n` : ''}${rulesSection}
@@ -247,7 +247,7 @@ ${
 Aktenzeichen / Titel: ${existingDossier.caseTitle}
 Bisheriger Gesamtstatus: ${existingDossier.overallStatus}
 Bisherige Nachforderungen (Inquiries):
-${JSON.stringify(existingDossier.inquiries || [], null, 2)}
+${JSON.stringify(existingDossier.inquiries || [])}
 `
     : ''
 }
