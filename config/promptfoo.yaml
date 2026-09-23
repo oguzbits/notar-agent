@@ -1,0 +1,46 @@
+description: 'NotarPartner Agentic Evaluation Suite'
+
+prompts:
+  - 'Analysiere die Akte {{testCaseId}}'
+
+providers:
+  - id: 'file://../src/test/eval/promptfoo-provider.ts'
+    label: 'NotarPartner Pipeline'
+
+defaultTest:
+  assert:
+    - type: 'javascript'
+      value: 'file://../src/test/eval/promptfoo-assertion.ts'
+
+tests:
+  - vars:
+      testCaseId: 'fall-01-ausweis-pruefung'
+    description: 'Fall 01: Multimodalitäts-Stresstest (Personalausweis)'
+
+  - vars:
+      testCaseId: 'fall-02-grundbuch-vollstaendigkeit'
+    description: 'Fall 02: Unvollständiger Grundbuchauszug (§ 21 BeurkG)'
+
+  - vars:
+      testCaseId: 'fall-03-vertragsaenderung-handschrift'
+    description: 'Fall 03: Handschriftliche Randkorrektur & Nachtrag'
+
+  - vars:
+      testCaseId: 'fall-04-standard-urkunde'
+    description: 'Fall 04: Standard-Kaufvertrag Köln (Vollständig)'
+
+  - vars:
+      testCaseId: 'fall-05-energieausweis-wohngebaeude'
+    description: 'Fall 05: Amtlicher GEG-Bedarfsausweis Wohngebäude'
+
+  - vars:
+      testCaseId: 'fall-06-energieausweis-prueffrist'
+    description: 'Fall 06: Energieausweis Gültigkeitsfrist (§ 80 GEG)'
+
+  - vars:
+      testCaseId: 'fall-07-gewerbe-energieausweis'
+    description: 'Fall 07: Gewerbe-Energieausweis Nichtwohngebäude'
+
+  - vars:
+      testCaseId: 'fall-08-mieterliste-handschrift'
+    description: 'Fall 08: MFH-Mieterliste (Handschriftliche Nachträge)'

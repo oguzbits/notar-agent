@@ -113,6 +113,12 @@ ${formattedNotes}
       },
     ],
     temperature: 0.1,
+    maxRetries: 5,
+    providerOptions: {
+      anthropic: {
+        cacheControl: { type: 'ephemeral' },
+      },
+    },
   });
 
   if (extractionResult.usage) {
@@ -121,16 +127,28 @@ ${formattedNotes}
   }
 
   const extractionTextResult = extractionResult.text;
-  let rawExtractionJson = cleanAndParseJson<Record<string, unknown>>(extractionTextResult);
-  let validatedExtraction = ExtractionStageOutputSchema.safeParse(rawExtractionJson);
+  let rawExtractionJson: Record<string, unknown> | null = null;
+  let parseSyntaxError: string | null = null;
+
+  try {
+    rawExtractionJson = cleanAndParseJson<Record<string, unknown>>(extractionTextResult);
+  } catch (err: unknown) {
+    parseSyntaxError = err instanceof Error ? err.message : 'Syntaxfehler beim Parsen des JSON';
+  }
+
+  let validatedExtraction = rawExtractionJson
+    ? ExtractionStageOutputSchema.safeParse(rawExtractionJson)
+    : null;
 
   // Self-Correction Reflection Pass (Enterprise-Grade Fault Tolerance):
-  // Falls das Stufe-1-JSON strukturell invalide ist oder Zod-Fehler wirft,
+  // Falls das Stufe-1-JSON syntaktisch invalide ist oder Zod-Fehler wirft,
   // führen wir genau einen gezielten Reflection-Turn durch, um die Integrität zu reparieren.
-  if (!validatedExtraction.success) {
-    const errorDetails = validatedExtraction.error.issues
-      .map((iss) => `- Pfad "${iss.path.join('.')}": ${iss.message}`)
-      .join('\n');
+  if (!validatedExtraction || !validatedExtraction.success) {
+    const errorDetails = parseSyntaxError
+      ? `JSON-Syntaxfehler: ${parseSyntaxError}`
+      : validatedExtraction?.error.issues
+          .map((iss) => `- Pfad "${iss.path.join('.')}": ${iss.message}`)
+          .join('\n') || 'Unbekannter Schema-Fehler';
 
     try {
       const repairedResult = await generateText({
@@ -176,7 +194,7 @@ Bitte korrigiere die Struktur und gib das vollständige, valide JSON-Objekt ohne
     }
   }
 
-  const parsedExtractionRaw: Record<string, unknown> = validatedExtraction.success
+  const parsedExtractionRaw: Record<string, unknown> = validatedExtraction?.success
     ? validatedExtraction.data
     : rawExtractionJson || {};
 
@@ -259,6 +277,12 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     instructions: auditorInstructions,
     prompt: auditorContextPrompt,
     temperature: 0.1,
+    maxRetries: 5,
+    providerOptions: {
+      anthropic: {
+        cacheControl: { type: 'ephemeral' },
+      },
+    },
   });
 
   if (auditorResult.usage) {
@@ -274,7 +298,15 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     });
   }
 
-  const rawAuditorJson = cleanAndParseJson<Record<string, unknown>>(auditorResult.text);
+  let rawAuditorJson: Record<string, unknown> = {};
+  try {
+    rawAuditorJson = cleanAndParseJson<Record<string, unknown>>(auditorResult.text);
+  } catch (err: unknown) {
+    console.warn(
+      '[pipeline] Auditor Stufe 2 JSON Parse-Fehler, verwende leere Modifikationen:',
+      err
+    );
+  }
   const validatedAuditor = AuditorStageOutputSchema.safeParse(rawAuditorJson);
   const parsedAuditorRaw = (
     validatedAuditor.success ? validatedAuditor.data : rawAuditorJson || {}

@@ -32,7 +32,7 @@ export interface IJobRepository {
 
 /**
  * Supabase/PostgreSQL Job-Repository (SSOT).
- * Strikte Fehlerbehandlung ohne stillen In-Memory Fallback.
+ * Strikte Fehlerbehandlung (Fail-Fast).
  */
 export class SupabaseJobRepository implements IJobRepository {
   constructor(private supabase: SupabaseClient<Database>) {}

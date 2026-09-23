@@ -383,7 +383,7 @@ graph TD
 
 | Phase       | Fokus                              | Hauptziel                                                    | Kern-Ergebnisse & Status                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | :---------- | :--------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>• [ ] **A.4 Agentic Eval Suite & Real-World Testkorpus**<br>• [ ] **A.5 Promptfoo Evaluation Dashboard**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                                  |
+| **Phase A** | **Fachlicher Kernnutzen**          | Sofortiger Mehrwert für Notare & Fehlerschutz                | • [x] **A.1 Basisschutz des UI-Flows via Playwright**<br>• [x] **A.2 RAG-Prüfregeln (JIT-Retrieval in Stufe 2)**<br>• [ ] **A.4 Agentic Eval Suite & Real-World Testkorpus**<br>• [x] **A.5 Promptfoo Evaluation Dashboard**<br>_(A.3 `.docx`-Engine ins Backlog ausgelagert)_                                                                                                                                                                                  |
 | **Phase B** | **Skalierung & Resilienz**         | Stabilität bei Aktenbänden (50–200 Seiten) & Kostenkontrolle | • [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs` mit PENDING/PROCESSING/COMPLETED/FAILED)**<br>• [x] **B.2 Dual-Stream Ingestion (Unicode-Text für Ziffernintegrität + Vision-Fusion)**<br>• [x] **B.3 SSE-Streaming von Teilfortschritten ins Cockpit**<br>• [x] **B.4 Entkoppelter Worker-Daemon & Zombie-Sweeper**<br>• [ ] B.5 Multi-LLM Provider-Adapter<br>• [ ] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, diff-match-patch)** |
 | **Phase C** | **Enterprise & Kanzlei-Ökosystem** | Rechtliche Abnahme & Kanzlei-IT-Integration                  | • [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG)**<br>• [x] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB)**<br>• [x] **C.3 Erweitertes Kanzlei- & DNotI-RAG (pgvector + BM25 Hybrid)**<br>• [ ] C.4 KI-Mandantenkorrespondenz & Post-Beurkundung<br>• [ ] C.5 XJustiz-Export für TriNotar / NoRA / RA-MICRO                                                                                                 |
 
@@ -418,12 +418,12 @@ graph TD
     - [ ] Verifikation der Nachforderungs-Logik: Erzwingt das System bei unleserlichen Belegen korrekt `NEEDS_REVIEW` + `inquiries`?
   - [ ] **A.4.3 Multimodal- & OCR-Stresstest:**
     - [ ] Benchmark der Dual-Stream Ingestion unter Last gegen problematische PDFs & Bildanhänge
-- [ ] **A.5 Promptfoo Evaluation Matrix & Web-Dashboard:**
-  - [ ] `promptfoo` CLI & Test-Runner als Dev-Dependency einbinden (`npm i -D promptfoo`)
-  - [ ] Deklarative Konfiguration (`promptfooconfig.yaml`) für Multi-Modell-Vergleiche (Gemini 3.8 Flash vs. Claude 3.5 Sonnet vs. GPT-4o)
-  - [ ] Integration der Notar-Scorer (`src/test/eval/scorer.ts`) als typisierte Custom-Assertions in Promptfoo
-  - [ ] Lokales Web-Dashboard (`npx promptfoo view`) zum visuellen Vergleich von Prompt-Iterationen und Regressionserkennung
-  - [ ] CI/CD Quality-Gate: Automatischer Abbruch bei Genauigkeitsabfall unter 95 % oder P95-Latenzspitzen > 45s
+- [x] **A.5 Promptfoo Evaluation Matrix & Web-Dashboard:**
+  - [x] `promptfoo` CLI & Test-Runner als Dev-Dependency einbinden (`config/promptfoo.yaml`, `npm run eval`)
+  - [x] Deklarative Konfiguration (`config/promptfoo.yaml`) für Multi-Modell-Vergleiche und Golden Dataset
+  - [x] Integration der Notar-Scorer (`src/test/eval/scorer.ts`) als typisierte Custom-Assertions (`src/test/eval/promptfoo-assertion.ts`)
+  - [x] Lokales Web-Dashboard (`npm run eval:view` / `promptfoo view -p 15500`) zum visuellen Vergleich von Prompt-Iterationen und Regressionserkennung
+  - [x] CI/CD Quality-Gate: Automatischer Abbruch bei Genauigkeitsabfall unter 95 % oder fehlender Belegnachweiserbringung
 
 ### Detaillierter Fortschrittstracker (Phase B: Asynchrone Skalierung)
 

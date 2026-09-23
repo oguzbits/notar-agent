@@ -1,8 +1,20 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getTeamRepository } from '@/lib/supabase/server';
+import { createMockTeamRepository } from '@/test/fixtures/mock-repositories';
 import { NOTARY_ROLES } from '@/types/organization';
 import { PATCH, DELETE } from './route';
+
+const mockTeamRepo = createMockTeamRepository();
+
+vi.mock('@/lib/supabase/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
+  return {
+    ...actual,
+    getTeamRepository: () => mockTeamRepo,
+    getServerSupabase: vi.fn(),
+  };
+});
 
 describe('API Route: /api/team/[id]', () => {
   const repo = getTeamRepository();

@@ -1,10 +1,57 @@
-import { InMemoryKnowledgeRepository } from '@/lib/in-memory/in-memory-knowledge-repository';
+import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import {
   formatKnowledgeForPrompt,
   selectApplicableKnowledge,
 } from '@/lib/knowledge/rules/rule-selector';
 import { CASE_TYPES } from '@/types/dossier';
-import { KNOWLEDGE_CATEGORIES, KnowledgeDocument } from '@/types/knowledge';
+import {
+  KNOWLEDGE_CATEGORIES,
+  KnowledgeDocument,
+  type HybridSearchQuery,
+  type HybridSearchResult,
+} from '@/types/knowledge';
+
+/**
+ * Minimale lokale Implementierung für Offline-Inspektion (kein Produktionscode).
+ */
+class LocalFixtureKnowledgeRepository implements IKnowledgeRepository {
+  constructor(private documents: KnowledgeDocument[]) {}
+
+  async save(doc: KnowledgeDocument): Promise<KnowledgeDocument> {
+    this.documents.push(doc);
+    return doc;
+  }
+
+  async search(query: HybridSearchQuery): Promise<HybridSearchResult[]> {
+    const keywords = query.queryText
+      .split(/\s+/)
+      .map((w) => w.replace(/[^\w§äöüÄÖÜß]/g, ''))
+      .filter((w) => w.length > 2);
+
+    const results: HybridSearchResult[] = [];
+    for (const doc of this.documents) {
+      const text =
+        `${doc.title} ${doc.content} ${doc.legalBasis} ${doc.triggerKeywords.join(' ')}`.toLowerCase();
+      const matchCount = keywords.filter((kw) => text.includes(kw.toLowerCase())).length;
+      if (matchCount > 0) {
+        results.push({
+          document: doc,
+          bm25Score: matchCount,
+          vectorScore: 0,
+          combinedScore: matchCount,
+          matchSource: 'BM25_EXACT',
+        });
+      }
+    }
+    return results.sort((a, b) => b.combinedScore - a.combinedScore).slice(0, query.topK ?? 5);
+  }
+
+  async getStatutoryRules(): Promise<KnowledgeDocument[]> {
+    return this.documents.filter(
+      (doc) => doc.isGlobal || doc.category === KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM
+    );
+  }
+}
 
 // Lokale Fixtures zur reinen Offline-Inspektion der Matching-Algorithmen
 const INSPECTION_FIXTURES: KnowledgeDocument[] = [
@@ -124,7 +171,7 @@ const INSPECTION_FIXTURES: KnowledgeDocument[] = [
 ];
 
 async function runRagInspection() {
-  const repo = new InMemoryKnowledgeRepository(INSPECTION_FIXTURES);
+  const repo = new LocalFixtureKnowledgeRepository(INSPECTION_FIXTURES);
 
   console.log('='.repeat(80));
   console.log('🔍 NOTARPARTNER RAG-INSPEKTION & TOKEN-ANALYSE (DATABASE-FIRST SSOT)');

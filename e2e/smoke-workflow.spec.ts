@@ -217,7 +217,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
             dossier: currentDossierState,
             persistence: {
               id: mockDossierId,
-              storageType: STORAGE_TYPES.IN_MEMORY,
+              storageType: STORAGE_TYPES.SUPABASE,
               caseNumber: 'KV-2026-4512',
             },
           })}\n\n`,
@@ -241,7 +241,7 @@ test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ success: true, storageType: STORAGE_TYPES.IN_MEMORY }),
+          body: JSON.stringify({ success: true, storageType: STORAGE_TYPES.SUPABASE }),
         });
       } else {
         await route.continue();

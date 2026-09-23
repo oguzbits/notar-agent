@@ -1,9 +1,26 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import {
+  createMockJobRepository,
+  createMockDossierRepository,
+} from '@/test/fixtures/mock-repositories';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS } from '@/types/jobs';
 import { POST, PUT } from './route';
+
+const mockJobRepo = createMockJobRepository();
+const mockDossierRepo = createMockDossierRepository();
+
+vi.mock('@/lib/supabase/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
+  return {
+    ...actual,
+    getJobRepository: () => mockJobRepo,
+    getDossierRepository: () => mockDossierRepo,
+    getServerSupabase: vi.fn(),
+  };
+});
 
 describe('API Route: POST /api/analyze Guardrails & Validation', () => {
   it('sollte Status 400 liefern, wenn weder Dateien noch Notizen übermittelt werden', async () => {

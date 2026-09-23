@@ -42,4 +42,21 @@ startxref
 
     expect(text).toBe('');
   });
+
+  it('extracts form annotations from documents like Energieausweis', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const filePath = path.resolve(
+      process.cwd(),
+      'test-akten/fall-06-energieausweis-prueffrist/Energieausweis_AachenerStr.pdf'
+    );
+    if (fs.existsSync(filePath)) {
+      const buffer = fs.readFileSync(filePath);
+      const text = await extractPdfUnicodeText(buffer);
+
+      expect(text).toContain('10.02.2023');
+      expect(text).toContain('182,0');
+      expect(text).toContain('Aachener Str. 44');
+    }
+  });
 });

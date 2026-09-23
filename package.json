@@ -21,10 +21,11 @@
     "knip:exports": "knip --exports",
     "test": "vitest run",
     "test:watch": "vitest",
-    "eval": "npx tsx scripts/eval/eval-pipeline.ts",
-    "eval:smoke": "npx tsx scripts/eval/eval-pipeline.ts --mode=live --smoke",
-    "eval:live": "npx tsx scripts/eval/eval-pipeline.ts --mode=live --runs=1",
-    "eval:live:full": "npx tsx scripts/eval/eval-pipeline.ts --mode=live --runs=3",
+    "eval": "promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache",
+    "eval:smoke": "promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache --filter-pattern 'Fall 03|Fall 06'",
+    "eval:smoke:live": "PROMPTFOO_MODE=live promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache -j 1 --filter-pattern 'Fall 03|Fall 06'",
+    "eval:live": "PROMPTFOO_MODE=live promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache -j 1",
+    "eval:view": "promptfoo view -p 15500",
     "test:e2e": "playwright test --last-failed-file=/dev/null; rm -rf test-results",
     "test:e2e:headed": "playwright test --headed --last-failed-file=/dev/null; rm -rf test-results",
     "test:e2e:ui": "playwright test --ui --last-failed-file=/dev/null; rm -rf test-results",
@@ -88,6 +89,7 @@
     "pdf-lib": "^1.17.1",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "promptfoo": "^0.123.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.2.2",
@@ -117,18 +119,16 @@
   "knip": {
     "entry": [
       "src/app/**/*.{ts,tsx}",
-      "src/lib/dossier/index.ts"
+      "src/lib/dossier/index.ts",
+      "src/test/eval/promptfoo-*.ts"
     ],
     "project": [
       "src/**/*.{ts,tsx}"
     ],
-    "ignore": [
-      "src/components/ui/index.ts"
-    ],
+    "ignore": [],
     "ignoreDependencies": [
       "eslint-plugin-import",
       "tailwindcss",
-      "sharp",
       "pdf-lib"
     ],
     "ignoreBinaries": [

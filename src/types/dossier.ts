@@ -624,15 +624,10 @@ export type UpdateDossierRequest = z.infer<typeof UpdateDossierRequestSchema>;
 
 export const STORAGE_TYPES = {
   SUPABASE: 'supabase',
-  IN_MEMORY: 'in-memory',
   LOCAL_ONLY: 'local-only',
 } as const;
 
-export const StorageTypeSchema = z.enum([
-  STORAGE_TYPES.SUPABASE,
-  STORAGE_TYPES.IN_MEMORY,
-  STORAGE_TYPES.LOCAL_ONLY,
-]);
+export const StorageTypeSchema = z.enum([STORAGE_TYPES.SUPABASE, STORAGE_TYPES.LOCAL_ONLY]);
 export type StorageType = (typeof STORAGE_TYPES)[keyof typeof STORAGE_TYPES];
 
 export const PersistenceMetaSchema = z.object({

@@ -10,7 +10,7 @@ export type { CaseStatus, DocumentRecord };
 
 export type PersistenceResult = PersistenceMeta & {
   persisted: boolean;
-  storageType: typeof STORAGE_TYPES.SUPABASE | typeof STORAGE_TYPES.IN_MEMORY;
+  storageType: typeof STORAGE_TYPES.SUPABASE;
   id: string;
 };
 
@@ -39,7 +39,7 @@ export function computeDocumentStatus(dossier: Dossier): CaseStatus {
 
 /**
  * Supabase Repository als Single Source of Truth (SSOT).
- * Strikte Fehlerbehandlung ohne stillen In-Memory Fallback.
+ * Strikte Fehlerbehandlung (Fail-Fast).
  */
 export class SupabaseDossierRepository implements IDossierRepository {
   constructor(private supabase: SupabaseClient<Database>) {}

@@ -1,9 +1,21 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getJobRepository } from '@/lib/supabase/server';
+import { createMockJobRepository } from '@/test/fixtures/mock-repositories';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 import { GET } from './route';
+
+const mockJobRepo = createMockJobRepository();
+
+vi.mock('@/lib/supabase/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
+  return {
+    ...actual,
+    getJobRepository: () => mockJobRepo,
+    getServerSupabase: vi.fn(),
+  };
+});
 
 describe('API Route: GET /api/jobs/[id]', () => {
   const repo = getJobRepository();

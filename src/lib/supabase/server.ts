@@ -1,13 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateEnv } from '@/env';
 import { IAuditRepository, SupabaseAuditRepository } from '@/lib/audit/audit-repository';
-import {
-  InMemoryAuditRepository,
-  InMemoryDossierRepository,
-  InMemoryJobRepository,
-  InMemoryKnowledgeRepository,
-  InMemoryTeamRepository,
-} from '@/lib/in-memory';
 import { IJobRepository, SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import {
   IKnowledgeRepository,
@@ -41,44 +34,19 @@ export type {
 };
 export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 
-// Globaler Singleton für In-Memory-Speicher mit fester Obergrenze gegen Memory Leaks
-declare global {
-  var __boundedInMemoryRepo: InMemoryDossierRepository | undefined;
-  var __boundedInMemoryJobRepo: InMemoryJobRepository | undefined;
-  var __boundedInMemoryAuditRepo: InMemoryAuditRepository | undefined;
-  var __boundedInMemoryKnowledgeRepo: InMemoryKnowledgeRepository | undefined;
-  var __boundedInMemoryTeamRepo: InMemoryTeamRepository | undefined;
-}
-
-if (!globalThis.__boundedInMemoryRepo) {
-  globalThis.__boundedInMemoryRepo = new InMemoryDossierRepository(25);
-}
-if (!globalThis.__boundedInMemoryJobRepo) {
-  globalThis.__boundedInMemoryJobRepo = new InMemoryJobRepository(50);
-}
-if (!globalThis.__boundedInMemoryAuditRepo) {
-  globalThis.__boundedInMemoryAuditRepo = new InMemoryAuditRepository(100);
-}
-if (!globalThis.__boundedInMemoryKnowledgeRepo) {
-  globalThis.__boundedInMemoryKnowledgeRepo = new InMemoryKnowledgeRepository();
-}
-if (!globalThis.__boundedInMemoryTeamRepo) {
-  globalThis.__boundedInMemoryTeamRepo = new InMemoryTeamRepository();
-}
-
-const inMemoryRepo = globalThis.__boundedInMemoryRepo;
-const inMemoryJobRepo = globalThis.__boundedInMemoryJobRepo;
-const inMemoryAuditRepo = globalThis.__boundedInMemoryAuditRepo;
-const inMemoryKnowledgeRepo = globalThis.__boundedInMemoryKnowledgeRepo;
-const inMemoryTeamRepo = globalThis.__boundedInMemoryTeamRepo;
-
-export function getServerSupabase(): SupabaseClient<Database> | null {
+/**
+ * Erstellt einen serverseitigen Supabase-Client.
+ * Fail-Fast: Wirft eine RuntimeException, wenn Supabase-Credentials fehlen.
+ */
+export function getServerSupabase(): SupabaseClient<Database> {
   const env = validateEnv(process.env);
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
   const supabaseKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
-    return null;
+    throw new Error(
+      'Supabase-Credentials fehlen: SUPABASE_URL und NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY müssen in .env.local gesetzt sein.'
+    );
   }
   return createClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
@@ -92,9 +60,6 @@ export function getServerSupabase(): SupabaseClient<Database> | null {
  */
 export function getDossierRepository(client?: SupabaseClient<Database> | null): IDossierRepository {
   const supabase = client ?? getServerSupabase();
-  if (!supabase) {
-    return inMemoryRepo;
-  }
   return new SupabaseDossierRepository(supabase);
 }
 
@@ -103,9 +68,6 @@ export function getDossierRepository(client?: SupabaseClient<Database> | null): 
  */
 export function getJobRepository(client?: SupabaseClient<Database> | null): IJobRepository {
   const supabase = client ?? getServerSupabase();
-  if (!supabase) {
-    return inMemoryJobRepo;
-  }
   return new SupabaseJobRepository(supabase);
 }
 
@@ -114,9 +76,6 @@ export function getJobRepository(client?: SupabaseClient<Database> | null): IJob
  */
 export function getAuditRepository(client?: SupabaseClient<Database> | null): IAuditRepository {
   const supabase = client ?? getServerSupabase();
-  if (!supabase) {
-    return inMemoryAuditRepo;
-  }
   return new SupabaseAuditRepository(supabase);
 }
 
@@ -127,9 +86,6 @@ export function getKnowledgeRepository(
   client?: SupabaseClient<Database> | null
 ): IKnowledgeRepository {
   const supabase = client ?? getServerSupabase();
-  if (!supabase) {
-    return inMemoryKnowledgeRepo;
-  }
   return new SupabaseKnowledgeRepository(supabase);
 }
 
@@ -138,9 +94,6 @@ export function getKnowledgeRepository(
  */
 export function getTeamRepository(client?: SupabaseClient<Database> | null): ITeamRepository {
   const supabase = client ?? getServerSupabase();
-  if (!supabase) {
-    return inMemoryTeamRepo;
-  }
   return new SupabaseTeamRepository(supabase);
 }
 

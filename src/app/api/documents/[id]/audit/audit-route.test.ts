@@ -1,12 +1,29 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PUT } from '@/app/api/analyze/route';
 import { GET as getAuditRoute } from '@/app/api/documents/[id]/audit/route';
 import { updateDossierFieldStatus } from '@/lib/dossier/state';
 import { getAuditRepository, getDossierRepository } from '@/lib/supabase/server';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import {
+  createMockDossierRepository,
+  createMockAuditRepository,
+} from '@/test/fixtures/mock-repositories';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { FIELD_STATUS } from '@/types/dossier';
+
+const mockDossierRepo = createMockDossierRepository();
+const mockAuditRepo = createMockAuditRepository();
+
+vi.mock('@/lib/supabase/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
+  return {
+    ...actual,
+    getDossierRepository: () => mockDossierRepo,
+    getAuditRepository: () => mockAuditRepo,
+    getServerSupabase: vi.fn(),
+  };
+});
 
 describe('Audit Trail API Route & PUT /api/analyze Integration', () => {
   const docId = 'test-audit-doc-123';

@@ -1,4 +1,4 @@
-import { extractText, extractImages } from 'unpdf';
+import { extractImages } from 'unpdf';
 
 export const PDF_STREAM_TYPES = {
   DIGITAL_BORN_TEXT: 'DIGITAL_BORN_TEXT',
@@ -35,10 +35,8 @@ export async function classifyPdfStream(
     const uint8 = new Uint8Array(buffer.byteLength);
     uint8.set(buffer);
 
-    const textResult = await extractText(uint8);
-    const textJoined = Array.isArray(textResult.text)
-      ? textResult.text.join('\n').trim()
-      : String(textResult.text || '').trim();
+    const { extractPdfUnicodeText } = await import('./pdf-text-extractor');
+    const textJoined = await extractPdfUnicodeText(uint8);
 
     const characterCount = textJoined.length;
     const hasTextLayer = characterCount >= MIN_TEXT_CHARS_THRESHOLD;

@@ -8,7 +8,6 @@ import {
   getAuditRepository,
   getDossierRepository,
   getJobRepository,
-  getServerSupabase,
   getUniformCaseTitle,
 } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
@@ -106,11 +105,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       let persistenceResult;
       if (documentId) {
         const updateRes = await repo.update(documentId, dossier, resolvedOrgId);
-        const isSupabase = !!getServerSupabase();
         const uniformTitle = getUniformCaseTitle(dossier.caseType, documentId);
         persistenceResult = {
           persisted: updateRes.success,
-          storageType: isSupabase ? STORAGE_TYPES.SUPABASE : STORAGE_TYPES.IN_MEMORY,
+          storageType: STORAGE_TYPES.SUPABASE,
           caseNumber: uniformTitle,
           id: documentId,
         };
@@ -184,7 +182,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
 
     return NextResponse.json({
       success: true,
-      storageType: getServerSupabase() ? STORAGE_TYPES.SUPABASE : STORAGE_TYPES.IN_MEMORY,
+      storageType: STORAGE_TYPES.SUPABASE,
     });
   } catch (error: unknown) {
     console.error('PUT Analyse Error:', error);

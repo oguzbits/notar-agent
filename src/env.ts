@@ -14,7 +14,9 @@ export const ServerEnvSchema = z.object({
   GEMINI_API_KEY: optionalTrimmedString,
   GOOGLE_GENERATIVE_AI_API_KEY: optionalTrimmedString,
   EVAL_GEMINI_API_KEY: optionalTrimmedString,
-  EVAL_AI_MODEL: optionalTrimmedString.default('gemini-1.5-flash'),
+  EVAL_GEMINI_AI_MODEL: optionalTrimmedString,
+  EVAL_ANTHROPIC_API_KEY: optionalTrimmedString,
+  EVAL_ANTHROPIC_AI_MODEL: optionalTrimmedString,
   AI_MODEL: optionalTrimmedString.default('claude-haiku-4-5'),
   AI_PROVIDER: optionalTrimmedString,
   MOCK_AI: z.preprocess(
@@ -22,7 +24,7 @@ export const ServerEnvSchema = z.object({
     z.boolean().default(false)
   ),
 
-  // Supabase Credentials (optional für In-Memory-Modus)
+  // Supabase Credentials (erforderlich)
   SUPABASE_URL: optionalTrimmedString,
   NEXT_PUBLIC_SUPABASE_URL: optionalTrimmedString,
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optionalTrimmedString,

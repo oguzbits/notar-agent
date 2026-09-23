@@ -18,7 +18,9 @@ DETERMINISTISCHE GRUNDREGELN:
 
 PFLICHTFELDER (EXAKTE ATTRIBUTNAMEN IM DATA-OBJEKT):
 - verkaeufer: data { name: string, legalForm: string, registeredOwnersGrundbuch: string[], authorizedRepresentatives: string[], representationProofProvided: bool, missingProofs: string[] }
+  (HINWEIS: Handeln natürliche Personen im eigenen Namen, setze representationProofProvided: true und missingProofs: []. Werden sie in einem vorliegenden Vertrag oder einer Urkunde als Verkäufer ausgewiesen, ist der Status VERIFIED, es sei denn, ein beiliegender Grundbuchauszug weist abweichende Eigentümer aus.)
 - kaeufer: data { companyName: string, legalForm: string, registerCourt: string, registerNumber: string, address: string, authorizedRepresentatives: string[], hasOfficialRegisterProof: bool }
+  (HINWEIS: Trage im Feld "companyName" STETS den vollständigen Namen des Käufers ein – sowohl bei Gesellschaften als auch bei natürlichen Personen / Privatpersonen (z.B. "Marc Albrecht")! Handeln natürliche Personen im eigenen Namen, setze hasOfficialRegisterProof: true und registerCourt/registerNumber auf "". Werden sie im Vertrag/Dokument als Käufer namentlich ausgewiesen, ist der Status ZWINGEND VERIFIED — auch wenn vollständige Adress- oder Geburtsdaten im Vertragsauszug fehlen. Fehlende Zusatzdaten bei natürlichen Personen sind KEIN Grund für NEEDS_REVIEW.)
 - grundbuch: data { amtsgericht: string, grundbuchBezirk: string, blatt: string, standDatum: string, isCurrent: bool }
 - grundstuecke: data { parcels: [{ gemarkung: string, flur: string, flurstueckNummer: string, sizeM2: number, wirtschaftsart: string }], totalAreaM2: number, areaDiscrepancyNotes: string }
 - kaufpreis: data { amountInFigures: number, amountInWords: string, currency: string, previousOffers: number[], priceEvolutionSummary: string, isFinalAgreedPrice: bool }
@@ -26,6 +28,7 @@ PFLICHTFELDER (EXAKTE ATTRIBUTNAMEN IM DATA-OBJEKT):
 - belastungen: data { entries: [{ section: "II"|"III", runningNumber: string, description: string, amount: string, creditor: string, intendedHandling: "LOESCHUNG"|"UEBERNAHME"|"ABLOESUNG"|"UNKLAR", notes: string }], clearingRequirements: string[] }
 - mietverhaeltnisse: data { yearlyNetRent: number, statedInEmailOrOverview: string, rentableAreaM2: number, unitCount: number, fullRentedStatus: bool, tenancyListAvailable: bool, privacyOrRedactionNotes: string, tenancyTransferNotes: string }
 - energieausweis: data { certificateType: "VERBRAUCHSAUSWEIS"|"BEDARFSAUSWEIS"|"UNBEKANNT", energyValueKWh: number, efficiencyClass: string, validUntil: string, isExpired: bool, primaryEnergyCarrier: string, buildingYear: string }
+  (WICHTIG: energyValueKWh bezeichnet den ENDENERGIEBEDARF bzw. ENDENERGIEVERBRAUCH in kWh/(m²·a) — NICHT den Primärenergiebedarf! Auf dem Energieausweis stehen oft zwei Werte: der Endenergiebedarf und der höhere Primärenergiebedarf. Trage hier stets den Endenergie-Wert ein, nicht den Primärenergie-Wert.)
 - uebergabe: data { targetDate: string, conditionDescription: string, riskTransferNotes: string }
 
 ANTWORTFORMAT (REINES VALIDES JSON, KEIN MARKDOWN):
@@ -63,17 +66,20 @@ DETERMINISTISCHE AUDIT-PRÜFUNGEN:
 3. Gesetzliche Fristen, Gültigkeiten & Status-Kriterien:
    - 'OUTDATED' darf AUSSCHLIESSLICH vergeben werden, wenn ein Belegdokument selbst ein explizites kalendarisches Gültigkeits-/Ablaufdatum aufweist, das vor dem Bearbeitungsstichtag liegt, ODER wenn im Aktenbestand ein jüngeres Dokument desselben Typs vorliegt, das das ältere explizit ablöst.
    - Dokumente ohne festes kalendarisches Ablaufdatum verfallen nicht und sind bezüglich ihrer Bestandsdaten 'VERIFIED', solange kein neuerer Auszug im Aktenbestand vorliegt.
-4. Formelle Vollständigkeit: Fehlen gesetzliche Pflichtnachweise für Rechtsformen, Personen oder Erbfolge, erstelle gezielte, verbindliche Nachforderungen in "inquiries".
-5. Belegpflicht & Begründungspflicht: Jede Feststellung muss durch Fundstelle belegt sein. Erfundene/unbelegte Angaben auf null bzw. 'MISSING'. Bei jedem Feld mit Status ungleich 'VERIFIED' (also NEEDS_REVIEW, OUTDATED, MISSING) MUSS zwingend ein prägnanter deutscher Satz in 'note' formuliert werden, der den konkreten Klärungsbedarf oder die Lücke sachlich begründet (kein leeres "" oder Platzhalter).
-6. Duktus der Zusammenfassung (executiveSummary): Formuliere in natürlicher deutscher Kanzleisprache. Verwende KEINE internen Codes oder Enum-Strings ("ACTION_REQUIRED", "OUTDATED", "MISSING"), sondern prägnante juristische Beschreibungen.
+4. Natürliche Personen vs. Gesellschaften (Entity Verification) — STRIKTE REGEL:
+   - NATÜRLICHE PERSONEN: Sind Käufer oder Verkäufer im vorliegenden Vertrag/Dokument namentlich als natürliche Personen benannt und handeln im eigenen Namen, ist ihr Status ZWINGEND 'VERIFIED'. Dies gilt AUCH DANN, wenn im Vertragsauszug keine vollständige Adresse, kein Geburtsdatum oder kein Personalausweis beigefügt ist. Fehlende Zusatzangaben bei natürlichen Personen sind in der Vorprüfungsphase KEIN Grund für eine Herabstufung auf 'NEEDS_REVIEW'. Fordere bei natürlichen Personen NICHT standardmäßig Grundbuchauszüge, Personalausweiskopien oder Adressnachweise nach — es sei denn, ein beiliegender Grundbuchauszug weist explizit abweichende Eigentümer aus.
+   - GESELLSCHAFTEN (GmbH, GbR, KG etc.): Nur bei juristischen Personen und Gesellschaften sind amtliche Registerauszüge (HRB/GsR) zwingend erforderlich und bei Fehlen als 'NEEDS_REVIEW' einzustufen.
+5. Formelle Vollständigkeit: Fehlen gesetzliche Pflichtnachweise für juristische Personen oder Erbfolge, erstelle gezielte, verbindliche Nachforderungen in "inquiries".
+6. Belegpflicht & Begründungspflicht: Jede Feststellung muss durch Fundstelle belegt sein. Erfundene/unbelegte Angaben auf null bzw. 'MISSING'. Bei jedem Feld mit Status ungleich 'VERIFIED' (also NEEDS_REVIEW, OUTDATED, MISSING) MUSS zwingend ein prägnanter deutscher Satz in 'note' formuliert werden, der den konkreten Klärungsbedarf oder die Lücke sachlich begründet (kein leeres "" oder Platzhalter).
+7. Duktus der Zusammenfassung (executiveSummary): Formuliere in natürlicher deutscher Kanzleisprache. Verwende KEINE internen Codes oder Enum-Strings ("ACTION_REQUIRED", "OUTDATED", "MISSING"), sondern prägnante juristische Beschreibungen.
 
 DELTA-ANTWORTFORMAT (TOKENSPAREND):
-Gib im "fields"-Objekt AUSSCHLIESSLICH korrigierte, ergänzte oder im Status angepasste Felder aus! Unveränderte Felder aus Stufe 1 weglassen.
+Gib im "fields"-Objekt (oder "modifications") AUSSCHLIESSLICH korrigierte, ergänzte oder im Status angepasste Felder aus! Unveränderte Felder aus Stufe 1 MÜSSEN zwingend weggelassen werden.
 
 Antworte AUSSCHLIESSLICH mit diesem validen JSON:
 {
   "fields": {
-    /* NUR modifizierte Felder: "<fieldKey>": { "status": "VERIFIED"|"NEEDS_REVIEW"|"OUTDATED"|"MISSING", "data": { ... }, "source": { "fileName": string, "pageNumber": number, "snippet": string }, "note": string } */
+    /* NUR tatsächlich modifizierte Felder: "<fieldKey>": { "status": "VERIFIED"|"NEEDS_REVIEW"|"OUTDATED"|"MISSING", "data": { ... }, "source": { "fileName": string, "pageNumber": number, "snippet": string }, "note": string } */
   },
   "inquiries": [ /* 1-3 gezielte Nachforderungen oder [] */ ],
   "overallStatus": "READY" | "ACTION_REQUIRED" | "BLOCKED",
