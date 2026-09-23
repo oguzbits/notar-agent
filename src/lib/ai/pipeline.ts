@@ -113,7 +113,6 @@ ${formattedNotes}
       },
     ],
     temperature: 0.1,
-    maxRetries: 5,
     providerOptions: {
       anthropic: {
         cacheControl: { type: 'ephemeral' },
@@ -277,7 +276,6 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     instructions: auditorInstructions,
     prompt: auditorContextPrompt,
     temperature: 0.1,
-    maxRetries: 5,
     providerOptions: {
       anthropic: {
         cacheControl: { type: 'ephemeral' },
