@@ -3,6 +3,7 @@ import { AuditAction, AuditLogDetails } from './audit';
 import { Dossier } from './dossier';
 import { CreateJobPayload, JobProgressDetails } from './jobs';
 import { NotaryRole } from './organization';
+import { StepState, WorkflowStepDefinition } from './workflow';
 
 export const DB_TABLES = {
   ORGANIZATIONS: 'organizations',
@@ -12,6 +13,8 @@ export const DB_TABLES = {
   DOSSIER_JOBS: 'dossier_jobs',
   AUDIT_LOGS: 'audit_logs',
   KNOWLEDGE_DOCUMENTS: 'knowledge_documents',
+  WORKFLOW_DEFINITIONS: 'workflow_definitions',
+  WORKFLOW_INSTANCES: 'workflow_instances',
 } as const;
 
 export const DbTableSchema = z.enum([
@@ -22,6 +25,8 @@ export const DbTableSchema = z.enum([
   DB_TABLES.DOSSIER_JOBS,
   DB_TABLES.AUDIT_LOGS,
   DB_TABLES.KNOWLEDGE_DOCUMENTS,
+  DB_TABLES.WORKFLOW_DEFINITIONS,
+  DB_TABLES.WORKFLOW_INSTANCES,
 ]);
 export type DbTable = (typeof DB_TABLES)[keyof typeof DB_TABLES];
 
@@ -268,6 +273,75 @@ export interface Database {
           trigger_keywords?: string[];
           embedding?: number[] | null;
           tsv?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      workflow_definitions: {
+        Row: {
+          id: string;
+          version: number;
+          case_type: string;
+          title: string;
+          organization_id: string | null;
+          steps: WorkflowStepDefinition[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          version?: number;
+          case_type: string;
+          title: string;
+          organization_id?: string | null;
+          steps?: WorkflowStepDefinition[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          version?: number;
+          case_type?: string;
+          title?: string;
+          organization_id?: string | null;
+          steps?: WorkflowStepDefinition[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      workflow_instances: {
+        Row: {
+          id: string;
+          workflow_definition_id: string;
+          case_id: string;
+          organization_id: string;
+          current_step_id: string | null;
+          status: string;
+          step_states: Record<string, StepState>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          workflow_definition_id: string;
+          case_id: string;
+          organization_id: string;
+          current_step_id?: string | null;
+          status?: string;
+          step_states?: Record<string, StepState>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          workflow_definition_id?: string;
+          case_id?: string;
+          organization_id?: string;
+          current_step_id?: string | null;
+          status?: string;
+          step_states?: Record<string, StepState>;
           created_at?: string;
           updated_at?: string;
         };

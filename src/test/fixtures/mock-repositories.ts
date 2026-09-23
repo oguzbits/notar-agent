@@ -9,13 +9,22 @@ import type {
   UpdateResult,
 } from '@/lib/supabase/repository';
 import type { ITeamRepository } from '@/lib/team/team-repository';
-import type { AuditLogEntry } from '@/types/audit';
+import { calculateNextStep } from '@/lib/workflow/engine';
+import { AUDIT_ACTIONS, type AuditLogEntry } from '@/types/audit';
 import type { TeamMember, InviteMemberRequest } from '@/types/auth';
 import { CASE_STATUS } from '@/types/document';
 import type { Dossier } from '@/types/dossier';
 import { STORAGE_TYPES } from '@/types/dossier';
 import { JOB_STATUS, type DossierJob, type CreateJobPayload } from '@/types/jobs';
 import type { NotaryRole } from '@/types/organization';
+import {
+  WORKFLOW_INSTANCE_STATUS,
+  WORKFLOW_STEP_STATUS,
+  type WorkflowActor,
+  type WorkflowDefinition,
+  type WorkflowInstance,
+  type WorkflowStepStatus,
+} from '@/types/workflow';
 
 /**
  * Creates an in-memory mock implementation of IJobRepository using vi.fn()
@@ -249,5 +258,107 @@ export function createMockAuditRepository(): IAuditRepository {
         : history;
       return verifyAuditChain(filtered);
     }),
+  };
+}
+
+/**
+ * Creates an isolated mock implementation of IWorkflowRepository for unit tests
+ */
+export function createMockWorkflowRepository(options?: {
+  onAuditLog?: (payload: {
+    action: string;
+    caseId: string;
+    stepId: string;
+    actor?: string;
+    organizationId: string;
+    timestamp: string;
+    metadata?: Record<string, unknown>;
+  }) => Promise<void>;
+}) {
+  const definitions = new Map<string, WorkflowDefinition>();
+  const instances = new Map<string, WorkflowInstance>();
+
+  return {
+    saveDefinition: vi.fn(async (definition: WorkflowDefinition) => {
+      definitions.set(definition.id, definition);
+    }),
+    getDefinition: vi.fn(async (id: string) => definitions.get(id) ?? null),
+    getDefinitionForCaseType: vi.fn(async (caseType: string) => {
+      for (const def of definitions.values()) {
+        if (def.caseType === caseType) return def;
+      }
+      return null;
+    }),
+    createInstance: vi.fn(
+      async (params: { workflowDefinitionId: string; caseId: string; organizationId: string }) => {
+        const def = definitions.get(params.workflowDefinitionId);
+        const firstStep = def?.steps[0];
+        const now = new Date().toISOString();
+        const inst: WorkflowInstance = {
+          id: `wfi-mock-${instances.size + 1}`,
+          workflowDefinitionId: params.workflowDefinitionId,
+          caseId: params.caseId,
+          organizationId: params.organizationId,
+          currentStepId: firstStep?.id,
+          status: WORKFLOW_INSTANCE_STATUS.PENDING,
+          stepStates: {},
+          createdAt: now,
+          updatedAt: now,
+        };
+        instances.set(inst.id, inst);
+        return inst;
+      }
+    ),
+    getInstance: vi.fn(async (id: string) => instances.get(id) ?? null),
+    getInstanceByCaseId: vi.fn(async (caseId: string) => {
+      for (const inst of instances.values()) {
+        if (inst.caseId === caseId) return inst;
+      }
+      return null;
+    }),
+    updateStepState: vi.fn(
+      async (params: {
+        instanceId: string;
+        stepId: string;
+        status: WorkflowStepStatus;
+        executedBy?: WorkflowActor | string;
+        metadata?: Record<string, unknown>;
+        contextData?: Record<string, unknown>;
+      }) => {
+        const inst = instances.get(params.instanceId);
+        if (!inst) throw new Error('Not found');
+        const def = definitions.get(inst.workflowDefinitionId);
+        if (!def) throw new Error('Def not found');
+
+        const now = new Date().toISOString();
+        inst.stepStates[params.stepId] = {
+          status: params.status,
+          executedBy: params.executedBy,
+          completedAt: params.status === WORKFLOW_STEP_STATUS.COMPLETED ? now : undefined,
+          metadata: params.metadata,
+        };
+
+        const next = calculateNextStep(def, inst, params.contextData || {});
+        inst.currentStepId = next?.id;
+        inst.status = next
+          ? WORKFLOW_INSTANCE_STATUS.IN_PROGRESS
+          : WORKFLOW_INSTANCE_STATUS.COMPLETED;
+        inst.updatedAt = now;
+
+        if (params.status === WORKFLOW_STEP_STATUS.COMPLETED && options?.onAuditLog) {
+          await options.onAuditLog({
+            action: AUDIT_ACTIONS.WORKFLOW_STEP_COMPLETED,
+            caseId: inst.caseId,
+            stepId: params.stepId,
+            actor: params.executedBy,
+            organizationId: inst.organizationId,
+            timestamp: now,
+            metadata: params.metadata,
+          });
+        }
+
+        return inst;
+      }
+    ),
   };
 }
