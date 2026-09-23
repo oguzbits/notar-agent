@@ -9,11 +9,14 @@ import {
   getDossierRepository,
   getJobRepository,
   getUniformCaseTitle,
+  getWorkflowRepository,
 } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { DB_TABLES } from '@/types/database';
 import { AnalyzeRequestSchema, UpdateDossierRequestSchema, STORAGE_TYPES } from '@/types/dossier';
+import { WORKFLOW_STEP_STATUS, WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
 
@@ -116,17 +119,74 @@ export async function POST(req: NextRequest): Promise<Response> {
         persistenceResult = await repo.save(dossier, resolvedOrgId);
       }
 
+      // Workflow-Definition und Instanz in PostgreSQL synchronisieren
+      const activeWorkflow = DEFAULT_WORKFLOWS_BY_CASE_TYPE[caseType];
+      let workflowInstance = null;
+      if (persistenceResult.id) {
+        try {
+          const workflowRepo = getWorkflowRepository(authSupabase);
+          await workflowRepo.saveDefinition(activeWorkflow, resolvedOrgId);
+          let existingInstance = await workflowRepo.getInstanceByCaseId(persistenceResult.id);
+          if (!existingInstance) {
+            existingInstance = await workflowRepo.createInstance({
+              workflowDefinitionId: activeWorkflow.id,
+              caseId: persistenceResult.id,
+              organizationId: resolvedOrgId || 'org-default',
+            });
+          }
+
+          // Schritte nach erfolgreicher Analyse als abgeschlossen markieren
+          const extractionStep = activeWorkflow.steps[0];
+          if (extractionStep) {
+            existingInstance = await workflowRepo.updateStepState({
+              instanceId: existingInstance.id,
+              stepId: extractionStep.id,
+              status: WORKFLOW_STEP_STATUS.COMPLETED,
+              executedBy: extractionStep.actor,
+              metadata: { completedAt: new Date().toISOString() },
+            });
+          }
+
+          const auditorStep = activeWorkflow.steps.find(
+            (s) => s.type === WORKFLOW_STEP_TYPES.AUDITOR
+          );
+          if (auditorStep) {
+            existingInstance = await workflowRepo.updateStepState({
+              instanceId: existingInstance.id,
+              stepId: auditorStep.id,
+              status: WORKFLOW_STEP_STATUS.COMPLETED,
+              executedBy: auditorStep.actor,
+              metadata: { completedAt: new Date().toISOString() },
+            });
+          }
+
+          workflowInstance = existingInstance;
+        } catch (workflowErr: unknown) {
+          console.warn(
+            '[analyze route] Workflow-Instanzierung nicht blockierend fehlgeschlagen:',
+            workflowErr
+          );
+        }
+      }
+
       emitter.sendEvent({
         type: 'result',
         success: true,
         dossier,
         persistence: persistenceResult,
         workflow: {
-          type: 'MULTI_AGENT',
-          stages: [
-            'STAGE_1_INGESTION_EXTRACTION_AGENT',
-            'STAGE_2_NOTARY_AUDITOR_RECONCILER_AGENT (DELTA_MODE)',
-          ],
+          definitionId: activeWorkflow.id,
+          title: activeWorkflow.title,
+          instanceId: workflowInstance?.id,
+          status: workflowInstance?.status,
+          currentStepId: workflowInstance?.currentStepId,
+          steps: activeWorkflow.steps.map((s) => ({
+            id: s.id,
+            title: s.title,
+            type: s.type,
+            actor: s.actor,
+            status: workflowInstance?.stepStates[s.id]?.status || WORKFLOW_STEP_STATUS.PENDING,
+          })),
         },
       });
 

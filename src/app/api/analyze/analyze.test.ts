@@ -4,6 +4,7 @@ import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import {
   createMockJobRepository,
   createMockDossierRepository,
+  createMockWorkflowRepository,
 } from '@/test/fixtures/mock-repositories';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS } from '@/types/jobs';
@@ -11,6 +12,7 @@ import { POST, PUT } from './route';
 
 const mockJobRepo = createMockJobRepository();
 const mockDossierRepo = createMockDossierRepository();
+const mockWorkflowRepo = createMockWorkflowRepository();
 
 vi.mock('@/lib/supabase/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
@@ -18,6 +20,7 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
     ...actual,
     getJobRepository: () => mockJobRepo,
     getDossierRepository: () => mockDossierRepo,
+    getWorkflowRepository: () => mockWorkflowRepo,
     getServerSupabase: vi.fn(),
   };
 });

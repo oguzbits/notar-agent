@@ -9,6 +9,7 @@ import {
   selectApplicableKnowledge,
 } from '@/lib/knowledge/rules/rule-selector';
 import { getKnowledgeRepository } from '@/lib/supabase/server';
+import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
 import {
   CaseType,
   Dossier,
@@ -18,6 +19,7 @@ import {
   UploadedFilePayload,
 } from '@/types/dossier';
 import { AuditorStageOutputSchema, ExtractionStageOutputSchema } from '@/types/pipeline';
+import { WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
 export interface PipelineTokenUsage {
   promptTokens: number;
@@ -61,6 +63,9 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // Aktiven Workflow-Ablaufplan für den Vorgangstyp abrufen
+  const activeWorkflow = DEFAULT_WORKFLOWS_BY_CASE_TYPE[caseType];
+
   const noteList = notes
     .split('\n\n')
     .map((n) => n.trim())
@@ -88,7 +93,8 @@ ${formattedNotes}
   // =========================================================================
   // STUFE 1: Ingestion & Extraction Agent (Multimodal Payload-Assembly)
   // =========================================================================
-  onStep(1, 'Stufe 1: Urkunden- & Sachverhaltserfassung läuft...');
+  const step1Title = activeWorkflow.steps[0]?.title || 'Urkunden- & Sachverhaltserfassung';
+  onStep(1, `Stufe 1: ${step1Title} läuft...`);
 
   const userPromptParts = await assembleExtractionPromptParts({
     files,
@@ -213,7 +219,11 @@ Bitte korrigiere die Struktur und gib das vollständige, valide JSON-Objekt ohne
   // =========================================================================
   // STUFE 2: Notary Auditor & Reconciler Agent (JIT-Regel-Retrieval & Delta)
   // =========================================================================
-  onStep(2, 'Stufe 2: Notarielle Vorprüfung, Fristen & Plausibilisierung...');
+  const step2Title =
+    activeWorkflow.steps.find((s) => s.type === WORKFLOW_STEP_TYPES.AUDITOR)?.title ||
+    activeWorkflow.steps[1]?.title ||
+    'Notarielle Vorprüfung, Fristen & Plausibilisierung';
+  onStep(2, `Stufe 2: ${step2Title}...`);
 
   // C.3 Erweitertes RAG & Gesetzliche Prüfnormen aus IKnowledgeRepository
   const knowledgeRepo = getKnowledgeRepository();

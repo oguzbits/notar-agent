@@ -7,6 +7,7 @@ import {
   SupabaseKnowledgeRepository,
 } from '@/lib/knowledge/supabase-knowledge-repository';
 import { ITeamRepository, SupabaseTeamRepository } from '@/lib/team/team-repository';
+import { IWorkflowRepository, SupabaseWorkflowRepository } from '@/lib/workflow/repository';
 import { Database } from '@/types/database';
 import { Dossier } from '@/types/dossier';
 import {
@@ -95,6 +96,16 @@ export function getKnowledgeRepository(
 export function getTeamRepository(client?: SupabaseClient<Database> | null): ITeamRepository {
   const supabase = client ?? getServerSupabase();
   return new SupabaseTeamRepository(supabase);
+}
+
+/**
+ * Factory zur Bereitstellung des konfigurierten Workflow-Repositories.
+ */
+export function getWorkflowRepository(
+  client?: SupabaseClient<Database> | null
+): IWorkflowRepository {
+  const supabase = client ?? getServerSupabase();
+  return new SupabaseWorkflowRepository(supabase);
 }
 
 // Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer mit optionaler Kanzleitrennung (§ 203 StGB)
