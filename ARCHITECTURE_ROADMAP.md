@@ -429,7 +429,7 @@ graph TD
 
 - [x] **B.1 PostgreSQL Job-Queue (`dossier_jobs`):**
   - [x] Zod-Schema & TypeScript-Typen für Job-Lebenszyklus (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`) und Zwischen-Stages (`src/types/jobs.ts`, `src/types/jobs.test.ts`)
-  - [x] Bounded In-Memory- & Supabase-Job-Repository mit Concurrency-Claim & TTL-Pruning (`job-repository.ts`, `job-repository.test.ts`)
+  - [x] Supabase PostgreSQL Job-Repository mit Concurrency-Claim & TTL-Pruning (`job-repository.ts`, `job-repository.test.ts`)
   - [x] API-Adapter: `POST /api/analyze` unterstützt asynchrone Annahme via `?async=true` (`202 Accepted` & `jobId`), `GET /api/jobs/[id]`, `GET /api/jobs` & Retry via `POST /api/jobs` (`jobs-route.test.ts`, `jobs-list-route.test.ts`)
   - [x] Worker-Verarbeitungslogik mit Concurrency-Limiter (max. 2 parallele LLM-Jobs gegen 429) & State-Updates (`job-worker.ts`, `job-worker.test.ts`)
   - [x] UI-Integration in `DocumentTable` & Cockpit (Live-Kachel für Hintergrundprüfungen, dynamischer Progress-Balken, A11y, 1-Click Retry bei Fehlern)
@@ -478,13 +478,13 @@ graph TD
 - [x] **C.1 Append-Only Audit-Trail & Beweissicherung (§ 17 ff. BeurkG):**
   - [x] Revisionssichere Event-Tabelle (`audit_logs`) mit SHA-256 Hash-Chaining (§ 17 ff. BeurkG)
   - [x] Protokollierung aller Feld-Overrides inkl. Begründungszwang (`StatusOverrideReasonModal`)
-  - [x] `IAuditRepository` (Bounded In-Memory & Supabase) mit automatischer Integritätsverifikation
+  - [x] `IAuditRepository` (Supabase PostgreSQL mit Test-Mocks) mit automatischer Integritätsverifikation
   - [x] Revisionssicherer Prüfbericht-Export inkl. Kettensignatur & Hash-Fingerprint in `ExportActions`
   - _(ZDR-Cloud-Verträge ins Backlog ausgelagert, siehe [ARCHITECTURE_ROADMAP_ADDITIONS.md](./ARCHITECTURE_ROADMAP_ADDITIONS.md))_
 - [x] **C.2 PostgreSQL RLS Mandantentrennung & Migration-Management (§ 203 StGB):**
   - [x] Mandanten-Isolation auf Datenbankebene via Row-Level Security (`supabase/migrations/20260915000000_multi_tenancy_rls.sql`)
   - [x] Zod-Schemas & typisierte Notar-Rollen (`NOTAR`, `NOTARASSESSOR`, `SACHBEARBEITER`, `ANWALTSNOTAR_RA`, `ADMIN`) in `src/types/organization.ts`
-  - [x] Kanzlei-Isolation in Repositories (In-Memory & Supabase für `audit_logs`, `dossier_jobs` und `documents`)
+  - [x] Kanzlei-Isolation in Repositories (Supabase PostgreSQL mit RLS für `audit_logs`, `dossier_jobs` und `documents`)
   - [x] API-Header- und Body-Unterstützung (`x-organization-id`) mit 100 % Unit- und Isolationstest-Abdeckung
   - [x] Deklaratives Migrationsmanagement mit B-Tree- & Partial-Indizes
   - _(Zugehörige UI: Login, Teamverwaltung & RBAC-Guards in [ARCHITECTURE_ROADMAP_ADDITIONS.md §11](./ARCHITECTURE_ROADMAP_ADDITIONS.md#11-kanzlei-authentifizierung-rollen-ui--session-management-auth--rbac-frontend) hinterlegt)_

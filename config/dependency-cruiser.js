@@ -32,18 +32,6 @@ module.exports = {
       to: { path: '^src/components', dependencyTypes: ['type-only'] },
     },
     {
-      name: 'no-in-memory-imports-in-production-core',
-      comment:
-        'Produktions-Module (Jobs, Dossier, AI) dürfen niemals direkt aus in-memory importieren. Erlaubt nur in server.ts (Factory) und Tests.',
-      severity: 'error',
-      from: {
-        path: '^src/lib/(dossier|jobs/job-worker|ai|knowledge/rules)',
-        pathNot: '\\.test\\.(ts|tsx)$',
-      },
-      to: { path: '^src/lib/in-memory' },
-    },
-
-    {
       name: 'no-circular-dependencies',
       comment: 'Zyklische Abhängigkeiten sind im gesamten Projekt verboten',
       severity: 'error',

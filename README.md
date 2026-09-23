@@ -48,12 +48,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
 > [!TIP]
-> **Empfehlung für schnelles Testen (Ohne Datenbank-Setup):**
-> Für lokale Tests und Demos wird **kein Supabase-Konto benötigt**! Wenn die Supabase-Variablen leer bleiben, schaltet die App automatisch in den **In-Memory-Modus**.
->
-> - **Wo liegen die Daten?** Dossiers und Akten werden direkt im flüchtigen Arbeitsspeicher (RAM) des laufenden Node-Servers gehalten.
-> - **Wann sind sie weg?** Die Daten bleiben beim normalen Browsen und Neuladen der Seite erhalten. Sie werden erst zurückgesetzt, wenn der Terminal-Prozess (`npm run dev`) gestoppt bzw. beendet wird.
-> - **Vorteil:** Du kannst sofort loslegen – du brauchst lediglich deinen `ANTHROPIC_API_KEY`.
+> **Supabase PostgreSQL Setup:**
+> Die App nutzt Supabase PostgreSQL als Single Source of Truth (SSOT). Für die lokale Entwicklung kann entweder eine Supabase-Cloud-Instanz oder die lokale Docker-Umgebung genutzt werden.
 
 ### 3.1 Lokale Supabase-Entwicklung via Docker (Empfohlen)
 
@@ -180,5 +176,5 @@ Aus Datenschutzgründen sind keine Original- oder Mandantendokumente im Git-Repo
 
 - **Frontend:** Next.js 16 (App Router mit Turbopack), React 19, Tailwind CSS, Lucide Icons.
 - **Agentic Engine:** Vercel AI SDK (`ai`), `@ai-sdk/anthropic` mit nativer PDF- und Bildverarbeitung (multimodale Vision), Zod-Schemavalidierung und robustem Fallback-Merging.
-- **Backend & Datenspeicherung:** Next.js Route Handlers (`/api/analyze`, `/api/documents`), Supabase PostgreSQL mit hybridem In-Memory-Fallback für 100 % Ausfallsicherheit.
+- **Backend & Datenspeicherung:** Next.js Route Handlers (`/api/analyze`, `/api/documents`), Supabase PostgreSQL mit striktem Fail-Fast und Row-Level Security.
 - **Code-Qualität & Standards:** Husky Pre-Commit Hooks, Lint-Staged, Prettier, ESLint, Vitest Test-Suite.

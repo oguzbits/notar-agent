@@ -54,8 +54,7 @@ export interface WorkflowRepositoryOptions {
 
 /**
  * Supabase Workflow Repository als Single Source of Truth (SSOT).
- * Strikte Persistenz mit Fail-Fast Runtime Exceptions bei DB-Fehlern.
- * Keine In-Memory Fallbacks im Produktivcode gem. AGENTS.md.
+ * Strikte Persistenz mit Fail-Fast Runtime Exceptions bei DB-Fehlern gem. AGENTS.md.
  */
 export class SupabaseWorkflowRepository implements IWorkflowRepository {
   private onAuditLog?: (payload: WorkflowAuditLogPayload) => Promise<void>;

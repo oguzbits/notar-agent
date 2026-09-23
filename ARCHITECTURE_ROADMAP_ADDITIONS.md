@@ -180,7 +180,7 @@ graph TD
 ### Kernfunktionen
 
 1. **API-Rate-Limiting & Kostenkontrolle:**
-   - Token-Bucket / Sliding-Window-Algorithmus (z. B. via Upstash Redis oder In-Memory-Bucket) für `/api/analyze` und `/api/jobs`.
+   - Token-Bucket / Sliding-Window-Algorithmus (z. B. via Upstash Redis oder LRU-Cache) für `/api/analyze` und `/api/jobs`.
    - Schutz vor Skript-Schleifen, versehentlichen Doppel-Submits und DoS-Angriffen, die teure multimodale LLM-Tokens verbrauchen.
 2. **Payload-Schutz & MIME-Type Magic-Byte-Prüfung:**
    - Explizite Server-Constraints für Body-Größen vor dem Memory-Heap (Verhinderung von Node.js OOMs bei Base64-Payloads).
@@ -406,13 +406,13 @@ graph LR
 ## 13. Fail-Fast Repository-Architektur & Bereinigung stiller Fallbacks (Data Integrity & SSOT)
 
 - **Priorisierung:** Datenintegrität & Revisionssicherheit (Single Source of Truth gem. AGENTS.md).
-- **Ziel:** Beseitigung heimlicher In-Memory-Fallbacks bei Datenbankausfällen. Klares 2-Modi-System: Expliziter Demo-/Local-Modus vs. strikter Produktiv-Modus mit transparentem Fehlerabbruch (`throw new Error`).
+- **Ziel:** Beseitigung stiller Fallbacks bei Datenbankausfällen: PostgreSQL als Single Source of Truth mit transparentem Fehlerabbruch (`throw new Error`).
 - **Ausgangslage:** In einigen Repositories (`SupabaseDossierRepository`, `SupabaseJobRepository`, `SupabaseKnowledgeRepository`) wurden DB-Fehler im `catch`-Block verschluckt und Daten still in flüchtigen RAM geschrieben. Beim Container-Neustart droht Datenverlust ohne Fehlermeldung.
 
 ```mermaid
 graph TD
     A["API- / Worker-Aktion"] --> B{"Supabase konfiguriert?"}
-    B -->|"Nein (Keine Credentials)"| C["Expliziter Demo- / In-Memory-Modus (Bounded Memory)"]
+    B -->|"Nein (Keine Credentials)"| C["Offline- / Mock-Modus für Tests"]
     B -->|"Ja (Produktivbetrieb)"| D["Supabase Repository (SSOT)"]
     D --> E{"DB-Query erfolgreich?"}
     E -->|"200 OK"| F["Transaktionssicher persistiert"]

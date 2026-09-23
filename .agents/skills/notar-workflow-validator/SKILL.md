@@ -45,7 +45,7 @@ Kein Sachverhalt darf ohne Nachweis als rechtssicher gelten:
 
 ### 3. Datenschutz & Persistence Guardrails
 
-- Im Fallback-Modus (`in-memory`) dürfen keine Daten ungewollt an externe Dritte abfließen.
+- Die PostgreSQL-Persistierung mit RLS stellt sicher, dass keine Daten ungewollt an unberechtigte Kanzleien oder Dritte abfließen (§ 203 StGB).
 - Supabase-Persistierung muss das `Dossier`-Objekt normalisiert speichern.
 
 ---

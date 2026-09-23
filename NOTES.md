@@ -34,7 +34,7 @@ sequenceDiagram
     participant API as Ingestion / Orchestrator
     participant Agent1 as Stufe 1: Extraction Agent
     participant Agent2 as Stufe 2: Notary Auditor
-    participant DB as Supabase / In-Memory
+    participant DB as Supabase PostgreSQL
 
     Sachbearbeiter->>UI: Upload Dokumentensatz (PDFs, Scans, Notizen)
     UI->>API: Stream & Parse Files (Binary/Multimodal)
@@ -74,8 +74,7 @@ sequenceDiagram
   - _Hintergrund & Überlegung:_ Es wurde evaluiert, ob hochauflösende Scans im Browser oder Server komprimiert werden sollten, um Payload- und Token-Mengen zu reduzieren.
   - _Entscheidung dagegen:_ Bei notariellen Urkunden (verblichene Grundbuchauszüge, handschriftliche Randvermerke, Beglaubigungsvermerke, Amtssiegel) führt Bildkompression (z. B. aggressive JPEG-Artefakte oder verringerte Auflösung unter 150–200 DPI) zu verwaschenen Ziffern (`3` vs. `8`, Flurstücksnummern `124/2` vs. `124/7`) und provoziert Fehlinterpretationen oder Halluzinationen.
   - _Praxislösung:_ Dokumente werden in voller visueller Originaltreue belassen. Überschreitet eine Datei das Verarbeitungs- und API-Limit (> 32 MB), wird sie nicht stillschweigend beschädigt, sondern das System gibt eine nutzerfreundliche Kanzlei-Warnung mit konkreten Handlungsempfehlungen aus.
-- **Gründlichkeit vor Latenz:** Im Notariat ist Korrektheit existentiell. Ein Analyse-Lauf von 15–25 Sekunden ist im Kanzleialltag ein Bruchteil manueller Sichtung und vollkommen akzeptabel.
-- **Hybride Persistenz:** Supabase mit transparentem In-Memory Fallback für sofortige lokale Lauffähigkeit ohne Setup-Hürden beim Prüfer.
+- **Hermetische Persistenz:** Supabase PostgreSQL als Single Source of Truth mit Row-Level Security (§ 203 StGB) und striktem Fail-Fast.
 
 ---
 

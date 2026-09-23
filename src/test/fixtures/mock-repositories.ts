@@ -27,7 +27,7 @@ import {
 } from '@/types/workflow';
 
 /**
- * Creates an in-memory mock implementation of IJobRepository using vi.fn()
+ * Creates an isolated test double mock implementation of IJobRepository using vi.fn()
  */
 export function createMockJobRepository(): IJobRepository {
   const jobs = new Map<string, DossierJob>();
@@ -79,7 +79,7 @@ export function createMockJobRepository(): IJobRepository {
 }
 
 /**
- * Creates an in-memory mock implementation of ITeamRepository using vi.fn()
+ * Creates an isolated mock implementation of ITeamRepository using vi.fn()
  */
 export function createMockTeamRepository(): ITeamRepository {
   const members = new Map<string, TeamMember>();
@@ -128,7 +128,7 @@ export function createMockTeamRepository(): ITeamRepository {
 }
 
 /**
- * Creates an in-memory mock implementation of IDossierRepository using vi.fn()
+ * Creates an isolated mock implementation of IDossierRepository using vi.fn()
  */
 export function createMockDossierRepository(): IDossierRepository {
   const docs = new Map<string, DocumentRecord>();
@@ -201,7 +201,7 @@ export function createMockDossierRepository(): IDossierRepository {
 }
 
 /**
- * Creates an in-memory mock implementation of IAuditRepository using vi.fn()
+ * Creates an isolated mock implementation of IAuditRepository using vi.fn()
  */
 export function createMockAuditRepository(): IAuditRepository {
   const store = new Map<string, AuditLogEntry[]>();
