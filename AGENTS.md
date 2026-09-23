@@ -21,6 +21,7 @@ The codebase strictly enforces unidirectional data flow and clear execution boun
 - **Conflict Resolution Hierarchy:**
   - **Semantic SSOT over File Monoliths:** Single Source of Truth (SSOT) refers to domain authority, not a single physical file. Entity schemas define the data contract SSOT (`src/types/`), domain mutations and calculations reside in pure logic modules (`src/lib/`), and display labels reside in localization modules (`src/lib/.../role-labels.ts`).
   - **Encapsulation (SoC) beats premature DRY:** Structural similarity between independent domains (e.g. route handler boilerplate or auth verification) is preferred over premature, leaky abstractions. Do not couple separate domains just to eliminate duplication.
+  - **Pragmatic YAGNI & "Rule of Three":** Do not build speculative abstractions, meta-frameworks, or multi-agent orchestration layers for singular use cases. Implement workflows directly and concretely; only abstract into reusable patterns once at least three distinct domains or use cases demonstrate proven, identical structural needs.
   - **Pure Type Invariant (`depcruise`):** `src/types/` must never import implementation logic or functions from `src/lib/`, `src/app/`, or `src/components/`.
 
 ---
@@ -47,6 +48,9 @@ Every feature and modification must satisfy these technical invariants:
 6. **Domain Language & UI Agnosticism:**
    - Technical AI mechanisms (RAG, vector, tokens, embeddings, pipeline stages) must never leak into user-facing UI. User-visible texts must strictly use canonical German notary terminology from `src/lib/dossier/constants.ts`.
    - Legal codes or paragraph references (e.g. § 203 StGB, DSGVO) must not be displayed as decorative marketing slogans in UI headers or badges.
+7. **Strict Document Portability & Relative Paths (Zero Absolute Environment Leaks):**
+   - Documentation files, markdown documents, comments, configuration templates, and repository artifacts MUST NEVER contain machine-specific absolute file URLs or local user home directories (e.g. `file:///Users/...`, `/Users/...`, `C:\Users\...`).
+   - Repository-internal links MUST always use standard relative Markdown links (e.g. `[AGENTS.md](AGENTS.md)` or `[Overview](docs/overview.md)`). Absolute machine paths or URI schemes are strictly prohibited to ensure portable, leak-free repositories.
 
 ---
 

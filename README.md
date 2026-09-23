@@ -1,17 +1,6 @@
-# NotarPartner Urkunden-Zuarbeit (Agentischer Workflow)
+# Notar Agent – Intelligente Urkunden-Zuarbeit (Agentischer Workflow)
 
-Intelligente Web-Applikation zur Unterstützung von Notariaten bei der autonomen Aufbereitung, Prüfung, Strukturierung und Lückenanalyse von unstrukturierten Unterlagen für **Immobilienkaufverträge**.
-
----
-
-## 🎥 Screenwalkthrough (Video-Walkthrough)
-
-Der vollständige Screenwalkthrough (gemäß Aufgabenstellung) liegt als modulare Video-Reihe im Verzeichnis [`Screenwalkthrough/`](Screenwalkthrough/):
-
-1. **[`1.Einstieg_Neuer-Vorgang_Workflow-Stepper.mov`](Screenwalkthrough/1.Einstieg_Neuer-Vorgang_Workflow-Stepper.mov):** Einstieg, Heterogenität der Quellen, Erfassungsmaske & animierter 2-Stufen-Workflow (Extraction + Auditor via SSE).
-2. **[`2.Cockpit_A-B-Vergleich.mov`](Screenwalkthrough/2.Cockpit_A-B-Vergleich.mov):** Das Cockpit im A-B-Vergleich (Vorgang ohne E-Mail vs. Vorgang mit E-Mail), Zod-Schematreue, Korrektur der Jahresnettomiete (142.020 € vs. 152.640 €) & lückenloser Belegpfad.
-3. **[`3.Reifegrad_Nachreichen_Kontrollhoheit.mov`](Screenwalkthrough/3.Reifegrad_Nachreichen_Kontrollhoheit.mov):** Reifegrad-Wegweiser, iteratives Unterlagen-Nachreichen (Delta-Modus) & manuelle Kontroll- und Freigabehoheit in der Kanzlei.
-4. **[`4.Tech-Stack_Export_Fazit.mov`](Screenwalkthrough/4.Tech-Stack_Export_Fazit.mov):** Next.js App Router, TypeScript, Vercel AI SDK, Zod, Supabase & 1-Klick-Übertrag in die Kanzleivorlage.
+Autonome LegalTech-Webapplikation zur Unterstützung von Notariaten bei der Aufbereitung, Prüfung, Strukturierung und Lückenanalyse unstrukturierter Unterlagen für **Immobilienkaufverträge**.
 
 ---
 
@@ -19,162 +8,110 @@ Der vollständige Screenwalkthrough (gemäß Aufgabenstellung) liegt als modular
 
 ### 1. Voraussetzungen
 
-- Node.js >= 18.x (empfohlen: Node 20+)
-- npm oder pnpm
+- **Node.js:** `>= 20.x` (empfohlen: Node 20 LTS oder 22 LTS)
+- **Paketmanager:** `npm`
+- **Docker:** Docker Desktop (für die lokale Supabase PostgreSQL 17 Datenbank)
 
 ### 2. Installation
 
 ```bash
-git clone <dein-repo-link>
-cd notar-partner-prototyp
+git clone <repository-url>
+cd notar-agent
 npm install
 ```
 
 ### 3. Umgebungsvariablen (`.env.local`)
 
-Erstelle eine `.env.local`-Datei im Projektstamm (siehe auch [`.env.example`](.env.example)):
+Erstelle eine `.env.local`-Datei im Projektstamm:
+
+```bash
+cp .env.example .env.local
+```
+
+Wichtigste Konfiguration:
 
 ```env
-# Erforderlich: Anthropic API-Key
-ANTHROPIC_API_KEY=
+# Erforderlich: Mindestens ein LLM-Provider API-Key
+ANTHROPIC_API_KEY="sk-ant-..."
+# oder GOOGLE_GENERATIVE_AI_API_KEY="..."
 
-# Optional: Modell-Wahl (Standard: claude-haiku-4-5 für schnelles & kosteneffizientes Parsing)
+# Modell-Wahl (Standard: schnelles & kosteneffizientes Parsing)
 AI_MODEL="claude-haiku-4-5"
 
-# Optional: Supabase Persistenz (Tabelle 'documents')
-# Empfehlung für lokales Testen: Einfach leer lassen!
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+# Supabase (Werte für lokale Docker-Instanz bereits vorbereitet)
+NEXT_PUBLIC_SUPABASE_URL="http://127.0.0.1:54321"
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<lokaler-anon-key>"
 ```
 
-> [!TIP]
-> **Supabase PostgreSQL Setup:**
-> Die App nutzt Supabase PostgreSQL als Single Source of Truth (SSOT). Für die lokale Entwicklung kann entweder eine Supabase-Cloud-Instanz oder die lokale Docker-Umgebung genutzt werden.
+### 4. Lokale Supabase-Entwicklung via Docker
 
-### 3.1 Lokale Supabase-Entwicklung via Docker (Empfohlen)
+Das Projekt nutzt Supabase PostgreSQL als Single Source of Truth (SSOT):
 
-Das Projekt unterstützt eine vollständig isolierte, lokale Supabase-Instanz (PostgreSQL 17, Storage, Auth, Studio) via Docker:
-
-1. **Docker Desktop starten.**
-2. **Lokale Supabase starten:**
-   ```bash
-   npm run db:start
-   ```
-   _Startet alle Container und wendet automatisch alle Migrationen in `supabase/migrations/` an._
-3. **Supabase Studio (Web UI):** Im Browser unter [http://localhost:54323](http://localhost:54323) aufrufen, um Tabellen, Daten und RLS-Policies visuell zu inspizieren.
-4. **Nützliche Befehle:**
-   - `npm run db:reset`: Setzt die lokale Datenbank vollständig zurück und führt alle Migrationen frisch aus.
-   - `npm run db:lint`: Prüft das Datenbankschema auf Security- und RLS-Fehler.
-   - `npm run db:stop`: Stoppt die lokalen Container.
-
-### 3.2 Supabase Cloud einrichten (Optional für persistente Staging/Prod-Umgebung)
-
-Falls Vorgänge alternativ in einem externen Supabase-Cloud-Projekt gespeichert werden sollen:
-
-1. **Supabase-Projekt anlegen:** Erstelle ein kostenloses Projekt unter [supabase.com](https://supabase.com).
-2. **Tabelle anlegen:** Öffne im Supabase-Dashboard den **SQL Editor** und führe folgendes Schema aus:
-
-```sql
--- Tabelle für Beurkundungsvorgänge / Dossiers
-create table if not exists documents (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  status text not null default 'In Prüfung',
-  content jsonb not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now())
-);
-
--- Row Level Security (RLS) aktivieren
-alter table documents enable row level security;
-
--- Lese- und Schreibzugriff für den Client erlauben (Demo/Prototyp)
-create policy "Allow all access to documents"
-on documents for all
-using (true)
-with check (true);
-
--- Tabelle für revisionssicheren Audit-Trail (§ 17 ff. BeurkG)
-create table if not exists audit_logs (
-  id uuid primary key default gen_random_uuid(),
-  document_id text not null,
-  sequence_number bigint not null,
-  action text not null,
-  timestamp timestamptz not null,
-  actor text not null,
-  previous_hash varchar(64) not null,
-  current_hash varchar(64) not null,
-  details jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default timezone('utc'::text, now()),
-  constraint uq_audit_logs_doc_seq unique (document_id, sequence_number)
-);
-
-alter table audit_logs enable row level security;
-
-create policy "Allow all access to audit_logs"
-on audit_logs for all
-using (true)
-with check (true);
+```bash
+# Startet PostgreSQL, Auth, Storage & Supabase Studio
+npm run db:start
 ```
 
-3. **API-Schlüssel kopieren:** Gehe im Dashboard zu **Project Settings > API** und trage URL sowie den `anon` (Publishable) Key in deine `.env.local` ein:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://<dein-projekt>.supabase.co
-   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<dein-anon-key>
-   ```
+- **Supabase Studio (Web UI):** [http://localhost:54323](http://localhost:54323) zur Inspektion von Tabellen, RLS und Daten.
+- **Nützliche DB-Befehle:**
+  - `npm run db:reset`: Setzt die lokale Datenbank zurück und wendet alle Migrationen in `supabase/migrations/` frisch an.
+  - `npm run db:status`: Zeigt Ports, Keys und Status der Container an.
+  - `npm run db:lint`: Validiert das DB-Schema auf Security- und RLS-Richtlinien.
+  - `npm run db:stop`: Stoppt die lokalen Container.
 
-### 4. Anwendung starten
+### 5. Anwendung starten
 
 ```bash
 npm run dev
 ```
 
-Die App ist anschließend im Browser unter [http://localhost:3000](http://localhost:3000) erreichbar.
+Die App ist anschließend unter [http://localhost:3000](http://localhost:3000) im Browser erreichbar.
 
 ---
 
-## 📂 Lade-Anleitung für Unterlagen (Dokumente testen)
+## 📂 Unterlagen testen & Lade-Anleitung
 
-Aus Datenschutzgründen sind keine Original- oder Mandantendokumente im Git-Repository eingecheckt. Um die Analyse zu testen:
+Aus Datenschutzgründen sind keine echten Mandantendokumente im Git-Repository versioniert. Zum Testen:
 
 1. Öffne die Web-Applikation unter [http://localhost:3000](http://localhost:3000).
-2. Klicke auf **„Neue Zuarbeit starten“** (oder nutze bei leerem Datenbestand **„Erste Akte anlegen“**).
-3. **Dateien hochladen:** Ziehe beliebige zu prüfende Dateien in das Uploadfeld:
-   - **PDF-Dokumente:** z. B. Grundbuchauszüge, Kaufvertragsentwürfe, Energieausweise, Flurkarten, Mietübersichten.
-   - **Bild-Scans (JPG, PNG):** z. B. abfotografierte Urkunden, Personalausweise, handschriftliche Vermerke.
-   - **Text- & E-Mail-Dateien:** z. B. Makler-Notizen, `.txt`, `.eml`.
-4. **Ergänzende Hinweise (Optional):** Trage in das Notizfeld informelle Absprachen ein (z. B. _„Kaufpreis wurde nachverhandelt auf 500.000 €“_).
-5. Klicke auf **„Unterlagen prüfen“**: Der agentische Prüfprozess (mit visueller Live-Statusanzeige im Stepper) extrahiert alle 10 Pflichtfelder, gleicht Fristen und Diskrepanzen ab und stellt das Ergebnis im Cockpit dar.
+2. Klicke auf **„Neuen Vorgang starten“** (oder nutze bei leerem Datenbestand **„Erste Akte anlegen“**).
+3. **Dateien hochladen (Drag-and-Drop):**
+   - **PDFs:** Grundbuchauszüge, Kaufvertragsentwürfe, Energieausweise, Flurkarten, Mietaufstellungen.
+   - **Bild-Scans (JPG, PNG):** Abfotografierte Urkunden, Personalausweise, handschriftliche Vermerke.
+   - **Text- & E-Mail-Dateien:** Makler-Notizen, `.txt`, `.eml`.
+4. **Ergänzende Hinweise (Optional):** Informelle Absprachen im Textfeld notieren (z. B. _„Kaufpreis wurde nachverhandelt auf 500.000 €“_).
+5. Klicke auf **„Unterlagen prüfen“**: Der agentische Prüfprozess extrahiert die 10 Pflichtfelder, führt Fristenabgleiche durch und stellt das Ergebnis im Cockpit dar.
 
 ---
 
-## 🧪 Funktionsumfang & Cockpit
+## 🧪 Funktionsumfang & Sachbearbeiter-Cockpit
 
 1. **Dashboard & Vorgangsübersicht:**
-   - Übersicht aller bisherigen Beurkundungsvorgänge mit einheitlichen Aktenzeichen (`Immobilienkauf - <ID>`), Reifegrad-Status (`In Prüfung` vs. `Entwurfsreif`), Suchleiste und Löschfunktion.
+   - Übersicht aller bisherigen Vorgänge mit einheitlichen Aktenzeichen (`Immobilienkauf - <ID>`), Reifegrad-Status (`In Prüfung` vs. `Entwurfsreif`), Suchleiste und Löschfunktion.
 
-2. **Neue Zuarbeit & Inkrementelles Nachreichen:**
-   - Beliebige Dokumente via Drag-and-Drop hochladen.
-   - **Bestehende Vorgänge aktualisieren:** Fehlende Nachweise oder neue E-Mails können nachträglich über **„Unterlagen nachreichen“** in ein bestehendes Dossier eingepflegt werden, ohne verifizierte Daten zu verlieren.
+2. **Inkrementelles Nachreichen (Delta-Modus):**
+   - Nachträgliches Einpflegen fehlender Nachweise oder E-Mails über **„Unterlagen nachreichen“**, ohne bereits verifizierte Daten zu verlieren.
 
-3. **Multimodale KI-Analyse (Agentischer Workflow):**
-   - **Autonome Dokumentenerkennung:** Klassifizierung nach Dokumententyp, Datum und Verlässlichkeit (`HIGH`, `MEDIUM`, `LOW`, `OBSOLETE`, `UNRELATED`).
-   - **10 Fachspezifische Pflichtfelder (Ampelsystem):**
-     - Verkäufer, Käufer, Grundbuch, Grundstücke, Kaufpreis, Finanzierung, Belastungen, Mietverhältnisse, Energieausweis, Übergabe.
-     - Status je Feld: `Belegt` (`VERIFIED`), `Prüfung nötig` (`NEEDS_REVIEW`), `Veraltet` (`OUTDATED`), `Fehlt` (`MISSING`).
-     - **Lückenloser Audit-Trail:** Jede Zahl und Angabe ist mit Dateiquelle, Seitenzahl und Original-Textzitat (`snippet`) belegt.
-   - **Konnexitätsprüfung & Diskrepanzerkennung:** Fremde Parteien oder abweichende Liegenschaftsdaten werden isoliert; Kaufpreis-Historien (Vorangebot vs. finaler Stand) transparent dargestellt.
-   - **Proaktive Nachforderungen (`inquiries`):** Konkrete Nachforderungen an Makler, Parteien oder Grundbuchamt mit 1-Klick-Kopierfunktion.
+3. **Multimodale KI-Analyse & 10 Pflichtfelder (Ampelsystem):**
+   - Automatische Dokumentenerkennung und Klassifikation (`HIGH`, `MEDIUM`, `LOW`, `OBSOLETE`, `UNRELATED`).
+   - Die 10 Kernfelder: Verkäufer, Käufer, Grundbuch, Grundstücke, Kaufpreis, Finanzierung, Belastungen, Mietverhältnisse, Energieausweis, Übergabe.
+   - Reifegrade: `Belegt` (`VERIFIED`), `Prüfung nötig` (`NEEDS_REVIEW`), `Veraltet` (`OUTDATED`), `Fehlt` (`MISSING`).
+   - **Lückenloser Audit-Trail (§ 17 BeurkG):** Jede Zahl und Angabe ist mit Dateiquelle, Seitennummer und Original-Textzitat (`snippet`) belegt.
+   - **Konnexitätsprüfung & Diskrepanzerkennung:** Isolierung abweichender Liegenschaftsdaten und Nachverfolgung der Kaufpreis-Historie.
 
-4. **Human-in-the-Loop & Export:**
-   - Manuelle Statusanpassung und Notizfunktion für Sachbearbeiter.
-   - 1-Klick-Kopieren des formatierten Prüfberichts für die Kanzleisoftware sowie strukturierter JSON-Export des vollständigen Dossiers.
+4. **Human-in-the-Loop, Nachforderungen & Kanzlei-Export:**
+   - Sachbearbeiter-Übersteuerung mit Dokumentationsgrund.
+   - Proaktive, vorformulierte Nachforderungsschreiben an Makler, Parteien oder Grundbuchamt mit 1-Klick-Kopierfunktion.
+   - 1-Klick-Übertrag des formatierten Prüfberichts in Kanzleisoftware (z. B. TriNotar, NoRA) sowie vollständiger JSON-Export des Dossiers.
 
 ---
 
-## 🏗 Technische Architektur
+## 🏗 Technischer Kern-Stack
 
-- **Frontend:** Next.js 16 (App Router mit Turbopack), React 19, Tailwind CSS, Lucide Icons.
-- **Agentic Engine:** Vercel AI SDK (`ai`), `@ai-sdk/anthropic` mit nativer PDF- und Bildverarbeitung (multimodale Vision), Zod-Schemavalidierung und robustem Fallback-Merging.
-- **Backend & Datenspeicherung:** Next.js Route Handlers (`/api/analyze`, `/api/documents`), Supabase PostgreSQL mit striktem Fail-Fast und Row-Level Security.
-- **Code-Qualität & Standards:** Husky Pre-Commit Hooks, Lint-Staged, Prettier, ESLint, Vitest Test-Suite.
+- **Frontend:** Next.js 16 (App Router mit Turbopack), React 19, Tailwind CSS, Radix UI Primitives, Lucide Icons.
+- **Agentic Engine:** Vercel AI SDK (`ai`), `@ai-sdk/anthropic` & `@ai-sdk/google` mit nativer Vision- und PDF-Verarbeitung, SSE-Streaming (`/api/analyze`).
+- **Persistenz & Security:** Supabase PostgreSQL 17 mit vollständiger Row-Level Security (RLS), Mandantenisolation und kryptographischem Audit-Trail.
+- **Typensicherheit & Validierung:** Zod als Single Source of Truth (SSOT), strikte TypeScript-Konfiguration.
+- **Quality Gates:** Vitest, Playwright, Dependency Cruiser, jscpd, Knip, Biome/ESLint, Husky Hooks.
+
+Ausführliche Details zu Architektur, Agentic Engineering Setup, Hooks, Skills, MCP und Qualitäts-Gates finden sich in [`docs/overview.md`](docs/overview.md).
