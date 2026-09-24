@@ -19,6 +19,12 @@ The codebase strictly enforces unidirectional data flow and clear execution boun
   - React 19 standards: Idiomatic React (no premature `useMemo`/`useCallback`). Explicit RSC/`'use client'` boundaries.
   - Server state is managed exclusively via `@tanstack/react-query`. Client components push state down to leaf components.
 - **Conflict Resolution Hierarchy:**
+  - **Declarative & Scalable Gold Standards over Imperative Logic (Architecture Invariant):**
+    - Substantive domain rules, statutory constraints, audit policies, and evaluation heuristics must NEVER be implemented as imperative, hardcoded `if/else` logic trees or procedural code patches.
+    - All policy and business rules MUST follow battle-tested industry gold standards:
+      1. **Contract-First Schemas (`src/types/`):** Zod constraints, schema transforms, and strict `as const` disciminators enforce structural validity deterministically at the boundary.
+      2. **Declarative Database Knowledge Store (PostgreSQL `knowledge_documents`):** Substantive legal norms, criteria, and triggers live exclusively as declarative data in PostgreSQL, evaluated dynamically via the rule engine/RAG mechanism.
+      3. **Constrained & Grounded AI Workflows:** Prompts specify pure task mechanisms, whereas domain constraints and verification logic are injected declaratively from the knowledge base.
   - **Semantic SSOT over File Monoliths:** Single Source of Truth (SSOT) refers to domain authority, not a single physical file. Entity schemas define the data contract SSOT (`src/types/`), domain mutations and calculations reside in pure logic modules (`src/lib/`), and display labels reside in localization modules (`src/lib/.../role-labels.ts`).
   - **Encapsulation (SoC) beats premature DRY:** Structural similarity between independent domains (e.g. route handler boilerplate or auth verification) is preferred over premature, leaky abstractions. Do not couple separate domains just to eliminate duplication.
   - **Pragmatic YAGNI & "Rule of Three":** Do not build speculative abstractions, meta-frameworks, or multi-agent orchestration layers for singular use cases. Implement workflows directly and concretely; only abstract into reusable patterns once at least three distinct domains or use cases demonstrate proven, identical structural needs.
@@ -51,6 +57,9 @@ Every feature and modification must satisfy these technical invariants:
 7. **Strict Document Portability & Relative Paths (Zero Absolute Environment Leaks):**
    - Documentation files, markdown documents, comments, configuration templates, and repository artifacts MUST NEVER contain machine-specific absolute file URLs or local user home directories (e.g. `file:///Users/...`, `/Users/...`, `C:\Users\...`).
    - Repository-internal links MUST always use standard relative Markdown links (e.g. `[AGENTS.md](AGENTS.md)` or `[Overview](docs/overview.md)`). Absolute machine paths or URI schemes are strictly prohibited to ensure portable, leak-free repositories.
+8. **Consolidated Database Migrations (Zero Migration Fragmentation):**
+   - Database migrations in `supabase/migrations/` MUST be consolidated into coherent, domain-bounded schema files.
+   - Do NOT create fragmented one-line patch migrations or isolated micro-seed files. Schema definitions, policies, indexes, and their corresponding seed knowledge documents belong in their canonical domain migration file (`core`, `knowledge`, `workflows`). New rules or entities should be consolidated into the appropriate domain migration.
 
 ---
 

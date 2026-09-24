@@ -52,7 +52,7 @@ export function applyNotaryDomainGuardrails(
 
   // 2. Eigentümeridentität & Vertretungsberechtigung (Entity Reconciliation)
   const verkaeuferField = fieldsObj['verkaeufer'];
-  if (verkaeuferField && verkaeuferField.status === FIELD_STATUS.VERIFIED && verkaeuferField.data) {
+  if (verkaeuferField && verkaeuferField.data && verkaeuferField.status === FIELD_STATUS.VERIFIED) {
     const vResult = VerkaeuferDataSchema.partial().safeParse(verkaeuferField.data);
     const vData = vResult.success ? vResult.data : {};
 
@@ -88,9 +88,10 @@ export function applyNotaryDomainGuardrails(
 
   // 3. Registerauszug bei Käufergesellschaften
   const kaeuferField = fieldsObj['kaeufer'];
-  if (kaeuferField && kaeuferField.status === FIELD_STATUS.VERIFIED && kaeuferField.data) {
+  if (kaeuferField && kaeuferField.data && kaeuferField.status === FIELD_STATUS.VERIFIED) {
     const kResult = KaeuferDataSchema.partial().safeParse(kaeuferField.data);
     const kData = kResult.success ? kResult.data : {};
+
     const isCorporate =
       kData.legalForm &&
       !['natürliche person', 'privatperson', 'einzelperson'].includes(

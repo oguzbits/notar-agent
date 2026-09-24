@@ -78,15 +78,25 @@ export const NotaryNumberSchema = z.preprocess((val) => {
   return val;
 }, z.number());
 
-// ==========================================
-// 1. SCHEMATA FÜR IMMOBILIENKAUFVERTRAG
-// ==========================================
+/**
+ * Deklaratives Zod-Schema für Rechtsformen (Contract-First Goldstandard):
+ * Normalisiert leere Strings für Privatpersonen deterministisch zu 'natürliche Person'
+ * und erkennt gängige juristische Personenformate.
+ */
+export const LegalFormSchema = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === '') return 'natürliche Person';
+    return trimmed;
+  }
+  return 'natürliche Person';
+}, z.string());
 
 export const VerkaeuferDataSchema = z.object({
   name: z
     .string()
     .describe('Name oder Firma des Verkäufers / der Eigentümer (Personen oder Gesellschaft)'),
-  legalForm: z.string().describe('Rechtsform (z.B. natürliche Person, GbR, GmbH, KG)'),
+  legalForm: LegalFormSchema.describe('Rechtsform (z.B. natürliche Person, GbR, GmbH, KG)'),
   registeredOwnersGrundbuch: z
     .array(z.string())
     .describe('Im Grundbuch eingetragene Eigentümer lt. Abt. I'),
@@ -111,7 +121,7 @@ export const KaeuferDataSchema = z.object({
   companyName: z
     .string()
     .describe('Name oder Firma des Käufers (Privatperson oder juristische Person)'),
-  legalForm: z.string().describe('Rechtsform (z.B. natürliche Person, GmbH, Einzelkaufmann)'),
+  legalForm: LegalFormSchema.describe('Rechtsform (z.B. natürliche Person, GmbH, Einzelkaufmann)'),
   registerCourt: z
     .string()
     .describe('Registergericht (nur bei eingetragenen Firmen; bei Privatpersonen leer)'),

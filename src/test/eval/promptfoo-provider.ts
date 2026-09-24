@@ -122,9 +122,9 @@ export default class NotarAgentPipelineProvider {
         },
       });
 
-      // Pricing: Gemini 3.5 Flash Lite ($0.075 / $0.30), Claude 3.5 Haiku ($0.80 / $4.00) pro 1M Tokens
-      const inputCostPerMillion = isAnthropic ? 0.8 : 0.075;
-      const outputCostPerMillion = isAnthropic ? 4.0 : 0.3;
+      // Pricing: Gemini 3.5 Flash Lite ($0.30 / $2.50), Claude 4.5 Haiku ($1.00 / $5.00) pro 1M Tokens
+      const inputCostPerMillion = isAnthropic ? 1 : 0.3;
+      const outputCostPerMillion = isAnthropic ? 5 : 2.5;
       const cost =
         (tokenUsage.prompt / 1_000_000) * inputCostPerMillion +
         (tokenUsage.completion / 1_000_000) * outputCostPerMillion;

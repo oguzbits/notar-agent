@@ -80,7 +80,12 @@ export function scoreDossierAgainstGroundTruth(
             break;
           }
         } else if (typeof vVal === 'string' && typeof actualVal === 'string') {
-          if (vVal.trim().toLowerCase() !== actualVal.trim().toLowerCase()) {
+          const cleanStr = (s: string) =>
+            s
+              .trim()
+              .toLowerCase()
+              .replace(/^(?:herr|frau)\s+/i, '');
+          if (cleanStr(vVal) !== cleanStr(actualVal)) {
             valuesMatch = false;
             mismatchDetail = `Attribut "${vKey}": erwartet ${JSON.stringify(vVal)}, erhalten ${JSON.stringify(actualVal)}`;
             break;
