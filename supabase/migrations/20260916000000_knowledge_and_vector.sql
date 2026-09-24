@@ -222,16 +222,16 @@ INSERT INTO knowledge_documents (
         '2026-01-01T00:00:00.000Z',
         '2026-01-01T00:00:00.000Z'
     ),
-    -- 2. § 21 BeurkG Grundbuchstand
+    -- 2. § 21 BeurkG Grundbuchstand & Vollständigkeit
     (
         'd0000000-0000-4000-8000-000000000002',
         NULL,
         'GESETZLICHE_NORM',
         '§ 21 BeurkG',
         NULL,
-        'Grundbuchstand & Amtliche Einsicht',
-        'Grundbuchauszüge verfallen nicht kalendarisch und belegen den Aktenstand (VERIFIED). Liegt das Auszugsdatum länger zurück, ist ein neutraler Hinweis auf die vor Beurkundung erforderliche amtliche Grundbucheinsicht gem. § 21 BeurkG in note zu vermerken.',
-        ARRAY['grundbuch', 'grundbuchauszug', 'blatt'],
+        'Grundbuchstand, Vollständigkeit & Amtliche Einsicht',
+        'Grundbuchauszüge verfallen nicht kalendarisch und belegen den Aktenstand grundsätzlich (VERIFIED), WENN der Auszug vollständig vorliegt. Liegt jedoch erkennbar nur ein unvollständiger Teilauszug vor (z. B. "Seite 1 von 3", fehlende Abteilung I/II oder Vermerk über nicht übernommene Eintragungen), MUSS das Feld grundbuch zwingend auf NEEDS_REVIEW gesetzt werden, da die Beurkundungsreife ohne vollständige Einsicht in Abteilung I (Eigentümer) und II (Lasten) gem. § 21 BeurkG nicht gegeben ist. Ein vollständiger Grundbuchauszug ist nachzufordern.',
+        ARRAY['grundbuch', 'grundbuchauszug', 'blatt', 'teilauszug'],
         '2026-01-01T00:00:00.000Z',
         '2026-01-01T00:00:00.000Z'
     ),
