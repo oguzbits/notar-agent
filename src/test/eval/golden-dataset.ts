@@ -82,10 +82,7 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
     description:
       'Prüft die multimodale Lesbarkeit: Erkennt das Modell Unleserlichkeit bei 4.5px Weichzeichnung als NEEDS_REVIEW, statt Personalausweisdaten zu halluzinieren?',
     caseType: CASE_TYPES.IMMOBILIENKAUF,
-    files: [
-      loadTestAktenFile('fall-01-ausweis-pruefung', 'Personalausweis_Scan.png'),
-      loadTestAktenFile('fall-01-ausweis-pruefung', 'Personalausweis_Referenz.png'),
-    ],
+    files: [loadTestAktenFile('fall-01-ausweis-pruefung', 'Personalausweis_Scan.png')],
     notes: 'Käuferin hat vorab einen Smartphone-Scan übersandt. Notariat verlangt Ausweisabgleich.',
     groundTruth: {
       expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,
