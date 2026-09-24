@@ -2,13 +2,15 @@
 
 Autonome LegalTech-Webapplikation zur Unterstützung von Notariaten bei der Aufbereitung, Prüfung, Strukturierung und Lückenanalyse unstrukturierter Unterlagen für **Immobilienkaufverträge**.
 
+> 📖 **Architektur, Agentic Engineering & Deep-Dive:** Eine ausführliche Dokumentation des technischen Systems, der Schichtenarchitektur, der Safety-Hooks und der Quality Gates findest du in [`docs/overview.md`](docs/overview.md).
+
 ---
 
 ## 🚀 Schnellstart & Lokale Ausführung
 
 ### 1. Voraussetzungen
 
-- **Node.js:** `>= 20.x` (empfohlen: Node 20 LTS oder 22 LTS)
+- **Node.js:** `>= 22.x` (empfohlen: Node 22 LTS)
 - **Paketmanager:** `npm`
 - **Docker:** Docker Desktop (für die lokale Supabase PostgreSQL 17 Datenbank)
 
@@ -106,12 +108,11 @@ Aus Datenschutzgründen sind keine echten Mandantendokumente im Git-Repository v
 
 ---
 
-## 🏗 Technischer Kern-Stack
+## 🏗 Technischer Kern-Stack & Architektur-Highlights
 
-- **Frontend:** Next.js 16 (App Router mit Turbopack), React 19, Tailwind CSS, Radix UI Primitives, Lucide Icons.
-- **Agentic Engine:** Vercel AI SDK (`ai`), `@ai-sdk/anthropic` & `@ai-sdk/google` mit nativer Vision- und PDF-Verarbeitung, SSE-Streaming (`/api/analyze`).
-- **Persistenz & Security:** Supabase PostgreSQL 17 mit vollständiger Row-Level Security (RLS), Mandantenisolation und kryptographischem Audit-Trail.
-- **Typensicherheit & Validierung:** Zod als Single Source of Truth (SSOT), strikte TypeScript-Konfiguration.
-- **Quality Gates:** Vitest, Playwright, Dependency Cruiser, jscpd, Knip, Biome/ESLint, Husky Hooks.
-
-Ausführliche Details zu Architektur, Agentic Engineering Setup, Hooks, Skills, MCP und Qualitäts-Gates finden sich in [`docs/overview.md`](docs/overview.md).
+- **Frontend & UI:** Next.js 16 (App Router mit Turbopack), React 19, Tailwind CSS, Radix UI Primitives, Lucide Icons, TanStack Query.
+- **Agentic Engine & Ingestion:** Vercel AI SDK (`ai`), `@ai-sdk/anthropic` & `@ai-sdk/google`. Dual-Stream Ingestion (Byte-Level PDF Classifier für blitzschnelle Unicode-Textextraktion vs. gezielte Vision-Tokens bei Scans/Siegeln) mit SSE-Streaming (`/api/analyze`).
+- **Asynchrone Großakten-Queue:** Transaktionssichere PostgreSQL-Job-Queue (`dossier_jobs` via `SKIP LOCKED`) zur entkoppelten Verarbeitung von 50–200 Seiten ohne Timeout-Gefahr (< 250 ms `202 Accepted`).
+- **Persistenz & Kanzlei-Compliance:** Supabase PostgreSQL 17 mit strikter Row-Level Security (RLS) nach § 203 StGB, dynamischer Wissensbasis via `pgvector` und lückenlosem, kryptographischem Audit-Trail (SHA-256 Hash-Chaining nach § 17 BeurkG).
+- **Automatisierte Evaluation & Testakten:** Promptfoo Golden Dataset Evaluationen (`npm run eval:smoke`, `npm run eval:live`) gegen synthetische, datenschutzkonforme Kanzlei-Stresstests in `test-akten/`.
+- **Deterministische Quality Gates:** 290+ Vitest-Tests, Playwright E2E, Dependency Cruiser (`depcruise`), Knip, jscpd (Duplication Audit), Magic-String-Checks und Husky Pre-Commit/Pre-Push Hooks.
