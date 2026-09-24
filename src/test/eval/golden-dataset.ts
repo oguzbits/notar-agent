@@ -121,7 +121,7 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
       fields: {
         verkaeufer: {
           expectedStatus: [FIELD_STATUS.NEEDS_REVIEW, FIELD_STATUS.MISSING],
-          mustContainInSnippet: ['fehlt'],
+          mustContainInSnippet: ['Grundbuch', 'Teilauszug', 'Seite 1 von 3'],
         },
         grundbuch: {
           expectedStatus: FIELD_STATUS.NEEDS_REVIEW,

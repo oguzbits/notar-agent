@@ -133,7 +133,8 @@ async function generateAuthenticIdCard(isBlurry: boolean, filename: string) {
   let sharpInstance = sharp(Buffer.from(svgCard));
 
   if (isBlurry) {
-    sharpInstance = sharpInstance.blur(4.5).rotate(1.2, { background: '#D8D8D8' });
+    // Realistischer Schwellenwert: leichte Weichzeichnung/Verwacklung statt vollständiger Unkenntlichkeit
+    sharpInstance = sharpInstance.blur(1.5).rotate(1.2, { background: '#D8D8D8' });
   }
 
   await sharpInstance.png({ quality: 90 }).toFile(outputPath);

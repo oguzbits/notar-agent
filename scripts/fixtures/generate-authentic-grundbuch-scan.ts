@@ -32,7 +32,7 @@ async function generateAuthenticGrundbuchScan() {
       <text x="100" y="90" font-size="14" font-weight="bold" fill="#444">AMTSGERICHT KÖLN</text>
       <text x="100" y="110" font-size="12" fill="#666">Grundbuchamt • Reichenspergerplatz 1, 50670 Köln</text>
       <text x="${width - 100}" y="90" font-size="13" text-anchor="end" fill="#333">Druckdatum: 10.03.2026</text>
-      <text x="${width - 100}" y="110" font-size="13" font-weight="bold" text-anchor="end" fill="#990000">SEITE 1 VON 3 (UNVOLLSTÄNDIG)</text>
+      <text x="${width - 100}" y="110" font-size="13" text-anchor="end" fill="#666">Seite 1 von 3</text>
 
       <line x1="100" y1="130" x2="${width - 100}" y2="130" stroke="#222" stroke-width="2" />
 
@@ -83,33 +83,11 @@ async function generateAuthenticGrundbuchScan() {
         <text x="860" y="45" font-weight="bold">740 m²</text>
       </g>
 
-      <!-- HINWEISKASTEN: SEITE 2 FEHLT (ABTEILUNG I EIGENTÜMER & ABTEILUNG II LASTEN) -->
-      <g transform="translate(100, 480)">
-        <rect width="1040" height="340" fill="#FFF9F7" stroke="#C0392B" stroke-width="2" stroke-dasharray="6,4" rx="8" />
-        
-        <circle cx="50" cy="50" r="24" fill="#E74C3C" />
-        <text x="50" y="60" font-size="28" font-weight="bold" fill="#FFF" text-anchor="middle">!</text>
+      <!-- ABTEILUNG III (HYPOTHEKEN, GRUNDSCHULDEN) -->
+      <rect x="100" y="480" width="${width - 200}" height="35" fill="#E8ECE9" stroke="#333" stroke-width="1.5" />
+      <text x="115" y="504" font-size="15" font-weight="bold">ABTEILUNG III (HYPOTHEKEN, GRUNDSCHULDEN, RENTENSCHULDEN)</text>
 
-        <text x="95" y="45" font-size="18" font-weight="bold" fill="#900">ACHTUNG: DOKUMENTEN-FRAGMENT / FEHLENDE ABSCHNITTE</text>
-        <text x="95" y="75" font-size="14" fill="#333">Die Folgeseite 2 des amtlichen Grundbuchblatts (Abteilung I: Eigentümer) wurde im Scan ausgelassen.</text>
-        
-        <line x1="30" y1="110" x2="1010" y2="110" stroke="#E0C0B8" stroke-width="1" />
-
-        <text x="50" y="145" font-size="14" font-weight="bold" fill="#555">Fehlende Grundbuch-Bestandteile in dieser Ausfertigung:</text>
-        
-        <text x="70" y="180" font-size="14" fill="#222">• <tspan font-weight="bold">Abteilung I (Eigentümer):</tspan> Eigentumsverhältnisse und Erwerbsgrundlage NICHT ersichtlich.</text>
-        <text x="70" y="215" font-size="14" fill="#222">• <tspan font-weight="bold">Abteilung II (Lasten &amp; Beschränkungen):</tspan> Wegerechte, Wohnungsrechte, Vormerkungen NICHT belegbar.</text>
-        
-        <rect x="50" y="250" width="940" height="60" fill="#FADBD8" rx="6" />
-        <text x="70" y="285" font-size="13" font-weight="bold" fill="#78281F">Notarielle Handlungsanweisung (§ 21 BeurkG):</text>
-        <text x="70" y="302" font-size="12" fill="#78281F">Unvollständige Grundbuchabschrift darf nicht zur Beurkundungsreife freigegeben werden. Vollständigen Auszug beiziehen.</text>
-      </g>
-
-      <!-- ABTEILUNG III (GRUNDSCHULDEN) AUF SEITE 3 -->
-      <rect x="100" y="860" width="${width - 200}" height="35" fill="#E8ECE9" stroke="#333" stroke-width="1.5" />
-      <text x="115" y="884" font-size="15" font-weight="bold">ABTEILUNG III (HYPOTHEKEN, GRUNDSCHULDEN, RENTENSCHULDEN)</text>
-
-      <g transform="translate(100, 895)" font-size="13">
+      <g transform="translate(100, 515)" font-size="13">
         <rect width="1040" height="120" fill="#FFFFFF" stroke="#333" stroke-width="1" />
         <text x="35" y="45" font-weight="bold">Lfd. Nr. 1:</text>
         <text x="140" y="45" font-weight="bold">280.000,00 EUR</text>
@@ -164,7 +142,7 @@ async function generateAuthenticGrundbuchScan() {
   console.log(
     `   - Tabellarisches Bestandsverzeichnis (AG Köln, Blatt 5412, Flurstück 88/2, 740 qm)`
   );
-  console.log(`   - Warnkasten & fehlende Abteilung I`);
+  console.log(`   - Unvollständiger Auszug (Seite 1 von 3, Abteilung I & II nicht enthalten)`);
   console.log(`   - Amtssiegel & Notar-Eingangsstempel`);
 }
 
