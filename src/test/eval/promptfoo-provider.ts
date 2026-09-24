@@ -90,7 +90,7 @@ export default class NotarAgentPipelineProvider {
             error: 'EVAL_GEMINI_API_KEY nicht gesetzt. Bitte in .env.local eintragen.',
           };
         }
-        const modelName = process.env.EVAL_GEMINI_AI_MODEL || 'gemini-3.8-flash';
+        const modelName = process.env.EVAL_GEMINI_AI_MODEL || 'gemini-3.5-flash-lite';
         const google = createGoogle({ apiKey: geminiKey });
         model = google(modelName);
       }
@@ -122,7 +122,7 @@ export default class NotarAgentPipelineProvider {
         },
       });
 
-      // Pricing: Gemini 3.8 Flash ($0.075 / $0.30), Claude 3.5 Haiku ($0.80 / $4.00) pro 1M Tokens
+      // Pricing: Gemini 3.5 Flash Lite ($0.075 / $0.30), Claude 3.5 Haiku ($0.80 / $4.00) pro 1M Tokens
       const inputCostPerMillion = isAnthropic ? 0.8 : 0.075;
       const outputCostPerMillion = isAnthropic ? 4.0 : 0.3;
       const cost =

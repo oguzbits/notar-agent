@@ -37,8 +37,9 @@ describe('runAnalysisPipeline', () => {
         };
       }
       if (callCount === 2) {
-        // Reflection turn: Model corrects its output
-        expect(messages[2]?.content).toContain('KORREKTUR-AUFFORDERUNG');
+        // Reflection turn: Model corrects its output with compact token-optimized message
+        const lastMsg = messages[messages.length - 1];
+        expect(lastMsg?.content).toContain('KORREKTUR-AUFFORDERUNG');
         return {
           text: JSON.stringify({
             caseTitle: 'Test Vorgang Repariert',

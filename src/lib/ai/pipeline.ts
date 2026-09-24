@@ -156,25 +156,24 @@ ${formattedNotes}
           .join('\n') || 'Unbekannter Schema-Fehler';
 
     try {
+      // Token-Optimierung: Statt die gesamten Dokumente (PDFs/Bilder) erneut zu senden,
+      // übergeben wir dem Modell zur Korrektur nur die Schema-Mängel und das bisherige JSON.
       const repairedResult = await generateText({
         model,
         instructions: extractionInstructions,
         messages: [
           {
             role: 'user',
-            content: userPromptParts,
-          },
-          {
-            role: 'assistant',
-            content: extractionTextResult,
-          },
-          {
-            role: 'user',
             content: `KORREKTUR-AUFFORDERUNG: Das zuvor ausgegebene JSON entspricht nicht vollständig dem geforderten Schema.
 Folgende Schema-Inkonsistenzen wurden festgestellt:
 ${errorDetails}
 
-Bitte korrigiere die Struktur und gib das vollständige, valide JSON-Objekt ohne Markdown-Ummantelung aus.`,
+Hier ist das fehlerhafte JSON:
+\`\`\`json
+${extractionTextResult}
+\`\`\`
+
+Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, valide JSON-Objekt ohne Markdown-Formatierung aus.`,
           },
         ],
         temperature: 0.0,

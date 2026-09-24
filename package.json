@@ -1,5 +1,5 @@
 {
-  "name": "notar-partner-prototyp",
+  "name": "notar-agent",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -22,8 +22,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache",
-    "eval:smoke": "promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache --filter-pattern 'Fall 03|Fall 06'",
-    "eval:smoke:live": "PROMPTFOO_MODE=live promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache -j 1 --filter-pattern 'Fall 03|Fall 06'",
+    "eval:case": "node scripts/eval/run-eval-case.mjs",
+    "eval:case:live": "node scripts/eval/run-eval-case.mjs --live",
+    "eval:smoke": "node scripts/eval/run-eval-case.mjs 4",
+    "eval:smoke:live": "node scripts/eval/run-eval-case.mjs 4 --live",
     "eval:live": "PROMPTFOO_MODE=live promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache -j 1",
     "eval:view": "promptfoo view -p 15500",
     "test:e2e": "playwright test --last-failed-file=/dev/null; rm -rf test-results",
@@ -70,7 +72,7 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
     "@types/file-saver": "^2.0.7",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.1",
