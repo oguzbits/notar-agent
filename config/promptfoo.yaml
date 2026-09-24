@@ -1,11 +1,11 @@
-description: 'NotarPartner Agentic Evaluation Suite'
+description: 'Notar Agent Agentic Evaluation Suite'
 
 prompts:
   - 'Analysiere die Akte {{testCaseId}}'
 
 providers:
   - id: 'file://../src/test/eval/promptfoo-provider.ts'
-    label: 'NotarPartner Pipeline'
+    label: 'Notar Agent Pipeline'
 
 defaultTest:
   assert:

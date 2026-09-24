@@ -1,11 +1,11 @@
 ---
 name: notar-workflow-validator
-description: Validiert die juristische und technische Integrität des NotarPartner-Systems. Prüft Schema-Parität der 10 Pflichtfelder, Audit-Trail-Vollständigkeit von Quellenbelegen und Schutzmechanismen bei sensiblen Mandantendaten.
+description: Validiert die juristische und technische Integrität des Notar Agent-Systems. Prüft Schema-Parität der 10 Pflichtfelder, Audit-Trail-Vollständigkeit von Quellenbelegen und Schutzmechanismen bei sensiblen Mandantendaten.
 ---
 
 # Notar Workflow Validator Skill
 
-Dieser Skill dient als Qualitäts- und Compliance-Gatekeeper für das Projekt **NotarPartner**. Er stellt sicher, dass rechtliche Vorgaben (BeurkG, GwG) und technische Datenmodelle synchron bleiben.
+Dieser Skill dient als Qualitäts- und Compliance-Gatekeeper für das Projekt **Notar Agent**. Er stellt sicher, dass rechtliche Vorgaben (BeurkG, GwG) und technische Datenmodelle synchron bleiben.
 
 ## Prüfdimensionen
 

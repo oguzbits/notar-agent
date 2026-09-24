@@ -29,10 +29,10 @@ interface PromptfooProviderResponse {
 
 /**
  * Schlanker Custom Provider für Promptfoo.
- * Führt die NotarPartner-Pipeline aus und liefert Dossier-JSON, Token-Usage und Kosten.
+ * Führt die Notar Agent-Pipeline aus und liefert Dossier-JSON, Token-Usage und Kosten.
  * Unterstützt sowohl Google Gemini als auch Anthropic Claude für Live-Runs.
  */
-export default class NotarPartnerPipelineProvider {
+export default class NotarAgentPipelineProvider {
   private customId: string;
 
   constructor(options: { id?: string } = {}) {

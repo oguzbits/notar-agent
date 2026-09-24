@@ -14,7 +14,7 @@ import {
 } from '../src/types/dossier';
 import { JOB_STATUS, JOB_STAGES } from '../src/types/jobs';
 
-test.describe('NotarPartner E2E Smoke Workflow (A.1)', () => {
+test.describe('Notar Agent E2E Smoke Workflow (A.1)', () => {
   test('durchläuft vollständigen Sachbearbeiter-Workflow: Upload -> Stepper -> Cockpit -> Status-Override -> Export', async ({
     page,
   }) => {

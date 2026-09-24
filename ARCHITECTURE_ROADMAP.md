@@ -1,7 +1,7 @@
 # Architektur-Roadmap für den skalierenden Live-Betrieb (Notariat 24/7)
 
 > **Dokumentstatus:** Zentrale Architektur-Spezifikation für die Produktivüberführung (Single Source of Truth)  
-> **Bezugssystem:** NotarPartner Urkunden-Zuarbeit (Next.js 16, TypeScript, Claude Vision, Supabase)
+> **Bezugssystem:** Notar Agent Urkunden-Zuarbeit (Next.js 16, TypeScript, Claude Vision, Supabase)
 
 ---
 
@@ -70,7 +70,7 @@ graph TD
 
 ### 2.3 KI-Mandantenkorrespondenz & Entwurfsversand
 
-- **Ziel:** Automatisierte, individuelle Begleitschreiben und Entwurfs-E-Mails an Mandanten, Makler und Banken (Schritt 03 auf beta.notarpartner.de).
+- **Ziel:** Automatisierte, individuelle Begleitschreiben und Entwurfs-E-Mails an Mandanten, Makler und Banken (Schritt 03 auf beta.Notar Agent.de).
 - **Rechtssichere Hinweise:** Schreiben werden dynamisch aus dem Dossier generiert (z. B. konkreter Hinweis an den Käufer auf die gesetzliche 14-tägige BGB-Verbraucherprüffrist gem. § 17 Abs. 2a BeurkG).
 - **Automatisierter Adressaten-Filter:**
   - _An Käufer/Verkäufer:_ Verständliche Erläuterung der nächsten Schritte (Fälligkeitsvoraussetzungen, Übergabe).
@@ -81,7 +81,7 @@ graph TD
 
 ### 2.4 Beschleunigte Abwicklung & Vollzug (Post-Beurkundung)
 
-- **Ziel:** Automatisierung der Nachbereitungs- und Vollzugsphase nach der Beurkundung (Schritt 04 auf beta.notarpartner.de).
+- **Ziel:** Automatisierung der Nachbereitungs- und Vollzugsphase nach der Beurkundung (Schritt 04 auf beta.Notar Agent.de).
 - **Automatisierte Behörden- & Vollzugssätze auf Knopfdruck:**
   - **Grundbuchamt:** Anträge auf Eigentumsvormerkung, Eigentumsumschreibung und Grundschuldeintragung.
   - **Gemeinde / Finanzamt:** Anforderung der Vorkaufsrechtsverzichtserklärung (§ 28 BauGB) und Unbedenklichkeitsbescheinigung.
@@ -329,7 +329,7 @@ Für verlässliche CI/CD-Deployments und performante Datenbankabfragen bei wachs
 
 ### 7.1 Fachverfahren- & Notarnetz-Integration
 
-Der NotarPartner-Prototyp darf im Produktivbetrieb kein isoliertes Datensilo sein, sondern muss sich nahtlos in die bestehende Kanzlei-IT einfügen:
+Der Notar Agent-Prototyp darf im Produktivbetrieb kein isoliertes Datensilo sein, sondern muss sich nahtlos in die bestehende Kanzlei-IT einfügen:
 
 1. **XJustiz / XNP Standard-Export:**
    - Export der validierten Stammdaten (Beteiligte, Liegenschaften, Belastungen) im offiziellen **XJustiz-Standard (XML/JSON)**.

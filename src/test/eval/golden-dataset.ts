@@ -67,7 +67,7 @@ function loadTestAktenFile(subfolder: string, filename: string): UploadedFilePay
 }
 
 /**
- * GOLDEN DATASET DER NOTARPARTNER-REFERENZAKTEN (FÄLLE 01 BIS 08)
+ * GOLDEN DATASET DER Notar Agent-REFERENZAKTEN (FÄLLE 01 BIS 08)
  *
  * Bildet die juristische und technische Wahrheit (Ground Truth) für den echten
  * Dokumentenbestand aus test-akten/ ab.

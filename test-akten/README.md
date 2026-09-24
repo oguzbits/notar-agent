@@ -1,4 +1,4 @@
-# NotarPartner Enterprise Testakten & Real-World Fixtures
+# Notar Agent Enterprise Testakten & Real-World Fixtures
 
 > **Zweck & Invariante (§ 203 StGB / DSGVO):**  
 > Alle Dateien in diesem Verzeichnis sind **synthetisch generierte, datenschutzkonforme Referenzakten**. Sie enthalten keinerlei echte Mandanten- oder Urkundendaten, bilden jedoch physikalisch exakte Bedingungen des notariellen Alltags nach (Multimodalität, Handschriften, Scan-Artefakte, unvollständige Urkunden).

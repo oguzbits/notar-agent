@@ -174,7 +174,7 @@ async function runRagInspection() {
   const repo = new LocalFixtureKnowledgeRepository(INSPECTION_FIXTURES);
 
   console.log('='.repeat(80));
-  console.log('🔍 NOTARPARTNER RAG-INSPEKTION & TOKEN-ANALYSE (DATABASE-FIRST SSOT)');
+  console.log('🔍 Notar Agent RAG-INSPEKTION & TOKEN-ANALYSE (DATABASE-FIRST SSOT)');
   console.log('='.repeat(80));
   console.log('Kosten für diese Inspektion: 0,00 € (reine deterministische Offline-Auswertung)\n');
 

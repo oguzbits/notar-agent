@@ -43,7 +43,7 @@ graph LR
 
 ```mermaid
 graph TD
-    A["NotarPartner AI Orchestrator (ai-provider.ts)"] --> B["Vercel AI SDK Provider Registry"]
+    A["Notar Agent AI Orchestrator (ai-provider.ts)"] --> B["Vercel AI SDK Provider Registry"]
     B -->|"Standard Cloud (EU)"| C["Anthropic Claude (Direct API / AWS Bedrock Frankfurt)"]
     B -->|"Standard Fast (EU)"| D["Google Gemini 3.5 Flash"]
     B -->|"Enterprise Cloud (EU)"| E["Azure OpenAI (Frankfurt / Dublin)"]
@@ -210,7 +210,7 @@ graph TD
 
 ## 7. Kanzlei-Briefkopf, Corporate Identity & Dokument-Branding
 
-- **Priorisierung:** Kanzlei-Präsentation & Druckreife (Wesentliches NotarPartner-Feature).
+- **Priorisierung:** Kanzlei-Präsentation & Druckreife (Wesentliches Notar Agent-Feature).
 - **Ziel:** Medienbruchfreier Export von Urkunden, Entwürfen, Anschreiben und Vollzugsdokumenten direkt auf dem offiziellen Kanzlei-Briefpapier des Notariats.
 
 ```mermaid
@@ -241,7 +241,7 @@ graph LR
 
 ## 8. Kanzlei-Muster- & Klauselbibliothek (Vorlagenverwaltung)
 
-- **Priorisierung:** Praxis-Effizienz & Kanzlei-Standardisierung (Vergleichbar mit NotarPartner Regelungsbibliothek).
+- **Priorisierung:** Praxis-Effizienz & Kanzlei-Standardisierung (Vergleichbar mit Notar Agent Regelungsbibliothek).
 - **Ziel:** Kanzleien können ihre bewährten Standard-Vertragsmuster und individuellen Sonderklauseln hinterlegen und modular zusammenstellen, statt generische Standardtexte zu nutzen.
 
 ```mermaid
@@ -305,7 +305,7 @@ graph LR
 
 ## 10. Erweiterung auf weitere Rechtsgebiete (Multi-Domain Expansion)
 
-- **Priorisierung:** Plattform-Skalierung (Gleichzug mit den 10 Urkundentypen von NotarPartner).
+- **Priorisierung:** Plattform-Skalierung (Gleichzug mit den 10 Urkundentypen von Notar Agent).
 - **Ziel:** Strukturierte Datenerfassung, Extraktion und Prüfung für Gesellschafts-, Erb- und Familienrecht über Liegenschaften hinaus.
 
 ### Geplante Rechtsgebiete & Pflichtfeld-Schemata
