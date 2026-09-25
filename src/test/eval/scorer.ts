@@ -1,4 +1,5 @@
 import { Dossier, FieldStatus, FIELD_STATUS } from '@/types/dossier';
+import { FieldOutcomeVerdict, JUDGE_VERDICT_STATUS } from '@/types/eval';
 import { GoldenTestCase } from './golden-dataset';
 
 export interface EvaluationMetricResult {
@@ -7,6 +8,7 @@ export interface EvaluationMetricResult {
   accuracyRate: number; // 0.0 - 100.0 %
   provenanceCoverageRate: number; // 0.0 - 100.0 %
   guardrailHitRate: number; // 0.0 - 100.0 %
+  fieldVerdicts: FieldOutcomeVerdict[];
   details: Array<{
     caseId: string;
     fieldKey: string;
@@ -23,6 +25,8 @@ export function scoreDossierAgainstGroundTruth(
   actualDossier: Dossier
 ): EvaluationMetricResult {
   const details: EvaluationMetricResult['details'] = [];
+  const fieldVerdicts: FieldOutcomeVerdict[] = [];
+
   let totalFields = 0;
   let matchingFields = 0;
   let provenanceValidFields = 0;
@@ -139,6 +143,22 @@ export function scoreDossierAgainstGroundTruth(
       hasProvenance,
       reason,
     });
+
+    fieldVerdicts.push({
+      fieldKey,
+      expectedStatus: expected.expectedStatus,
+      actualStatus,
+      hasProvenance,
+      verdict: {
+        status: matched ? JUDGE_VERDICT_STATUS.PASS : JUDGE_VERDICT_STATUS.FAIL,
+        score: matched ? 1.0 : 0.0,
+        matched,
+        confidence: 1.0,
+        reason:
+          reason ||
+          (matched ? 'Erwarteter Feldstatus und Werte stimmen überein' : 'Feldabweichung'),
+      },
+    });
   }
 
   const accuracyRate = totalFields > 0 ? (matchingFields / totalFields) * 100 : 100;
@@ -152,6 +172,7 @@ export function scoreDossierAgainstGroundTruth(
     accuracyRate: Math.round(accuracyRate * 10) / 10,
     provenanceCoverageRate: Math.round(provenanceCoverageRate * 10) / 10,
     guardrailHitRate: Math.round(guardrailHitRate * 10) / 10,
+    fieldVerdicts,
     details,
   };
 }

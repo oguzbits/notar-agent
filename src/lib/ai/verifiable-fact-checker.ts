@@ -90,6 +90,98 @@ export function verifyExtractionFacts(
     updatedFields[key] = { ...field };
   }
 
+  // =========================================================================
+  // ARITHMETISCHE KONSISTENZPRÜFUNGEN (VERIFIABLE FACT CHECKS)
+  // =========================================================================
+
+  // 1. Kaufpreis vs. Zahlungsraten im Quellen-Snippet oder Textlayer
+  const kaufpreisField = updatedFields['kaufpreis'];
+  if (
+    kaufpreisField &&
+    kaufpreisField.status === FIELD_STATUS.VERIFIED &&
+    kaufpreisField.data &&
+    typeof kaufpreisField.data === 'object'
+  ) {
+    const rawData = kaufpreisField.data as Record<string, unknown>;
+    const statedAmount = Number(rawData.amountInFigures ?? 0);
+    const snippetText = kaufpreisField.source?.snippet || '';
+
+    if (statedAmount > 0 && snippetText) {
+      // Suche nach Ratenangaben wie "Erste Rate 200.000 Euro, zweite Rate 200.000 Euro"
+      const rateMatches = [...snippetText.matchAll(/(?:rate|teilbetrag)\s*(\d+(?:[\.,]\d+)?)/gi)];
+      if (rateMatches.length >= 2) {
+        const sumRates = rateMatches.reduce((acc, m) => {
+          const valStr = m[1]?.replace(/\./g, '').replace(',', '.') || '0';
+          const num = parseFloat(valStr);
+          return acc + (isNaN(num) ? 0 : num);
+        }, 0);
+
+        if (sumRates > 0 && Math.abs(sumRates - statedAmount) > 1) {
+          verificationIssues.push({
+            fieldKey: 'kaufpreis',
+            fileName: kaufpreisField.source?.fileName,
+            expectedSnippet: snippetText,
+            reason: `Rechnerische Kaufpreisdiskrepanz: Summe der Raten (${sumRates.toLocaleString('de-DE')} €) weicht vom Gesamtkaufpreis (${statedAmount.toLocaleString('de-DE')} €) ab.`,
+          });
+
+          const notePrefix = kaufpreisField.note ? `${kaufpreisField.note} ` : '';
+          updatedFields['kaufpreis'] = {
+            ...kaufpreisField,
+            status: FIELD_STATUS.NEEDS_REVIEW,
+            note: `${notePrefix}Rechnerische Kaufpreisdiskrepanz: Summe der Raten (${sumRates.toLocaleString('de-DE')} €) weicht vom Gesamtkaufpreis (${statedAmount.toLocaleString('de-DE')} €) ab.`.trim(),
+          };
+        }
+      }
+    }
+  }
+
+  // 2. GmbH-Stammkapital vs. Summe der Gesellschafter-Geschäftsanteile
+  const stammkapitalField = updatedFields['stammkapital'];
+  const gesellschafterField = updatedFields['gesellschafter'];
+  if (
+    gesellschafterField &&
+    gesellschafterField.status === FIELD_STATUS.VERIFIED &&
+    gesellschafterField.data &&
+    typeof gesellschafterField.data === 'object'
+  ) {
+    const gData = gesellschafterField.data as Record<string, unknown>;
+    const partners = Array.isArray(gData.partners) ? gData.partners : [];
+
+    let nominalTarget = 0;
+    if (stammkapitalField?.data && typeof stammkapitalField.data === 'object') {
+      const sData = stammkapitalField.data as Record<string, unknown>;
+      nominalTarget = Number(sData.nominalCapital ?? 0);
+    } else if (gData.totalCapital) {
+      nominalTarget = Number(gData.totalCapital);
+    }
+
+    if (partners.length > 0 && nominalTarget > 0) {
+      const sumShares = partners.reduce((acc: number, p: unknown) => {
+        if (p && typeof p === 'object' && 'shareAmount' in p) {
+          const val = Number((p as { shareAmount?: unknown }).shareAmount);
+          return acc + (isNaN(val) ? 0 : val);
+        }
+        return acc;
+      }, 0);
+
+      if (sumShares > 0 && Math.abs(sumShares - nominalTarget) > 0.01) {
+        verificationIssues.push({
+          fieldKey: 'gesellschafter',
+          fileName: gesellschafterField.source?.fileName,
+          expectedSnippet: gesellschafterField.source?.snippet,
+          reason: `Rechnerische Kapitaldiskrepanz: Summe der Anteile (${sumShares.toLocaleString('de-DE')} €) weicht vom Stammkapital (${nominalTarget.toLocaleString('de-DE')} €) ab.`,
+        });
+
+        const notePrefix = gesellschafterField.note ? `${gesellschafterField.note} ` : '';
+        updatedFields['gesellschafter'] = {
+          ...gesellschafterField,
+          status: FIELD_STATUS.NEEDS_REVIEW,
+          note: `${notePrefix}Rechnerische Kapitaldiskrepanz: Summe der Anteile (${sumShares.toLocaleString('de-DE')} €) weicht vom Stammkapital (${nominalTarget.toLocaleString('de-DE')} €) ab.`.trim(),
+        };
+      }
+    }
+  }
+
   return {
     ...stageOutput,
     fields: updatedFields,

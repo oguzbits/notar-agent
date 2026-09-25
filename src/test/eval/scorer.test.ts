@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
+import { JUDGE_VERDICT_STATUS } from '@/types/eval';
 import { GOLDEN_DATASET } from './golden-dataset';
 import { calculatePercentiles, scoreDossierAgainstGroundTruth } from './scorer';
 
@@ -90,5 +91,32 @@ describe('Eval Scorer & Metrics Calculation', () => {
     const result = scoreDossierAgainstGroundTruth(testCase, mockDossier);
     expect(result.accuracyRate).toBeLessThan(100);
     expect(result.provenanceCoverageRate).toBeLessThan(100);
+  });
+
+  it('produces structured fieldVerdicts using DeterministicJudge for Layer 3 evaluation', () => {
+    const testCase = GOLDEN_DATASET.find((c) => c.id === 'fall-04-standard-urkunde')!;
+    const mockDossier = createTestImmobilienDossier({
+      caseTitle: 'Test',
+      overallStatus: OVERALL_STATUS.READY,
+      fields: {
+        verkaeufer: {
+          status: FIELD_STATUS.VERIFIED,
+          data: { name: 'Maria Fischer', legalForm: 'natürliche Person' },
+          source: {
+            fileName: 'Kaufvertrag_Koeln_UR89.pdf',
+            pageNumber: 1,
+            snippet: 'Maria Fischer',
+          },
+        },
+      },
+    });
+
+    const result = scoreDossierAgainstGroundTruth(testCase, mockDossier);
+    expect(result.fieldVerdicts).toBeDefined();
+    expect(result.fieldVerdicts.length).toBeGreaterThan(0);
+    const verkaeuferVerdict = result.fieldVerdicts.find((v) => v.fieldKey === 'verkaeufer');
+    expect(verkaeuferVerdict).toBeDefined();
+    expect(verkaeuferVerdict?.verdict.status).toBe(JUDGE_VERDICT_STATUS.PASS);
+    expect(verkaeuferVerdict?.hasProvenance).toBe(true);
   });
 });

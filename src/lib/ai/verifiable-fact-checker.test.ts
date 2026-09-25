@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { verifyExtractionFacts } from '@/lib/ai/verifiable-fact-checker';
-import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
+import { CASE_TYPES, CONTRIBUTION_TYPE, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { ExtractionStageOutput } from '@/types/pipeline';
 
 describe('verifyExtractionFacts', () => {
@@ -117,5 +117,102 @@ describe('verifyExtractionFacts', () => {
 
     expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.VERIFIED);
     expect(result.verificationIssues.length).toBe(0);
+  });
+
+  it('detects mathematical discrepancy between stated Kaufpreis and payment rates in raw text snippet', () => {
+    const stageOutput: ExtractionStageOutput = {
+      caseTitle: 'Kaufvertrag Mitte',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      analysisTimestamp: new Date().toISOString(),
+      executiveSummary: '',
+      detectedDocuments: [],
+      inquiries: [],
+      fields: {
+        kaufpreis: {
+          data: {
+            amountInFigures: 500000,
+            amountInWords: 'fünfhunderttausend Euro',
+            currency: 'EUR',
+          },
+          status: FIELD_STATUS.VERIFIED,
+          source: {
+            fileName: 'Kaufvertrag_Entwurf.pdf',
+            snippet:
+              'Kaufpreis 500.000 Euro. Erste Rate 200.000 Euro, zweite Rate 200.000 Euro fällig am 01.12.',
+          },
+        },
+      },
+    };
+
+    const result = verifyExtractionFacts({
+      stageOutput,
+      sourceDocuments: [
+        {
+          fileName: 'Kaufvertrag_Entwurf.pdf',
+          textContent:
+            'Kaufpreis 500.000 Euro. Erste Rate 200.000 Euro, zweite Rate 200.000 Euro fällig am 01.12.',
+        },
+      ],
+    });
+
+    expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+    expect(result.fields.kaufpreis?.note).toContain('Rechnerische Kaufpreisdiskrepanz');
+    expect(result.verificationIssues.some((i) => i.fieldKey === 'kaufpreis')).toBe(true);
+  });
+
+  it('detects capital discrepancy when sum of GmbH partner shares does not equal nominal capital', () => {
+    const stageOutput: ExtractionStageOutput = {
+      caseTitle: 'GmbH Gründung',
+      caseType: CASE_TYPES.GMBH_GRUENDUNG,
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      analysisTimestamp: new Date().toISOString(),
+      executiveSummary: '',
+      detectedDocuments: [],
+      inquiries: [],
+      fields: {
+        stammkapital: {
+          data: {
+            nominalCapital: 25000,
+            contributionType: CONTRIBUTION_TYPE.BAREINLAGE,
+            minimumDepositPaid: true,
+          },
+          status: FIELD_STATUS.VERIFIED,
+          source: {
+            fileName: 'Gruendungsurkunde.pdf',
+            snippet: 'Stammkapital 25.000 Euro',
+          },
+        },
+        gesellschafter: {
+          data: {
+            partners: [
+              { name: 'Dr. Anna Schmidt', shareAmount: 10000, sharePercent: 40 },
+              { name: 'Jan Becker', shareAmount: 10000, sharePercent: 40 },
+            ],
+            totalCapital: 20000,
+          },
+          status: FIELD_STATUS.VERIFIED,
+          source: {
+            fileName: 'Gruendungsurkunde.pdf',
+            snippet: 'Gesellschafter Anna Schmidt und Jan Becker',
+          },
+        },
+      },
+    };
+
+    const result = verifyExtractionFacts({
+      stageOutput,
+      sourceDocuments: [
+        {
+          fileName: 'Gruendungsurkunde.pdf',
+          textContent:
+            'Stammkapital 25.000 Euro. Gesellschafter Anna Schmidt und Jan Becker mit Anteilen.',
+        },
+      ],
+    });
+
+    expect(result.fields.gesellschafter?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+    expect(result.fields.gesellschafter?.note).toContain('Rechnerische Kapitaldiskrepanz');
+    expect(result.verificationIssues.some((i) => i.fieldKey === 'gesellschafter')).toBe(true);
   });
 });
