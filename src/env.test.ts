@@ -18,15 +18,15 @@ describe('env validation', () => {
     delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     delete process.env.AI_MODEL;
     delete process.env.AI_PROVIDER;
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    delete process.env.NEXT_SUPABASE_URL;
+    delete process.env.NEXT_SUPABASE_PUBLISHABLE_KEY;
 
     const env = validateEnv(process.env);
     expect(env.AI_MODEL).toBe('claude-haiku-4-5');
     expect(env.MOCK_AI).toBe(false);
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     expect(env.GEMINI_API_KEY).toBeUndefined();
-    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBeUndefined();
+    expect(env.NEXT_SUPABASE_URL).toBeUndefined();
   });
 
   it('correctly reads and trims configured environment variables', () => {
@@ -34,8 +34,8 @@ describe('env validation', () => {
     process.env.AI_MODEL = 'claude-sonnet-5';
     process.env.AI_PROVIDER = 'anthropic';
     process.env.MOCK_AI = 'true';
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb-anon-key';
+    process.env.NEXT_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_SUPABASE_PUBLISHABLE_KEY = 'sb-anon-key';
     process.env.SUPABASE_WEBHOOK_SECRET = 'secret-token-abc';
 
     const env = validateEnv(process.env);
@@ -43,17 +43,17 @@ describe('env validation', () => {
     expect(env.AI_MODEL).toBe('claude-sonnet-5');
     expect(env.AI_PROVIDER).toBe('anthropic');
     expect(env.MOCK_AI).toBe(true);
-    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe('https://example.supabase.co');
-    expect(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).toBe('sb-anon-key');
+    expect(env.NEXT_SUPABASE_URL).toBe('https://example.supabase.co');
+    expect(env.NEXT_SUPABASE_PUBLISHABLE_KEY).toBe('sb-anon-key');
     expect(env.SUPABASE_WEBHOOK_SECRET).toBe('secret-token-abc');
   });
 
-  it('falls back to SUPABASE_URL if NEXT_PUBLIC_SUPABASE_URL is not set', () => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  it('falls back to SUPABASE_URL if NEXT_SUPABASE_URL is not set', () => {
+    delete process.env.NEXT_SUPABASE_URL;
     process.env.SUPABASE_URL = 'https://fallback.supabase.co';
 
     const env = validateEnv(process.env);
-    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe('https://fallback.supabase.co');
+    expect(env.NEXT_SUPABASE_URL).toBe('https://fallback.supabase.co');
   });
 
   it('exposes getEnv singleton function', () => {

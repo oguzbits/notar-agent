@@ -26,8 +26,8 @@ export const ServerEnvSchema = z.object({
 
   // Supabase Credentials (erforderlich)
   SUPABASE_URL: optionalTrimmedString,
-  NEXT_PUBLIC_SUPABASE_URL: optionalTrimmedString,
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optionalTrimmedString,
+  NEXT_SUPABASE_URL: optionalTrimmedString,
+  NEXT_SUPABASE_PUBLISHABLE_KEY: optionalTrimmedString,
   SUPABASE_WEBHOOK_SECRET: optionalTrimmedString,
 });
 
@@ -35,11 +35,11 @@ export type Env = z.infer<typeof ServerEnvSchema>;
 
 export function validateEnv(rawEnv: Record<string, string | undefined>): Env {
   // Graceful Fallback für Supabase URL
-  const supabaseUrl = rawEnv.NEXT_PUBLIC_SUPABASE_URL || rawEnv.SUPABASE_URL;
+  const supabaseUrl = rawEnv.NEXT_SUPABASE_URL || rawEnv.SUPABASE_URL;
 
   const parsed = ServerEnvSchema.safeParse({
     ...rawEnv,
-    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
+    NEXT_SUPABASE_URL: supabaseUrl,
   });
 
   if (!parsed.success) {

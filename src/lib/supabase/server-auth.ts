@@ -17,8 +17,8 @@ export async function createServerAuthClient() {
     return null;
   }
   const env = validateEnv(process.env);
-  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
-  const supabaseKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseUrl = env.NEXT_SUPABASE_URL || env.SUPABASE_URL;
+  const supabaseKey = env.NEXT_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     return null;

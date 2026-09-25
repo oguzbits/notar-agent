@@ -41,8 +41,8 @@ ANTHROPIC_API_KEY="sk-ant-..."
 AI_MODEL="claude-haiku-4-5"
 
 # Supabase (Werte für lokale Docker-Instanz bereits vorbereitet)
-NEXT_PUBLIC_SUPABASE_URL="http://127.0.0.1:54321"
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<lokaler-anon-key>"
+NEXT_SUPABASE_URL="http://127.0.0.1:54321"
+NEXT_SUPABASE_PUBLISHABLE_KEY="<lokaler-anon-key>"
 ```
 
 ### 4. Lokale Supabase-Entwicklung via Docker
