@@ -64,7 +64,7 @@
 
 ---
 
-### Task 3: Deterministische Verifikation (Verifiable Rewards / Fact Checks)
+### Task 3: Deterministische Verifikation (Verifiable Rewards / Fact Checks) (Erledigt)
 
 **Files:**
 
@@ -77,20 +77,20 @@
 - Consumes: `ExtractionStageOutput` aus Step 1
 - Produces: `VerificationResult` (validiert, ob Zitate wörtlich im Original vorkommen und mathematische Summen/Raten stimmig sind; setzt andernfalls `NEEDS_REVIEW` mit Begründung)
 
-- [ ] **Step 1: Unit-Tests für Snippet-Existenzprüfung und rechnerische Summenprüfung schreiben**
-- [ ] **Step 2: `verifiable-fact-checker.ts` implementieren**
-- [ ] **Step 3: In `pipeline.ts` direkt nach Stufe 1 verankern, bevor Stufe 2 startet**
-- [ ] **Step 4: Testlauf (`npx vitest run src/lib/ai/verifiable-fact-checker.test.ts`)**
+- [x] **Step 1: Unit-Tests für Snippet-Existenzprüfung und rechnerische Summenprüfung schreiben**
+- [x] **Step 2: `verifiable-fact-checker.ts` implementieren**
+- [x] **Step 3: In `pipeline.ts` direkt nach Stufe 1 verankern, bevor Stufe 2 startet**
+- [x] **Step 4: Testlauf (`npx vitest run src/lib/ai/verifiable-fact-checker.test.ts`)**
 
 ---
 
-### Task 4: Dokumentations-Parität & Quality Gate Check
+### Task 4: Dokumentations-Parität & Quality Gate Check (Erledigt)
 
 **Files:**
 
 - Modify: `docs/overview.md`
 - Modify: `docs/eval-scaling-plan.md`
 
-- [ ] **Step 1: `docs/overview.md` um die neue Layout-Aware Block-Ingestion und die Verifiable-Fact-Checks in Step 1 ergänzen**
-- [ ] **Step 2: Veraltete Modell-Referenzen in allen Dokumenten aktualisieren**
-- [ ] **Step 3: `npm run check` und `npm test` ausführen und 100 % grüne Quality Gates nachweisen**
+- [x] **Step 1: `docs/overview.md` um die neue Layout-Aware Block-Ingestion und die Verifiable-Fact-Checks in Step 1 ergänzen**
+- [x] **Step 2: Veraltete Modell-Referenzen in allen Dokumenten aktualisieren**
+- [x] **Step 3: `npm run check` und `npm test` ausführen und 100 % grüne Quality Gates nachweisen**

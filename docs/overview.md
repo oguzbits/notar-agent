@@ -46,8 +46,8 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 
 - **Echtzeit-SSE-Streaming ([`src/lib/sse/create-sse-stream.ts`](../src/lib/sse/create-sse-stream.ts), [`src/lib/sse/parse-sse-stream.ts`](../src/lib/sse/parse-sse-stream.ts)):** Fortschritts-Updates und Stufenwechsel werden in Echtzeit an den Client gestreamt.
 - **Pipeline-Stufen ([`src/lib/ai/pipeline.ts`](../src/lib/ai/pipeline.ts)):**
-  1. _Ingestion & Normalisierung:_ Standardisierung von Upload-Payloads ([`src/lib/ai/payload-assembler.ts`](../src/lib/ai/payload-assembler.ts)).
-  2. _Multimodale Extraktion:_ Strukturierte Objekterkennung mit Zod-Schema über das Vercel AI SDK (`ai`).
+  1. _Ingestion, Layout-Strukturierung & Normalisierung:_ Standardisierung von Upload-Payloads ([`src/lib/ai/payload-assembler.ts`](../src/lib/ai/payload-assembler.ts)) mit deterministischer Block- und Tabellen-Rekonstruktion ([`src/lib/files/layout-structure-parser.ts`](../src/lib/files/layout-structure-parser.ts)) für Spaltenkohärenz (Grundbuch Abt. I–III, Mieterlisten).
+  2. _Multimodale Extraktion & Verifiable Fact Checking:_ Strukturierte Objekterkennung mit Zod-Schema über das Vercel AI SDK (`ai`), gefolgt von deterministischer Zitations- und Faktenverifikation ([`src/lib/ai/verifiable-fact-checker.ts`](../src/lib/ai/verifiable-fact-checker.ts): Snippets werden auf wörtliche Existenz im Originaldokument geprüft; fehlende Belege führen zum Status `NEEDS_REVIEW`).
   3. _Reconciliation & Konsistenzabgleich:_ [`src/lib/ai/dossier-merger.ts`](../src/lib/ai/dossier-merger.ts) und [`src/lib/dossier/entity-reconciliation.ts`](../src/lib/dossier/entity-reconciliation.ts) isolieren divergierende Angaben (z. B. Kaufpreis im Exposé vs. Entwurf) mit lückenloser Historie.
   4. _Reifegrad-Ermittlung:_ [`src/lib/dossier/readiness.ts`](../src/lib/dossier/readiness.ts) bewertet den Bearbeitungsstand über 4 Reifegrad-Stufen bis zur Beurkundungsreife.
 

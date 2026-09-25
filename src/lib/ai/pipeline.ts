@@ -2,6 +2,7 @@ import { generateText, LanguageModel, SystemModelMessage } from 'ai';
 import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
+import { verifyExtractionFacts } from '@/lib/ai/verifiable-fact-checker';
 import { normalizeDossier } from '@/lib/dossier';
 import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
 import {
@@ -201,6 +202,36 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
   const parsedExtractionRaw: Record<string, unknown> = validatedExtraction?.success
     ? validatedExtraction.data
     : rawExtractionJson || {};
+
+  // VERIFIABLE REWARDS / FACT CHECKS:
+  // Verifiziere Quellensnippets gegen die eingereichten Textlayer und Notizen.
+  if (validatedExtraction?.success) {
+    const textSources: Array<{ fileName: string; textContent: string }> = [];
+
+    // 1. Notizen als Textquelle
+    if (notesSection.trim()) {
+      textSources.push({
+        fileName: 'Bearbeitungsnotiz',
+        textContent: notesSection,
+      });
+    }
+
+    // 2. Extrahierte Unicode-Dateiinhalte
+    for (const file of files) {
+      if (file.content && !file.isBase64) {
+        textSources.push({
+          fileName: file.name,
+          textContent: file.content,
+        });
+      }
+    }
+
+    const verified = verifyExtractionFacts({
+      stageOutput: validatedExtraction.data,
+      sourceDocuments: textSources,
+    });
+    parsedExtractionRaw.fields = verified.fields;
+  }
 
   // PRE-AUDIT DETERMINISTIC GUARDRAILS:
   // Fristen (10 Jahre GEG), Arithmetik (Parzellenflächen, Mieten) & Entity-Reconciliation
