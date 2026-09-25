@@ -419,6 +419,19 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
         },
         belastungen: {
           expectedStatus: FIELD_STATUS.VERIFIED,
+          expectedValues: {
+            entries: [
+              {
+                section: 'III',
+                runningNumber: '1',
+                description: 'Goldmark-Eintragung',
+                amount: 'Goldmark',
+                creditor: 'Deutsche Grundkredit-Bank in Gotha',
+                intendedHandling: 'LOESCHUNG',
+                notes: 'Prägesiegel & Rechtspflegerunterschrift',
+              },
+            ],
+          },
           mustContainInSnippet: ['Abteilung III', 'Gotha'],
         },
       },

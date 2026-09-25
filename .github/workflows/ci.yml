@@ -66,6 +66,18 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
 
+  semgrep-sast:
+    name: Semgrep Static Application Security Testing (SAST)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep Security Rules
+        run: semgrep scan --config auto --error --exclude "node_modules" --exclude ".next" --exclude "test-results"
+
   supabase-migration-and-rls-check:
     name: Supabase Docker Migration & Determinism Audit
     runs-on: ubuntu-latest

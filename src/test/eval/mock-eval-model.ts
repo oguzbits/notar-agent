@@ -16,7 +16,13 @@ export function createMockEvalModel(testCase: GoldenTestCase): LanguageModel {
     const primaryData: Record<string, unknown> = {};
     if (fExp.expectedValues) {
       for (const [k, v] of Object.entries(fExp.expectedValues)) {
-        primaryData[k] = Array.isArray(v) ? v[0] : v;
+        // Nur primitive Alternative-Listen (z. B. [94, 118.2]) auf das erste Element reduzieren,
+        // Arrays von Objekten (z. B. entries: [...]) als vollwertige Arrays beibehalten
+        if (Array.isArray(v) && typeof v[0] !== 'object') {
+          primaryData[k] = v[0];
+        } else {
+          primaryData[k] = v;
+        }
       }
     } else {
       primaryData['name'] = 'Synthetisch';

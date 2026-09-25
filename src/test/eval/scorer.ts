@@ -90,7 +90,7 @@ export function scoreDossierAgainstGroundTruth(
             mismatchDetail = `Attribut "${vKey}": erwartet ${JSON.stringify(vVal)}, erhalten ${JSON.stringify(actualVal)}`;
             break;
           }
-        } else if (typeof vVal === 'object' && vVal !== null && !Array.isArray(vVal)) {
+        } else if (typeof vVal === 'object' && vVal !== null) {
           if (JSON.stringify(actualVal) !== JSON.stringify(vVal)) {
             valuesMatch = false;
             mismatchDetail = `Attribut "${vKey}": erwartet ${JSON.stringify(vVal)}, erhalten ${JSON.stringify(actualVal)}`;
