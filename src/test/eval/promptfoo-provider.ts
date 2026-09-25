@@ -81,7 +81,13 @@ export default class NotarAgentPipelineProvider {
       isAnthropic = Boolean(anthropicKey);
 
       if (isAnthropic && anthropicKey) {
-        const modelName = process.env.EVAL_ANTHROPIC_AI_MODEL || 'claude-3-5-haiku-20241022';
+        const modelName = process.env.EVAL_ANTHROPIC_AI_MODEL || process.env.AI_MODEL;
+        if (!modelName) {
+          return {
+            error:
+              'Kein Anthropic-Modell definiert. Bitte EVAL_ANTHROPIC_AI_MODEL oder AI_MODEL in .env.local eintragen.',
+          };
+        }
         const anthropic = createAnthropic({ apiKey: anthropicKey });
         model = anthropic(modelName);
       } else {
@@ -90,7 +96,13 @@ export default class NotarAgentPipelineProvider {
             error: 'EVAL_GEMINI_API_KEY nicht gesetzt. Bitte in .env.local eintragen.',
           };
         }
-        const modelName = process.env.EVAL_GEMINI_AI_MODEL || 'gemini-3.5-flash-lite';
+        const modelName = process.env.EVAL_GEMINI_AI_MODEL || process.env.AI_MODEL;
+        if (!modelName) {
+          return {
+            error:
+              'Kein Gemini-Modell definiert. Bitte EVAL_GEMINI_AI_MODEL oder AI_MODEL in .env.local eintragen.',
+          };
+        }
         const google = createGoogle({ apiKey: geminiKey });
         model = google(modelName);
       }

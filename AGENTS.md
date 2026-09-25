@@ -63,6 +63,11 @@ Every feature and modification must satisfy these technical invariants:
 9. **Continuous Architecture & Documentation Parity (Zero Stale Docs):**
    - Whenever an architectural change, new subsystem, new schema/contracts domain, or major evaluation pattern is introduced or refactored (e.g. in `src/types/`, `src/lib/`, `config/`), the canonical architecture documentation in `docs/` (specifically `docs/overview.md` and related architecture specs) MUST be kept strictly up to date within the same changeset.
    - Documentation must accurately reflect the codebase's current structure, layer dependencies, contracts, and evaluation mechanisms without outdated or drifting descriptions.
+10. **Zero Stale Knowledge & Mandatory Real-Time Verification (Models, APIs & Libraries):**
+
+- Autonomous agents MUST NEVER rely on static, unverified training memory for AI model IDs, API capabilities, deprecation timelines, pricing, or library ecosystems.
+- Prior to making architectural decisions, recommending models (e.g. Google Gemini, Anthropic Claude, OpenAI), or modifying AI providers, agents MUST proactively verify the actual current state (e.g. via `search_web` or documentation tools).
+- In code, model strings must remain decoupled via configuration schemas (`src/env.ts`, `.env`) and never be hardcoded into business logic.
 
 ---
 

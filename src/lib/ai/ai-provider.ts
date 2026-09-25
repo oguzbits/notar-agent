@@ -33,6 +33,11 @@ export function getAiConfiguration(): AIModelProviderResult {
     );
   }
 
+  const modelName = env.AI_MODEL;
+  if (!modelName) {
+    throw new Error('Kein KI-Modell konfiguriert. Bitte hinterlege AI_MODEL in deiner .env.local.');
+  }
+
   const useGemini = Boolean(
     geminiKey && (!anthropicKey || env.AI_PROVIDER === SSO_PROVIDERS.GOOGLE)
   );
@@ -41,8 +46,6 @@ export function getAiConfiguration(): AIModelProviderResult {
     const google = createGoogle({
       apiKey: geminiKey,
     });
-    const modelName =
-      env.AI_MODEL && !env.AI_MODEL.startsWith('claude') ? env.AI_MODEL : 'gemini-3.5-flash-lite';
     return {
       model: google(modelName),
       extractionInstructions: {
@@ -59,7 +62,6 @@ export function getAiConfiguration(): AIModelProviderResult {
   const anthropic = createAnthropic({
     apiKey: anthropicKey,
   });
-  const modelName = env.AI_MODEL || 'claude-haiku-4-5';
 
   return {
     model: anthropic(modelName),

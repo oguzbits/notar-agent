@@ -83,4 +83,4 @@ _Ziel: Trennung zwischen Retrieval-Fehlern und LLM-Reasoning-Fehlern._
 
 1. [x] **Fall 01 Bereinigung:** Entfernung der Stützdatei `Personalausweis_Referenz.png` (Bereits erfolgreich umgesetzt: 100 % PASS mit alleinigem unscharfem Scan).
 2. [ ] **Parametrisierter Datensatz-Generator:** Erstellung eines CLI-Skripts `scripts/eval/generate-dataset.ts`, das auf Basis bestehender SVG/PDF-Generatoren 20 neue Testakten synthetisiert.
-3. [ ] **Prompt Caching Aktivierung:** Cache-Control Header für `gemini-3.5-flash-lite` und Anthropic in `promptfoo-provider.ts` scharfstellen.
+3. [ ] **Prompt Caching Aktivierung:** Cache-Control Header für `gemini-3.8-flash` und Anthropic in `promptfoo-provider.ts` scharfstellen.
