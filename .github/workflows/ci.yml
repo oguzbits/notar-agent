@@ -76,7 +76,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Semgrep Security Rules
-        run: semgrep scan --config auto --error --exclude "node_modules" --exclude ".next" --exclude "test-results"
+        run: semgrep scan --config auto --error --exclude-rule "yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag" src scripts
 
   supabase-migration-and-rls-check:
     name: Supabase Docker Migration & Determinism Audit

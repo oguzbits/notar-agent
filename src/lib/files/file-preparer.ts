@@ -154,7 +154,8 @@ async function readHeaderBytes(file: File, length = 4100): Promise<Uint8Array | 
     return new Uint8Array(arrayBuffer);
   } catch (err: unknown) {
     console.warn(
-      `[file-preparer] Header-Bytes für "${file.name}" konnten nicht gelesen werden:`,
+      '[file-preparer] Header-Bytes konnten nicht gelesen werden für Datei:',
+      file.name,
       err
     );
     return undefined;

@@ -43,7 +43,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       { status: 200 }
     );
   } catch (error) {
-    console.error(`[Webhook] Fehler bei der Ausführung von Job ${record.id}:`, error);
+    console.error('[Webhook] Fehler bei der Ausführung von Job:', record.id, error);
     return NextResponse.json(
       { error: 'Fehler bei der Job-Ausführung', jobId: record.id },
       { status: 500 }

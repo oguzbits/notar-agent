@@ -128,7 +128,8 @@ async function generateAuthenticIdCard(isBlurry: boolean, filename: string) {
   `;
 
   const outputDir = path.resolve(process.cwd(), 'test-akten/fall-01-ausweis-pruefung');
-  const outputPath = path.join(outputDir, filename);
+  const safeFilename = path.basename(filename);
+  const outputPath = path.join(outputDir, safeFilename);
 
   let sharpInstance = sharp(Buffer.from(svgCard));
 

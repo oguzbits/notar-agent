@@ -264,7 +264,7 @@ async function runJobExecution(
       error instanceof Error
         ? error.message
         : 'Unbekannter Fehler während der Hintergrundverarbeitung.';
-    console.error(`[executeDossierJob] Fehler bei Job ${jobId}:`, errMsg);
+    console.error('[executeDossierJob] Fehler bei Job:', jobId, errMsg);
 
     return await jobRepo.updateJobStatus(jobId, {
       status: JOB_STATUS.FAILED,

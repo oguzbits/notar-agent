@@ -124,7 +124,8 @@ ${notesSection}${
           }
         } catch (err: unknown) {
           console.warn(
-            `[payload-assembler] Serverseitige PDF-Introspektion für "${file.name}" fehlgeschlagen:`,
+            '[payload-assembler] Serverseitige PDF-Introspektion fehlgeschlagen für Datei:',
+            file.name,
             err
           );
         }

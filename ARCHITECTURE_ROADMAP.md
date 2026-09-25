@@ -270,14 +270,14 @@ Um dauerhaft laufende Polling-Prozesse (`setInterval(2000)`) abzulösen, ist die
 1. **Applikation bereitstellen (Domain erhalten):**
    - App auf Vercel, Hetzner oder Dokploy deployen (z. B. Domain `https://mein-notariat.vercel.app`).
 2. **Umgebungsvariablen im Hosting-Dashboard hinterlegen:**
-   - `SUPABASE_WEBHOOK_SECRET="8f502e1289c87f03a0168939134332a4ffb7aaf92649f35aca1426536ef3e36c"`
+   - `SUPABASE_WEBHOOK_SECRET="<dein-32-byte-hex-secret-aus-env-local>"`
 3. **Webhook im Supabase Dashboard aktivieren:**
    - Navigiere zu: **Database > Webhooks** $\rightarrow$ **Create a Webhook**.
    - **Name:** `dossier-jobs-processor`
    - **Table:** `dossier_jobs`
    - **Events:** `Insert`, `Update`
    - **Target URL:** `https://<deine-produktions-domain>/api/jobs/process-webhook`
-   - **HTTP Header:** Name `x-webhook-secret`, Wert `8f502e1289c87f03a0168939134332a4ffb7aaf92649f35aca1426536ef3e36c`.
+   - **HTTP Header:** Name `x-webhook-secret`, Wert `<dein-32-byte-hex-secret-aus-env-local>`.
 
 ---
 
@@ -449,7 +449,7 @@ graph TD
   - [x] Bereinigung des Legacy-Polling-Workers (`run-worker.ts`)
 - [ ] **B.6 Post-Deployment Webhook-Aktivierung im Supabase Dashboard:**
   - [ ] Applikation auf Vercel / Hetzner deployen und finale Produktions-Domain erfassen
-  - [ ] `SUPABASE_WEBHOOK_SECRET="8f502e1289c87f03a0168939134332a4ffb7aaf92649f35aca1426536ef3e36c"` im Hosting-Environment hinterlegen
+  - [ ] `SUPABASE_WEBHOOK_SECRET="<dein-32-byte-hex-secret-aus-env-local>"` im Hosting-Environment hinterlegen
   - [ ] Webhook `dossier-jobs-processor` unter Supabase Dashboard **Database > Webhooks** auf `https://<domain>/api/jobs/process-webhook` mit Header `x-webhook-secret` aktivieren
 - [ ] **B.7 Multi-LLM Provider-Adapter**
 - [ ] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, diff-match-patch):**

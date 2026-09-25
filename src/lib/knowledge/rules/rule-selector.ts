@@ -55,7 +55,8 @@ export function selectApplicableKnowledge(
     return doc.triggerKeywords.some((keyword) => {
       // Exakter Wortgrenzen-Match für kurze Kürzel wie "gbr", "ug", "ag", "kg"
       if (keyword.length <= 4) {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
         return regex.test(corpus);
       }
       return corpus.includes(keyword.toLowerCase());

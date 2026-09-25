@@ -70,7 +70,7 @@ export function startWorkerDaemon(options: WorkerDaemonOptions = {}): WorkerDaem
           abortSignal: abortController.signal,
         })
           .catch((err) => {
-            console.error(`[WorkerDaemon] Unerwarteter Fehler bei Job ${job.id}:`, err);
+            console.error('[WorkerDaemon] Unerwarteter Fehler bei Job:', job.id, err);
           })
           .finally(() => {
             activeJobs = Math.max(0, activeJobs - 1);

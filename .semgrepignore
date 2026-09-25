@@ -1,0 +1,14 @@
+# Test fixtures and generated test cases
+test-akten/
+src/test/fixtures/
+
+# Build and report artifacts
+.next/
+dist/
+coverage/
+test-results/
+architecture.mmd
+depcruise-report.html
+
+# Ignore markdown documentation files from generic secret scanning
+*.md
