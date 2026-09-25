@@ -10,7 +10,7 @@ import sharp from 'sharp';
  * 4. Maschinenlesbarer Zone (MRZ / OCR-B Schriftart)
  * 5. Optionaler Unschärfe / Scan-Körnung (blur & noise)
  */
-async function generateAuthenticIdCard(isBlurry: boolean, filename: string) {
+async function generateAuthenticIdCard(isBlurry: boolean) {
   const width = 1012; // ID-1 Kartenformat (Standard 85.6 x 53.98 mm skaliert)
   const height = 638;
 
@@ -127,9 +127,10 @@ async function generateAuthenticIdCard(isBlurry: boolean, filename: string) {
   </svg>
   `;
 
-  const outputDir = path.resolve(process.cwd(), 'test-akten/fall-01-ausweis-pruefung');
-  const safeFilename = path.basename(filename);
-  const outputPath = path.join(outputDir, safeFilename);
+  const baseDir = path.resolve(process.cwd(), 'test-akten/fall-01-ausweis-pruefung');
+  const outputPath = isBlurry
+    ? path.join(baseDir, 'Personalausweis_Scan.png')
+    : path.join(baseDir, 'Personalausweis_Referenz.png');
 
   let sharpInstance = sharp(Buffer.from(svgCard));
 
@@ -143,8 +144,8 @@ async function generateAuthenticIdCard(isBlurry: boolean, filename: string) {
 }
 
 async function main() {
-  await generateAuthenticIdCard(true, 'Personalausweis_Scan.png');
-  await generateAuthenticIdCard(false, 'Personalausweis_Referenz.png');
+  await generateAuthenticIdCard(true);
+  await generateAuthenticIdCard(false);
 }
 
 main().catch(console.error);

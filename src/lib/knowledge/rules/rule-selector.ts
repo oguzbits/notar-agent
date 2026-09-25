@@ -53,13 +53,24 @@ export function selectApplicableKnowledge(
 
     // Spezifische Regeln bei Keyword-Match injizieren
     return doc.triggerKeywords.some((keyword) => {
-      // Exakter Wortgrenzen-Match für kurze Kürzel wie "gbr", "ug", "ag", "kg"
-      if (keyword.length <= 4) {
-        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-        return regex.test(corpus);
+      const lowerKeyword = keyword.toLowerCase();
+      // Exakter Wortgrenzen-Match für kurze Kürzel wie "gbr", "ug", "ag", "kg" ohne dynamisches RegExp
+      if (lowerKeyword.length <= 4) {
+        let index = corpus.indexOf(lowerKeyword);
+        while (index !== -1) {
+          const charBefore = index > 0 ? corpus[index - 1] : ' ';
+          const charAfter =
+            index + lowerKeyword.length < corpus.length ? corpus[index + lowerKeyword.length] : ' ';
+          const isBeforeWord = charBefore ? /\w/.test(charBefore) : false;
+          const isAfterWord = charAfter ? /\w/.test(charAfter) : false;
+          if (!isBeforeWord && !isAfterWord) {
+            return true;
+          }
+          index = corpus.indexOf(lowerKeyword, index + 1);
+        }
+        return false;
       }
-      return corpus.includes(keyword.toLowerCase());
+      return corpus.includes(lowerKeyword);
     });
   });
 }
