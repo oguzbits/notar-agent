@@ -44,3 +44,11 @@ tests:
   - vars:
       testCaseId: 'fall-08-mieterliste-handschrift'
     description: 'Fall 08: MFH-Mieterliste (Handschriftliche Nachträge)'
+
+  - vars:
+      testCaseId: 'fall-09-prinzenpalais-urkunde'
+    description: 'Fall 09: Authentische Archivurkunde (Prinzenpalais Schleswig)'
+
+  - vars:
+      testCaseId: 'fall-10-grundbuchauszug-hannover'
+    description: 'Fall 10: Authentischer Grundbuchauszug (Amtsgericht Hannover-Linden)'

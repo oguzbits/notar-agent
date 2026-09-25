@@ -341,4 +341,87 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
       },
     },
   },
+
+  // =========================================================================
+  // FALL 09: HISTORISCHE ARCHIVURKUNDE (NOTARIELLER KAUFVERTRAG PRINZENPALAIS)
+  // =========================================================================
+  {
+    id: 'fall-09-prinzenpalais-urkunde',
+    name: 'Fall 09: Authentische Archivurkunde (Kaufvertrag Schleswig UR 734/1979)',
+    description:
+      'Vollständiger, echter Kanzleiscan (8 Seiten, Schreibmaschinensatz mit Dienstwappen): Notar Otto von Wahl, Verkäuferin Karin Elise Hinrichsen geb. Ehlert, Käufer Land Schleswig-Holstein, Grundbuch von Schleswig Blatt 2179, Flurstücke 8/2 und 4/42.',
+    caseType: CASE_TYPES.IMMOBILIENKAUF,
+    files: [loadTestAktenFile('fall-09-prinzenpalais-urkunde', 'Kaufvertrag_Schleswig_UR734.pdf')],
+    notes: 'Amtlicher Archivscan des notariellen Kaufvertrags vom 23.11.1979.',
+    groundTruth: {
+      expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      fields: {
+        verkaeufer: {
+          expectedStatus: FIELD_STATUS.VERIFIED,
+          expectedValues: {
+            name: 'Karin Elise Hinrichsen',
+            legalForm: 'natürliche Person',
+          },
+          mustContainInSnippet: ['Hinrichsen', 'Ehlert'],
+        },
+        kaeufer: {
+          expectedStatus: FIELD_STATUS.VERIFIED,
+          expectedValues: {
+            companyName: 'Land Schleswig-Holstein',
+          },
+          mustContainInSnippet: ['Schleswig-Holstein'],
+        },
+        grundbuch: {
+          expectedStatus: FIELD_STATUS.VERIFIED,
+          expectedValues: {
+            grundbuchBezirk: 'Schleswig',
+            blatt: '2179',
+          },
+          mustContainInSnippet: ['2179'],
+        },
+        grundstuecke: {
+          expectedStatus: FIELD_STATUS.VERIFIED,
+          expectedValues: {
+            totalAreaM2: 20431,
+          },
+          mustContainInSnippet: ['8/2', '4/42', 'Flur 30'],
+        },
+      },
+    },
+  },
+
+  // =========================================================================
+  // FALL 10: AUTHENTISCHER GRUNDBUCHAUSZUG (AMTSGERICHT HANNOVER-LINDEN BLATT 2043)
+  // =========================================================================
+  {
+    id: 'fall-10-grundbuchauszug-hannover',
+    name: 'Fall 10: Authentischer Grundbuchauszug (Amtsgericht Hannover-Linden Blatt 2043)',
+    description:
+      'Originaler Archivscan einer amtlichen Grundbuchmitteilung: Amtsgericht Hannover 10 A, Grundbuch von Hannover-Linden Blatt 2043, Abteilung III (Goldmark-Eintragungen Deutsche Grundkredit-Bank in Gotha, Prägesiegel & Rechtspflegerunterschrift).',
+    caseType: CASE_TYPES.IMMOBILIENKAUF,
+    files: [
+      loadTestAktenFile(
+        'fall-10-grundbuchauszug-hannover',
+        'Grundbuchauszug_Hannover_Linden_Blatt2043.jpg'
+      ),
+    ],
+    notes: 'Amtlicher Auszug mit preußischem Dienstsiegel und Beglaubigungsvermerk vom 30.03.1927.',
+    groundTruth: {
+      expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      fields: {
+        grundbuch: {
+          expectedStatus: FIELD_STATUS.VERIFIED,
+          expectedValues: {
+            amtsgericht: 'Hannover',
+            blatt: '2043',
+          },
+          mustContainInSnippet: ['2043'],
+        },
+        belastungen: {
+          expectedStatus: FIELD_STATUS.VERIFIED,
+          mustContainInSnippet: ['Abteilung III', 'Gotha'],
+        },
+      },
+    },
+  },
 ];
