@@ -44,7 +44,7 @@
 
 ---
 
-### Task 2: Block-Level Layout-Awareness & Reading Order Harness in Step 1
+### Task 2: Block-Level Layout-Awareness & Reading Order Harness in Step 1 (Erledigt)
 
 **Files:**
 
@@ -57,10 +57,10 @@
 - Consumes: Raw text / PDF streams from `pdf-text-extractor.ts`
 - Produces: `StructuredDocumentLayout` mit Markdown-Tabellen-Rekonstruktion und Paragraphenblöcken für tabellarische Mieterlisten, Grundbuchblätter und Klauselstrukturen.
 
-- [ ] **Step 1: Testfall für mehrspaltige Tabellen und Klauselstrukturen (Testfall 08 & Abt. II/III) schreiben**
-- [ ] **Step 2: `layout-structure-parser.ts` implementieren (Erkennung von Spaltenrastern und Gliederungsabschnitten)**
-- [ ] **Step 3: In `payload-assembler.ts` einbinden, sodass der Unicode-Textlayer mit Block- und Layout-Hierarchien an das VLM übergeben wird**
-- [ ] **Step 4: Testlauf (`npx vitest run src/lib/files/layout-structure-parser.test.ts`)**
+- [x] **Step 1: Testfall für mehrspaltige Tabellen und Klauselstrukturen (Testfall 08 & Abt. II/III) schreiben**
+- [x] **Step 2: `layout-structure-parser.ts` implementieren (Erkennung von Spaltenrastern und Gliederungsabschnitten)**
+- [x] **Step 3: In `payload-assembler.ts` einbinden, sodass der Unicode-Textlayer mit Block- und Layout-Hierarchien an das VLM übergeben wird**
+- [x] **Step 4: Testlauf (`npx vitest run src/lib/files/layout-structure-parser.test.ts`)**
 
 ---
 

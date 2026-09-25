@@ -3,6 +3,7 @@ import {
   formatTriageManifestForPrompt,
   triageDocument,
 } from '@/lib/files/document-triage';
+import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import {
   PdfStreamType,
   PDF_STREAM_TYPES,
@@ -132,11 +133,16 @@ ${notesSection}${
       }
 
       // ADAPTIVE MULTIMODAL INGESTION:
-      // 1. Unicode-Textlayer injizieren (sofern vorhanden)
+      // 1. Unicode-Textlayer mit Layout-Strukturierung (Markdown-Tabellen, Klauseln) injizieren
       if (extractedText && extractedText.trim()) {
+        const layout = parseDocumentLayoutStructure(extractedText);
+        const headerInfo = layout.hasStructuredBlocks
+          ? ` (LAYOUT-BEWUSST STRUKTURIERT IN ${layout.blocks.length} LOGISCHE BLÖCKE/TABELLEN)`
+          : '';
+
         filePromptParts.push({
           type: 'text',
-          text: `\n=== DIREKTER UNICODE-TEXTLAYER AUS "${file.name}" (MATHEMATISCH EXAKT FÜR BETRÄGE, IBAN, FLURSTÜCKE) ===\n${extractedText}\n=== ENDE TEXTLAYER AUS "${file.name}" ===\n`,
+          text: `\n=== DIREKTER UNICODE-TEXTLAYER AUS "${file.name}"${headerInfo} ===\n${layout.structuredMarkdown}\n=== ENDE TEXTLAYER AUS "${file.name}" ===\n`,
         });
       }
 
