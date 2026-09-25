@@ -60,6 +60,9 @@ Every feature and modification must satisfy these technical invariants:
 8. **Consolidated Database Migrations (Zero Migration Fragmentation):**
    - Database migrations in `supabase/migrations/` MUST be consolidated into coherent, domain-bounded schema files.
    - Do NOT create fragmented one-line patch migrations or isolated micro-seed files. Schema definitions, policies, indexes, and their corresponding seed knowledge documents belong in their canonical domain migration file (`core`, `knowledge`, `workflows`). New rules or entities should be consolidated into the appropriate domain migration.
+9. **Continuous Architecture & Documentation Parity (Zero Stale Docs):**
+   - Whenever an architectural change, new subsystem, new schema/contracts domain, or major evaluation pattern is introduced or refactored (e.g. in `src/types/`, `src/lib/`, `config/`), the canonical architecture documentation in `docs/` (specifically `docs/overview.md` and related architecture specs) MUST be kept strictly up to date within the same changeset.
+   - Documentation must accurately reflect the codebase's current structure, layer dependencies, contracts, and evaluation mechanisms without outdated or drifting descriptions.
 
 ---
 
@@ -121,5 +124,6 @@ Every functional task concludes with this verified receipt:
   - _Hard Rule:_ If `DECLARATION_STAGED` is chosen, the remote execution MUST be listed as an open unchecked item `- [ ] Pending Live DB Migration:` under **Explicitly Out-of-Scope**, including the exact migration file and project ref, OR actively executed via Supabase MCP with user confirmation. Never mark a staged migration as complete without flagging the missing live sync.
 - [x] **Visual UI Verification:** [NOT_APPLICABLE | VERIFIED via screenshot/inspection]
 - [x] **Language & Copywriting:** (100% canonical German notary terminology, zero Denglisch)
+- [x] **Architecture & Documentation Parity:** (docs/ and architecture specs updated to match new contracts and subsystems)
 - [ ] **Explicitly Out-of-Scope:** [Deferred items / next steps / pending migrations]
 ```

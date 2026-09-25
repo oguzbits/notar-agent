@@ -125,6 +125,7 @@
     "entry": [
       "src/app/**/*.{ts,tsx}",
       "src/lib/dossier/index.ts",
+      "src/lib/evals/index.ts",
       "src/test/eval/promptfoo-*.ts"
     ],
     "project": [

@@ -29,8 +29,8 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 
 ### 1.1 Schichtenarchitektur im Detail
 
-- **[`src/types/`](../src/types/) (Pure Contracts & SSOT):** Ausschließlich TypeScript-Typen, Zod-Schemas und `as const`-Enums. Null Implementierungslogik, Berechnungen oder UI-Strings. Typen werden stets via `z.infer<typeof Schema>` abgeleitet (siehe z. B. [`src/types/dossier.ts`](../src/types/dossier.ts), [`src/types/jobs.ts`](../src/types/jobs.ts), [`src/types/audit.ts`](../src/types/audit.ts)).
-- **[`src/lib/`](../src/lib/) (Pure Core Logic & Services):** Deterministische Domänen-Berechnungen, Reifegrad-Algorithmen ([`src/lib/dossier/readiness.ts`](../src/lib/dossier/readiness.ts)), Status-Mutationen und AI-Pipelines ([`src/lib/ai/pipeline.ts`](../src/lib/ai/pipeline.ts), [`src/lib/workflow/orchestrator.ts`](../src/lib/workflow/orchestrator.ts)). Repositories ([`src/lib/supabase/repository.ts`](../src/lib/supabase/repository.ts)) folgen einem Fail-Fast-Muster und werfen sofort Ausnahmen.
+- **[`src/types/`](../src/types/) (Pure Contracts & SSOT):** Ausschließlich TypeScript-Typen, Zod-Schemas und `as const`-Enums. Null Implementierungslogik, Berechnungen oder UI-Strings. Typen werden stets via `z.infer<typeof Schema>` abgeleitet (siehe z. B. [`src/types/dossier.ts`](../src/types/dossier.ts), [`src/types/jobs.ts`](../src/types/jobs.ts), [`src/types/audit.ts`](../src/types/audit.ts), [`src/types/eval.ts`](../src/types/eval.ts)).
+- **[`src/lib/`](../src/lib/) (Pure Core Logic & Services):** Deterministische Domänen-Berechnungen, Reifegrad-Algorithmen ([`src/lib/dossier/readiness.ts`](../src/lib/dossier/readiness.ts)), Status-Mutationen, AI-Pipelines ([`src/lib/ai/pipeline.ts`](../src/lib/ai/pipeline.ts), [`src/lib/workflow/orchestrator.ts`](../src/lib/workflow/orchestrator.ts)) sowie das 4-Layer-Evaluierungs- und Benchmark-Framework ([`src/lib/evals/`](../src/lib/evals/)). Repositories ([`src/lib/supabase/repository.ts`](../src/lib/supabase/repository.ts)) folgen einem Fail-Fast-Muster und werfen sofort Ausnahmen.
 - **[`src/app/api/`](../src/app/api/) (Thin I/O Adapters):** Route Handlers parsen Payloads via Zod ([`src/app/api/analyze/route.ts`](../src/app/api/analyze/route.ts), [`src/app/api/documents/route.ts`](../src/app/api/documents/route.ts)), prüfen Server-Auth ([`src/lib/supabase/server-auth.ts`](../src/lib/supabase/server-auth.ts)), delegieren an `src/lib/` und formatieren Responses bzw. SSE-Streams.
 - **[`src/components/`](../src/components/) & [`src/hooks/`](../src/hooks/) (Präsentation & Client-State):** React 19 Komponenten mit klaren RSC/`'use client'`-Grenzen ([`src/components/FieldCockpit/UnifiedFieldCockpitTable.tsx`](../src/components/FieldCockpit/UnifiedFieldCockpitTable.tsx)). Server-State wird über TanStack Query verwaltet ([`src/hooks/useDocuments.ts`](../src/hooks/useDocuments.ts), [`src/hooks/useJobs.ts`](../src/hooks/useJobs.ts)); asynchrone Komponenten erzwingen den 4-Status-Quadranten (_Empty_, _Loading_, _Error_, _Mutating_).
 
@@ -81,8 +81,13 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
     - _Fall 05 & 06 (GEG-Energieausweise):_ Offizielle Bundesmuster-Formulare zur Prüfung von Kennwerten und abgelaufenen Fristen (§ 80 GEG).
     - _Fall 08 (MFH-Mieterlisten):_ Komplexe 30-Einheiten-Liste mit gedruckten und handschriftlich ergänzten Mietparteien zur mathematischen Summenprüfung.
   - Alle Testdateien können deterministisch über Generatorskripte in `scripts/fixtures/` neu gerendert werden.
-- **Automatisierte Evaluation mit Promptfoo ([`config/promptfoo.yaml`](../config/promptfoo.yaml)):**
+- **Automatisierte Evaluation mit Promptfoo & 4-Layer-Eval-Framework ([`config/promptfoo.yaml`](../config/promptfoo.yaml), [`src/lib/evals/`](../src/lib/evals/)):**
   - Ermöglicht quantitative Messungen der Modellgüte gegen definierte Ground-Truth-Daten ([`src/test/eval/golden-dataset.ts`](../src/test/eval/golden-dataset.ts), [`src/test/eval/scorer.ts`](../src/test/eval/scorer.ts)).
+  - **4-Layer-Evaluierung (Probabilistic CI):**
+    - _Layer 1 (Component & Contracts):_ Deterministische Zod-Validierung und Zitations-Integrität ([`src/types/eval.ts`](../src/types/eval.ts)).
+    - _Layer 2 (Trajectory & RAG):_ Prüfung der Wissensselektion (`Recall` und `Precision` der herangezogenen Rechtsnormen aus `knowledge_documents` via [`src/lib/evals/scorers/trajectory.ts`](../src/lib/evals/scorers/trajectory.ts)).
+    - _Layer 3 (Outcome & Pluggable Judges):_ Flexible Urteilsfindung über das `IEvalJudge`-Interface mit `DeterministicJudge` sowie schlüsselfertigem `JevJudge` (TypeSafe AI System-1 Decision Model für non-autoregressive, extrem schnelle und kostengünstige Klassifikation mit automatischem Fallback).
+    - _Layer 4 (Telemetry & Monitoring):_ Latenz-, Token- und Kostenmonitoring (`promptTokens`, `completionTokens`, Kosten in USD).
   - Misst Extraktionsgenauigkeit, Token-Verbrauch und Latenzen über `npm run eval:smoke` und `npm run eval:live` im visuellen Browser-Dashboard (`npm run eval:view`).
 
 ---
