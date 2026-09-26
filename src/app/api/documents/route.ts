@@ -7,12 +7,17 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+function extractDocumentQueryParams(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  const orgId =
+    req.headers.get('x-organization-id') || searchParams.get('organizationId') || undefined;
+  return { id, orgId };
+}
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const orgId =
-      req.headers.get('x-organization-id') || searchParams.get('organizationId') || undefined;
+    const { id, orgId } = extractDocumentQueryParams(req);
 
     if (id) {
       const record = await fetchDossierRecordById(id, orgId);
@@ -32,10 +37,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const orgId =
-      req.headers.get('x-organization-id') || searchParams.get('organizationId') || undefined;
+    const { id, orgId } = extractDocumentQueryParams(req);
 
     if (!id) {
       return NextResponse.json({ error: 'ID fehlt.' }, { status: 400 });

@@ -2,6 +2,7 @@ import { isEntityMatch } from '@/lib/dossier/entity-reconciliation';
 import {
   EnergieausweisDataSchema,
   FIELD_STATUS,
+  FieldStatus,
   GenericFieldDossier,
   KaeuferDataSchema,
   MietverhaeltnisseDataSchema,
@@ -12,105 +13,151 @@ export interface DomainGuardrailsOptions {
   referenceDate?: Date;
 }
 
-/**
- * Notarielle Sachverhalts- und Plausibilitätsprüfungen (Knowledge / Policy Layer)
- *
- * Separation of Policy and Mechanism (AGENTS.md):
- * - Mechanism (src/types/, src/lib/dossier/): rein technische Modellierung, Datenhygiene & Arithmetik
- * - Policy / Knowledge (PostgreSQL knowledge_documents): materielle Rechtsregeln & Subsumtion
- * - ZERO hardcoded paragraphs in application code.
- */
-export function applyNotaryDomainGuardrails(
-  fieldsObj: Record<string, GenericFieldDossier<Record<string, unknown>> | undefined>,
-  options?: DomainGuardrailsOptions
-): void {
-  const refDate = options?.referenceDate ?? new Date();
-  const refDateIso = refDate.toISOString().slice(0, 10);
+export interface GuardrailContext {
+  fields: Record<string, GenericFieldDossier<Record<string, unknown>> | undefined>;
+  referenceDate: Date;
+  referenceDateIso: string;
+}
 
-  // 1. Generische Konsistenz: Ein Feld darf niemals 'VERIFIED' sein, wenn das data-Objekt leer ist
-  for (const field of Object.values(fieldsObj)) {
-    if (field && field.status === FIELD_STATUS.VERIFIED) {
-      const d = field.data;
-      const hasValues =
-        d &&
-        typeof d === 'object' &&
-        Object.values(d).some((v) => {
-          if (v === null || v === undefined || v === '') return false;
-          if (Array.isArray(v) && v.length === 0) return false;
-          if (typeof v === 'number' && v === 0) return false;
-          if (typeof v === 'boolean' && v === false) return false;
-          return true;
-        });
-      if (!hasValues) {
-        field.status = FIELD_STATUS.NEEDS_REVIEW;
-        if (!field.note) {
-          field.note = 'Angaben unvollständig – Datenwert zur Beurkundung erforderlich.';
+export interface GuardrailRule {
+  id: string;
+  name: string;
+  evaluate(ctx: GuardrailContext): void;
+}
+
+/**
+ * Hilfsfunktion zum sicheren Aktualisieren von Feld-Status und Notizen.
+ */
+function flagField(
+  field: GenericFieldDossier<Record<string, unknown>>,
+  newStatus: FieldStatus,
+  noteText: string,
+  append = false
+): void {
+  field.status = newStatus;
+  if (!field.note) {
+    field.note = noteText;
+  } else if (append && !field.note.includes(noteText)) {
+    field.note = `${field.note} (${noteText})`;
+  }
+}
+
+/**
+ * Deklarative Guardrail-Regeln (Separation of Policy and Mechanism gem. AGENTS.md)
+ * Jede Regel kapselt eine isolierte fachliche Integritätsprüfung.
+ */
+export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
+  // 1. Generische Konsistenz: Verifiziertes Feld darf nicht leer sein
+  {
+    id: 'GENERIC_EMPTY_DATA_GUARD',
+    name: 'Prüfung auf leere Werte bei verifizierten Feldern',
+    evaluate({ fields }) {
+      for (const field of Object.values(fields)) {
+        if (field && field.status === FIELD_STATUS.VERIFIED) {
+          const d = field.data;
+          const hasValues =
+            d &&
+            typeof d === 'object' &&
+            Object.values(d).some((v) => {
+              if (v === null || v === undefined || v === '') return false;
+              if (Array.isArray(v) && v.length === 0) return false;
+              if (typeof v === 'number' && v === 0) return false;
+              if (typeof v === 'boolean' && v === false) return false;
+              return true;
+            });
+          if (!hasValues) {
+            flagField(
+              field,
+              FIELD_STATUS.NEEDS_REVIEW,
+              'Angaben unvollständig – Datenwert zur Beurkundung erforderlich.'
+            );
+          }
         }
       }
-    }
-  }
+    },
+  },
 
-  // 2. Eigentümeridentität & Vertretungsberechtigung (Entity Reconciliation)
-  const verkaeuferField = fieldsObj['verkaeufer'];
-  if (verkaeuferField && verkaeuferField.data && verkaeuferField.status === FIELD_STATUS.VERIFIED) {
-    const vResult = VerkaeuferDataSchema.partial().safeParse(verkaeuferField.data);
-    const vData = vResult.success ? vResult.data : {};
+  // 2. Eigentümeridentität & Vertretungsberechtigung
+  {
+    id: 'SELLER_OWNER_MATCH_GUARD',
+    name: 'Eigentümeridentität und Vertretungsnachweis des Verkäufers',
+    evaluate({ fields }) {
+      const field = fields['verkaeufer'];
+      if (!field || !field.data || field.status !== FIELD_STATUS.VERIFIED) return;
 
-    if (
-      Array.isArray(vData.registeredOwnersGrundbuch) &&
-      vData.registeredOwnersGrundbuch.length > 0 &&
-      vData.name
-    ) {
-      const matchesOwner = vData.registeredOwnersGrundbuch.some((owner) =>
-        isEntityMatch(vData.name || '', owner)
-      );
+      const vResult = VerkaeuferDataSchema.partial().safeParse(field.data);
+      const vData = vResult.success ? vResult.data : {};
 
-      if (!matchesOwner && !vData.representationProofProvided) {
-        verkaeuferField.status = FIELD_STATUS.NEEDS_REVIEW;
-        verkaeuferField.note =
-          'Eigentümer lt. Grundbuch weicht vom handelnden Verkäufer ab – Nachweis der Verfügungsbefugnis oder Erbnachweis erforderlich.';
+      if (
+        Array.isArray(vData.registeredOwnersGrundbuch) &&
+        vData.registeredOwnersGrundbuch.length > 0 &&
+        vData.name
+      ) {
+        const matchesOwner = vData.registeredOwnersGrundbuch.some((owner) =>
+          isEntityMatch(vData.name || '', owner)
+        );
+
+        if (!matchesOwner && !vData.representationProofProvided) {
+          flagField(
+            field,
+            FIELD_STATUS.NEEDS_REVIEW,
+            'Eigentümer lt. Grundbuch weicht vom handelnden Verkäufer ab – Nachweis der Verfügungsbefugnis oder Erbnachweis erforderlich.'
+          );
+        }
       }
-    }
 
-    // Vertretungsnachweis juristischer Personen
-    const isCorporate =
-      vData.legalForm &&
-      !['natürliche person', 'privatperson', 'einzelperson'].includes(
-        vData.legalForm.toLowerCase().trim()
-      );
-    if (isCorporate && vData.representationProofProvided === false) {
-      verkaeuferField.status = FIELD_STATUS.NEEDS_REVIEW;
-      if (!verkaeuferField.note) {
-        verkaeuferField.note = 'Vertretungsnachweis der Gesellschaft vor Beurkundung erforderlich.';
+      const isCorporate =
+        vData.legalForm &&
+        !['natürliche person', 'privatperson', 'einzelperson'].includes(
+          vData.legalForm.toLowerCase().trim()
+        );
+      if (isCorporate && vData.representationProofProvided === false) {
+        flagField(
+          field,
+          FIELD_STATUS.NEEDS_REVIEW,
+          'Vertretungsnachweis der Gesellschaft vor Beurkundung erforderlich.'
+        );
       }
-    }
-  }
+    },
+  },
 
   // 3. Registerauszug bei Käufergesellschaften
-  const kaeuferField = fieldsObj['kaeufer'];
-  if (kaeuferField && kaeuferField.data && kaeuferField.status === FIELD_STATUS.VERIFIED) {
-    const kResult = KaeuferDataSchema.partial().safeParse(kaeuferField.data);
-    const kData = kResult.success ? kResult.data : {};
+  {
+    id: 'BUYER_REGISTER_PROOF_GUARD',
+    name: 'Amtlicher Registerauszug bei Käufergesellschaften',
+    evaluate({ fields }) {
+      const field = fields['kaeufer'];
+      if (!field || !field.data || field.status !== FIELD_STATUS.VERIFIED) return;
 
-    const isCorporate =
-      kData.legalForm &&
-      !['natürliche person', 'privatperson', 'einzelperson'].includes(
-        kData.legalForm.toLowerCase().trim()
-      );
-    if (isCorporate && kData.hasOfficialRegisterProof === false) {
-      kaeuferField.status = FIELD_STATUS.NEEDS_REVIEW;
-      if (!kaeuferField.note) {
-        kaeuferField.note =
-          'Amtlicher Registerauszug der Käufergesellschaft fehlt bisher im Aktenbestand.';
+      const kResult = KaeuferDataSchema.partial().safeParse(field.data);
+      const kData = kResult.success ? kResult.data : {};
+
+      const isCorporate =
+        kData.legalForm &&
+        !['natürliche person', 'privatperson', 'einzelperson'].includes(
+          kData.legalForm.toLowerCase().trim()
+        );
+      if (isCorporate && kData.hasOfficialRegisterProof === false) {
+        flagField(
+          field,
+          FIELD_STATUS.NEEDS_REVIEW,
+          'Amtlicher Registerauszug der Käufergesellschaft fehlt bisher im Aktenbestand.'
+        );
       }
-    }
-  }
+    },
+  },
 
-  // 4. Deterministische Fristenprüfung: Energieausweis Gültigkeit
-  const energieField = fieldsObj['energieausweis'];
-  if (energieField && energieField.data) {
-    const eResult = EnergieausweisDataSchema.partial().safeParse(energieField.data);
-    if (eResult.success && eResult.data.validUntil) {
+  // 4. Fristenprüfung: Gültigkeitsdauer Energieausweis
+  {
+    id: 'ENERGY_CERTIFICATE_EXPIRY_GUARD',
+    name: 'Gültigkeitsdauer des Energieausweises zum Stichtag',
+    evaluate({ fields, referenceDateIso }) {
+      const field = fields['energieausweis'];
+      if (!field || !field.data) return;
+
+      const eResult = EnergieausweisDataSchema.partial().safeParse(field.data);
+      if (!eResult.success || !eResult.data.validUntil) return;
+
       const validUntilClean = eResult.data.validUntil.trim().slice(0, 10);
       let isoDate = '';
       if (/^\d{4}-\d{2}-\d{2}$/.test(validUntilClean)) {
@@ -120,24 +167,28 @@ export function applyNotaryDomainGuardrails(
         isoDate = `${year}-${month}-${day}`;
       }
 
-      if (isoDate) {
-        if (isoDate < refDateIso) {
-          energieField.status = FIELD_STATUS.OUTDATED;
-          energieField.data.isExpired = true;
-          if (!energieField.note || !energieField.note.includes('abgelaufen')) {
-            energieField.note = `Gültigkeitsdauer des Energieausweises zum Stichtag (${validUntilClean}) abgelaufen.`;
-          }
+      if (isoDate && isoDate < referenceDateIso) {
+        field.status = FIELD_STATUS.OUTDATED;
+        field.data.isExpired = true;
+        if (!field.note || !field.note.includes('abgelaufen')) {
+          field.note = `Gültigkeitsdauer des Energieausweises zum Stichtag (${validUntilClean}) abgelaufen.`;
         }
       }
-    }
-  }
+    },
+  },
 
-  // 5. Deterministische Arithmetik-Guardrails: Flurstücksflächen
-  const grundstueckeField = fieldsObj['grundstuecke'];
-  if (grundstueckeField && grundstueckeField.data && typeof grundstueckeField.data === 'object') {
-    const rawData = grundstueckeField.data as Record<string, unknown>;
-    const rawParcels = Array.isArray(rawData.parcels) ? rawData.parcels : [];
-    if (rawParcels.length > 0) {
+  // 5. Arithmetik-Guardrail: Flurstücksflächen
+  {
+    id: 'PARCEL_AREA_ARITHMETIC_GUARD',
+    name: 'Flächenkonsistenz der Flurstücke vs. Gesamtfläche',
+    evaluate({ fields }) {
+      const field = fields['grundstuecke'];
+      if (!field || !field.data || typeof field.data !== 'object') return;
+
+      const rawData = field.data as Record<string, unknown>;
+      const rawParcels = Array.isArray(rawData.parcels) ? rawData.parcels : [];
+      if (rawParcels.length === 0) return;
+
       const sumParcels = rawParcels.reduce((acc: number, p: unknown) => {
         if (p && typeof p === 'object' && 'sizeM2' in p) {
           const val = Number((p as { sizeM2?: unknown }).sizeM2);
@@ -147,59 +198,91 @@ export function applyNotaryDomainGuardrails(
       }, 0);
 
       const totalArea = Number(rawData.totalAreaM2 ?? 0);
-
       if (totalArea > 0 && sumParcels > 0 && Math.abs(sumParcels - totalArea) > 0.5) {
-        grundstueckeField.status = FIELD_STATUS.NEEDS_REVIEW;
-        if (!grundstueckeField.note) {
-          grundstueckeField.note = `Rechnerische Flächendiskrepanz: Summe der Flurstücke (${sumParcels} m²) weicht von Gesamtfläche (${totalArea} m²) ab.`;
-        }
+        flagField(
+          field,
+          FIELD_STATUS.NEEDS_REVIEW,
+          `Rechnerische Flächendiskrepanz: Summe der Flurstücke (${sumParcels} m²) weicht von Gesamtfläche (${totalArea} m²) ab.`
+        );
       }
-    }
-  }
+    },
+  },
 
-  // 6. Deterministische Arithmetik-Guardrails: Mietverhältnisse
-  const mietField = fieldsObj['mietverhaeltnisse'];
-  if (mietField && mietField.data) {
-    const mResult = MietverhaeltnisseDataSchema.partial().safeParse(mietField.data);
-    if (mResult.success && mResult.data.statedInEmailOrOverview) {
-      // Erkennung von Monatsbeträgen im Freitext ("2.500 € monatlich", "2500 mtl")
+  // 6. Arithmetik-Guardrail: Mietverhältnisse
+  {
+    id: 'RENT_AMOUNT_ARITHMETIC_GUARD',
+    name: 'Plausibilitätsprüfung Monatsmiete vs. Jahresreinertrag',
+    evaluate({ fields }) {
+      const field = fields['mietverhaeltnisse'];
+      if (!field || !field.data) return;
+
+      const mResult = MietverhaeltnisseDataSchema.partial().safeParse(field.data);
+      if (!mResult.success || !mResult.data.statedInEmailOrOverview) return;
+
       const monthlyMatch = mResult.data.statedInEmailOrOverview.match(
         /(\d+(?:[\.,]\d+)?)\s*(?:€|eur)?\s*(?:monatlich|mtl|pro monat)/i
       );
-      if (monthlyMatch && monthlyMatch[1]) {
-        const rawMonthly = parseFloat(monthlyMatch[1].replace(/\./g, '').replace(',', '.'));
-        const yearlyCalculated = Math.round(rawMonthly * 12);
-        const currentYearly = mResult.data.yearlyNetRent ?? 0;
+      if (!monthlyMatch || !monthlyMatch[1]) return;
 
-        if (currentYearly > 0 && Math.abs(currentYearly - yearlyCalculated) > 1) {
-          mietField.status = FIELD_STATUS.NEEDS_REVIEW;
-          if (!mietField.note) {
-            mietField.note = `Rechnerische Mietdiskrepanz: Monatsbetrag (${rawMonthly} €/Monat = ${yearlyCalculated} €/Jahr) weicht von erfasster Jahresmiete (${currentYearly} €) ab.`;
-          }
-        }
+      const rawMonthly = parseFloat(monthlyMatch[1].replace(/\./g, '').replace(',', '.'));
+      const yearlyCalculated = Math.round(rawMonthly * 12);
+      const currentYearly = mResult.data.yearlyNetRent ?? 0;
+
+      if (currentYearly > 0 && Math.abs(currentYearly - yearlyCalculated) > 1) {
+        flagField(
+          field,
+          FIELD_STATUS.NEEDS_REVIEW,
+          `Rechnerische Mietdiskrepanz: Monatsbetrag (${rawMonthly} €/Monat = ${yearlyCalculated} €/Jahr) weicht von erfasster Jahresmiete (${currentYearly} €) ab.`
+        );
       }
-    }
-  }
+    },
+  },
 
-  // 7. Deterministische Urkunden-Guardrails (§ 13, § 44a BeurkG): Handschriftliche Korrekturen & Streichungen beim Kaufpreis
-  const kaufpreisField = fieldsObj['kaufpreis'];
-  if (kaufpreisField && kaufpreisField.status === FIELD_STATUS.VERIFIED) {
-    const snippet = (kaufpreisField.source?.snippet || '').toLowerCase();
-    const note = (kaufpreisField.note || '').toLowerCase();
-    const combinedText = `${snippet} ${note}`;
+  // 7. Urkunden-Guardrail: Handschriftliche Änderungen & Streichungen
+  {
+    id: 'PURCHASE_PRICE_AMENDMENT_GUARD',
+    name: 'Erkennung handschriftlicher Streichungen und Paraphierungen (§ 13, § 44a BeurkG)',
+    evaluate({ fields }) {
+      const field = fields['kaufpreis'];
+      if (!field || field.status !== FIELD_STATUS.VERIFIED) return;
 
-    const hasCorrectionIndicator =
-      /urspruenglich|ursprünglich|gestrichen|durchgestrichen|streichung|paraphe|handschriftlich|korrektur|minderung/i.test(
-        combinedText
-      );
+      const snippet = (field.source?.snippet || '').toLowerCase();
+      const note = (field.note || '').toLowerCase();
+      const combinedText = `${snippet} ${note}`;
 
-    if (hasCorrectionIndicator) {
-      kaufpreisField.status = FIELD_STATUS.NEEDS_REVIEW;
-      const warningNote =
-        'Handschriftliche Änderung oder Streichung im Kaufvertrag – Prüfung der Genehmigung und Paraphierung aller Beteiligten vor Beurkundung erforderlich.';
-      kaufpreisField.note = kaufpreisField.note
-        ? `${kaufpreisField.note} (${warningNote})`
-        : warningNote;
-    }
+      const hasCorrectionIndicator =
+        /urspruenglich|ursprünglich|gestrichen|durchgestrichen|streichung|paraphe|handschriftlich|korrektur|minderung/i.test(
+          combinedText
+        );
+
+      if (hasCorrectionIndicator) {
+        flagField(
+          field,
+          FIELD_STATUS.NEEDS_REVIEW,
+          'Handschriftliche Änderung oder Streichung im Kaufvertrag – Prüfung der Genehmigung und Paraphierung aller Beteiligten vor Beurkundung erforderlich.',
+          true
+        );
+      }
+    },
+  },
+] as const;
+
+/**
+ * Notarielle Sachverhalts- und Plausibilitätsprüfungen (Knowledge / Policy Layer)
+ * Führt die deklarativen Regeln sequenziell aus.
+ */
+export function applyNotaryDomainGuardrails(
+  fieldsObj: Record<string, GenericFieldDossier<Record<string, unknown>> | undefined>,
+  options?: DomainGuardrailsOptions
+): void {
+  const referenceDate = options?.referenceDate ?? new Date();
+  const context: GuardrailContext = {
+    fields: fieldsObj,
+    referenceDate,
+    referenceDateIso: referenceDate.toISOString().slice(0, 10),
+  };
+
+  for (const rule of NOTARY_GUARDRAIL_RULES) {
+    rule.evaluate(context);
   }
 }
