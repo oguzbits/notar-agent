@@ -26,6 +26,7 @@
 | **Phase C**   | C.3 Kanzlei- & DNotI-RAG (pgvector + BM25) | [x] Abgeschlossen | Hybrid-Suche, `seed-knowledge.ts` für Amtsgericht-Präzedenzen & RLS-Klauselsammlung                                  |
 | **Additions** | Modul 10 Kanzlei-Auth & Rollen-UI          | [x] Abgeschlossen | Login (`/login`), Session-Guard Middleware, Header-Rollenbadge & Team-Settings-View                                  |
 | **Additions** | Modul 12 Fail-Fast Repository-Architektur  | [x] Abgeschlossen | Bereinigung stiller Fallbacks in Repositories (PostgreSQL als Single Source of Truth)                                |
+| **Additions** | Modul 13 Codebase Health & Quality Gates   | [x] Abgeschlossen | AST-Komplexitäts-Auditor (`repo-health.mjs`), 94/100 Health Score, PII/N+1 Invarianten & harter 90%-CI-Abbruch       |
 
 ---
 
@@ -122,3 +123,12 @@
 
 - Eliminierung aller stillen `catch`-Fallbacks in `SupabaseDossierRepository`, `SupabaseJobRepository` und `SupabaseKnowledgeRepository`.
 - PostgreSQL fungiert ausnahmslos als Single Source of Truth mit deterministischem `throw new Error(...)` bei Störungen.
+
+#### 6. Codebase Health, AST-Komplexität & Deterministische Quality Gates (Additions Modul 13)
+
+- Etablierung des deterministischen Health-Auditors (`scripts/audit/repo-health.mjs`) mit automatischer Ausführung in `npm run check`.
+- Anhebung des Codebase Health Scores von 89 auf **94 / 100** durch Entflechtung imperativer Hotspots in Repositories, Fact-Checkern und Parsing-Modulen.
+- Eliminierung von Codeduplikaten in Dialog- und Authentifizierungs-Views über das wiederverwendbare Radix-Primitive `BaseModalShell`.
+- Automatischer Schutz vor PII-Leaks (§ 203 StGB) durch Verbot von `console.log` im Produktionscode.
+- Automatischer Performance-Guard gegen N+1-Datenbankabfragen innerhalb von Schleifenkörpern (`for`, `while`, `for await`).
+- Harter CI-Abbruch bei Unterschreitung des Schwellenwerts von 90/100 Punkten sowie verbindliche Verankerung ereignisgesteuerter Refactoring-Trigger in `AGENTS.md`.

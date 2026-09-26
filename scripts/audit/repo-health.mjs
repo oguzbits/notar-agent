@@ -253,12 +253,47 @@ try {
         }
       }
     }
+
+    // b) PII & Audit Guard: Disallow console.log in production code (prevent client/notary PII leakage)
+    if (!relPath.includes('.test.') && !relPath.includes('.spec.')) {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (/\bconsole\.log\s*\(/.test(line) && !line.includes('// ignore-console-log')) {
+          domainViolations.push({
+            type: 'pii_leak_console_log',
+            file: relPath,
+            line: i + 1,
+            snippet: line.trim(),
+            token: 'console.log',
+          });
+        }
+      }
+    }
+
+    // c) Performance Guard: Disallow inline Supabase queries inside loops (N+1 queries antipattern)
+    if (relPath.startsWith('src/lib/') || relPath.startsWith('src/app/api/')) {
+      // Find loop blocks (for, while, for...of, for await) and verify if supabase.from is called inside
+      const loopBlockRegex = /(?:for\s*\([^)]+\)|while\s*\([^)]+\)|for\s+await\s*\([^)]+\))\s*\{([^}]+)\}/g;
+      let loopMatch;
+      while ((loopMatch = loopBlockRegex.exec(content)) !== null) {
+        const loopBody = loopMatch[1];
+        if (/\bsupabase\s*\.\s*from\s*\(/.test(loopBody)) {
+          domainViolations.push({
+            type: 'n_plus_one_supabase_query',
+            file: relPath,
+            line: 1,
+            snippet: 'Potential N+1 Query: Supabase query detected directly inside loop body',
+            token: 'supabase.from in loop',
+          });
+        }
+      }
+    }
   }
 
   results.metrics.totalLines = totalLines;
   results.findings.domainViolations = domainViolations;
   results.scores.domainInvariants = Math.max(0, 100 - domainViolations.length * 10);
-  console.log(`✅ (${domainViolations.length} violations in views)`);
+  console.log(`✅ (${domainViolations.length} violations in views/domain)`);
 } catch (e) {
   console.log(`⚠️ (Error checking domain invariants: ${e.message})`);
 }
@@ -370,7 +405,7 @@ const reportMd = `# 📊 Repository Health Scorecard
 | **AST-Codeduplikation** | ${results.scores.duplication}% | ${results.scores.duplication >= 80 ? '🟢 Pass' : '🟡 Warn'} | ${results.findings.clones.length} Klone |
 | **Dead Code & Exporte** | ${results.scores.deadCode}% | ${results.scores.deadCode === 100 ? '🟢 Pass' : '🔴 Alert'} | ${results.findings.knipIssues.length} verwaiste Artefakte |
 | **Enum & Magic Strings** | ${results.scores.magicStrings}% | ${results.scores.magicStrings === 100 ? '🟢 Pass' : '🔴 Alert'} | ${results.findings.magicStrings.length} Literale |
-| **Domain- & Token-Invarianten** | ${results.scores.domainInvariants}% | ${results.scores.domainInvariants >= 80 ? '🟢 Pass' : '🟡 Warn'} | ${results.findings.domainViolations.length} Unsauberkeiten |
+| **Domain-, PII- & Performance-Invarianten** | ${results.scores.domainInvariants}% | ${results.scores.domainInvariants >= 80 ? '🟢 Pass' : '🟡 Warn'} | ${results.findings.domainViolations.length} Unsauberkeiten |
 | **Code-Komplexität (Imperativ)** | ${results.scores.codeComplexity}% | ${results.scores.codeComplexity >= 75 ? '🟢 Pass' : '🟡 Review'} | ${results.findings.complexModules.length} komplexe Hotspots |
 
 ---
@@ -437,12 +472,12 @@ ${
     : results.findings.knipIssues.map((k) => `- ${k.type}: \`${k.file || k.name}\``).join('\n')
 }
 
-### 6. Domain- & Design-Token-Verstöße
+### 6. Domain-, PII- & Performance-Invarianten
 ${
   results.findings.domainViolations.length === 0
-    ? '_Keine rohen Farbwerte in Presentation-Views gefunden._'
+    ? '_Keine Design-Token-Verstöße, Zero console.log (PII-Schutz) und Zero N+1 Supabase-Schleifen._'
     : results.findings.domainViolations
-        .map((d) => `- \`${d.file}:${d.line}\`: Roher Token \`${d.token}\` in \`${d.snippet}\``)
+        .map((d) => `- \`${d.file}:${d.line}\`: [${d.type}] \`${d.token}\` in \`${d.snippet}\``)
         .join('\n')
 }
 `;
