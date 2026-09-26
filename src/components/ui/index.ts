@@ -9,5 +9,7 @@ export type { CardProps } from './Card';
 export { ErrorBoundary } from './ErrorBoundary';
 export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
+export { BaseModalShell } from './BaseModalShell';
+export type { BaseModalShellProps } from './BaseModalShell';
 export { GoogleIcon } from './icons/GoogleIcon';
 export type { GoogleIconProps } from './icons/GoogleIcon';
