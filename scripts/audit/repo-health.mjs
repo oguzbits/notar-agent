@@ -54,8 +54,10 @@ const results = {
     domainViolations: [],
     complexModules: [],
     shallowModules: [],
+    trivialPassThroughs: [],
   },
 };
+
 
 // -------------------------------------------------------------
 // 1. AST Duplication Check (jscpd)
@@ -365,14 +367,55 @@ try {
     .sort((a, b) => a.ratio - b.ratio);
   results.findings.shallowModules = shallow;
 
-  // Penalize score if multiple files exceed high complexity thresholds
-  const highComplexityPenalty = complex.reduce((acc, c) => acc + (c.complexity > 35 ? 10 : 5), 0);
-  results.scores.codeComplexity = Math.max(0, 100 - highComplexityPenalty);
+  // Trivial Pass-Through Modules: Low complexity (<= 2), short implementation (LOC <= 20) with 1 export that merely delegates
+  const passThroughs = [];
+  for (const m of moduleStats) {
+    if (
+      m.exportsCount === 1 &&
+      m.loc <= 20 &&
+      m.complexity <= 2 &&
+      !m.file.startsWith('src/types/') &&
+      !m.file.endsWith('index.ts') &&
+      !m.file.includes('.d.ts')
+    ) {
+      const code = fs.readFileSync(path.join(ROOT_DIR, m.file), 'utf8');
+      const cleanCode = code
+        .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+        .trim();
+      // Check if function body consists solely of calling another imported function (return ... or await ...)
+      const isForwarder =
+        /(?:return\s+(?:await\s+)?|[=]\s*(?:await\s+)?)[a-zA-Z0-9_]+\s*\([^)]*\)\s*;?\s*(?:return\s+[^;]+;)?\s*\}\s*$/.test(
+          cleanCode
+        ) ||
+        /^export\s+(?:async\s+)?function\s+[a-zA-Z0-9_]+\s*\([^)]*\)[^{]*\{\s*(?:const\s+\w+\s*=\s*(?:await\s+)?[a-zA-Z0-9_]+\([^)]*\);?\s*return\s+\w+[^;]*;?|return\s+(?:await\s+)?[a-zA-Z0-9_]+\([^)]*\);?)\s*\}\s*$/.test(
+          cleanCode
+        );
 
-  console.log(`✅ (${complex.length} imperative hotspots, ${shallow.length} shallow modules)`);
+      if (isForwarder) {
+        passThroughs.push(m);
+      }
+    }
+  }
+  results.findings.trivialPassThroughs = passThroughs;
+
+  // Penalize score if multiple files exceed high complexity thresholds or are trivial pass-throughs
+  const highComplexityPenalty = complex.reduce((acc, c) => acc + (c.complexity > 35 ? 10 : 5), 0);
+  const passThroughPenalty = passThroughs.length * 10;
+  results.scores.codeComplexity = Math.max(0, 100 - highComplexityPenalty - passThroughPenalty);
+
+  const passThroughNotice = passThroughs.length > 0 ? `, ⚠️ ${passThroughs.length} trivial pass-throughs` : '';
+  console.log(`✅ (${complex.length} imperative hotspots, ${shallow.length} shallow modules${passThroughNotice})`);
+
+  if (passThroughs.length > 0) {
+    console.warn(`\n⚠️  WARNUNG: Trivial Pass-Through Modules erkannt (bitte inline konsolidieren):`);
+    for (const p of passThroughs) {
+      console.warn(`   - ${p.file} (${p.loc} Zeilen, delegiert Aufruf nur weiter)`);
+    }
+  }
 } catch (e) {
   console.log(`⚠️ (Error analyzing AST complexity: ${e.message})`);
 }
+
 
 // -------------------------------------------------------------
 // Overall Score Calculation (Weighted)

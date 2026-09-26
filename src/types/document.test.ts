@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { CASE_STATUS, CaseStatusSchema, DocumentRecordSchema } from './document';
+import {
+  CASE_STATUS,
+  CaseStatusSchema,
+  DocumentRecordSchema,
+  DocumentParsedContentSchema,
+} from './document';
 import {
   CASE_TYPES,
   OVERALL_STATUS,
@@ -102,5 +107,27 @@ describe('Document Domain Contract & Schemas', () => {
 
     const parsed = DocumentRecordSchema.safeParse(invalidRecord);
     expect(parsed.success).toBe(false);
+  });
+
+  it('validates DocumentParsedContentSchema contract', () => {
+    const validParsedContent = {
+      markdown: '# Urkunde § 1\n\nKaufpreis: 500.000 EUR',
+      totalPages: 1,
+      blocks: [
+        {
+          pageNumber: 1,
+          type: 'heading',
+          content: 'Urkunde § 1',
+          bbox: { x: 50, y: 700, width: 200, height: 20 },
+        },
+      ],
+      characterCount: 35,
+      hasTextLayer: true,
+      needsOcr: false,
+      metadata: { creator: 'NoRA Advanced', producer: 'PDF-Engine' },
+    };
+
+    const parsed = DocumentParsedContentSchema.safeParse(validParsedContent);
+    expect(parsed.success).toBe(true);
   });
 });

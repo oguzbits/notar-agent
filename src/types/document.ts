@@ -24,3 +24,47 @@ export const DocumentRecordSchema = z.object({
 });
 
 export type DocumentRecord = z.infer<typeof DocumentRecordSchema>;
+
+/**
+ * Spatial Bounding-Box für auditierbare Belege (§ 17 BeurkG).
+ */
+export const BoundingBoxSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
+export type BoundingBox = z.infer<typeof BoundingBoxSchema>;
+
+/**
+ * Ein einzelnes strukturiertes Layout-Element oder eine Annotation.
+ */
+export const DocumentLayoutBlockSchema = z.object({
+  pageNumber: z.number().int().min(1),
+  type: z.enum(['text', 'heading', 'table', 'annotation', 'form_field']),
+  content: z.string(),
+  bbox: BoundingBoxSchema.optional(),
+});
+export type DocumentLayoutBlock = z.infer<typeof DocumentLayoutBlockSchema>;
+
+/**
+ * Standardisiertes Dokumenten-Parsing-Ergebnis für Agenten (Document Context Layer).
+ */
+export const DocumentParsedContentSchema = z.object({
+  markdown: z
+    .string()
+    .describe('Strukturiertes Markdown (Überschriften, Tabellen, Absätze) für LLM-Prompts'),
+  totalPages: z.number().int().min(0),
+  blocks: z.array(DocumentLayoutBlockSchema).default([]),
+  characterCount: z.number().int().min(0),
+  hasTextLayer: z.boolean(),
+  needsOcr: z.boolean().default(false),
+  metadata: z
+    .object({
+      creator: z.string().optional(),
+      producer: z.string().optional(),
+      formType: z.number().optional(),
+    })
+    .default({}),
+});
+export type DocumentParsedContent = z.infer<typeof DocumentParsedContentSchema>;

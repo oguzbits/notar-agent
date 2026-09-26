@@ -4,12 +4,12 @@ import {
   triageDocument,
 } from '@/lib/files/document-triage';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
+import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
 import {
   PdfStreamType,
   PDF_STREAM_TYPES,
   classifyPdfStream,
 } from '@/lib/files/pdf-stream-classifier';
-import { extractPdfUnicodeText } from '@/lib/files/pdf-text-extractor';
 import {
   DOCUMENT_RELIABILITY,
   DetectedDocument,
@@ -40,7 +40,7 @@ export interface AssembleExtractionPromptOptions {
 
 /**
  * Baut aus Dokumenten und Notizen deterministisch die multimodalen Teile für den Stufe-1-Prompt.
- * Führt serverseitige Dual-Stream-Extraktion (unpdf) für PDFs aus.
+ * Führt serverseitige Dual-Stream-Extraktion (LiteParse) für PDFs aus.
  */
 export async function assembleExtractionPromptParts(
   options: AssembleExtractionPromptOptions
@@ -118,10 +118,11 @@ ${notesSection}${
 
       if (!extractedText) {
         try {
+          const parsedDoc = await parsePdfDocument(pdfBuffer);
           const classification = await classifyPdfStream(pdfBuffer);
           streamType = classification.streamType;
-          if (classification.hasTextLayer) {
-            extractedText = await extractPdfUnicodeText(pdfBuffer);
+          if (parsedDoc.hasTextLayer) {
+            extractedText = parsedDoc.markdown;
           }
         } catch (err: unknown) {
           console.warn(

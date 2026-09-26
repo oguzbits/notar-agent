@@ -1,4 +1,5 @@
-import { extractImages } from 'unpdf';
+import { LiteParse } from '@llamaindex/liteparse';
+import { parsePdfDocument } from './pdf-document-parser';
 
 export const PDF_STREAM_TYPES = {
   DIGITAL_BORN_TEXT: 'DIGITAL_BORN_TEXT',
@@ -18,12 +19,13 @@ export interface PdfStreamClassification {
 const MIN_TEXT_CHARS_THRESHOLD = 30;
 
 /**
- * Introspektiert PDF-Dateien via unpdf (Mozilla PDF.js) nach Textlayern und Rasterbildern.
+ * Introspektiert PDF-Dateien via LiteParse (PDFium Spatial Introspection & Complexity Analysis).
+ * Klassifiziert deterministisch zwischen reinem Vektor-/Digital-Text, Scans und hybriden Dokumenten.
  */
 export async function classifyPdfStream(
   buffer: Buffer | Uint8Array
 ): Promise<PdfStreamClassification> {
-  // 1. Zuerst binäre Metadaten prüfen, bevor unpdf den Puffer ggf. transferiert/detached
+  // 1. Zuerst binäre Metadaten prüfen
   const textDecoder = new TextDecoder('latin1');
   const binaryStr = textDecoder.decode(buffer);
   const hasImageStreamMarker =
@@ -32,23 +34,31 @@ export async function classifyPdfStream(
     );
 
   try {
-    const uint8 = new Uint8Array(buffer.byteLength);
-    uint8.set(buffer);
+    const rawBuffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const isolatedCopy = new Uint8Array(rawBuffer.byteLength);
+    isolatedCopy.set(rawBuffer);
 
-    const { extractPdfUnicodeText } = await import('./pdf-text-extractor');
-    const textJoined = await extractPdfUnicodeText(uint8);
-
-    const characterCount = textJoined.length;
-    const hasTextLayer = characterCount >= MIN_TEXT_CHARS_THRESHOLD;
+    const parsedDoc = await parsePdfDocument(isolatedCopy);
+    const characterCount = parsedDoc.characterCount;
+    const hasTextLayer = parsedDoc.hasTextLayer && characterCount >= MIN_TEXT_CHARS_THRESHOLD;
 
     let hasRasterImages = hasImageStreamMarker;
+
     if (!hasRasterImages) {
       try {
-        const pageImages = await extractImages(new Uint8Array(buffer), 1);
-        hasRasterImages = pageImages.length > 0;
-      } catch (imgErr: unknown) {
-        // Optionale Bildextraktion nicht kritisch, da binärer Stream-Marker bereits als Primärsignal dient
-        console.warn('[pdf-stream-classifier] extractImages Hinweis:', imgErr);
+        const parser = new LiteParse({ quiet: true });
+        const complexPages = await parser.isComplex(isolatedCopy);
+        hasRasterImages = complexPages.some(
+          (p) =>
+            p.hasSubstantialImages ||
+            p.fullPageImage ||
+            p.imageBlockCount > 0 ||
+            p.reasons.includes('embedded-images') ||
+            p.reasons.includes('scanned')
+        );
+      } catch (complexErr: unknown) {
+        // Binärer Marker dient bereits als Primärsignal
+        console.debug('[pdf-stream-classifier] LiteParse isComplex Hinweis:', complexErr);
       }
     }
 
@@ -69,7 +79,7 @@ export async function classifyPdfStream(
     };
   } catch (err: unknown) {
     console.warn(
-      '[pdf-stream-classifier] unpdf-Klassifikation fehlgeschlagen, Fallback auf SCANNED_IMAGE:',
+      '[pdf-stream-classifier] Klassifikation fehlgeschlagen, Fallback auf SCANNED_IMAGE:',
       err
     );
     return {
