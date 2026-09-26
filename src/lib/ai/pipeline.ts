@@ -2,9 +2,8 @@ import { generateText, LanguageModel, SystemModelMessage } from 'ai';
 import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
-import { verifyExtractionFacts } from '@/lib/ai/verifiable-fact-checker';
+import { runNotaryVerification } from '@/lib/ai/verification-engine';
 import { normalizeDossier } from '@/lib/dossier';
-import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
 import {
   formatKnowledgeForPrompt,
   selectApplicableKnowledge,
@@ -198,12 +197,14 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     ? validatedExtraction.data
     : rawExtractionJson || {};
 
-  // VERIFIABLE REWARDS / FACT CHECKS:
-  // Verifiziere Quellensnippets gegen die eingereichten Textlayer und Notizen.
+  // UNIFIED VERIFICATION & DETERMINISTIC GUARDRAILS (Deep Module):
+  // 1. Quellensnippets & Zitate verifizieren (Verifiable Rewards / Fact Checks)
+  // 2. Arithmetische Raten- & Anteilskonsistenz prüfen
+  // 3. Normative Guardrails (Eigentümeridentität, GEG-Fristen, Parzellen)
   if (validatedExtraction?.success) {
     const textSources: Array<{ fileName: string; textContent: string }> = [];
 
-    // 1. Notizen als Textquelle
+    // Notizen als Textquelle
     if (notesSection.trim()) {
       textSources.push({
         fileName: 'Bearbeitungsnotiz',
@@ -211,7 +212,7 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
       });
     }
 
-    // 2. Extrahierte Unicode-Dateiinhalte
+    // Extrahierte Unicode-Dateiinhalte
     for (const file of files) {
       if (file.content && !file.isBase64) {
         textSources.push({
@@ -221,24 +222,12 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
       }
     }
 
-    const verified = verifyExtractionFacts({
+    const verified = runNotaryVerification({
       stageOutput: validatedExtraction.data,
       sourceDocuments: textSources,
+      referenceDate: new Date(),
     });
     parsedExtractionRaw.fields = verified.fields;
-  }
-
-  // PRE-AUDIT DETERMINISTIC GUARDRAILS:
-  // Fristen (10 Jahre GEG), Arithmetik (Parzellenflächen, Mieten) & Entity-Reconciliation
-  // VOR Stufe 2 ausführen, damit der Auditor auf mathematisch verifizierten Daten arbeitet!
-  if (parsedExtractionRaw.fields && typeof parsedExtractionRaw.fields === 'object') {
-    applyNotaryDomainGuardrails(
-      parsedExtractionRaw.fields as Record<
-        string,
-        GenericFieldDossier<Record<string, unknown>> | undefined
-      >,
-      { referenceDate: new Date() }
-    );
   }
 
   // =========================================================================
