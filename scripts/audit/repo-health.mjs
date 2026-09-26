@@ -279,7 +279,13 @@ try {
         if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
           collectAllTsFiles(full);
         }
-      } else if (entry.name.endsWith('.ts') && !entry.name.includes('.test.') && !entry.name.endsWith('.d.ts')) {
+      } else if (
+        entry.name.endsWith('.ts') &&
+        !entry.name.includes('.test.') &&
+        !entry.name.includes('.spec.') &&
+        !entry.name.endsWith('.d.ts') &&
+        !full.includes('/src/test/')
+      ) {
         allTsFiles.push(full);
       }
     }
@@ -289,11 +295,15 @@ try {
   for (const f of allTsFiles) {
     const code = fs.readFileSync(f, 'utf8');
     const lines = code.split('\n');
-    const ifs = (code.match(/\bif\s*\(/g) || []).length;
-    const switches = (code.match(/\bswitch\s*\(/g) || []).length;
-    const ternaries = (code.match(/\?[^.:]/g) || []).length;
-    const catches = (code.match(/\bcatch\s*(\(|{)/g) || []).length;
-    const loops = (code.match(/\b(for|while)\s*\(/g) || []).length;
+    // Bereinige Kommentare und Regex-Literale, um False Positives bei '?' oder Wortmustern zu vermeiden
+    const cleanCode = code
+      .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+      .replace(/\/(?:\\.|[^\/\\\n])+\/[gimsuy]*/g, '');
+    const ifs = (cleanCode.match(/\bif\s*\(/g) || []).length;
+    const switches = (cleanCode.match(/\bswitch\s*\(/g) || []).length;
+    const ternaries = (cleanCode.match(/\?[^?.:]/g) || []).length;
+    const catches = (cleanCode.match(/\bcatch\s*(\(|{)/g) || []).length;
+    const loops = (cleanCode.match(/\b(for|while)\s*\(/g) || []).length;
     const totalComplexity = ifs + switches * 2 + ternaries + loops * 1.5 + catches;
 
     const exportsCount = (code.match(/\bexport\s+(const|function|class|interface|type)\b/g) || []).length;

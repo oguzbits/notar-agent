@@ -42,6 +42,24 @@ function flagField(
   }
 }
 
+function hasSignificantValue(val: unknown): boolean {
+  if (val === null || val === undefined || val === '') return false;
+  if (Array.isArray(val)) return val.length > 0;
+  if (typeof val === 'number') return val !== 0;
+  if (typeof val === 'boolean') return val;
+  return true;
+}
+
+function parseGermanOrIsoDate(raw: string): string | null {
+  const clean = raw.trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(clean)) {
+    const [d, m, y] = clean.split('.');
+    return `${y}-${m}-${d}`;
+  }
+  return null;
+}
+
 /**
  * Deklarative Guardrail-Regeln (Separation of Policy and Mechanism gem. AGENTS.md)
  * Jede Regel kapselt eine isolierte fachliche Integritätsprüfung.
@@ -53,25 +71,15 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
     name: 'Prüfung auf leere Werte bei verifizierten Feldern',
     evaluate({ fields }) {
       for (const field of Object.values(fields)) {
-        if (field && field.status === FIELD_STATUS.VERIFIED) {
-          const d = field.data;
-          const hasValues =
-            d &&
-            typeof d === 'object' &&
-            Object.values(d).some((v) => {
-              if (v === null || v === undefined || v === '') return false;
-              if (Array.isArray(v) && v.length === 0) return false;
-              if (typeof v === 'number' && v === 0) return false;
-              if (typeof v === 'boolean' && v === false) return false;
-              return true;
-            });
-          if (!hasValues) {
-            flagField(
-              field,
-              FIELD_STATUS.NEEDS_REVIEW,
-              'Angaben unvollständig – Datenwert zur Beurkundung erforderlich.'
-            );
-          }
+        if (!field || field.status !== FIELD_STATUS.VERIFIED) continue;
+        const d = field.data;
+        const hasValues = d && typeof d === 'object' && Object.values(d).some(hasSignificantValue);
+        if (!hasValues) {
+          flagField(
+            field,
+            FIELD_STATUS.NEEDS_REVIEW,
+            'Angaben unvollständig – Datenwert zur Beurkundung erforderlich.'
+          );
         }
       }
     },
@@ -88,15 +96,9 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
       const vResult = VerkaeuferDataSchema.partial().safeParse(field.data);
       const vData = vResult.success ? vResult.data : {};
 
-      if (
-        Array.isArray(vData.registeredOwnersGrundbuch) &&
-        vData.registeredOwnersGrundbuch.length > 0 &&
-        vData.name
-      ) {
-        const matchesOwner = vData.registeredOwnersGrundbuch.some((owner) =>
-          isEntityMatch(vData.name || '', owner)
-        );
-
+      const owners = vData.registeredOwnersGrundbuch;
+      if (Array.isArray(owners) && owners.length > 0 && vData.name) {
+        const matchesOwner = owners.some((owner) => isEntityMatch(vData.name || '', owner));
         if (!matchesOwner && !vData.representationProofProvided) {
           flagField(
             field,
@@ -106,11 +108,9 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
         }
       }
 
+      const form = vData.legalForm?.toLowerCase().trim();
       const isCorporate =
-        vData.legalForm &&
-        !['natürliche person', 'privatperson', 'einzelperson'].includes(
-          vData.legalForm.toLowerCase().trim()
-        );
+        form && !['natürliche person', 'privatperson', 'einzelperson'].includes(form);
       if (isCorporate && vData.representationProofProvided === false) {
         flagField(
           field,
@@ -132,11 +132,9 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
       const kResult = KaeuferDataSchema.partial().safeParse(field.data);
       const kData = kResult.success ? kResult.data : {};
 
+      const form = kData.legalForm?.toLowerCase().trim();
       const isCorporate =
-        kData.legalForm &&
-        !['natürliche person', 'privatperson', 'einzelperson'].includes(
-          kData.legalForm.toLowerCase().trim()
-        );
+        form && !['natürliche person', 'privatperson', 'einzelperson'].includes(form);
       if (isCorporate && kData.hasOfficialRegisterProof === false) {
         flagField(
           field,
@@ -153,25 +151,17 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
     name: 'Gültigkeitsdauer des Energieausweises zum Stichtag',
     evaluate({ fields, referenceDateIso }) {
       const field = fields['energieausweis'];
-      if (!field || !field.data) return;
+      if (!field?.data) return;
 
       const eResult = EnergieausweisDataSchema.partial().safeParse(field.data);
       if (!eResult.success || !eResult.data.validUntil) return;
 
-      const validUntilClean = eResult.data.validUntil.trim().slice(0, 10);
-      let isoDate = '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(validUntilClean)) {
-        isoDate = validUntilClean;
-      } else if (/^\d{2}\.\d{2}\.\d{4}$/.test(validUntilClean)) {
-        const [day, month, year] = validUntilClean.split('.');
-        isoDate = `${year}-${month}-${day}`;
-      }
-
+      const isoDate = parseGermanOrIsoDate(eResult.data.validUntil);
       if (isoDate && isoDate < referenceDateIso) {
         field.status = FIELD_STATUS.OUTDATED;
         field.data.isExpired = true;
-        if (!field.note || !field.note.includes('abgelaufen')) {
-          field.note = `Gültigkeitsdauer des Energieausweises zum Stichtag (${validUntilClean}) abgelaufen.`;
+        if (!field.note?.includes('abgelaufen')) {
+          field.note = `Gültigkeitsdauer des Energieausweises zum Stichtag (${eResult.data.validUntil.trim().slice(0, 10)}) abgelaufen.`;
         }
       }
     },
