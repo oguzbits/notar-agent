@@ -54,6 +54,14 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] **B.8.4 Triage-gestütztes Dokumenten-Routing bei Großakten:**
     - [ ] Standardakten (bis 80 Seiten) verbleiben im vollen globalen Kontext, um alle Querverweise (z. B. Vollmachten in Anlagen) zu sichern
     - [ ] Selektives Dokumenten-Windowing ausschließlich als Schutzmechanismus für extrem umfangreiche Archivbände (> 150 Seiten)
+  - [ ] **B.8.5 Akten- & Namespace-basierte Isolation (Archiv-Tiering & Cold-Data-Schutz):**
+    - [ ] _(Architektur-Baseline: Legora & turbopuffer – Vermeidung von RAM-Thrashing und monolithischen HNSW-Clustern)_
+    - [ ] Dossier-basierte Namespaces: Trennung aktiver Bearbeitungskontexte von ruhenden Mandantenarchiven (Zero Cache-Pollution in PostgreSQL pgvector)
+    - [ ] Lifecycle & Storage-Tiering: Automatischer Export ruhender Akten-Vektoren und Chunks in verschlüsselten Supabase Object Storage nach Beurkundungsvollzug (§ 17 BeurkG)
+  - [ ] **B.8.6 Deterministische Hybrid-Suche (BM25 + pgvector mit RRF):**
+    - [ ] Lexikalische Volltext- und Trigram-Suche (`tsvector` / `pg_trgm`) für exakte Ziffernfolgen (Flurstücke, Gemarkungen, Aktenzeichen, Kaufpreise)
+    - [ ] Semantische Vektorsuche (`pgvector`) für juristische Klauselbedeutungen
+    - [ ] Reciprocal Rank Fusion (RRF) Scorer zur deterministischen Zusammenführung vor Modell-Injektion
 - [ ] **B.9 k6 API- & Supabase-Lasttest-Suite:**
   - _(Detaillierte Spezifikation und Aufgabenplan in [BACKLOG.md §18](./BACKLOG.md#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing) hinterlegt)_
 

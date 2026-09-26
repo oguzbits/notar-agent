@@ -27,6 +27,7 @@
 | **[16. Storybook Component Workbench](#16-storybook-component-workbench--living-styleguide-benchmark-github-primer-radix-ui--supabase-ui)**     | Developer Experience    | Living Styleguide & a11y         |
 | **[17. Promptfoo Evaluation Matrix](#17-promptfoo-evaluation-matrix--web-dashboard-benchmark-enterprise-llmops)**                               | Quality Gate / LLMOps   | [x] Basis live, Skalierung offen |
 | **[18. k6 Lasttest-Suite](#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing)**                                   | Performance & Load      | Ingestion SLA & RLS Concurrency  |
+| **[19. Namespace-Isolation & Storage-Tiering](#19-namespace-isolation--storage-tiering-benchmark-legora--turbopuffer)**                         | Archivierung & Scale    | Cold Data & Hybrid RRF Search    |
 
 ---
 
@@ -705,3 +706,42 @@ graph TD
 - [ ] **Szenario 2 (Job Status & SSE Streaming):** Lasttest auf Job-Status-Endpunkte und SSE-Polling unter gleichzeitigen Verbindungen.
 - [ ] **Szenario 3 (Multi-Tenant RLS & Cockpit Read):** Lese-Lasttest auf Dossier- und Audit-Log-Tabellen zur Überprüfung von PostgreSQL-Index-Performance unter RLS.
 - [ ] **NPM-Skripte & CI-Gate:** Einbindung von `"perf:load": "k6 run scripts/perf/load-test.js"` in `package.json` und Dokumentation von Performance-Schwellenwerten (Thresholds).
+
+---
+
+## 19. Namespace-Isolation & Storage-Tiering (Benchmark: Legora & turbopuffer)
+
+- **Priorisierung:** Vorbereitung in Phase B (B.8.5, B.8.6), Vollständiger Enterprise-Rollout in Phase C.
+- **Ziel:** Schutz der PostgreSQL-Instanz vor RAM-Exhaustion durch ruhende Notariatsakten (Cold Data) sowie revisionssichere Mandanten-Isolation nach § 203 StGB mittels entkoppelter Namespaces und Object Storage Tiering.
+- **Ausgangslage:** Legal-AI-Systeme leiden unter der Asymmetrie von Zugriffsdaten: 95 % aller beurkundeten Vorgänge ruhen über Jahre (DONot / § 17 BeurkG). Ein unpartitionierter globaler `pgvector`-HNSW-Index im Arbeitsspeicher führt bei wachsenden Kanzleiarchiven zu Cache-Thrashing, explodierenden Serverkosten und Latenz-Spikes im Live-Betrieb.
+
+```mermaid
+graph TD
+    A["Aktiver Notar-Prüfvorgang (Phase B Ingestion)"] --> B["Global Context (Unicode + Vision) & Hot pgvector"]
+    B --> C["Beurkundung / Vollzug abgeschlossen (§ 17 BeurkG)"]
+    C --> D["Tiering-Job: Archivierungs-Worker"]
+    D --> E["1. Export Akten-Vektoren & Chunks (Parquet / Arrow)"]
+    D --> F["2. KMS-Verschlüsselung (Envelope Encryption pro Kanzlei)"]
+    D --> G["3. Persistierung in Supabase Object Storage (Cold Tier)"]
+    D --> H["4. PostgreSQL: Drop Partition / Zero In-Memory RAM"]
+    I["Mandanten-Suchanfrage / Einsicht"] --> J["Hybrid Retrieval: BM25 (tsvector) + on-demand Vector Stream"]
+    G --> J
+```
+
+### Kernfunktionen & Mehrwerte
+
+1. **Akten- und Kanzlei-basierte Namespaces:**
+   - Physische oder tabellarische Isolation (`dossier_chunks_partitioned` nach `organization_id` / `dossier_id`).
+   - Atomares, rückstandsfreies Löschen bei DSGVO-Löschbegehren oder Widerruf ohne aufwendige HNSW-Rebuilds.
+2. **Cold Storage Tiering (Supabase Storage / S3):**
+   - Vektoren und Chunk-Indizes ruhender Akten werden komprimiert in Object Storage ausgelagert.
+   - 0 € permanente RAM-Kosten für Altakten bei voller Wiederherstellbarkeit binnen Millisekunden.
+3. **Deterministische Hybrid-Suche mit RRF:**
+   - Kombination aus lexikalischer Volltextsuche (`tsvector` / `pg_trgm`) für exakte Ziffernfolgen (Flurstücke, Gemarkungen, Notar-Aktenzeichen, Geldbeträge) und semantischer Vektorsuche (`pgvector`) für juristische Klauselbedeutungen.
+   - Reciprocal Rank Fusion (RRF) führt beide Trefferlisten deterministisch zusammen.
+
+### Geplante Aufgaben
+
+- [ ] **Datenbank-Partitioning:** Evaluation von Postgres Table Partitioning (`PARTITION BY LIST (organization_id)`) für `dossier_chunks`.
+- [ ] **Cold-Storage Serializer:** Implementierung eines Export- und Rehydrierungs-Services (`src/lib/storage/dossier-tiering.ts`), der Chunks in verschlüsseltem Parquet-Format in Supabase Storage ablegt.
+- [ ] **Hybrid RRF Search Engine:** Erweiterung von `IKnowledgeRepository` und `SupabaseKnowledgeRepository` um kombiniertes BM25/Trigram- und pgvector-Matching mit konfigurierbaren RRF-Gewichten.
