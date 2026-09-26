@@ -68,20 +68,10 @@ export function getAiConfiguration(): AIModelProviderResult {
     extractionInstructions: {
       role: 'system',
       content: IMMOBILIEN_EXTRACTION_AGENT_PROMPT,
-      providerOptions: {
-        anthropic: {
-          cacheControl: { type: 'ephemeral' },
-        },
-      },
     },
     auditorInstructions: {
       role: 'system',
       content: NOTARY_AUDITOR_RECONCILER_PROMPT,
-      providerOptions: {
-        anthropic: {
-          cacheControl: { type: 'ephemeral' },
-        },
-      },
     },
   };
 }

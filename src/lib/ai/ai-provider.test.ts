@@ -54,9 +54,5 @@ describe('getAiConfiguration', () => {
     expect(config.extractionInstructions.role).toBe('system');
     expect(config.extractionInstructions.content).toContain('Notariat');
     expect(config.auditorInstructions.role).toBe('system');
-    // Prompt-Caching providerOptions
-    expect(config.extractionInstructions.providerOptions?.anthropic).toEqual({
-      cacheControl: { type: 'ephemeral' },
-    });
   });
 });

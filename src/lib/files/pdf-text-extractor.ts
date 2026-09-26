@@ -6,10 +6,12 @@ import { extractText, getDocumentProxy } from 'unpdf';
  */
 export async function extractPdfUnicodeText(buffer: Buffer | Uint8Array): Promise<string> {
   try {
-    const uint8 = new Uint8Array(buffer.byteLength);
-    uint8.set(buffer);
+    // Verwende einen sauberen, isolierten ArrayBuffer-Slice für Worker/structuredClone
+    const rawBuffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const isolatedCopy = new Uint8Array(rawBuffer.byteLength);
+    isolatedCopy.set(rawBuffer);
 
-    const doc = await getDocumentProxy(uint8);
+    const doc = await getDocumentProxy(isolatedCopy);
     const pagesText: string[] = [];
 
     for (let i = 1; i <= doc.numPages; i++) {
@@ -75,14 +77,18 @@ export async function extractPdfUnicodeText(buffer: Buffer | Uint8Array): Promis
     }
 
     // Fallback auf Standard extractText falls getDocumentProxy leer war
-    const result = await extractText(uint8);
+    const result = await extractText(isolatedCopy);
     if (Array.isArray(result.text)) {
       return result.text.join('\n').trim();
     }
     return String(result.text || '').trim();
   } catch (err: unknown) {
-    // Bei defektem Header oder unleserlichen PDF-Strukturen loggen und leer zurückgeben
-    console.warn('[pdf-text-extractor] Konnte Textlayer via unpdf nicht parsen:', err);
+    // Bei rein bildbasierten Scans, defektem Header oder unleserlichen PDF-Strukturen:
+    // Kein nativer Textlayer vorhanden -> Dual-Stream-Ingestion fällt planmäßig auf multimodale Bild-Analyse zurück.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.debug(
+      `[pdf-text-extractor] Kein nativer Textlayer extrahierbar (${msg}). Dual-Stream Ingestion nutzt multimodale Bildanalyse.`
+    );
     return '';
   }
 }

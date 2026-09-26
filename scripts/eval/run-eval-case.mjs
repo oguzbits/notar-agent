@@ -37,9 +37,14 @@ const promptfooArgs = [
   '--no-cache',
 ];
 
-if (isLive) {
-  promptfooArgs.push('-j', '1');
+let concurrency = isLive ? '3' : '4';
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '-j' || args[i] === '--concurrency') {
+    concurrency = args[i + 1] || concurrency;
+  }
 }
+
+promptfooArgs.push('-j', concurrency);
 
 if (pattern) {
   promptfooArgs.push('--filter-pattern', pattern);

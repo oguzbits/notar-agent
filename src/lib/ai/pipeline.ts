@@ -120,11 +120,6 @@ ${formattedNotes}
       },
     ],
     temperature: 0.1,
-    providerOptions: {
-      anthropic: {
-        cacheControl: { type: 'ephemeral' },
-      },
-    },
   });
 
   if (extractionResult.usage) {
@@ -316,11 +311,6 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     instructions: auditorInstructions,
     prompt: auditorContextPrompt,
     temperature: 0.1,
-    providerOptions: {
-      anthropic: {
-        cacheControl: { type: 'ephemeral' },
-      },
-    },
   });
 
   if (auditorResult.usage) {

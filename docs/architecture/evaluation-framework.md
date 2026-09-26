@@ -2,11 +2,11 @@
 
 ## 1. Ausgangslage & Zielsetzung
 
-Aktuell verfügt `notar-agent` über ein Golden Dataset aus **8 handkuratierten Akten** (`fall-01` bis `fall-08`).
+Aktuell verfügt `notar-agent` über ein Golden Dataset aus **10 handkuratierten Akten** (`fall-01` bis `fall-10`).
 
-- **Vorteil:** Schneller Smoke- & Regressionstest vor Commits / PRs.
-- **Defizit:** Keine statistische Signifikanz für Produktionsreife. 1 Ausreißer entspricht sofort 12,5 % Fehlerrate. Edge Cases (z. B. komplexe Erbbaurechte, Zwangsversteigerungsvermerke, variable Bildauflösungen) werden nicht abgedeckt.
-- **Ziel:** Skalierung von 8 statischen Akten auf ein **kontinuierliches, synthetisch generierbares Benchmark-System mit 100+ Testpermutationen**, RAG-Metriken und Perturbation-Stresstests nach dem Vorbild führender Document-Intelligence-Systeme (Reducto AI, LangSmith, Anthropic).
+- **Vorteil:** Schneller Smoke- & Regressionstest vor Commits / PRs (< 35s via `-j 3`).
+- **Defizit:** Keine statistische Signifikanz für extreme Massenläufe. 1 Ausreißer entspricht sofort 10 % Fehlerrate. Edge Cases (z. B. komplexe Erbbaurechte, Zwangsversteigerungsvermerke, variable Bildauflösungen) werden nicht abgedeckt.
+- **Ziel:** Skalierung von 10 statischen Akten auf ein **kontinuierliches, synthetisch generierbares Benchmark-System mit 100+ Testpermutationen**, RAG-Metriken und Perturbation-Stresstests nach dem Vorbild führender Document-Intelligence-Systeme (Reducto AI, LangSmith, Anthropic).
 
 ---
 

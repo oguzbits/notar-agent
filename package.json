@@ -29,7 +29,7 @@
     "eval:case:live": "node scripts/eval/run-eval-case.mjs --live",
     "eval:smoke": "node scripts/eval/run-eval-case.mjs 4",
     "eval:smoke:live": "node scripts/eval/run-eval-case.mjs 4 --live",
-    "eval:live": "PROMPTFOO_MODE=live promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache -j 1",
+    "eval:live": "PROMPTFOO_MODE=live promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache -j 3",
     "eval:view": "promptfoo view -p 15500",
     "test:e2e": "playwright test --last-failed-file=/dev/null; rm -rf test-results",
     "test:e2e:headed": "playwright test --headed --last-failed-file=/dev/null; rm -rf test-results",

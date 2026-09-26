@@ -45,8 +45,9 @@ graph TD
 
 ---
 
-## 3. Zukünftige Ausbaustufe (B.8 Serverless Ingestion Overhaul)
+## 3. Architektur-Status & Ausbaustufen
 
-- **Vercel AI SDK Core Refactoring:** Reasoning-First Pattern vor Typ-Bindung, modulare flache Sub-Schemas pro Dokumenttyp.
-- **Deterministisches Zitat-Grounding via `diff-match-patch`:** Zeichengenaue Verifikation von Beleg-Snippets auf dem PDF-Textlayer zur Vermeidung von Halluzinationen (§ 17 BeurkG Provenance).
-- **Gemini Context Caching:** Ephemeres Caching des Aktenkontexts bei großen Urkundensätzen (> 32k Tokens) $\rightarrow$ 90 % Kostenersparnis bei Reconciler-Schritten.
+- **Deterministisches Zitat-Grounding via `diff-match-patch` (Implementiert):**
+  Zeichengenaue Verifikation von Beleg-Snippets auf dem PDF-Textlayer zur Vermeidung von Halluzinationen (§ 17 BeurkG Provenance) mit exakter Koordinaten- und Offset-Lokalisierung.
+- **Serverless Ingestion Overhaul (B.8):**
+  Flache, modulare Zod-Sub-Schemas pro Dokumenttyp (Grundbuch, Energieausweis, Mietlisten) und selektives Windowing für Großakten (> 150 Seiten) bei 100 % Serverless-Kompatibilität.
