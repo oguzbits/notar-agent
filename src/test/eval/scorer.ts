@@ -1,3 +1,4 @@
+import { isEntityMatch } from '@/lib/dossier/entity-reconciliation';
 import { Dossier, FieldStatus, FIELD_STATUS } from '@/types/dossier';
 import { FieldOutcomeVerdict, JUDGE_VERDICT_STATUS } from '@/types/eval';
 import { GoldenTestCase } from './golden-dataset';
@@ -96,14 +97,21 @@ export function scoreDossierAgainstGroundTruth(
             break;
           }
         } else if (typeof vVal === 'string' && typeof actualVal === 'string') {
-          const cleanStr = (s: string) =>
-            s
-              .trim()
-              .toLowerCase()
-              .replace(/^(?:herr|frau)\s+/i, '');
-          if (cleanStr(vVal) !== cleanStr(actualVal)) {
+          // Kanonischer Entitäts- & Textabgleich via zentraler Produktionslogik (SSOT)
+          const isMatch =
+            vVal.trim().toLowerCase() === actualVal.trim().toLowerCase() ||
+            isEntityMatch(actualVal, vVal);
+
+          if (!isMatch) {
             valuesMatch = false;
             mismatchDetail = `Attribut "${vKey}": erwartet ${JSON.stringify(vVal)}, erhalten ${JSON.stringify(actualVal)}`;
+            break;
+          }
+        } else if (typeof vVal === 'number' && typeof actualVal === 'number') {
+          // Arithmetischer Toleranzbereich (0.01) für Rundungen
+          if (Math.abs(actualVal - vVal) > 0.01) {
+            valuesMatch = false;
+            mismatchDetail = `Attribut "${vKey}": erwartet ${vVal}, erhalten ${actualVal}`;
             break;
           }
         } else if (typeof vVal === 'object' && vVal !== null) {
@@ -186,44 +194,5 @@ export function scoreDossierAgainstGroundTruth(
     guardrailHitRate: Math.round(guardrailHitRate * 10) / 10,
     fieldVerdicts,
     details,
-  };
-}
-
-/**
- * Berechnet Standard-Perzentile (P50, P90, P95, P99) aus einer Latenz-Reihe.
- */
-export function calculatePercentiles(latenciesMs: number[]): {
-  p50: number;
-  p90: number;
-  p95: number;
-  p99: number;
-  min: number;
-  max: number;
-  avg: number;
-} {
-  if (latenciesMs.length === 0) {
-    return { p50: 0, p90: 0, p95: 0, p99: 0, min: 0, max: 0, avg: 0 };
-  }
-
-  const sorted = [...latenciesMs].sort((a, b) => a - b);
-  const getPercentile = (p: number) => {
-    const index = (p / 100) * (sorted.length - 1);
-    const lower = Math.floor(index);
-    const upper = Math.ceil(index);
-    const weight = index - lower;
-    if (lower === upper) return sorted[lower] ?? 0;
-    return (sorted[lower] ?? 0) * (1 - weight) + (sorted[upper] ?? 0) * weight;
-  };
-
-  const sum = sorted.reduce((acc, val) => acc + val, 0);
-
-  return {
-    p50: Math.round(getPercentile(50)),
-    p90: Math.round(getPercentile(90)),
-    p95: Math.round(getPercentile(95)),
-    p99: Math.round(getPercentile(99)),
-    min: Math.round(sorted[0] ?? 0),
-    max: Math.round(sorted[sorted.length - 1] ?? 0),
-    avg: Math.round(sum / sorted.length),
   };
 }

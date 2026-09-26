@@ -3,23 +3,9 @@ import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { JUDGE_VERDICT_STATUS } from '@/types/eval';
 import { GOLDEN_DATASET } from './golden-dataset';
-import { calculatePercentiles, scoreDossierAgainstGroundTruth } from './scorer';
+import { scoreDossierAgainstGroundTruth } from './scorer';
 
 describe('Eval Scorer & Metrics Calculation', () => {
-  it('correctly calculates percentiles (P50, P90, P95, P99)', () => {
-    // 100 Werte von 1 bis 100
-    const latencies = Array.from({ length: 100 }, (_, i) => (i + 1) * 10);
-    const p = calculatePercentiles(latencies);
-
-    expect(p.min).toBe(10);
-    expect(p.max).toBe(1000);
-    expect(p.p50).toBe(505);
-    expect(p.p90).toBe(901);
-    expect(p.p95).toBe(951);
-    expect(p.p99).toBe(990);
-    expect(p.avg).toBe(505);
-  });
-
   it('scores exact ground truth match as 100% accuracy and provenance', () => {
     // Verwende fall-04-standard-urkunde (Standard-Kaufvertrag mit 4 verifizierten Feldern)
     const testCase = GOLDEN_DATASET.find((c) => c.id === 'fall-04-standard-urkunde')!;
