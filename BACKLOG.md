@@ -1,6 +1,32 @@
-# Architektur-Roadmap Additions & Backlog
+# Notar Agent — Feature Backlog
 
-> **Kontext:** Ergänzende Module, optionale Features und nachgelagerte Bausteine aus der primären Architektur-Roadmap ([ARCHITECTURE_ROADMAP.md](./ARCHITECTURE_ROADMAP.md)).
+> **Kontext:** Nachgelagerte Zusatzmodule, optionale Ausbaustufen und Ideen zur Ergänzung der Kern-Roadmap ([ROADMAP.md](./ROADMAP.md)).
+> **Historischer Nachweis:** Fertiggestellte Module sind im [CHANGELOG.md](./CHANGELOG.md) archiviert.
+
+---
+
+### Inhaltsübersicht der Module
+
+| Modul                                                                                                                                           | Bereich                 | Status / Fokus                   |
+| :---------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------- | :------------------------------- |
+| **[1. Word-Urkunden-Engine](#1-word-urkunden-engine-template--openxml-pipeline)**                                                               | Dokumentgenerierung     | Backlog (Nachgelagert)           |
+| **[2. Zero-Data-Retention (ZDR)](#2-zero-data-retention-zdr-vertragskonfiguration-cloud-contractual)**                                          | Compliance              | Cloud Contractual                |
+| **[3. Kanzlei-Observability](#3-kanzlei-observability-crash-reporting--metriken-zero-overhead--production-ready)**                              | Monitoring & APM        | Sentry EU / Telemetrie           |
+| **[4. CI/CD- & Release-Pipeline](#4-automatisierte-cicd---release-pipeline-github-actions)**                                                    | DevOps & Deployment     | GitHub Actions / Dokploy         |
+| **[5. Production Hardening](#5-production-hardening-api-schutz--kanzlei-resilienz)**                                                            | Resilienz & Rate Limits | Upstash / Circuit Breaker        |
+| **[6. Kanzlei-Briefkopf & Branding](#6-kanzlei-briefkopf-corporate-identity--dokument-branding)**                                               | Dokumentenausgabe       | Multi-Tenant CI/CD               |
+| **[7. Kanzlei-Muster- & Klauselbibliothek](#7-kanzlei-muster---klauselbibliothek-vorlagenverwaltung)**                                          | Wissensmanagement       | Klausel-Manager                  |
+| **[8. Kanzlei-Vorgangsverwaltung](#8-kanzlei-vorgangsverwaltung--dashboard-dossier-übersicht)**                                                 | Dossier Cockpit         | Akten-Übersicht & Filter         |
+| **[9. Multi-Domain Expansion](#9-erweiterung-auf-weitere-rechtsgebiete-multi-domain-expansion)**                                                | Fachdomänen             | Erbbaurecht / GmbH / Ehe         |
+| **[10. Kanzlei-Auth & Rollen-UI](#10-kanzlei-authentifizierung-rollen-ui--session-management-auth--rbac-frontend)**                             | Auth & RBAC             | [x] Vollständig umgesetzt        |
+| **[11. Kanzlei-Wissensbasis UI](#11-kanzlei-wissensbasis--rag-inspektor-ui-begleit-ui-für-c3)**                                                 | RAG-Inspektor           | `/wissen` & Fundstellen          |
+| **[12. Fail-Fast Repository-Architektur](#12-fail-fast-repository-architektur--bereinigung-stiller-fallbacks-data-integrity--ssot)**            | Data Integrity & SSOT   | [x] Vollständig umgesetzt        |
+| **[13. Production Readiness & Go-Live](#13-production-readiness--go-live-architecture-custom-domain-ssl-supabase-custom-auth--enterprise-sso)** | Go-Live Setup           | Domain, SSL, Enterprise SSO      |
+| **[14. Kanzlei-Einladungs-Lifecycle](#14-kanzlei-einladungs-lifecycle--token-management-benchmark-github-org--supabase-dashboard)**             | Teamverwaltung          | `organization_invitations`       |
+| **[15. Enterprise Styling Tokens](#15-enterprise-styling-grundattribute--design-tokens-benchmark-linear-clerk--supabase)**                      | Design System           | `text-base` & Primitives         |
+| **[16. Storybook Component Workbench](#16-storybook-component-workbench--living-styleguide-benchmark-github-primer-radix-ui--supabase-ui)**     | Developer Experience    | Living Styleguide & a11y         |
+| **[17. Promptfoo Evaluation Matrix](#17-promptfoo-evaluation-matrix--web-dashboard-benchmark-enterprise-llmops)**                               | Quality Gate / LLMOps   | [x] Basis live, Skalierung offen |
+| **[18. k6 Lasttest-Suite](#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing)**                                   | Performance & Load      | Ingestion SLA & RLS Concurrency  |
 
 ---
 
@@ -35,40 +61,7 @@ graph LR
 
 ---
 
-## 2. Multi-LLM Provider-Adapter (AWS Bedrock / Azure / vLLM)
-
-- **Priorisierung:** Nachgelagertes Backlog / optionaler Enterprise-Schritt (aktuell sind Google Gemini und Anthropic Claude via Vercel AI SDK produktionsbereit angebunden).
-- **Ziel:** Vollständige Unabhängigkeit von einzelnen US-Cloud-Endpunkten, Unterstützung von EU-Only Cloud Tenants (AWS Bedrock Frankfurt, Azure EU Data Boundary) sowie On-Premises-Infrastruktur.
-- **Ausgangslage:** In bestimmten Kanzleiumgebungen (z. B. Großkanzleien, Bundeswehr-/Sicherheitsliegenschaften oder bei Mandaten mit höchsten Geheimhaltungsvorschriften) ist der Einsatz von Public APIs untersagt.
-
-```mermaid
-graph TD
-    A["Notar Agent AI Orchestrator (ai-provider.ts)"] --> B["Vercel AI SDK Provider Registry"]
-    B -->|"Standard Cloud (EU)"| C["Anthropic Claude (Direct API / AWS Bedrock Frankfurt)"]
-    B -->|"Standard Fast (EU)"| D["Google Gemini 3.5 Flash"]
-    B -->|"Enterprise Cloud (EU)"| E["Azure OpenAI (Frankfurt / Dublin)"]
-    B -->|"Air-Gapped / On-Premises"| F["Lokaler vLLM / Ollama Server (Llama 3.2 Vision / Pixtral)"]
-```
-
-### Kernfunktionen
-
-- **Dynamisches Provider-Routing:**
-  - Konfigurierbare Endpunkte je Tenant über Umgebungsvariablen oder Kanzlei-Settings.
-- **Zero-Code Switching:**
-  - Standardisierte Schnittstelle über das Vercel AI SDK (`LanguageModel`), sodass Ingestion (`pipeline.ts`) und Reconciler völlig provider-agnostisch bleiben.
-- **On-Premises Vision Fallback:**
-  - Anbindung von lokal gehosteten OpenAI-kompatiblen Endpunkten (`baseURL` Konfiguration für vLLM/Ollama).
-
-### Geplante Aufgaben
-
-- [ ] AWS Bedrock Provider-Integration (`@ai-sdk/amazon-bedrock`)
-- [ ] Azure OpenAI Provider-Integration (`@ai-sdk/azure`)
-- [ ] Lokaler vLLM/Ollama Adapter via OpenAI-kompatibler Schnittstelle
-- [ ] Tenant-spezifische Provider-Auswahl im Kanzlei-Profil
-
----
-
-## 3. Zero-Data-Retention (ZDR) Vertragskonfiguration (Cloud Contractual)
+## 2. Zero-Data-Retention (ZDR) Vertragskonfiguration (Cloud Contractual)
 
 - **Priorisierung:** Nachgelagertes Backlog / vertraglich-organisatorischer Schritt (ergänzend zu den technischen Hash- und Audit-Trail-Mechanismen aus Phase C.1).
 - **Ziel:** Vollständiger Ausschluss der Speicherung sensibler Mandantendaten bei externen LLM-Providern zur Einhaltung von § 203 StGB und DSGVO.
@@ -82,7 +75,7 @@ graph TD
 
 ---
 
-## 4. Kanzlei-Observability, Crash-Reporting & Metriken (Zero-Overhead & Production-Ready)
+## 3. Kanzlei-Observability, Crash-Reporting & Metriken (Zero-Overhead & Production-Ready)
 
 - **Priorisierung:** Schlankes Fundament für den Produktivbetrieb (ergänzend zum bestehenden juristischen Audit-Trail gem. § 17 ff. BeurkG).
 - **Ziel:** 100 % Industrie-Standard bei **minimaler betrieblicher Komplexität** („Boring Architecture“): Keine selbst gehosteten Monster-Cluster (wie ClickHouse/Redis/MinIO), sondern bewährte, wartungsfreie Managed-Lösungen mit strikter Einhaltung des Berufsgeheimnisses (§ 203 StGB).
@@ -115,7 +108,7 @@ graph LR
 
 ---
 
-## 5. Automatisierte CI/CD- & Release-Pipeline (GitHub Actions)
+## 4. Automatisierte CI/CD- & Release-Pipeline (GitHub Actions)
 
 - **Priorisierung:** Nachgelagertes Backlog / DevOps-Fundament für Produktivüberführung.
 - **Ziel:** Garantierte Ausfallsicherheit und Regression-Schutz bei jedem Release durch automatisierte Quality-Gates, Headless-E2E-Tests und Zero-Downtime-Deployments.
@@ -159,7 +152,7 @@ graph LR
 
 ---
 
-## 6. Production Hardening, API-Schutz & Kanzlei-Resilienz
+## 5. Production Hardening, API-Schutz & Kanzlei-Resilienz
 
 - **Priorisierung:** Sicherheits- und Betriebshärtung für den ununterbrochenen Kanzleialltag.
 - **Ziel:** Schutz vor DoS-/Kosten-Explosion, Eliminierung von Datenverlusten bei Netzwerkunterbrechungen und Einhaltung notarieller Aufbewahrungs- und Löschfristen (DONot).
@@ -208,7 +201,7 @@ graph TD
 
 ---
 
-## 7. Kanzlei-Briefkopf, Corporate Identity & Dokument-Branding
+## 6. Kanzlei-Briefkopf, Corporate Identity & Dokument-Branding
 
 - **Priorisierung:** Kanzlei-Präsentation & Druckreife (Wesentliches Notar Agent-Feature).
 - **Ziel:** Medienbruchfreier Export von Urkunden, Entwürfen, Anschreiben und Vollzugsdokumenten direkt auf dem offiziellen Kanzlei-Briefpapier des Notariats.
@@ -239,7 +232,7 @@ graph LR
 
 ---
 
-## 8. Kanzlei-Muster- & Klauselbibliothek (Vorlagenverwaltung)
+## 7. Kanzlei-Muster- & Klauselbibliothek (Vorlagenverwaltung)
 
 - **Priorisierung:** Praxis-Effizienz & Kanzlei-Standardisierung (Vergleichbar mit Notar Agent Regelungsbibliothek).
 - **Ziel:** Kanzleien können ihre bewährten Standard-Vertragsmuster und individuellen Sonderklauseln hinterlegen und modular zusammenstellen, statt generische Standardtexte zu nutzen.
@@ -272,7 +265,7 @@ graph TD
 
 ---
 
-## 9. Kanzlei-Vorgangsverwaltung & Dashboard (Dossier-Übersicht)
+## 8. Kanzlei-Vorgangsverwaltung & Dashboard (Dossier-Übersicht)
 
 - **Priorisierung:** Kanzlei-Workflow & Team-Kollaboration.
 - **Ziel:** Ganzheitliche Übersicht aller laufenden und abgeschlossenen Vorgänge einer Kanzlei, Zuweisung von Sachbearbeitern und Notaren sowie Fristenüberwachung.
@@ -303,7 +296,7 @@ graph LR
 
 ---
 
-## 10. Erweiterung auf weitere Rechtsgebiete (Multi-Domain Expansion)
+## 9. Erweiterung auf weitere Rechtsgebiete (Multi-Domain Expansion)
 
 - **Priorisierung:** Plattform-Skalierung (Gleichzug mit den 10 Urkundentypen von Notar Agent).
 - **Ziel:** Strukturierte Datenerfassung, Extraktion und Prüfung für Gesellschafts-, Erb- und Familienrecht über Liegenschaften hinaus.
@@ -325,7 +318,7 @@ graph LR
 
 ---
 
-## 11. Kanzlei-Authentifizierung, Rollen-UI & Session-Management (Auth & RBAC Frontend)
+## 10. Kanzlei-Authentifizierung, Rollen-UI & Session-Management (Auth & RBAC Frontend)
 
 - **Priorisierung:** Kanzlei-Sicherheit & Berechtigungssteuerung (Ergänzung zu C.2).
 - **Ziel:** Grafische Benutzeroberfläche zur Mitarbeiter- und Rollenverwaltung, Login-Flow mit Supabase Auth und rollenbasierte Aktionsfreigaben (RBAC) im Notariats-Cockpit.
@@ -366,11 +359,11 @@ graph TD
 - [x] Team- & Rollenverwaltungs-View (`src/components/views/TeamSettingsView.tsx` mit Mitglieder-Tabelle, Rollenwechsel & Einladungsdialog)
 - [x] RBAC-Engine & Hook (`src/lib/auth/rbac.ts`, `useAuth()`) zur rollenbasierten Aktionssteuerung im Cockpit (z.B. Deaktivierung der Aktenlöschung für Sachbearbeiter gem. § 18 BNotO)
 - [x] Integration der `actorRole` in Status-Overrides & Audit-Trail-Events
-- [ ] Login-Page (`src/app/login/page.tsx`) mit Supabase Auth Formular & Middleware-Session-Guard
+- [x] Login-Page (`src/app/login/page.tsx`) mit Supabase Auth Formular & Middleware-Session-Guard (`src/proxy.ts` / `src/lib/supabase/middleware.ts`)
 
 ---
 
-## 12. Kanzlei-Wissensbasis & RAG-Inspektor UI (Begleit-UI für C.3)
+## 11. Kanzlei-Wissensbasis & RAG-Inspektor UI (Begleit-UI für C.3)
 
 - **Priorisierung:** Kanzlei-Transparenz & Wissensmanagement (Ergänzung zu C.3).
 - **Ziel:** Eine grafische Maske zum Verwalten und Einsehen von Kanzlei-Standards, DNotI-Gutachten und Zwischenverfügungs-Präzedenzfällen der zuständigen Amtsgerichte.
@@ -403,7 +396,7 @@ graph LR
 
 ---
 
-## 13. Fail-Fast Repository-Architektur & Bereinigung stiller Fallbacks (Data Integrity & SSOT)
+## 12. Fail-Fast Repository-Architektur & Bereinigung stiller Fallbacks (Data Integrity & SSOT)
 
 - **Priorisierung:** Datenintegrität & Revisionssicherheit (Single Source of Truth gem. AGENTS.md).
 - **Ziel:** Beseitigung stiller Fallbacks bei Datenbankausfällen: PostgreSQL als Single Source of Truth mit transparentem Fehlerabbruch (`throw new Error`).
@@ -440,7 +433,7 @@ graph TD
 
 ---
 
-## 14. Production Readiness & Go-Live Architecture (Custom Domain, SSL, Supabase Custom Auth & Enterprise SSO)
+## 13. Production Readiness & Go-Live Architecture (Custom Domain, SSL, Supabase Custom Auth & Enterprise SSO)
 
 - **Priorisierung:** Kritischer Meilenstein für den echten Produktivbetrieb (Go-Live Readiness).
 - **Ziel:** Bereitstellung einer gehärteten, hochverfügbaren und berufsrechtskonformen Betriebsumgebung für **Notar Agent** unter eigener Kanzlei-Domain ohne Prototyp-Artefakte.
@@ -516,9 +509,9 @@ graph TD
 
 ---
 
-## 15. Kanzlei-Einladungs-Lifecycle & Token-Management (Benchmark: GitHub Org / Supabase Dashboard)
+## 14. Kanzlei-Einladungs-Lifecycle & Token-Management (Benchmark: GitHub Org / Supabase Dashboard)
 
-- **Priorisierung:** Qualitäts- und Sicherheits-Optimierung für die Kanzlei-Teamverwaltung (Ergänzung zu Modul 11).
+- **Priorisierung:** Qualitäts- und Sicherheits-Optimierung für die Kanzlei-Teamverwaltung (Ergänzung zu Modul 10).
 - **Ziel:** Beseitigung sofortiger Dummy-Member-Einträge bei Einladungen. Strikte Trennung zwischen aktiven Mitgliedern und ausstehenden Einladungen nach modernem B2B-Standard.
 - **Ausgangslage:** Beim Einladen eines neuen Mitarbeiters über `/api/team` wurde bisher sofort eine synthetische `user_id` direkt in `organization_members` erzeugt. In echten Systemen existiert dafür ein gesonderter Einladungs-Status mit kryptografischem Token, Ablaufzeit und Kanzlei-Akzeptierungsflow.
 
@@ -540,7 +533,7 @@ graph TD
 
 ---
 
-## 16. Enterprise Styling Grundattribute & Design Tokens (Benchmark: Linear, Clerk & Supabase)
+## 15. Enterprise Styling Grundattribute & Design Tokens (Benchmark: Linear, Clerk & Supabase)
 
 - **Priorisierung:** Hohe UX- und Konsistenz-Priorität für das Kanzlei-Frontend (Design-System-Fundament).
 - **Ziel:** Einheitliche, mathematisch harmonische Definition aller visuellen Grundattribute über das gesamte System hinweg, um inkonsistente Schriftgrößen, gestauchte Menüs oder willkürliche Abstände dauerhaft auszuschließen.
@@ -587,9 +580,9 @@ graph TD
 
 ---
 
-## 17. Storybook Component Workbench & Living Styleguide (Benchmark: GitHub Primer, Radix UI & Supabase UI)
+## 16. Storybook Component Workbench & Living Styleguide (Benchmark: GitHub Primer, Radix UI & Supabase UI)
 
-- **Priorisierung:** Nachgelagertes Developer-Experience- und QA-Modul (optimale Ergänzung zu Modul 16 „Enterprise Styling & Design Tokens“).
+- **Priorisierung:** Nachgelagertes Developer-Experience- und QA-Modul (optimale Ergänzung zu Modul 15 „Enterprise Styling & Design Tokens“).
 - **Ziel:** Isolierte Entwicklungs- und Dokumentationsumgebung für alle Kanzlei-UI-Primitives (`src/components/ui/*`) und zusammengesetzten Notar-Dossier-Komponenten.
 - **Ausgangslage:** UI-Komponenten werden bisher ausschließlich im Kontext laufender Next.js-Routen, Server-Sessions und voller Fach-Views entwickelt. Randfälle, Barrierefreiheit (a11y) und der geforderte 4-Zustände-Quadrant (_Empty_, _Loading/Skeleton_, _Error/Retry_, _Mutating/Pending_) lassen sich im vollen App-Kontext nur mit manuellem Aufwand reproduzieren.
 - **Industrie-Referenz:**
@@ -629,7 +622,7 @@ graph TD
 
 ---
 
-## 18. Promptfoo Evaluation Matrix & Web-Dashboard (Benchmark: Enterprise LLMOps)
+## 17. Promptfoo Evaluation Matrix & Web-Dashboard (Benchmark: Enterprise LLMOps)
 
 - **Priorisierung:** Vertiefendes Qualitäts- und Verifikations-Modul (Erweiterung zu Roadmap Phase A.4 / A.5).
 - **Ziel:** Visuelle Matrix-Gegenüberstellung verschiedener Prompt-Varianten und LLM-Modelle (Gemini 3.8 Flash vs. Claude 3.5 Sonnet vs. GPT-4o) im interaktiven Web-Dashboard zur Vermeidung von Regressionen bei Prompt-Änderungen.
@@ -662,9 +655,53 @@ graph TD
 
 ### Geplante Aufgaben
 
-- [ ] **Promptfoo Setup:** Installation von `promptfoo` als Dev-Dependency (`npm i -D promptfoo`).
-- [ ] **Konfigurationsdatei:** Anlegen von `promptfooconfig.yaml` mit Verknüpfung zu `src/test/eval/golden-dataset.ts`.
-- [ ] **Custom Assertion Adapter:** Kapselung von `scoreDossierAgainstGroundTruth()` aus `src/test/eval/scorer.ts` als wiederverwendbare Promptfoo-Assertion.
-- [ ] **Multi-Provider Testmatrix:** Konfiguration von Provider-Endpunkten für Gemini 3.8 Flash und Claude 3.5 Sonnet.
-- [ ] **NPM-Skripte:** Hinzufügen von `"eval:promptfoo": "promptfoo eval"` und `"eval:view": "promptfoo view"` in `package.json`.
-- [ ] **CI/CD Integration:** Einbindung in die GitHub Actions / Husky Quality Gates als optionaler Regression-Check.
+- [x] **Promptfoo Setup:** Installation von `promptfoo` als Dev-Dependency (`npm i -D promptfoo`).
+- [x] **Konfigurationsdatei:** Anlegen von `config/promptfoo.yaml` mit Verknüpfung zu `src/test/eval/golden-dataset.ts`.
+- [x] **Custom Assertion Adapter:** Kapselung von `scoreDossierAgainstGroundTruth()` aus `src/test/eval/scorer.ts` als wiederverwendbare Promptfoo-Assertion (`src/test/eval/promptfoo-assertion.ts`).
+- [x] **Multi-Provider Testmatrix:** Konfiguration von Provider-Endpunkten für Gemini 3.8 Flash und Claude 3.5 Sonnet.
+- [x] **NPM-Skripte:** Hinzufügen von `"eval": "promptfoo eval..."`, `"eval:case:live"` und `"eval:view": "promptfoo view -p 15500"` in `package.json`.
+- [x] **CI/CD Integration:** Einbindung in die Quality Gates als Regression-Check.
+- [ ] **Skalierung & Perturbation-Matrix (Next):** Ausbau von 8 auf 100+ synthetische Fälle & RAGAS-Metriken (siehe [docs/architecture/evaluation-framework.md](./docs/architecture/evaluation-framework.md)).
+
+---
+
+## 18. k6 API- & Supabase-Lasttest-Suite (Benchmark: Grafana k6 Enterprise Load Testing)
+
+- **Priorisierung:** Nachgelagertes Infrastruktur- und Stabilitäts-Modul (optimal vor dem Produktiv-Rollout und Multi-Kanzlei-Betrieb; Ergänzung zu Roadmap Phase B.1 / B.4 / B.5).
+- **Ziel:** Nachweis der Systemstabilität, Latenzgrenzen (P95/P99) und Durchsatzkapazitäten der Next.js API-Routen, Serverless-Endpunkte und PostgreSQL-RLS-Datenbank unter realistischer Kanzlei-Gleichzeitigkeitslast.
+- **Ausgangslage:** Das System verfügt über deterministische Unit-/Integrations-Tests (Vitest), UI-E2E-Tests (Playwright) und fachliche LLM-Evaluations (Promptfoo). Was bisher fehlt, ist ein gezielter Stresstest für Spitzenzeiten im Kanzleibetrieb (z. B. morgendlicher Upload-Peak um 09:00 Uhr, gleichzeitige Mandantenabfragen über SSE oder parallele Audit-Log-Schreibvorgänge).
+- **Klare Abgrenzung zu Promptfoo & Vitest:**
+  - **Promptfoo/Vitest:** Prüfen die _fachliche Korrektheit_ (10 Pflichtfelder, Zitate, RAG Context Recall, Zero Hallucinations).
+  - **k6:** Prüft die _technische Infrastruktur_ (HTTP Throughput, P95/P99 Latenz, PostgreSQL Connection Pool Limits, RLS Query-Degradation unter Concurrency). Es werden primär Mock-Ingestion- und DB-Endpunkte gestresst, um teure LLM-Provider-Tokens zu schonen.
+- **Industrie-Referenz:**
+  - **Grafana k6 (Open-Source):** Moderner Standard für skriptbasierte Load-, Stress- und Spike-Tests in JavaScript/TypeScript mit minimalem Ressourcen-Overhead.
+  - **Supabase Performance Guidelines:** Stresstests für Supavisor/pgbouncer Connection Pooling und RLS-Policy-Evaluation via k6.
+
+```mermaid
+graph TD
+    A["k6 Load Runner (CLI / GitHub Actions)"] --> B["Test-Szenarien (scripts/perf/k6-*.js)"]
+    B --> C["1. Peak Ingestion Smoke: Concurrent Job-Uploads (202 Accepted < 250ms)"]
+    B --> D["2. SSE-Stream Concurrency: 50+ parallele Client-Verbindungen"]
+    B --> E["3. RLS-Query Stress: Multi-Tenant Abfragen (P95 < 200ms)"]
+    B --> F["4. Audit-Log Ingestion: Append-Only Hash-Chaining Durchsatz"]
+    C & D & E & F --> G["Metriken-Dashboard: P90/P95/P99 Latenz, Error-Rate, Throughput"]
+```
+
+### Kernfunktionen & Mehrwerte
+
+1. **Absicherung der 202-Accepted Ingestion-SLA (< 250 ms):**
+   - Sicherstellen, dass `POST /api/dossiers/upload` auch bei 50 gleichzeitigen Upload-Requests sofort `202 Accepted` quittiert, ohne den Webserver zu blockieren.
+2. **PostgreSQL RLS & Connection-Pool Härtung:**
+   - Validierung der Supabase Connection Pooler Konfiguration (Supavisor) unter Last: Keine Connection-Exhaustion oder Timeouts bei gleichzeitigen Abfragen mit `x-organization-id`.
+3. **SSE Connection Scale & Memory Leak Detection:**
+   - Messung des Ressourcenverbrauchs (Memory, Socket Descriptors), wenn 50+ Sachbearbeiter gleichzeitig SSE-Streams für aktive Jobs offen halten.
+4. **Vermeidung teurer LLM-Kosten bei Lasttests:**
+   - Einsatz von Mock-Providern oder dedizierten Mock-Job-Pipelines im Test-Environment, sodass Millionen HTTP-Requests gefahren werden können, ohne OpenAI/Anthropic/Gemini Rechnungen zu erzeugen.
+
+### Geplante Aufgaben
+
+- [ ] **k6 Script-Architektur:** Erstellung des Verzeichnisses `scripts/perf/` mit Basiskonfiguration und Hilfsfunktionen (Auth-Header, Tenant-IDs).
+- [ ] **Szenario 1 (Upload & Ingestion):** Stresstest für den Datei-Upload und Job-Enqueueing (`POST /api/dossiers/upload`) mit Ziel P95 < 250 ms bei 20 virtuellen Nutzern (VUs).
+- [ ] **Szenario 2 (Job Status & SSE Streaming):** Lasttest auf Job-Status-Endpunkte und SSE-Polling unter gleichzeitigen Verbindungen.
+- [ ] **Szenario 3 (Multi-Tenant RLS & Cockpit Read):** Lese-Lasttest auf Dossier- und Audit-Log-Tabellen zur Überprüfung von PostgreSQL-Index-Performance unter RLS.
+- [ ] **NPM-Skripte & CI-Gate:** Einbindung von `"perf:load": "k6 run scripts/perf/load-test.js"` in `package.json` und Dokumentation von Performance-Schwellenwerten (Thresholds).

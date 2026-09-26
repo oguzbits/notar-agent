@@ -69,6 +69,15 @@ Every feature and modification must satisfy these technical invariants:
 - Prior to making architectural decisions, recommending models (e.g. Google Gemini, Anthropic Claude, OpenAI), or modifying AI providers, agents MUST proactively verify the actual current state (e.g. via `search_web` or documentation tools).
 - In code, model strings must remain decoupled via configuration schemas (`src/env.ts`, `.env`) and never be hardcoded into business logic.
 
+11. **Documentation Hierarchy & Lifecycle (Zero Roadmap Drift & Strict Separation of Concerns):**
+
+- Documentation strictly adheres to the **4-Tier Agentic Documentation Standard**:
+  1.  **System Constitution (`AGENTS.md`):** System rules, invariants, and enforcement mechanisms. Zero task lists, checklists, or progress tracking.
+  2.  **Active Work Plan (`ROADMAP.md`):** The **singular Single Source of Truth** for open phases and upcoming tasks of the active development cycle. No secondary or parallel roadmap file is permitted. Completed tasks (`[x]`) are immediately moved to the revision history.
+  3.  **Ideas & Feature Backlog (`BACKLOG.md`):** Unscheduled follow-up modules, future extension concepts, and out-of-scope ideas kept outside the active execution focus.
+  4.  **Revision History (`CHANGELOG.md`):** Complete, chronological archive of all finished milestones and verifiable implementation receipts.
+  5.  **Timeless Architecture Specifications (`docs/architecture/*.md`, `docs/overview.md`):** Explain the _"why"_, system boundaries, schemas, and data flow. Specifications must **never contain task checklists or to-do boxes**; tasks belong exclusively in `ROADMAP.md`.
+
 ---
 
 ## 3. Design System & UI Standards

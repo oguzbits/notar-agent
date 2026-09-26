@@ -135,12 +135,13 @@ Kein Rechtsdokument verlässt das System ohne definierte Freigabeschranken:
 
 ---
 
-## 3. Roadmap: Wie wir unseren Prototyp schrittweise überführen
+## 3. Roadmap & Phasen-Status
 
-Wir müssen das Rad nicht komplett neu erfinden, sondern bauen das bestehende System entlang dieser 5 Stufen evolutionär aus:
+Die konkrete Umsetzung dieser 5-Stufen-Architektur wird im zentralen Fortschrittstracker in [ROADMAP.md](../../ROADMAP.md) (Phase A.2, Phase B.2, Phase B.8 sowie Phase C.3) gepflegt:
 
-- [x] **Schritt 1 (Erledigt):** Database-First SSOT für rechtliche Normen (`knowledge_documents` in PostgreSQL).
-- [x] **Schritt 2 (Erledigt):** Bereinigung von Fachdaten und Paragraphen aus Prompts & TypeScript-Code.
-- [ ] **Schritt 3 (Als Nächstes):** Zod-Feldvalidierung & Deterministische Guardrails (Mathematik & Datumsfristen zu 100 % in TypeScript-Code).
-- [ ] **Schritt 4:** Paginierte Beleg-Provenienz & Audit-Trail-Verknüpfung (§ 17 BeurkG).
-- [ ] **Schritt 5:** Hybrid Search (Vektor-Embeddings via `pgvector` + Volltextsuche `tsvector`).
+- [x] **Schritt 1 (Database-First SSOT):** Materielle Rechtsnormen in `knowledge_documents` (PostgreSQL), Code und Prompts vollständig frei von Gesetzes-Strings.
+- [x] **Schritt 2 (Dual-Stream Ingestion):** Introspektion auf Byte-Ebene (`pdf-stream-classifier.ts`) und verlustfreie Unicode-Textextraktion (`pdf-text-extractor.ts`).
+- [x] **Schritt 3 (Deterministische Guardrails & Fact Checking):** Mathematische Prüfungen (Zahlungsraten, Stammkapital) und Zitationsabgleich via `verifiable-fact-checker.ts`.
+- [x] **Schritt 4 (Audit-Trail & Revisionssicherheit):** Append-Only Event-Tabelle (`audit_logs`) mit SHA-256 Hash-Chaining (§ 17 ff. BeurkG).
+- [x] **Schritt 5 (Hybrid Search):** `pgvector`-Embeddings + BM25 Volltextsuche via `src/lib/knowledge/hybrid-search.ts`.
+- [ ] **Nächster Ausbauschritt:** Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK Core Refactoring, flache Sub-Schemas, Gemini Ephemeral Context Caching & diff-match-patch Zitat-Grounding). Details siehe [ROADMAP.md § B.8](../../ROADMAP.md).
