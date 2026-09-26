@@ -505,3 +505,13 @@ if (IS_JSON_OUTPUT) {
   console.log('-------------------------------------------------------------');
   console.log(`📄 Detaillierter Markdown-Report: reports/codebase-health.md\n`);
 }
+
+// -------------------------------------------------------------
+// Deterministic Quality Gate (Threshold Enforcement)
+// -------------------------------------------------------------
+const MIN_REQUIRED_HEALTH_SCORE = 90;
+
+if (results.scores.overall < MIN_REQUIRED_HEALTH_SCORE) {
+  console.error(`❌ REPO HEALTH AUDIT FAILED: Health Score ${results.scores.overall}/100 liegt unter dem Schwellenwert von ${MIN_REQUIRED_HEALTH_SCORE}!\n`);
+  process.exit(1);
+}

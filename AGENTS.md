@@ -116,7 +116,8 @@ _(Fast Path Exception: Pure CSS styling, copy changes in leaf components, or mar
 - **Contract First:** Canonical schemas in `src/types/`.
 - **TDD:** Write or update a failing test before implementation (`npx vitest run <path>`).
 - **Surgical Implementation:** Minimal diff satisfying tests and compiler checks.
-- **Quality Gates:** `npm run check` (Type-check, Lint, Depcruise, Knip, Magic Strings, Duplication) and `npm test` passing with 0 errors.
+- **Quality Gates:** `npm run check` (Type-check, Lint, Depcruise, Knip, Magic Strings, Duplication, Repo-Health Score >= 90/100) and `npm test` passing with 0 errors.
+- **Deterministic Refactoring Triggers:** Refactoring is event-driven, not speculative: (1) Rule of Three (extract only on 3rd identical use case), (2) Feature additions modifying an existing imperative hotspot, (3) Codebase Health Score dropping below 90/100, or (4) High cognitive load during debugging. Speculative abstractions remain strictly prohibited.
 - **Visual Self-Verification:** UI changes must be inspected via headless browser / Playwright to confirm zero CLS and responsive hierarchy before completion.
 - **Supabase MCP Database Sync:** When a task introduces or modifies database migrations (`supabase/migrations/*.sql`), always inspect the project via the Supabase MCP tools (`apply_migration` / `execute_sql`). Either apply and verify the migration live using Supabase MCP, OR explicitly flag it as an open item in the DoD receipt under `Explicitly Out-of-Scope`. Never leave a database sync implicit or unaddressed.
 - **Zero Unauthorized Git Commits:** Never run `git commit` or `git push` autonomously. Always present verified changes and await explicit user confirmation.
