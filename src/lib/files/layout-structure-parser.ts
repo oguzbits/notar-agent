@@ -121,6 +121,13 @@ export function parseDocumentLayoutStructure(rawText: string): StructuredDocumen
     }
   };
 
+  const formatBlockToMarkdown = (block: StructuredBlock): string => {
+    if (block.type === 'table') return `\n${block.content}\n`;
+    const prefix = block.type === 'department' ? '## ' : block.type === 'clause' ? '### ' : '';
+    const titleHeader = block.title ? `\n${prefix}${block.title}\n` : '';
+    return block.content ? `${titleHeader}\n${block.content}` : titleHeader;
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line === undefined) continue;
@@ -128,9 +135,7 @@ export function parseDocumentLayoutStructure(rawText: string): StructuredDocumen
 
     if (!trimmed) {
       flushTable();
-      if (currentBlockLines.length > 0) {
-        currentBlockLines.push('');
-      }
+      if (currentBlockLines.length > 0) currentBlockLines.push('');
       continue;
     }
 
@@ -158,7 +163,6 @@ export function parseDocumentLayoutStructure(rawText: string): StructuredDocumen
     const cols = splitColumns(line);
     if (cols.length >= 2) {
       currentTableLines.push(line);
-      continue;
     } else {
       flushTable();
       currentBlockLines.push(line);
@@ -167,22 +171,7 @@ export function parseDocumentLayoutStructure(rawText: string): StructuredDocumen
 
   flushBlock();
 
-  // Markdown-Repräsentation zusammensetzen
-  const markdownParts: string[] = [];
-
-  for (const block of blocks) {
-    if (block.type === 'department' && block.title) {
-      markdownParts.push(`\n## ${block.title}\n`);
-      if (block.content) markdownParts.push(block.content);
-    } else if (block.type === 'clause' && block.title) {
-      markdownParts.push(`\n### ${block.title}\n`);
-      if (block.content) markdownParts.push(block.content);
-    } else if (block.type === 'table') {
-      markdownParts.push(`\n${block.content}\n`);
-    } else {
-      if (block.content) markdownParts.push(block.content);
-    }
-  }
+  const markdownParts = blocks.map(formatBlockToMarkdown);
 
   const structuredMarkdown = hasStructuredBlocks
     ? markdownParts

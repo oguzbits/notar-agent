@@ -74,22 +74,7 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
     const rows = data as Record<string, unknown>[];
 
     return rows.map((row) => ({
-      document: {
-        id: String(row.id),
-        organizationId: row.organization_id ? String(row.organization_id) : null,
-        category: row.category as KnowledgeDocument['category'],
-        legalBasis: String(row.legal_basis),
-        courtOrAuthority: row.court_or_authority ? String(row.court_or_authority) : undefined,
-        title: String(row.title),
-        content: String(row.content),
-        triggerKeywords: Array.isArray(row.trigger_keywords)
-          ? (row.trigger_keywords as string[])
-          : [],
-        isGlobal: Boolean(row.is_global ?? false),
-        suggestedAction: row.suggested_action ? String(row.suggested_action) : undefined,
-        createdAt: String(row.created_at || new Date().toISOString()),
-        updatedAt: String(row.updated_at || new Date().toISOString()),
-      },
+      document: this.mapRowToDocument(row),
       bm25Score: Number(row.bm25_score ?? 0),
       vectorScore: Number(row.vector_score ?? 0),
       combinedScore: Number(row.combined_score ?? 0),
@@ -98,18 +83,15 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
   }
 
   async getStatutoryRules(organizationId?: string | null): Promise<KnowledgeDocument[]> {
-    let query = this.supabase
+    const filter = organizationId
+      ? `organization_id.is.null,organization_id.eq.${organizationId}`
+      : 'organization_id.is.null';
+
+    const { data, error } = await this.supabase
       .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
       .select('*')
-      .eq('category', KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM);
-
-    if (organizationId) {
-      query = query.or(`organization_id.is.null,organization_id.eq.${organizationId}`);
-    } else {
-      query = query.is('organization_id', null);
-    }
-
-    const { data, error } = await query;
+      .eq('category', KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM)
+      .or(filter);
     if (error || !data) {
       throw new Error(
         `Supabase getStatutoryRules fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
@@ -117,7 +99,12 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
     }
 
     const rows = data as Record<string, unknown>[];
-    return rows.map((row) => ({
+    return rows.map((row) => this.mapRowToDocument(row));
+  }
+
+  private mapRowToDocument(row: Record<string, unknown>): KnowledgeDocument {
+    const nowIso = new Date().toISOString();
+    return {
       id: String(row.id),
       organizationId: row.organization_id ? String(row.organization_id) : null,
       category: row.category as KnowledgeDocument['category'],
@@ -130,8 +117,8 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
         : [],
       isGlobal: Boolean(row.is_global ?? false),
       suggestedAction: row.suggested_action ? String(row.suggested_action) : undefined,
-      createdAt: String(row.created_at || new Date().toISOString()),
-      updatedAt: String(row.updated_at || new Date().toISOString()),
-    }));
+      createdAt: String(row.created_at ?? nowIso),
+      updatedAt: String(row.updated_at ?? nowIso),
+    };
   }
 }

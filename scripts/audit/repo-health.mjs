@@ -301,7 +301,8 @@ try {
       .replace(/\/(?:\\.|[^\/\\\n])+\/[gimsuy]*/g, '');
     const ifs = (cleanCode.match(/\bif\s*\(/g) || []).length;
     const switches = (cleanCode.match(/\bswitch\s*\(/g) || []).length;
-    const ternaries = (cleanCode.match(/\?[^?.:]/g) || []).length;
+    // Nur echte ternäre Operatoren (a ? b : c) zählen, keine Nullish Coalescing (??) oder Optional Chaining (?.)
+    const ternaries = (cleanCode.match(/[^?]\s*\?[^?.:][^:]*:/g) || []).length;
     const catches = (cleanCode.match(/\bcatch\s*(\(|{)/g) || []).length;
     const loops = (cleanCode.match(/\b(for|while)\s*\(/g) || []).length;
     const totalComplexity = ifs + switches * 2 + ternaries + loops * 1.5 + catches;

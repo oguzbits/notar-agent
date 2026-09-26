@@ -60,6 +60,12 @@ function parseGermanOrIsoDate(raw: string): string | null {
   return null;
 }
 
+function isCorporateEntity(legalForm?: string): boolean {
+  if (!legalForm) return false;
+  const form = legalForm.toLowerCase().trim();
+  return !['natürliche person', 'privatperson', 'einzelperson'].includes(form);
+}
+
 /**
  * Deklarative Guardrail-Regeln (Separation of Policy and Mechanism gem. AGENTS.md)
  * Jede Regel kapselt eine isolierte fachliche Integritätsprüfung.
@@ -91,27 +97,25 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
     name: 'Eigentümeridentität und Vertretungsnachweis des Verkäufers',
     evaluate({ fields }) {
       const field = fields['verkaeufer'];
-      if (!field || !field.data || field.status !== FIELD_STATUS.VERIFIED) return;
+      if (!field?.data || field.status !== FIELD_STATUS.VERIFIED) return;
 
       const vResult = VerkaeuferDataSchema.partial().safeParse(field.data);
       const vData = vResult.success ? vResult.data : {};
 
       const owners = vData.registeredOwnersGrundbuch;
-      if (Array.isArray(owners) && owners.length > 0 && vData.name) {
-        const matchesOwner = owners.some((owner) => isEntityMatch(vData.name || '', owner));
-        if (!matchesOwner && !vData.representationProofProvided) {
-          flagField(
-            field,
-            FIELD_STATUS.NEEDS_REVIEW,
-            'Eigentümer lt. Grundbuch weicht vom handelnden Verkäufer ab – Nachweis der Verfügungsbefugnis oder Erbnachweis erforderlich.'
-          );
-        }
+      const hasOwners = Array.isArray(owners) && owners.length > 0 && Boolean(vData.name);
+      const matchesOwner =
+        hasOwners && owners.some((owner) => isEntityMatch(vData.name || '', owner));
+
+      if (hasOwners && !matchesOwner && !vData.representationProofProvided) {
+        flagField(
+          field,
+          FIELD_STATUS.NEEDS_REVIEW,
+          'Eigentümer lt. Grundbuch weicht vom handelnden Verkäufer ab – Nachweis der Verfügungsbefugnis oder Erbnachweis erforderlich.'
+        );
       }
 
-      const form = vData.legalForm?.toLowerCase().trim();
-      const isCorporate =
-        form && !['natürliche person', 'privatperson', 'einzelperson'].includes(form);
-      if (isCorporate && vData.representationProofProvided === false) {
+      if (isCorporateEntity(vData.legalForm) && vData.representationProofProvided === false) {
         flagField(
           field,
           FIELD_STATUS.NEEDS_REVIEW,
@@ -127,15 +131,12 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
     name: 'Amtlicher Registerauszug bei Käufergesellschaften',
     evaluate({ fields }) {
       const field = fields['kaeufer'];
-      if (!field || !field.data || field.status !== FIELD_STATUS.VERIFIED) return;
+      if (!field?.data || field.status !== FIELD_STATUS.VERIFIED) return;
 
       const kResult = KaeuferDataSchema.partial().safeParse(field.data);
       const kData = kResult.success ? kResult.data : {};
 
-      const form = kData.legalForm?.toLowerCase().trim();
-      const isCorporate =
-        form && !['natürliche person', 'privatperson', 'einzelperson'].includes(form);
-      if (isCorporate && kData.hasOfficialRegisterProof === false) {
+      if (isCorporateEntity(kData.legalForm) && kData.hasOfficialRegisterProof === false) {
         flagField(
           field,
           FIELD_STATUS.NEEDS_REVIEW,
@@ -173,18 +174,15 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
     name: 'Flächenkonsistenz der Flurstücke vs. Gesamtfläche',
     evaluate({ fields }) {
       const field = fields['grundstuecke'];
-      if (!field || !field.data || typeof field.data !== 'object') return;
+      if (!field?.data || typeof field.data !== 'object') return;
 
       const rawData = field.data as Record<string, unknown>;
       const rawParcels = Array.isArray(rawData.parcels) ? rawData.parcels : [];
       if (rawParcels.length === 0) return;
 
       const sumParcels = rawParcels.reduce((acc: number, p: unknown) => {
-        if (p && typeof p === 'object' && 'sizeM2' in p) {
-          const val = Number((p as { sizeM2?: unknown }).sizeM2);
-          return acc + (isNaN(val) ? 0 : val);
-        }
-        return acc;
+        const val = Number((p as { sizeM2?: unknown })?.sizeM2 ?? 0);
+        return acc + (isNaN(val) ? 0 : val);
       }, 0);
 
       const totalArea = Number(rawData.totalAreaM2 ?? 0);
@@ -204,7 +202,7 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
     name: 'Plausibilitätsprüfung Monatsmiete vs. Jahresreinertrag',
     evaluate({ fields }) {
       const field = fields['mietverhaeltnisse'];
-      if (!field || !field.data) return;
+      if (!field?.data) return;
 
       const mResult = MietverhaeltnisseDataSchema.partial().safeParse(field.data);
       if (!mResult.success || !mResult.data.statedInEmailOrOverview) return;
@@ -212,7 +210,7 @@ export const NOTARY_GUARDRAIL_RULES: readonly GuardrailRule[] = [
       const monthlyMatch = mResult.data.statedInEmailOrOverview.match(
         /(\d+(?:[\.,]\d+)?)\s*(?:€|eur)?\s*(?:monatlich|mtl|pro monat)/i
       );
-      if (!monthlyMatch || !monthlyMatch[1]) return;
+      if (!monthlyMatch?.[1]) return;
 
       const rawMonthly = parseFloat(monthlyMatch[1].replace(/\./g, '').replace(',', '.'));
       const yearlyCalculated = Math.round(rawMonthly * 12);

@@ -86,13 +86,27 @@ export class SupabaseJobRepository implements IJobRepository {
       updated_at: new Date().toISOString(),
     };
 
-    if (update.status !== undefined) updateData.status = update.status;
-    if (update.stage !== undefined) updateData.stage = update.stage;
-    if (update.progressDetails !== undefined) updateData.progress_details = update.progressDetails;
-    if (update.resultDossierId !== undefined) updateData.result_dossier_id = update.resultDossierId;
-    if (update.errorMessage !== undefined) updateData.error_message = update.errorMessage;
-    if (update.retryCount !== undefined) updateData.retry_count = update.retryCount;
-    if (update.lockedAt !== undefined) updateData.locked_at = update.lockedAt;
+    const fieldMap: Record<
+      keyof UpdateJobParams,
+      keyof TableUpdate<typeof DB_TABLES.DOSSIER_JOBS>
+    > = {
+      status: 'status',
+      stage: 'stage',
+      progressDetails: 'progress_details',
+      resultDossierId: 'result_dossier_id',
+      errorMessage: 'error_message',
+      retryCount: 'retry_count',
+      lockedAt: 'locked_at',
+    };
+
+    for (const [key, dbCol] of Object.entries(fieldMap) as [
+      keyof UpdateJobParams,
+      keyof TableUpdate<typeof DB_TABLES.DOSSIER_JOBS>,
+    ][]) {
+      if (update[key] !== undefined) {
+        (updateData as Record<string, unknown>)[dbCol] = update[key];
+      }
+    }
 
     const { data, error } = await this.supabase
       .from(DB_TABLES.DOSSIER_JOBS)
