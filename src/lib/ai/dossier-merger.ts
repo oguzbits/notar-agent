@@ -39,31 +39,37 @@ function mergeField(
 }
 
 function normalizeInquiry(inq: unknown, idx: number): Inquiry {
-  const item = inq && typeof inq === 'object' ? (inq as Record<string, unknown>) : {};
+  if (!inq || typeof inq !== 'object') {
+    return {
+      id: `inq-${idx + 1}`,
+      fieldKey: INQUIRY_RECIPIENT.ALL,
+      recipient: INQUIRY_RECIPIENT.VERKAEUFER,
+      priority: INQUIRY_PRIORITY.HIGH,
+      subject: 'Nachforderung',
+      message: '',
+      justification: '',
+      resolved: false,
+    };
+  }
+
+  const item = inq as Record<string, unknown>;
   const priority =
     typeof item.priority === 'string' &&
     Object.values(INQUIRY_PRIORITY).includes(item.priority as Inquiry['priority'])
       ? (item.priority as Inquiry['priority'])
       : INQUIRY_PRIORITY.HIGH;
 
+  const rawMsg = item.message ?? item.description ?? '';
+
   return {
-    id: typeof item.id === 'string' && item.id ? item.id : `inq-${idx + 1}`,
-    fieldKey:
-      typeof item.fieldKey === 'string' && item.fieldKey ? item.fieldKey : INQUIRY_RECIPIENT.ALL,
-    recipient:
-      typeof item.recipient === 'string' && item.recipient
-        ? item.recipient
-        : INQUIRY_RECIPIENT.VERKAEUFER,
+    id: String(item.id || `inq-${idx + 1}`),
+    fieldKey: String(item.fieldKey || INQUIRY_RECIPIENT.ALL),
+    recipient: String(item.recipient || INQUIRY_RECIPIENT.VERKAEUFER),
     priority,
-    subject: typeof item.subject === 'string' && item.subject ? item.subject : 'Nachforderung',
-    message:
-      typeof item.message === 'string' && item.message
-        ? item.message
-        : typeof item.description === 'string'
-          ? item.description
-          : '',
-    justification: typeof item.justification === 'string' ? item.justification : '',
-    resolved: typeof item.resolved === 'boolean' ? item.resolved : false,
+    subject: String(item.subject || 'Nachforderung'),
+    message: String(rawMsg),
+    justification: String(item.justification ?? ''),
+    resolved: Boolean(item.resolved ?? false),
   };
 }
 
@@ -153,31 +159,17 @@ export function mergeDossierStages(params: MergeDossierParams): Dossier {
     executiveSummary: rawExecutiveSummary || 'Analyse abgeschlossen.',
   };
 
-  let dossier: Dossier;
   const parseResult = ImmobilienDossierSchema.safeParse(rawImmobilienPayload);
   if (!parseResult.success) {
     console.warn(
       'Immobilien Zod Validierungswarnung (nutze Fallback):',
       parseResult.error.format()
     );
-    dossier = {
-      caseType: CASE_TYPES.IMMOBILIENKAUF,
-      caseTitle: rawCaseTitle || `Immobilienkauf ${new Date().toLocaleDateString('de-DE')}`,
-      analysisTimestamp: currentAnalysisTimestamp,
-      detectedDocuments: Array.isArray(parsedExtractionRaw.detectedDocuments)
-        ? parsedExtractionRaw.detectedDocuments
-        : [],
-      fields: mergedFields,
-      inquiries: normalizedInquiries,
-      overallStatus: rawOverallStatus,
-      executiveSummary: rawExecutiveSummary || 'Analyse abgeschlossen.',
-    };
-  } else {
-    dossier = {
-      ...parseResult.data,
-      caseType: CASE_TYPES.IMMOBILIENKAUF,
-    };
   }
+
+  const dossier: Dossier = parseResult.success
+    ? { ...parseResult.data, caseType: CASE_TYPES.IMMOBILIENKAUF }
+    : (rawImmobilienPayload as Dossier);
 
   if (existingDossier && existingDossier.detectedDocuments) {
     const currentNames = new Set(dossier.detectedDocuments.map((d) => d.fileName.toLowerCase()));

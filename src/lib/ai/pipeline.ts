@@ -40,6 +40,62 @@ export interface PipelineParams {
   onUsage?: (usage: PipelineTokenUsage) => void;
 }
 
+function formatInternalNotes(
+  notes: string,
+  existingDossier?: Dossier
+): { noteList: string[]; notesSection: string } {
+  const noteList = notes
+    .split('\n\n')
+    .map((n) => n.trim())
+    .filter(Boolean);
+
+  if (noteList.length === 0) {
+    return { noteList, notesSection: '' };
+  }
+
+  const existingNoteCount =
+    existingDossier?.detectedDocuments?.filter((d) => d.fileName.toLowerCase().startsWith('notiz'))
+      .length || 0;
+
+  const formattedNotes = noteList
+    .map((text, i) => `[Notiz #${existingNoteCount + i + 1}]: "${text}"`)
+    .join('\n');
+
+  const notesSection = `=== INTERNE NOTIZEN / BEARBEITUNGSVERMERKE DER SACHBEARBEITUNG ===
+${formattedNotes}
+(WICHTIGE ANWEISUNG FÜR QUELLEN UND DOKUMENTE:
+- Belege aus diesen Notizen MÜSSEN als source.fileName prägnant den Bezeichner "Notiz #${existingNoteCount + 1}" (bzw. die entsprechende Nummer) erhalten.
+- Jede dieser Notizen MUSS zwingend auch in 'detectedDocuments' als Typ "${NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ}" mit aktuellem Tagesdatum aufgeführt werden.
+- Fasse diese Notizen NIEMALS zusammen oder kürze sie ab! Der Text muss exakt 1:1 im vollen Originalwortlaut wiedergegeben werden.)\n\n`;
+
+  return { noteList, notesSection };
+}
+
+function extractAuditorModifications(raw: Record<string, unknown>): {
+  modifications: Record<string, GenericFieldDossier<Record<string, unknown>>>;
+  overallStatus?: OverallStatus;
+  executiveSummary?: string;
+  caseTitle?: string;
+  inquiries?: unknown[];
+} {
+  const isFullDossier = raw.fields && typeof raw.fields === 'object' && !('modifications' in raw);
+
+  const modifications =
+    ((isFullDossier ? raw.fields : raw.modifications) as Record<
+      string,
+      GenericFieldDossier<Record<string, unknown>>
+    >) || {};
+
+  return {
+    modifications,
+    overallStatus:
+      typeof raw.overallStatus === 'string' ? (raw.overallStatus as OverallStatus) : undefined,
+    executiveSummary: typeof raw.executiveSummary === 'string' ? raw.executiveSummary : undefined,
+    caseTitle: typeof raw.caseTitle === 'string' ? raw.caseTitle : undefined,
+    inquiries: Array.isArray(raw.inquiries) ? raw.inquiries : undefined,
+  };
+}
+
 /**
  * Orchestriert den 2-Stufen-KI-Lauf für Urkundenprüfung:
  * 1. Stufe: Ingestion & Extraction Agent (Multimodal mit Dual-Stream Textlayer)
@@ -65,30 +121,7 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
 
   // Aktiven Workflow-Ablaufplan für den Vorgangstyp abrufen
   const activeWorkflow = DEFAULT_WORKFLOWS_BY_CASE_TYPE[caseType];
-
-  const noteList = notes
-    .split('\n\n')
-    .map((n) => n.trim())
-    .filter(Boolean);
-
-  let notesSection = '';
-  if (noteList.length > 0) {
-    const existingNoteCount =
-      existingDossier?.detectedDocuments?.filter((d) =>
-        d.fileName.toLowerCase().startsWith('notiz')
-      ).length || 0;
-
-    const formattedNotes = noteList
-      .map((text, i) => `[Notiz #${existingNoteCount + i + 1}]: "${text}"`)
-      .join('\n');
-
-    notesSection = `=== INTERNE NOTIZEN / BEARBEITUNGSVERMERKE DER SACHBEARBEITUNG ===
-${formattedNotes}
-(WICHTIGE ANWEISUNG FÜR QUELLEN UND DOKUMENTE:
-- Belege aus diesen Notizen MÜSSEN als source.fileName prägnant den Bezeichner "Notiz #${existingNoteCount + 1}" (bzw. die entsprechende Nummer) erhalten.
-- Jede dieser Notizen MUSS zwingend auch in 'detectedDocuments' als Typ "${NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ}" mit aktuellem Tagesdatum aufgeführt werden.
-- Fasse diese Notizen NIEMALS zusammen oder kürze sie ab! Der Text muss exakt 1:1 im vollen Originalwortlaut wiedergegeben werden.)\n\n`;
-  }
+  const { noteList, notesSection } = formatInternalNotes(notes, existingDossier);
 
   // =========================================================================
   // STUFE 1: Ingestion & Extraction Agent (Multimodal Payload-Assembly)
@@ -329,41 +362,7 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     validatedAuditor.success ? validatedAuditor.data : rawAuditorJson || {}
   ) as Record<string, unknown>;
 
-  // Reconciler-Format auflösen (Full Dossier vs. Delta-Modus)
-  const isFullDossier =
-    parsedAuditorRaw &&
-    typeof parsedAuditorRaw === 'object' &&
-    'fields' in parsedAuditorRaw &&
-    parsedAuditorRaw.fields &&
-    typeof parsedAuditorRaw.fields === 'object' &&
-    !('modifications' in parsedAuditorRaw);
-
-  const parsedAuditorModifications: Record<
-    string,
-    GenericFieldDossier<Record<string, unknown>>
-  > = isFullDossier
-    ? (parsedAuditorRaw.fields as Record<string, GenericFieldDossier<Record<string, unknown>>>)
-    : (parsedAuditorRaw?.modifications as Record<
-        string,
-        GenericFieldDossier<Record<string, unknown>>
-      >) || {};
-
-  const auditorOverallStatus =
-    typeof parsedAuditorRaw.overallStatus === 'string'
-      ? (parsedAuditorRaw.overallStatus as OverallStatus)
-      : undefined;
-
-  const auditorExecutiveSummary =
-    typeof parsedAuditorRaw.executiveSummary === 'string'
-      ? parsedAuditorRaw.executiveSummary
-      : undefined;
-
-  const auditorCaseTitle =
-    typeof parsedAuditorRaw.caseTitle === 'string' ? parsedAuditorRaw.caseTitle : undefined;
-
-  const auditorInquiries = Array.isArray(parsedAuditorRaw.inquiries)
-    ? parsedAuditorRaw.inquiries
-    : undefined;
+  const auditorExtraction = extractAuditorModifications(parsedAuditorRaw);
 
   // =========================================================================
   // MERGE & NORMALIZATION
@@ -372,11 +371,11 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     caseType,
     existingDossier,
     parsedExtractionRaw,
-    parsedAuditorModifications,
-    auditorOverallStatus,
-    auditorExecutiveSummary,
-    auditorCaseTitle,
-    auditorInquiries,
+    parsedAuditorModifications: auditorExtraction.modifications,
+    auditorOverallStatus: auditorExtraction.overallStatus,
+    auditorExecutiveSummary: auditorExtraction.executiveSummary,
+    auditorCaseTitle: auditorExtraction.caseTitle,
+    auditorInquiries: auditorExtraction.inquiries,
   });
 
   return normalizeDossier(mergedDossier, noteList);
