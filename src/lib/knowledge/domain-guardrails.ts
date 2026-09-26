@@ -180,4 +180,26 @@ export function applyNotaryDomainGuardrails(
       }
     }
   }
+
+  // 7. Deterministische Urkunden-Guardrails (§ 13, § 44a BeurkG): Handschriftliche Korrekturen & Streichungen beim Kaufpreis
+  const kaufpreisField = fieldsObj['kaufpreis'];
+  if (kaufpreisField && kaufpreisField.status === FIELD_STATUS.VERIFIED) {
+    const snippet = (kaufpreisField.source?.snippet || '').toLowerCase();
+    const note = (kaufpreisField.note || '').toLowerCase();
+    const combinedText = `${snippet} ${note}`;
+
+    const hasCorrectionIndicator =
+      /urspruenglich|ursprünglich|gestrichen|durchgestrichen|streichung|paraphe|handschriftlich|korrektur|minderung/i.test(
+        combinedText
+      );
+
+    if (hasCorrectionIndicator) {
+      kaufpreisField.status = FIELD_STATUS.NEEDS_REVIEW;
+      const warningNote =
+        'Handschriftliche Änderung oder Streichung im Kaufvertrag – Prüfung der Genehmigung und Paraphierung aller Beteiligten vor Beurkundung erforderlich.';
+      kaufpreisField.note = kaufpreisField.note
+        ? `${kaufpreisField.note} (${warningNote})`
+        : warningNote;
+    }
+  }
 }

@@ -106,4 +106,29 @@ describe('Deterministic Domain Guardrails (Pure TypeScript)', () => {
     // Dr. Hans-Peter Müller matcht Hans Peter Müller -> bleibt VERIFIED
     expect(fieldsObj.verkaeufer?.status).toBe(FIELD_STATUS.VERIFIED);
   });
+
+  it('automatically sets Kaufpreis to NEEDS_REVIEW when snippet or previousOffers indicate handwritten amendments or strike-throughs', () => {
+    const fieldsObj: Record<string, GenericFieldDossier<Record<string, unknown>>> = {
+      kaufpreis: {
+        status: FIELD_STATUS.VERIFIED,
+        data: {
+          amountInFigures: 425000,
+          previousOffers: [450000],
+          isFinalAgreedPrice: true,
+        },
+        source: {
+          fileName: 'Kaufvertrag_Auszug.pdf',
+          pageNumber: 1,
+          snippet:
+            'Der Kaufpreis betraegt 425.000,00 EUR (urspruenglich 450.000,00 EUR, Absprache v. 12.03.2026, Paraphe Weber).',
+        },
+        note: 'Minderung basierend auf vorheriger Absprache dokumentiert.',
+      },
+    };
+
+    applyNotaryDomainGuardrails(fieldsObj);
+
+    expect(fieldsObj.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+    expect(fieldsObj.kaufpreis?.note).toContain('Handschriftliche Änderung oder Streichung');
+  });
 });

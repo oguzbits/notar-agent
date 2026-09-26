@@ -52,7 +52,7 @@ export const ExportActions: React.FC<ExportActionsProps> = ({ dossier, documentI
         disabled={isExportingReport}
         onClick={downloadPruefbericht}
         className="border-border bg-background hover:bg-muted text-foreground inline-flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-base font-semibold shadow-2xs transition-colors disabled:opacity-50"
-        title="Revisionssicheren Prüfbericht inklusive Audit-Trail (§ 17 ff. BeurkG) herunterladen"
+        title="Revisionssicheren Prüfbericht inklusive lückenlosem Audit-Trail herunterladen"
       >
         {isExportingReport ? (
           <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />

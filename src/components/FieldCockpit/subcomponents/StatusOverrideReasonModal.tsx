@@ -47,7 +47,7 @@ const ReasonDialogContent: React.FC<{
               </div>
               <div>
                 <Dialog.Title className="text-foreground text-base font-semibold">
-                  Revisionsbegründung erfassen (§ 17 ff. BeurkG)
+                  Revisionsbegründung erfassen
                 </Dialog.Title>
                 <p className="text-muted-foreground text-sm">
                   Feld: <strong className="text-foreground">{fieldTitle}</strong>

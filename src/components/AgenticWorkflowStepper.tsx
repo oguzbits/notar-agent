@@ -27,7 +27,7 @@ export const AgenticWorkflowStepper: React.FC<AgenticWorkflowStepperProps> = ({
     {
       id: 2,
       name: 'Stufe 2: Notarielle Vorprüfung & Plausibilisierung',
-      desc: 'Prüfung von Fristen (§ 80 GEG), Berechtigungen & Widersprüchen',
+      desc: 'Prüfung von Gültigkeitsfristen, Berechtigungen & Widersprüchen',
       icon: Scale,
     },
     {
