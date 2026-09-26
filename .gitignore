@@ -47,3 +47,7 @@ _TEMP_*.md
 
 # playwright
 /test-results/
+
+# audit reports
+/reports/
+.reports/

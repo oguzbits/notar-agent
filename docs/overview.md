@@ -169,6 +169,7 @@ Alle Änderungen durchlaufen den zentralen Prüfbefehl `npm run check`:
 - **Dependency Cruiser (`npm run depcruise`):** Verhindert verbotene Importe zwischen Domäne, UI und Typen sowie zirkuläre Abhängigkeiten ([`config/dependency-cruiser.js`](../config/dependency-cruiser.js)).
 - **Knip (`npm run knip`):** Erkennt ungenutzte Exporte, Typen, Dateien und Dependencies (YAGNI).
 - **Code Duplication Guard (`jscpd`):** Deckt redundante Code-Duplikate in `src/` ab einem Schwellenwert von 2 % auf (`npm run audit:duplication`).
+- **Codebase Health Auditor (`npm run audit:health` & `npm run audit:health:digest`):** Deterministischer Gesamtrepository-Scanner (`scripts/audit/repo-health.mjs`), der die gesamte Codebase in unter 5 Sekunden ohne LLM-Tokenkosten prüft, einen Scorecard-Report erzeugt (`reports/codebase-health.md`) und für Bedarfsfälle einen kompakten LLM-Action-Digest (`reports/llm-action-digest.md`, < 5k Tokens) bereitstellt.
 - **Magic String Audit (`audit:magic-strings`):** Stellt sicher, dass Statuswerte niemals als rohe String-Literale im Code verwendet werden ([`scripts/audit/audit-magic-strings.mjs`](../scripts/audit/audit-magic-strings.mjs)).
 - **Strict TypeScript & Linting:** `strict: true`, `noUncheckedIndexedAccess: true` ([`tsconfig.json`](../tsconfig.json)) sowie `@shadcn/lint` für semantische UI-Primitives.
 - **Git Hooks (Husky):** Automatisches `npm run check` und `lint-staged` bei Pre-Commit ([`.husky/pre-commit`](../.husky/pre-commit)) sowie `npm test` bei Pre-Push ([`.husky/pre-push`](../.husky/pre-push)).
