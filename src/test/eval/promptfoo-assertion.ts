@@ -62,6 +62,12 @@ export default async function assertNotarGroundTruth(
     .map((d) => `${d.fieldKey}: ${d.reason || 'Status mismatch'}`)
     .join('; ');
 
+  if (!passed) {
+    console.error(
+      `\n❌ [ASSERTION FAILED - ${testCaseId}]:\n  Accuracy: ${scoreResult.accuracyRate}%\n  Provenance: ${scoreResult.provenanceCoverageRate}%\n  Guardrails: ${scoreResult.guardrailHitRate}%\n  Mismatches: ${detailsSummary}\n`
+    );
+  }
+
   return {
     pass: passed,
     score: scoreResult.accuracyRate / 100,

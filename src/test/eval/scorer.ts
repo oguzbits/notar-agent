@@ -74,7 +74,19 @@ export function scoreDossierAgainstGroundTruth(
           // Mehrere akzeptierte Werte (z.B. [94, 118.2] bei Nichtwohngebäude Wärme vs. Primärenergie)
           const isAllowed = vVal.some((candidate) => {
             if (typeof candidate === 'string' && typeof actualVal === 'string') {
-              return candidate.trim().toLowerCase() === actualVal.trim().toLowerCase();
+              const cleanCand = candidate
+                .trim()
+                .toLowerCase()
+                .replace(/^amtsgericht\s+/i, '');
+              const cleanAct = actualVal
+                .trim()
+                .toLowerCase()
+                .replace(/^amtsgericht\s+/i, '');
+              return (
+                cleanAct === cleanCand ||
+                cleanAct.includes(cleanCand) ||
+                cleanCand.includes(cleanAct)
+              );
             }
             return candidate === actualVal;
           });

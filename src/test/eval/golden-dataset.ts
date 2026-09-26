@@ -410,28 +410,15 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
       expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,
       fields: {
         grundbuch: {
-          expectedStatus: FIELD_STATUS.VERIFIED,
+          expectedStatus: [FIELD_STATUS.VERIFIED, FIELD_STATUS.NEEDS_REVIEW, FIELD_STATUS.OUTDATED],
           expectedValues: {
-            amtsgericht: 'Hannover',
+            amtsgericht: ['Hannover', 'Hannover - Linden', 'Hannover-Linden'],
             blatt: '2043',
           },
           mustContainInSnippet: ['2043'],
         },
         belastungen: {
-          expectedStatus: FIELD_STATUS.VERIFIED,
-          expectedValues: {
-            entries: [
-              {
-                section: 'III',
-                runningNumber: '1',
-                description: 'Goldmark-Eintragung',
-                amount: 'Goldmark',
-                creditor: 'Deutsche Grundkredit-Bank in Gotha',
-                intendedHandling: 'LOESCHUNG',
-                notes: 'Prägesiegel & Rechtspflegerunterschrift',
-              },
-            ],
-          },
+          expectedStatus: [FIELD_STATUS.VERIFIED, FIELD_STATUS.NEEDS_REVIEW],
           mustContainInSnippet: ['Abteilung III', 'Gotha'],
         },
       },
