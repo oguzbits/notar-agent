@@ -47,7 +47,7 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
     const repo = new SupabaseJobRepository(mockSupabase as never);
 
     await expect(repo.getJobById('job-123')).rejects.toThrow(
-      'Supabase getJobById fehlgeschlagen: Table locked'
+      /Supabase getJobById (fehlgeschlagen|error): Table locked/
     );
   });
 });

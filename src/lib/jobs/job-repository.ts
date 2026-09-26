@@ -1,4 +1,9 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import {
+  applyOrganizationFilter,
+  executeMaybeSingle,
+  executeList,
+} from '@/lib/supabase/db-query-helpers';
 import { DB_TABLES, Database, TableInsert, TableUpdate } from '@/types/database';
 import {
   CreateJobPayload,
@@ -63,18 +68,12 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async getJobById(id: string, organizationId?: string): Promise<DossierJob | null> {
-    let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).select('*').eq('id', id);
+    const query = applyOrganizationFilter(
+      this.supabase.from(DB_TABLES.DOSSIER_JOBS).select('*').eq('id', id),
+      organizationId
+    );
 
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
-    }
-
-    const { data, error } = await query.maybeSingle();
-
-    if (error) {
-      throw new Error(`Supabase getJobById fehlgeschlagen: ${error.message}`);
-    }
-
+    const data = await executeMaybeSingle(query.maybeSingle(), 'getJobById');
     if (!data) {
       return null;
     }
@@ -142,19 +141,12 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async listJobs(organizationId?: string): Promise<DossierJob[]> {
-    let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).select('*');
+    const query = applyOrganizationFilter(
+      this.supabase.from(DB_TABLES.DOSSIER_JOBS).select('*'),
+      organizationId
+    );
 
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: false });
-
-    if (error || !data) {
-      throw new Error(
-        `Supabase listJobs fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
-      );
-    }
+    const data = await executeList(query.order('created_at', { ascending: false }), 'listJobs');
 
     return data.map((row) => this.mapRowToJob(row));
   }

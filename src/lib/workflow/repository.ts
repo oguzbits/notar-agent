@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { executeMaybeSingle } from '@/lib/supabase/db-query-helpers';
 import { calculateNextStep } from '@/lib/workflow/engine';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { Database, DB_TABLES } from '@/types/database';
@@ -83,15 +84,10 @@ export class SupabaseWorkflowRepository implements IWorkflowRepository {
   }
 
   async getDefinition(id: string): Promise<WorkflowDefinition | null> {
-    const { data, error } = await this.supabase
-      .from(DB_TABLES.WORKFLOW_DEFINITIONS)
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Supabase getDefinition error: ${error.message}`);
-    }
+    const data = await executeMaybeSingle(
+      this.supabase.from(DB_TABLES.WORKFLOW_DEFINITIONS).select('*').eq('id', id).maybeSingle(),
+      'getDefinition'
+    );
 
     if (!data) return null;
 
@@ -190,15 +186,10 @@ export class SupabaseWorkflowRepository implements IWorkflowRepository {
   }
 
   async getInstance(id: string): Promise<WorkflowInstance | null> {
-    const { data, error } = await this.supabase
-      .from(DB_TABLES.WORKFLOW_INSTANCES)
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Supabase getInstance error: ${error.message}`);
-    }
+    const data = await executeMaybeSingle(
+      this.supabase.from(DB_TABLES.WORKFLOW_INSTANCES).select('*').eq('id', id).maybeSingle(),
+      'getInstance'
+    );
 
     if (!data) return null;
 
@@ -216,15 +207,14 @@ export class SupabaseWorkflowRepository implements IWorkflowRepository {
   }
 
   async getInstanceByCaseId(caseId: string): Promise<WorkflowInstance | null> {
-    const { data, error } = await this.supabase
-      .from(DB_TABLES.WORKFLOW_INSTANCES)
-      .select('*')
-      .eq('case_id', caseId)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Supabase getInstanceByCaseId error: ${error.message}`);
-    }
+    const data = await executeMaybeSingle(
+      this.supabase
+        .from(DB_TABLES.WORKFLOW_INSTANCES)
+        .select('*')
+        .eq('case_id', caseId)
+        .maybeSingle(),
+      'getInstanceByCaseId'
+    );
 
     if (!data) return null;
 

@@ -1,6 +1,11 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier';
 import { createEmptyImmobilienFields, createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
+import {
+  applyOrganizationFilter,
+  executeMaybeSingle,
+  executeList,
+} from '@/lib/supabase/db-query-helpers';
 import { DB_TABLES, Database, TableInsert } from '@/types/database';
 import { CaseStatus, DocumentRecord, CASE_STATUS } from '@/types/document';
 import { Dossier, PersistenceMeta, STORAGE_TYPES } from '@/types/dossier';
@@ -45,18 +50,12 @@ export class SupabaseDossierRepository implements IDossierRepository {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   async findById(id: string, organizationId?: string): Promise<DocumentRecord | null> {
-    let query = this.supabase.from(DB_TABLES.DOCUMENTS).select('*').eq('id', id);
+    const query = applyOrganizationFilter(
+      this.supabase.from(DB_TABLES.DOCUMENTS).select('*').eq('id', id),
+      organizationId
+    );
 
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
-    }
-
-    const { data, error } = await query.maybeSingle();
-
-    if (error) {
-      throw new Error(`Supabase Dossier findById fehlgeschlagen: ${error.message}`);
-    }
-
+    const data = await executeMaybeSingle(query.maybeSingle(), 'Dossier findById');
     if (!data) {
       return null;
     }
@@ -144,19 +143,12 @@ export class SupabaseDossierRepository implements IDossierRepository {
   }
 
   async list(organizationId?: string): Promise<DocumentRecord[]> {
-    let query = this.supabase.from(DB_TABLES.DOCUMENTS).select('*');
+    const query = applyOrganizationFilter(
+      this.supabase.from(DB_TABLES.DOCUMENTS).select('*'),
+      organizationId
+    );
 
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: false });
-
-    if (error || !data) {
-      throw new Error(
-        `Supabase Dossier list fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
-      );
-    }
+    const data = await executeList(query.order('created_at', { ascending: false }), 'Dossier list');
 
     return data.map((doc) => {
       const rawContent = doc.content;
