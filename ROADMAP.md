@@ -43,15 +43,12 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 
 ### Phase B: Serverless Ingestion & Lasttests
 
-- [ ] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, diff-match-patch):**
+- [ ] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, Dual-Stream):**
   - [ ] **B.8.1 Vercel AI SDK Core Refactoring (Reasoning-First & Flache Sub-Schemas):**
     - [ ] Ablösung handgeschriebener JSON-Bereinigung (`cleanAndParseJson`) und fehleranfälliger Reflection-Turns
     - [ ] **Schutz vor Thinking Degradation & Datenverlust:** Verzicht auf ein einzelnes gigantisches 500-Zeilen-Monolith-Schema. Implementierung des **„Reasoning-First“-Patterns** (Freies juristisches Denken & Analyse im `analysisAndReasoning`-Feld VOR der Bindung an Typen/Enums)
     - [ ] Verwendung von **modularen, flachen Zod-Sub-Schemas** pro Dokumenttyp (z. B. `GrundbuchExtractionSchema`, `EnergieausweisSchema`) statt globalem Monster-Schema
     - [ ] Standardisierung von Multi-Step Tool-Aufrufen für deterministische Zwischenprüfungen
-  - [ ] **B.8.2 Deterministisches Zitat-Grounding via `diff-match-patch` (§ 17 BeurkG Provenance):**
-    - [ ] Integration der Google `diff-match-patch` Library (schlankes 10-KB TypeScript-Paket) für bit- und zeichengenaue Fundstellen-Verifikation von `source.snippet` auf der angegebenen PDF-Seite
-    - [ ] Automatisches Bereinigen von Zeilenumbrüchen/Schnittstellen; Flaggen als `NEEDS_REVIEW` bei nicht auffindbaren Zitaten (Anti-Halluzination)
   - [ ] **B.8.3 Native Dual-Stream Vision-Fusion & Gemini Context Caching:**
     - [ ] 100 % Serverless-Kompatibilität auf Vercel + Supabase (Verzicht auf schwere Python/PyTorch-Container wie Docling)
     - [ ] Verlustfreier Unicode-Textlayer (`unpdf`) für digitale Textseiten (0 ms Kaltstart, 0 € Serverkosten) kombiniert mit selektiver **Gemini 3.8 Flash Vision** für komplexe Tabellen (Grundbuch, Mietlisten) und Siegel/Handschriften

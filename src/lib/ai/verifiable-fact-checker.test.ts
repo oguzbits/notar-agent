@@ -215,4 +215,39 @@ describe('verifyExtractionFacts', () => {
     expect(result.fields.gesellschafter?.note).toContain('Rechnerische Kapitaldiskrepanz');
     expect(result.verificationIssues.some((i) => i.fieldKey === 'gesellschafter')).toBe(true);
   });
+
+  it('verifiziert Quellensnippets trotz harter Zeilenumbrüche und Hyphenation im PDF-Dokument', () => {
+    const stageOutput: ExtractionStageOutput = {
+      caseTitle: 'Kaufvertrag Mitte',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      analysisTimestamp: new Date().toISOString(),
+      executiveSummary: '',
+      detectedDocuments: [],
+      inquiries: [],
+      fields: {
+        kaufpreis: {
+          data: { value: '350.000 €' },
+          status: FIELD_STATUS.VERIFIED,
+          source: {
+            fileName: 'Kaufvertrag_Entwurf.pdf',
+            snippet: 'Der vereinbarte Gesamtkaufpreis beträgt 350.000 Euro.',
+          },
+        },
+      },
+    };
+
+    const result = verifyExtractionFacts({
+      stageOutput,
+      sourceDocuments: [
+        {
+          fileName: 'Kaufvertrag_Entwurf.pdf',
+          textContent: 'Hierbei gilt: Der vereinbarte Ge-\nsamtkaufpreis beträgt\n350.000 Euro.',
+        },
+      ],
+    });
+
+    expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.VERIFIED);
+    expect(result.verificationIssues.length).toBe(0);
+  });
 });

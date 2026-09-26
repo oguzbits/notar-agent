@@ -52,6 +52,7 @@
     "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "diff-match-patch-es": "^2.0.1",
     "eventsource-parser": "^4.1.0",
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.5",

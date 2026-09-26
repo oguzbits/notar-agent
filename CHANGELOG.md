@@ -7,24 +7,25 @@
 
 ## 📋 Übersicht der erreichten Meilensteine
 
-| Bereich       | Meilenstein                                | Status            | Kern-Ergebnis                                                                                                       |
-| :------------ | :----------------------------------------- | :---------------- | :------------------------------------------------------------------------------------------------------------------ |
-| **Phase A**   | A.1 Playwright E2E Basis-Schutz            | [x] Abgeschlossen | Smoke-Test Workflow (`e2e/smoke-workflow.spec.ts`) mit Upload, Stepper, Table & Overrides                           |
-| **Phase A**   | A.2 RAG-Auditor (JIT Rule Retrieval)       | [x] Abgeschlossen | Typisierte Regel-Registry & JIT-Selektor für BGB, BeurkG, HGB, GBO, GEG, BauGB in Stufe 2                           |
-| **Phase A**   | A.4.1 Baseline-Scorer & Golden Dataset     | [x] Abgeschlossen | 8 synthetische Referenzakten, P50–P99 Latenz- und Provenance-Scorer (`scripts/eval-pipeline.ts`)                    |
-| **Phase A**   | A.4.2 Promptfoo Integration                | [x] Abgeschlossen | Multi-Modell Evaluation Matrix & Web-Dashboard (`config/promptfoo.yaml`, `npx promptfoo view`)                      |
-| **Phase B**   | B.1 PostgreSQL Job-Queue                   | [x] Abgeschlossen | Entkoppelte Queue `dossier_jobs` (`PENDING/PROCESSING/COMPLETED/FAILED`), `202 Accepted` < 250ms                    |
-| **Phase B**   | B.2 Dual-Stream Ingestion Pipeline         | [x] Abgeschlossen | Byte-Introspektion (`unpdf` Unicode-Textlayer + Vision-Fusion für Siegel & Handschrift)                             |
-| **Phase B**   | B.2.1 Step 1 Document Intelligence         | [x] Abgeschlossen | Layout-Aware Block-Parsing (`layout-structure-parser.ts`) & Verifiable Fact-Checking (`verifiable-fact-checker.ts`) |
-| **Phase B**   | B.3 SSE Teilfortschritt-Streaming          | [x] Abgeschlossen | Server-Sent Events Stage-Updates live in die Cockpit-Oberfläche                                                     |
-| **Phase B**   | B.4 Worker-Daemon & Zombie-Sweeper         | [x] Abgeschlossen | Graceful Shutdown (`SIGTERM`/`SIGINT`) & automatisches Recovery verwaister Jobs nach Lease-Timeout                  |
-| **Phase B**   | B.5 Supabase Database Webhooks             | [x] Abgeschlossen | Ereignisgesteuerte Aktivierung (`trigger_dossier_job_pending`) via Shared-Secret Webhook                            |
-| **Phase B**   | B.6 Vercel Webhook Live-Schaltung          | [x] Abgeschlossen | Produktionseinsatz auf `notar-agent.vercel.app` mit `SUPABASE_WEBHOOK_SECRET`                                       |
-| **Phase C**   | C.1 Append-Only Audit-Trail (§ 17 BeurkG)  | [x] Abgeschlossen | Revisionssichere `audit_logs` Tabelle mit SHA-256 Hash-Chaining & Pflichtbegründungen                               |
-| **Phase C**   | C.2 PostgreSQL RLS Mandantentrennung       | [x] Abgeschlossen | Kernel-Level Row-Level Security (§ 203 StGB), Zod Notar-Rollen & `organization_id` Isolation                        |
-| **Phase C**   | C.3 Kanzlei- & DNotI-RAG (pgvector + BM25) | [x] Abgeschlossen | Hybrid-Suche, `seed-knowledge.ts` für Amtsgericht-Präzedenzen & RLS-Klauselsammlung                                 |
-| **Additions** | Modul 10 Kanzlei-Auth & Rollen-UI          | [x] Abgeschlossen | Login (`/login`), Session-Guard Middleware, Header-Rollenbadge & Team-Settings-View                                 |
-| **Additions** | Modul 12 Fail-Fast Repository-Architektur  | [x] Abgeschlossen | Bereinigung stiller Fallbacks in Repositories (PostgreSQL als Single Source of Truth)                               |
+| Bereich       | Meilenstein                                | Status            | Kern-Ergebnis                                                                                                        |
+| :------------ | :----------------------------------------- | :---------------- | :------------------------------------------------------------------------------------------------------------------- |
+| **Phase A**   | A.1 Playwright E2E Basis-Schutz            | [x] Abgeschlossen | Smoke-Test Workflow (`e2e/smoke-workflow.spec.ts`) mit Upload, Stepper, Table & Overrides                            |
+| **Phase A**   | A.2 RAG-Auditor (JIT Rule Retrieval)       | [x] Abgeschlossen | Typisierte Regel-Registry & JIT-Selektor für BGB, BeurkG, HGB, GBO, GEG, BauGB in Stufe 2                            |
+| **Phase A**   | A.4.1 Baseline-Scorer & Golden Dataset     | [x] Abgeschlossen | 8 synthetische Referenzakten, P50–P99 Latenz- und Provenance-Scorer (`scripts/eval-pipeline.ts`)                     |
+| **Phase A**   | A.4.2 Promptfoo Integration                | [x] Abgeschlossen | Multi-Modell Evaluation Matrix & Web-Dashboard (`config/promptfoo.yaml`, `npx promptfoo view`)                       |
+| **Phase B**   | B.1 PostgreSQL Job-Queue                   | [x] Abgeschlossen | Entkoppelte Queue `dossier_jobs` (`PENDING/PROCESSING/COMPLETED/FAILED`), `202 Accepted` < 250ms                     |
+| **Phase B**   | B.2 Dual-Stream Ingestion Pipeline         | [x] Abgeschlossen | Byte-Introspektion (`unpdf` Unicode-Textlayer + Vision-Fusion für Siegel & Handschrift)                              |
+| **Phase B**   | B.2.1 Step 1 Document Intelligence         | [x] Abgeschlossen | Layout-Aware Block-Parsing (`layout-structure-parser.ts`) & Verifiable Fact-Checking (`verifiable-fact-checker.ts`)  |
+| **Phase B**   | B.3 SSE Teilfortschritt-Streaming          | [x] Abgeschlossen | Server-Sent Events Stage-Updates live in die Cockpit-Oberfläche                                                      |
+| **Phase B**   | B.4 Worker-Daemon & Zombie-Sweeper         | [x] Abgeschlossen | Graceful Shutdown (`SIGTERM`/`SIGINT`) & automatisches Recovery verwaister Jobs nach Lease-Timeout                   |
+| **Phase B**   | B.5 Supabase Database Webhooks             | [x] Abgeschlossen | Ereignisgesteuerte Aktivierung (`trigger_dossier_job_pending`) via Shared-Secret Webhook                             |
+| **Phase B**   | B.6 Vercel Webhook Live-Schaltung          | [x] Abgeschlossen | Produktionseinsatz auf `notar-agent.vercel.app` mit `SUPABASE_WEBHOOK_SECRET`                                        |
+| **Phase B**   | B.8.2 Zitat-Grounding via diff-match-patch | [x] Abgeschlossen | Bit- & zeichengenaue Fundstellen-Verifikation (§ 17 BeurkG), Hyphenation-Toleranz & Anti-Halluzinations-Herabstufung |
+| **Phase C**   | C.1 Append-Only Audit-Trail (§ 17 BeurkG)  | [x] Abgeschlossen | Revisionssichere `audit_logs` Tabelle mit SHA-256 Hash-Chaining & Pflichtbegründungen                                |
+| **Phase C**   | C.2 PostgreSQL RLS Mandantentrennung       | [x] Abgeschlossen | Kernel-Level Row-Level Security (§ 203 StGB), Zod Notar-Rollen & `organization_id` Isolation                         |
+| **Phase C**   | C.3 Kanzlei- & DNotI-RAG (pgvector + BM25) | [x] Abgeschlossen | Hybrid-Suche, `seed-knowledge.ts` für Amtsgericht-Präzedenzen & RLS-Klauselsammlung                                  |
+| **Additions** | Modul 10 Kanzlei-Auth & Rollen-UI          | [x] Abgeschlossen | Login (`/login`), Session-Guard Middleware, Header-Rollenbadge & Team-Settings-View                                  |
+| **Additions** | Modul 12 Fail-Fast Repository-Architektur  | [x] Abgeschlossen | Bereinigung stiller Fallbacks in Repositories (PostgreSQL als Single Source of Truth)                                |
 
 ---
 
@@ -83,6 +84,13 @@
 
 - PostgreSQL-Trigger `trigger_dossier_job_pending` feuert bei neuen Jobs kryptografisch gesicherte Webhooks (`x-webhook-secret`) an den Worker.
 - Auf Vercel live geschaltet (`notar-agent.vercel.app/api/jobs/process-webhook`).
+
+#### 5. Deterministisches Zitat-Grounding via diff-match-patch (§ 17 BeurkG – Phase B.8.2)
+
+- Bit- und zeichengenaue Verifikation von KI-extrahierten Quellennachweisen (`source.snippet`) gegen Rohdokument-Texte (`citation-matcher.ts`).
+- Fehlertolerantes Bitap-Fuzzy-Matching bei variierenden Zeilenumbrüchen, Leerraumschwankungen und OCR-Silbentrennung am Zeilenende ("-\n").
+- Anti-Halluzinations-Schutz: Freierfundene oder unauffindbare Zitate werden deterministisch auf `NEEDS_REVIEW` herabgestuft und als `VerificationIssue` erfasst.
+- Bei verifiziertem Fuzzy-Match wird das tatsächliche Originaltext-Snippet aus dem Dokument übernommen, um bitgenaue Provenance für den Urkundenprüfbericht sicherzustellen.
 
 ---
 

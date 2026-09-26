@@ -1,5 +1,10 @@
 import { FIELD_STATUS } from '@/types/dossier';
-import { ExtractionFieldsRecord, ExtractionStageOutput } from '@/types/pipeline';
+import {
+  CITATION_MATCH_STATUS,
+  ExtractionFieldsRecord,
+  ExtractionStageOutput,
+} from '@/types/pipeline';
+import { matchCitationSnippet } from './citation-matcher';
 
 export interface SourceDocumentText {
   fileName: string;
@@ -23,18 +28,8 @@ export interface VerifyExtractionFactsResult extends ExtractionStageOutput {
 }
 
 /**
- * Normalisiert Text für toleranten Snippet-Abgleich (Whitespace & Satzzeichen).
- */
-function normalizeForComparison(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[.,;:!?"'„“”()[\]{}]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
  * Deterministische Fakten- und Zitationsverifikation (Verifiable Rewards / Fact Checks).
+
  * Prüft, ob Quellennachweise (Snippets) wörtlich im Originaltext nachweisbar sind.
  * Stuft Felder bei fehlendem Beleg auf NEEDS_REVIEW herab.
  */
@@ -62,10 +57,9 @@ export function verifyExtractionFacts(
 
       // Falls Textlayer für diese Datei vorhanden ist, wörtliche Existenz prüfen
       if (rawDocText && rawDocText.trim().length > 0) {
-        const normalizedDoc = normalizeForComparison(rawDocText);
-        const normalizedSnippet = normalizeForComparison(field.source.snippet);
+        const matchResult = matchCitationSnippet(rawDocText, field.source.snippet);
 
-        if (!normalizedDoc.includes(normalizedSnippet)) {
+        if (matchResult.status === CITATION_MATCH_STATUS.NOT_FOUND) {
           // Snippet existiert nicht im Original -> Herabstufung
           verificationIssues.push({
             fieldKey: key,
@@ -81,6 +75,19 @@ export function verifyExtractionFacts(
             ...field,
             status: FIELD_STATUS.NEEDS_REVIEW,
             note: existingNote ? `${existingNote} (${appendNote})` : appendNote,
+          };
+          continue;
+        } else if (
+          matchResult.matchedSnippet &&
+          matchResult.status === CITATION_MATCH_STATUS.FUZZY_MATCH
+        ) {
+          // Bei verifiziertem Fuzzy-Match: Exaktes Textsnippet aus dem Quelldokument hinterlegen
+          updatedFields[key] = {
+            ...field,
+            source: {
+              ...field.source,
+              snippet: matchResult.matchedSnippet,
+            },
           };
           continue;
         }

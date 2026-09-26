@@ -80,3 +80,31 @@ export const AuditorStageOutputSchema = z
   })
   .passthrough();
 export type AuditorStageOutput = z.infer<typeof AuditorStageOutputSchema>;
+
+/**
+ * Status der deterministischen Zitat-Verifikation (B.8.2).
+ */
+export const CITATION_MATCH_STATUS = {
+  EXACT: 'EXACT',
+  FUZZY_MATCH: 'FUZZY_MATCH',
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export const CitationMatchStatusSchema = z.enum([
+  CITATION_MATCH_STATUS.EXACT,
+  CITATION_MATCH_STATUS.FUZZY_MATCH,
+  CITATION_MATCH_STATUS.NOT_FOUND,
+]);
+export type CitationMatchStatus = z.infer<typeof CitationMatchStatusSchema>;
+
+/**
+ * Ergebnis einer Zitat-Prüfung gegen den Quelltext.
+ */
+export const CitationMatchResultSchema = z.object({
+  status: CitationMatchStatusSchema,
+  confidence: z.number().min(0).max(1),
+  matchedSnippet: z.string().optional(),
+  startOffset: z.number().optional(),
+  endOffset: z.number().optional(),
+});
+export type CitationMatchResult = z.infer<typeof CitationMatchResultSchema>;
