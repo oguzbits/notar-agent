@@ -109,6 +109,77 @@ startxref
     expect(result.hasRasterImages).toBe(true);
   });
 
+  it('classifies PDF with sparse text (< 30 chars) as SCANNED_IMAGE to prevent empty prompt leaks', async () => {
+    // Nur 11 Zeichen Text (unter MIN_TEXT_CHARS_THRESHOLD)
+    const sparseTextPdf = `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj
+4 0 obj << /Length 40 >>
+stream
+BT
+/F1 12 Tf
+72 712 Td
+(Seite 1 von 1) Tj
+ET
+endstream
+endobj
+5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000060 00000 n 
+0000000117 00000 n 
+0000000224 00000 n 
+0000000314 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+388
+%%EOF`;
+    const buffer = Buffer.from(sparseTextPdf, 'utf-8');
+
+    const result = await classifyPdfStream(buffer);
+
+    expect(result.hasTextLayer).toBe(false);
+    expect(result.streamType).toBe(PDF_STREAM_TYPES.SCANNED_IMAGE);
+  });
+
+  it('accepts raw Uint8Array input identically to Buffer', async () => {
+    const syntheticTextPdf = `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj
+4 0 obj << /Length 120 >>
+stream
+BT
+/F1 12 Tf
+72 712 Td
+(Kaufvertrag Urkundenrolle Nr. 1234/2026 Notar Dr. Weber Kaufpreis EUR 450.000 Flurstueck 102/4) Tj
+ET
+endstream
+endobj
+5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000060 00000 n 
+0000000117 00000 n 
+0000000224 00000 n 
+0000000394 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+468
+%%EOF`;
+    const uint8Array = new Uint8Array(Buffer.from(syntheticTextPdf, 'utf-8'));
+
+    const result = await classifyPdfStream(uint8Array);
+
+    expect(result.streamType).toBe(PDF_STREAM_TYPES.DIGITAL_BORN_TEXT);
+    expect(result.hasTextLayer).toBe(true);
+  });
+
   it('safely handles empty or corrupt PDF buffers by falling back to SCANNED_IMAGE for vision safety', async () => {
     const corruptBuffer = Buffer.from('not a pdf at all', 'utf-8');
 
@@ -116,5 +187,7 @@ startxref
 
     expect(result.streamType).toBe(PDF_STREAM_TYPES.SCANNED_IMAGE);
     expect(result.hasTextLayer).toBe(false);
+    expect(result.hasRasterImages).toBe(false);
+    expect(result.characterCount).toBe(0);
   });
 });

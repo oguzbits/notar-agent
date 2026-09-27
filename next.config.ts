@@ -4,6 +4,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactCompiler: true,
   agentRules: false,
+  serverExternalPackages: ['@llamaindex/liteparse'],
 };
 
 const bundleAnalyzer = withBundleAnalyzer({

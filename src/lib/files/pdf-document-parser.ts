@@ -9,7 +9,6 @@ import {
  * Optionen für die Dokumenten-Kontext-Extraktion.
  */
 export interface ParsePdfDocumentOptions {
-  ocrEnabled?: boolean;
   maxPages?: number;
   preserveVerySmallText?: boolean;
   extractScreenshots?: boolean;
@@ -31,7 +30,8 @@ export async function parsePdfDocument(
     // LiteParse initialisieren (im JSON-Modus mit voller Struktur- und Annotationsextraktion)
     const parser = new LiteParse({
       outputFormat: 'json',
-      ocrEnabled: options.ocrEnabled ?? false,
+      ocrEnabled: false,
+      ocrLanguage: 'deu',
       maxPages: options.maxPages ?? 1000,
       preserveVerySmallText: options.preserveVerySmallText ?? true,
       extractAnnotations: true,
