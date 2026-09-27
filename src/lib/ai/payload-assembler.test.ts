@@ -181,6 +181,29 @@ trailer << /Root 1 0 R >>
     expect(parts.length).toBeGreaterThan(0);
   });
 
+  it('extracts structured markdown from docx files via mammoth parser', async () => {
+    const parts = await assembleExtractionPromptParts({
+      files: [
+        {
+          name: 'kaufvertragsentwurf.docx',
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          size: 1024,
+          isBase64: true,
+          content:
+            'data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,bm90LXJlYWwtZG9jeA==',
+        },
+      ],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notesSection: '',
+    });
+
+    expect(parts.length).toBeGreaterThan(0);
+    const hasDocxEntry = parts.some(
+      (p) => p.type === 'text' && p.text.includes('kaufvertragsentwurf.docx')
+    );
+    expect(hasDocxEntry).toBe(true);
+  });
+
   it('includes existing dossier instructions when in delta mode', async () => {
     const parts = await assembleExtractionPromptParts({
       files: [],

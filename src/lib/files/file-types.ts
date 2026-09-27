@@ -47,9 +47,10 @@ export const SUPPORTED_FILE_TYPES: readonly FileTypeDefinition[] = [
   },
   {
     category: FILE_CATEGORIES.TEXT,
-    mimePattern: /^(text\/.*|application\/(json|xml|csv))$/i,
-    extensions: ['.txt', '.eml', '.msg', '.csv', '.json', '.xml', '.rtf'],
-    canonicalMime: 'text/plain',
+    mimePattern:
+      /^(text\/.*|application\/(json|xml|csv|vnd\.openxmlformats-officedocument\.wordprocessingml\.document|msword))$/i,
+    extensions: ['.txt', '.eml', '.msg', '.csv', '.json', '.xml', '.rtf', '.docx', '.doc'],
+    canonicalMime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   },
 ] as const;
 

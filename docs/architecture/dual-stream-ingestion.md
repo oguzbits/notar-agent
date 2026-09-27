@@ -49,6 +49,13 @@ graph TD
 4. **Reine Bilddateien (JPG, PNG, WebP):**
    - Überspringen LiteParse/PDFium vollständig und werden direkt nativ als Bild-Payloads an das Vision-LLM übergeben.
 
+5. **Office-Dokumente (.docx / Word-Kaufvertragsentwürfe):**
+   - Konvertierung direkt im In-Memory-Stream via `mammoth` ([`src/lib/files/docx-document-parser.ts`](../../src/lib/files/docx-document-parser.ts)) in strukturiertes Markdown.
+   - **Semantische juristische Format-Maps:** Paragraphen, Klauseln, Rubren und Belehrungen werden über deklarative Style-Mappings direkt in saubere Markdown-Hierarchien überführt.
+   - **Eingebettete Bildextraktion:** In Word eingebettete Siegel, Stempel, Unterschriften oder Lagepläne werden isoliert extrahiert und als multimodale Bild-Parts an das Vision-LLM übergeben.
+   - **Unterschied zu LiteParse:** Während LiteParse ein 2D-Seitenkoordinatensystem (`x, y, w, h`) für starre PDFs nutzt, operiert `mammoth` auf dem fließenden OpenXML-Dokumentenmodell: Es verankert Bilder als Inline-Marker direkt an der exakten Stelle im Klausel-Fließtext, sodass das LLM den vollständigen semantischen Kontext (z. B. Siegel direkt unter dem Unterschriftsvermerk) ohne schwere LibreOffice-Container-Abhängigkeiten erhält.
+   - 100 % serverless- und cloud-kompatibel.
+
 ---
 
 ## 3. Architektur-Status & Ausbaustufen

@@ -3,6 +3,7 @@ import {
   formatTriageManifestForPrompt,
   triageDocument,
 } from '@/lib/files/document-triage';
+import { parseDocxDocument, DocxExtractedImage } from '@/lib/files/docx-document-parser';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
 import {
@@ -253,6 +254,63 @@ ${notesSection}${
         triageDocument({
           fileName: file.name,
           textContent: extractedText || '',
+        })
+      );
+    } else if (
+      file.name.toLowerCase().endsWith('.docx') ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      let docxMarkdown = '';
+      let docxImages: DocxExtractedImage[] = [];
+      try {
+        if (file.isBase64 && file.content) {
+          const rawBase64 = file.content.replace(/^data:application\/[a-zA-Z0-9+.-]+;base64,/, '');
+          const buffer = Buffer.from(rawBase64, 'base64');
+          const parsed = await parseDocxDocument(buffer);
+          docxMarkdown = parsed.markdown;
+          docxImages = parsed.extractedImages;
+        } else if (file.content) {
+          docxMarkdown = file.content;
+        }
+      } catch (err: unknown) {
+        console.warn('[payload-assembler] DOCX-Extraktion fehlgeschlagen:', file.name, err);
+      }
+
+      if (docxMarkdown.trim()) {
+        const layout = parseDocumentLayoutStructure(docxMarkdown);
+        filePromptParts.push({
+          type: 'text',
+          text: `\n=== DOKUMENTENTEXT AUS WORD-DATEI "${file.name}" ===\n${layout.structuredMarkdown}\n=== ENDE DATEI "${file.name}" ===\n`,
+        });
+      } else {
+        filePromptParts.push({
+          type: 'text',
+          text: `\n=== DATEI: "${file.name}" (Kein lesbarer Text extrahierbar) ===\n`,
+        });
+      }
+
+      // Eingebettete Grafiken / Siegel aus Word-Dokumenten als multimodale Bild-Parts übergeben
+      if (docxImages.length > 0) {
+        let imgIdx = 0;
+        for (const img of docxImages) {
+          imgIdx++;
+          filePromptParts.push({
+            type: 'file',
+            data: img.base64Data,
+            mediaType: img.contentType,
+            filename: `${file.name}_img_${imgIdx}.png`,
+          });
+          filePromptParts.push({
+            type: 'text',
+            text: `\n[Obiges Bild stammt aus Word-Dokument: "${file.name}" | ID: ${img.id}]\n`,
+          });
+        }
+      }
+
+      triageList.push(
+        triageDocument({
+          fileName: file.name,
+          textContent: docxMarkdown,
         })
       );
     } else if (file.content) {
