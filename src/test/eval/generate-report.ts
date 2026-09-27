@@ -64,6 +64,13 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
     .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
     .badge-live { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
     .badge-mock { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid #f59e0b; }
+    .badge-telemetry { background: rgba(255, 255, 255, 0.05); color: #93c5fd; border: 1px solid #1e3a8a; }
+
+    /* Webapp Status Badges */
+    .status-badge-verified { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; }
+    .status-badge-review { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; }
+    .status-badge-outdated { background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid #f97316; }
+    .status-badge-missing { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid #4b5563; }
 
     /* Accessibility Focus Ring (WCAG 2.1 AA) */
     :focus-visible {
@@ -492,6 +499,23 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
     const report = ${jsonData};
     let activeIdx = 0;
 
+    function formatStatusBadge(status) {
+      if (!status) return '<span style="color: var(--text-muted);">-</span>';
+      const clean = String(status).replace(/^["']|["']$/g, '');
+      switch (clean) {
+        case 'VERIFIED':
+          return '<span class="status-pill status-badge-verified">✓ Belegt</span>';
+        case 'NEEDS_REVIEW':
+          return '<span class="status-pill status-badge-review">⚠️ Prüfung nötig</span>';
+        case 'OUTDATED':
+          return '<span class="status-pill status-badge-outdated">⏳ Veraltet</span>';
+        case 'MISSING':
+          return '<span class="status-pill status-badge-missing">❓ Fehlt</span>';
+        default:
+          return '<span class="status-pill">' + escapeHtml(clean) + '</span>';
+      }
+    }
+
     function init() {
       document.getElementById('meta-run-info').textContent = 'Lauf-ID: ' + report.runId + ' • ' + new Date(report.timestamp).toLocaleTimeString('de-DE') + ' Uhr';
       const isLiveMode = report.executionMode === 'LIVE';
@@ -499,7 +523,13 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
         ? '<span class="badge badge-live" role="status" title="Echte LLM-Inferenz über Live-API">⚡ LIVE-MODE (LLM API)</span>'
         : '<span class="badge badge-mock" role="status" title="Offline-Modus ohne API-Kosten mit synthetischem Modell">🧪 OFFLINE-MOCK (0,00 €)</span>';
 
-      document.getElementById('overall-badge').innerHTML = modeHtml + ' ' + (report.passed
+      const totalTokens = (report.layer4Telemetry?.totalPromptTokens || 0) + (report.layer4Telemetry?.totalCompletionTokens || 0);
+      const costText = report.layer4Telemetry?.totalCostUsd !== undefined ? report.layer4Telemetry.totalCostUsd.toFixed(4) + ' $' : '0,00 $';
+      const telemetryHtml = totalTokens > 0
+        ? '<span class="badge badge-telemetry" role="status" title="Kosten & Tokenverbrauch">' + totalTokens.toLocaleString('de-DE') + ' Tokens • ' + costText + '</span>'
+        : '';
+
+      document.getElementById('overall-badge').innerHTML = modeHtml + ' ' + telemetryHtml + ' ' + (report.passed
         ? '<span class="badge badge-success" role="status">✓ 100% KORREKT</span>'
         : '<span class="badge badge-danger" role="status">✗ ABWEICHUNG</span>');
 
@@ -665,13 +695,21 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
         tc.outcomeResult.fieldVerdicts.forEach((v) => {
           const tr = document.createElement('tr');
           const isOk = v.verdict?.matched;
-          tr.innerHTML = \`
-            <td><strong>\${v.fieldKey}</strong></td>
-            <td><code style="color: var(--text-muted);">\${escapeHtml(JSON.stringify(v.expectedStatus))}</code></td>
-            <td><code>\${escapeHtml(v.actualStatus || '-')}</code></td>
-            <td><span class="status-pill \${isOk ? 'status-ok' : 'status-err'}" role="status">\${isOk ? '✓ Match' : '✗ Fehler'}</span></td>
-            <td style="color: var(--text-muted); font-size: 0.8rem;">\${escapeHtml(v.verdict?.reason || '-')}</td>
-          \`;
+          const isReviewOrOutdated = v.actualStatus === 'NEEDS_REVIEW' || v.actualStatus === 'OUTDATED';
+          const reasonText = v.verdict?.reason || '-';
+          
+          let reasonCellHtml = escapeHtml(reasonText);
+          if (isReviewOrOutdated && reasonText !== '-') {
+            reasonCellHtml = '<div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 4px 8px; border-radius: 2px; color: #fbbf24; font-size: 0.8rem; line-height: 1.4;">' + escapeHtml(reasonText) + '</div>';
+          }
+
+          tr.innerHTML = [
+            '<td><strong style="color: #fff;">' + escapeHtml(v.fieldKey) + '</strong></td>',
+            '<td>' + formatStatusBadge(v.expectedStatus) + '</td>',
+            '<td>' + formatStatusBadge(v.actualStatus) + '</td>',
+            '<td><span class="status-pill ' + (isOk ? 'status-ok' : 'status-err') + '" role="status">' + (isOk ? '✓ Korrekt' : '✗ Abweichung') + '</span></td>',
+            '<td>' + reasonCellHtml + '</td>'
+          ].join('');
           tbody.appendChild(tr);
         });
       } else {

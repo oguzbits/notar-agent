@@ -131,7 +131,13 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
             />
           ) : (
             <div className="group relative flex items-start justify-between gap-2">
-              <p className="text-foreground leading-relaxed">{row.note}</p>
+              {row.status === FIELD_STATUS.NEEDS_REVIEW || row.status === FIELD_STATUS.OUTDATED ? (
+                <div className="border-warning/60 bg-warning/10 text-foreground w-full rounded border-l-3 px-3 py-1.5 text-sm leading-relaxed">
+                  <p>{row.note}</p>
+                </div>
+              ) : (
+                <p className="text-foreground leading-relaxed">{row.note}</p>
+              )}
               {onOverrideFieldStatus && (
                 <button
                   type="button"
