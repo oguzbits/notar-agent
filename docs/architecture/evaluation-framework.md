@@ -74,6 +74,6 @@ _Ziel: Trennung zwischen Retrieval-Fehlern und LLM-Reasoning-Fehlern._
 - **Prompt Caching:** Bei 100 Testfällen sind die Systemprompts identisch. Mit Prompt Caching sinken die Token-Kosten um bis zu 75 %.
 - **Konsolidierte Ausführungsebenen:**
   - `npm run eval:smoke`: Sofortiges Feedback auf Einzelaktendaten (< 15s).
-  - `npm run eval:case [1-8]`: Gezielter Test einzelner Kanzleifälle (Default: Mock-Modus; `--live` für LLM-Provider-Lauf).
-  - `npm run eval:report [1-8]`: Generierung des visuellen 2-Spalten-Artefakt-Reports (`reports/eval-report.html`).
+  - `npm run eval:case [1-10]`: Gezielter Test einzelner Kanzleifälle (Default: Mock-Modus; `--live` für LLM-Provider-Lauf).
+  - `npm run eval:report [1-10]`: Generierung des visuellen 2-Spalten-Artefakt-Reports (`reports/eval-report.html`).
   - `npm run eval:live`: Parallele Batch-Evaluation aller Kanzleifälle über Promptfoo (`-j 3`).

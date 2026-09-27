@@ -150,8 +150,8 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // layout.tsx setzt Browser-Root-Defaults (z.B. colorScheme)
-    files: ['src/app/layout.tsx'],
+    // layout.tsx setzt Browser-Root-Defaults (z.B. colorScheme); eval/page.tsx rendert dynamische Bounding-Box-Koordinaten
+    files: ['src/app/layout.tsx', 'src/app/eval/**'],
     rules: {
       'shadcn/no-inline-styles': 'off',
     },

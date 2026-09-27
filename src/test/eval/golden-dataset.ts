@@ -150,7 +150,7 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
     description:
       'Gedruckter Betrag 450.000 € mit blauer Kugelschreiber-Tinte gestrichen. Handschriftliche Randkorrektur "425.000,00 EUR" mit Notarparaphe.',
     caseType: CASE_TYPES.IMMOBILIENKAUF,
-    files: [loadTestAktenFile('fall-03-vertragsaenderung-handschrift', 'Kaufvertrag_Auszug.pdf')],
+    files: [loadTestAktenFile('fall-03-vertragsaenderung-handschrift', 'Kaufvertrag_Scan.png')],
     notes: 'Parteien haben im Vorbesprechungstermin eine Minderung vereinbart.',
     groundTruth: {
       expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,

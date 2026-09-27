@@ -1,7 +1,7 @@
 # Dual-Stream Ingestion Pipeline
 
 > **Architektur-Spezifikation:** Verlustfreie Zeichenintegrität & Multimodal Vision  
-> **Kernkomponenten:** `src/lib/files/pdf-stream-classifier.ts`, `src/lib/files/pdf-text-extractor.ts`, `src/lib/ai/pipeline.ts`
+> **Kernkomponenten:** `src/lib/files/pdf-stream-classifier.ts`, `src/lib/files/pdf-document-parser.ts`, `src/lib/ai/pipeline.ts`
 
 ---
 
@@ -32,8 +32,8 @@ graph TD
 ```
 
 1. **Digital-Born PDF (Reiner Textlayer, keine Rasterbilder):**
-   - Extrahiert den Unicode-Text direkt verlustfrei (< 10 ms via `unpdf`).
-   - Mathematisch ausgeschlossene Fehlinterpretationen bei sensiblen Ziffernfolgen.
+   - Extrahiert den Unicode-Text direkt verlustfrei (< 10 ms via `@llamaindex/liteparse`).
+   - Geometrische Bounding-Box-Korrelation für Formularfelder, Annotationen und Skalen-Zeiger.
    - 0 € Server-Zusatzkosten, 0 ms Kaltstart.
 
 2. **Scans / Bildträger (Reine Bildseiten, kein Text):**

@@ -114,10 +114,23 @@ export const ParserEvalResultSchema = z.object({
 });
 export type ParserEvalResult = z.infer<typeof ParserEvalResultSchema>;
 
+export const WORKFLOW_STEP_STATUS = {
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+  SKIPPED: 'SKIPPED',
+  RUNNING: 'RUNNING',
+} as const;
+export type WorkflowStepStatus = (typeof WORKFLOW_STEP_STATUS)[keyof typeof WORKFLOW_STEP_STATUS];
+
 export const WorkflowStepTraceSchema = z.object({
   stepNumber: z.number().int().positive(),
   stepName: z.string(),
-  status: z.enum(['SUCCESS', 'FAILED', 'SKIPPED', 'RUNNING']),
+  status: z.enum([
+    WORKFLOW_STEP_STATUS.SUCCESS,
+    WORKFLOW_STEP_STATUS.FAILED,
+    WORKFLOW_STEP_STATUS.SKIPPED,
+    WORKFLOW_STEP_STATUS.RUNNING,
+  ]),
   durationMs: z.number().nonnegative(),
   inputSummary: z.string().describe('Kurzzusammenfassung der Eingaben in diese Stufe'),
   outputSummary: z.string().describe('Kurzzusammenfassung der erzeugten Artefakte'),

@@ -80,6 +80,9 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
     - _Fall 03 (Handschriftliche Korrektur):_ Notarieller Scan mit handschriftlicher Rand-Kaufpreisänderung (425.000 € statt 450.000 €).
     - _Fall 05 & 06 (GEG-Energieausweise):_ Offizielle Bundesmuster-Formulare zur Prüfung von Kennwerten und abgelaufenen Fristen (§ 80 GEG).
     - _Fall 08 (MFH-Mieterlisten):_ Komplexe 30-Einheiten-Liste mit gedruckten und handschriftlich ergänzten Mietparteien zur mathematischen Summenprüfung.
+    - _Fall 09 (Prinzenpalais-Urkunde):_ Notarieller Kaufvertrag mit GbR-Beteiligung – prüft eGbR-Voreintragungspflicht gem. § 47 Abs. 2 GBO n.F. (MoPeG).
+    - _Fall 10 (Grundbuchauszug Hannover):_ Amtlicher JPG-Scan – prüft OCR-Extraktion bei niedrig aufgelösten Amtsgerichts-Scans.
+  - **Struktur-Invariante:** Jeder `fall-XX-*/`-Ordner enthält genau **eine** primäre Testdatei. Zusätzliches Vergleichs- und Rohmaterial liegt ausschließlich in [`test-akten/_referenz/`](../test-akten/_referenz/).
   - Alle Testdateien können deterministisch über Generatorskripte in `scripts/fixtures/` neu gerendert werden.
 - **Automatisierte Evaluation mit Promptfoo & 4-Layer-Eval-Framework ([`config/promptfoo.yaml`](../config/promptfoo.yaml), [`src/lib/evals/`](../src/lib/evals/)):**
   - Ermöglicht quantitative Messungen der Modellgüte gegen definierte Ground-Truth-Daten ([`src/test/eval/golden-dataset.ts`](../src/test/eval/golden-dataset.ts), [`src/test/eval/scorer.ts`](../src/test/eval/scorer.ts)).

@@ -25,7 +25,6 @@ const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
 const BASE_EXEMPT_FILES = [
   'src/lib/ai/prompts.ts',
   'scripts/audit/audit-magic-strings.mjs',
-  'src/test/eval/generate-report.ts',
 ];
 
 function collectFiles(dir) {

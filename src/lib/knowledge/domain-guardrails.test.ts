@@ -117,7 +117,7 @@ describe('Deterministic Domain Guardrails (Pure TypeScript)', () => {
           isFinalAgreedPrice: true,
         },
         source: {
-          fileName: 'Kaufvertrag_Auszug.pdf',
+          fileName: 'Kaufvertrag_Scan.png',
           pageNumber: 1,
           snippet:
             'Der Kaufpreis betraegt 425.000,00 EUR (urspruenglich 450.000,00 EUR, Absprache v. 12.03.2026, Paraphe Weber).',

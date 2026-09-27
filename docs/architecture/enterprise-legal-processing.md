@@ -140,7 +140,7 @@ Kein Rechtsdokument verlässt das System ohne definierte Freigabeschranken:
 Die konkrete Umsetzung dieser 5-Stufen-Architektur wird im zentralen Fortschrittstracker in [ROADMAP.md](../../ROADMAP.md) (Phase A.2, Phase B.2, Phase B.8 sowie Phase C.3) gepflegt:
 
 - [x] **Schritt 1 (Database-First SSOT):** Materielle Rechtsnormen in `knowledge_documents` (PostgreSQL), Code und Prompts vollständig frei von Gesetzes-Strings.
-- [x] **Schritt 2 (Dual-Stream Ingestion):** Introspektion auf Byte-Ebene (`pdf-stream-classifier.ts`) und verlustfreie Unicode-Textextraktion (`pdf-text-extractor.ts`).
+- [x] **Schritt 2 (Dual-Stream Ingestion):** Introspektion auf Byte-Ebene (`pdf-stream-classifier.ts`) und verlustfreie Unicode-Textextraktion via `@llamaindex/liteparse` (`pdf-document-parser.ts`) mit geometrischer Bounding-Box-Korrelation.
 - [x] **Schritt 3 (Deterministische Guardrails & Fact Checking):** Mathematische Prüfungen (Zahlungsraten, Stammkapital) und Zitationsabgleich via `verifiable-fact-checker.ts`.
 - [x] **Schritt 4 (Audit-Trail & Revisionssicherheit):** Append-Only Event-Tabelle (`audit_logs`) mit SHA-256 Hash-Chaining (§ 17 ff. BeurkG).
 - [x] **Schritt 5 (Hybrid Search):** `pgvector`-Embeddings + BM25 Volltextsuche via `src/lib/knowledge/hybrid-search.ts`.

@@ -14,7 +14,6 @@ import {
   NOTARY_AUDITOR_RECONCILER_PROMPT,
 } from '../../src/lib/ai/prompts.ts';
 import { parsePdfDocument } from '../../src/lib/files/pdf-document-parser.ts';
-import { generateInteractiveHtmlReport } from '../../src/test/eval/generate-report.ts';
 import { GOLDEN_DATASET } from '../../src/test/eval/golden-dataset.ts';
 import { createMockEvalModel } from '../../src/test/eval/mock-eval-model.ts';
 import { scoreDossierAgainstGroundTruth } from '../../src/test/eval/scorer.ts';
@@ -88,6 +87,14 @@ async function main() {
     const pdfFile = tc.files.find(
       (f) => f.type === 'application/pdf' || (f.name && f.name.toLowerCase().endsWith('.pdf'))
     );
+    const imageFile = !pdfFile
+      ? tc.files.find(
+          (f) =>
+            f.type.startsWith('image/') ||
+            (f.name && /\.(png|jpe?g|webp)$/i.test(f.name))
+        )
+      : undefined;
+
     let parserResult = undefined;
 
     if (pdfFile && pdfFile.content) {
@@ -169,6 +176,53 @@ async function main() {
           extractedMarkdownPreview: parsed.markdown.substring(0, 1500) + '...',
           blocks: parsed.blocks,
           pageScreenshots: parsed.pageScreenshots,
+        },
+      });
+    } else if (imageFile && imageFile.content) {
+      // Bild-Dokument (z.B. PNG / Scan) - Bereitstellung als multimodaler Screenshot-Kanal für den Visual Inspector
+      const rawBase64 = imageFile.content.includes(';base64,')
+        ? (imageFile.content.split(';base64,')[1] ?? '')
+        : imageFile.content;
+      const imgBuffer = Buffer.from(rawBase64, 'base64');
+      let width = 1200;
+      let height = 1600;
+      // PNG header dimensions checken (IHDR bei Offset 16, Bytes 0x50, 0x4E, 0x47)
+      if (
+        imgBuffer.length > 24 &&
+        imgBuffer[1] === 0x50 &&
+        imgBuffer[2] === 0x4e &&
+        imgBuffer[3] === 0x47
+      ) {
+        width = imgBuffer.readUInt32BE(16);
+        height = imgBuffer.readUInt32BE(20);
+      }
+      const dataUri = imageFile.content.startsWith('data:')
+        ? imageFile.content
+        : `data:${imageFile.type || 'image/png'};base64,${rawBase64}`;
+
+      steps.push({
+        stepNumber: 1,
+        stepName: 'Ingestion & Visual Document Stream (Image Scan)',
+        status: 'SUCCESS',
+        durationMs: 12,
+        inputSummary: `Bilddokument: ${imageFile.name} (${(imageFile.size / 1024).toFixed(1)} KB)`,
+        outputSummary: `1 Scan-Seite visualisiert (${width} × ${height} px), multimodaler Direkteinzug`,
+        artifacts: {
+          fileName: imageFile.name,
+          totalPages: 1,
+          hasTextLayer: false,
+          needsOcr: true,
+          markdown: `[Bilddokument: ${imageFile.name}]`,
+          extractedMarkdownPreview: `[Bilddokument: ${imageFile.name}]`,
+          blocks: [],
+          pageScreenshots: [
+            {
+              pageNum: 1,
+              width,
+              height,
+              base64Png: dataUri,
+            },
+          ],
         },
       });
     }
@@ -352,16 +406,15 @@ async function main() {
     caseTraces,
   };
 
-  const reportPath = path.resolve(process.cwd(), 'reports', 'eval-report.html');
-  const dir = path.dirname(reportPath);
+  const jsonReportPath = path.resolve(process.cwd(), 'reports', 'eval-report.json');
+  const dir = path.dirname(jsonReportPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-  const html = generateInteractiveHtmlReport(suiteReport);
-  fs.writeFileSync(reportPath, html, 'utf-8');
+  fs.writeFileSync(jsonReportPath, JSON.stringify(suiteReport, null, 2), 'utf-8');
 
-  console.log(`\n✅ Visueller Eval-Report erfolgreich erstellt!`);
-  console.log(`📍 Datei: ${reportPath}`);
-  console.log(`🌐 Öffne den Report im Browser mit: open ${reportPath}\n`);
+  console.log(`\n✅ Evaluierungsdaten erfolgreich gespeichert!`);
+  console.log(`📍 JSON-Report: ${jsonReportPath}`);
+  console.log(`🌐 Dashboard aufrufen: http://localhost:3000/eval\n`);
 }
 
 main().catch((err) => {

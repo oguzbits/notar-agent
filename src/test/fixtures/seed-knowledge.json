@@ -8,7 +8,7 @@
     "title": "Gültigkeit von Energieausweisen (10 Jahre)",
     "content": "Energieausweise sind gem. § 80 Abs. 2 GEG genau 10 Jahre ab Ausstellungsdatum gültig. Liegt das Ablaufdatum vor dem Bearbeitungsstichtag, MUSS das Feld als OUTDATED (isExpired: true) markiert werden.",
     "triggerKeywords": ["energieausweis", "bedarfsausweis", "verbrauchsausweis"],
-    "isGlobal": true,
+    "isGlobal": false,
     "createdAt": "2026-01-01T00:00:00.000Z",
     "updatedAt": "2026-01-01T00:00:00.000Z"
   },
