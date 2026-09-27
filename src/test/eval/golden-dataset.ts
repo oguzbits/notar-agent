@@ -120,7 +120,7 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
       'Amtlicher Grundbuchauszug Köln-Lindenthal Blatt 5412. Seite 2 (Abteilung I & II) fehlt physisch. Keine Beurkundungsreife ohne Eigentumsprüfung gem. § 21 BeurkG.',
     caseType: CASE_TYPES.IMMOBILIENKAUF,
     files: [
-      loadTestAktenFile('fall-02-grundbuch-vollstaendigkeit', 'Grundbuchauszug_Lindenthal.pdf'),
+      loadTestAktenFile('fall-02-grundbuch-vollstaendigkeit', 'Grundbuchauszug_Lindenthal.png'),
     ],
     notes: 'Auszug vom Amtsgericht liegt bisher nur unvollständig vor.',
     groundTruth: {
