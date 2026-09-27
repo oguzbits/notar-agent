@@ -36,8 +36,8 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 
 ### 1.2 Dual-Stream Ingestion & Normalisierung ([`src/lib/files/`](../src/lib/files/))
 
-- **PDF-Stream-Introspektion ([`src/lib/files/pdf-stream-classifier.ts`](../src/lib/files/pdf-stream-classifier.ts)):** Eingehende Dokumente werden auf Byte-Ebene klassifiziert:
-  - _Digital-Born PDFs:_ Verlustfreie Unicode-Textextraktion (< 10 ms) für exakte Ziffernfolgen (`1.250.000 €`, Grundbuchblätter, Flurstücke) ohne OCR-Fehlinterpretationen ([`src/lib/files/pdf-text-extractor.ts`](../src/lib/files/pdf-text-extractor.ts)).
+- **PDF-Stream-Introspektion & Geometrisches Parsing ([`src/lib/files/pdf-stream-classifier.ts`](../src/lib/files/pdf-stream-classifier.ts), [`src/lib/files/pdf-document-parser.ts`](../src/lib/files/pdf-document-parser.ts)):** Eingehende Dokumente werden auf Byte- und Strukturebene analysiert:
+  - _Digital-Born PDFs & Formulare:_ Native, verlustfreie Textextraktion via `@llamaindex/liteparse` mit aktivierten PDFium-Strukturblöcken (`extractBlocks`), Formularfeldern (`extractFormFields`) und Annotationen (`extractAnnotations`). Geometrische Bounding-Box-Korrelation verknüpft frei platzierte Freitext-Annotationen und AcroForm-Werte präzise mit ihren horizontalen/vertikalen Feldbezeichnern (z. B. Skalenmarkierungen und Bedarfswerte im Energieausweis nach GEG § 80).
   - _Scans / Bildträger:_ Multimodales Vision-Routing (`@ai-sdk/anthropic`, `@ai-sdk/google`) für Siegel, handschriftliche Änderungen und Stempel.
   - _Hybride Dokumente:_ Parallele Übergabe von digitalem Textlayer und Bild-Payloads an das Modell (Dual-Stream Fusion).
 - **Triage & MIME-Validierung ([`src/lib/files/document-triage.ts`](../src/lib/files/document-triage.ts), [`src/lib/files/file-types.ts`](../src/lib/files/file-types.ts)):** Vorverarbeitung, Bereinigung und Typisierung vor dem eigentlichen Modellaufruf.
@@ -83,12 +83,12 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
   - Alle Testdateien können deterministisch über Generatorskripte in `scripts/fixtures/` neu gerendert werden.
 - **Automatisierte Evaluation mit Promptfoo & 4-Layer-Eval-Framework ([`config/promptfoo.yaml`](../config/promptfoo.yaml), [`src/lib/evals/`](../src/lib/evals/)):**
   - Ermöglicht quantitative Messungen der Modellgüte gegen definierte Ground-Truth-Daten ([`src/test/eval/golden-dataset.ts`](../src/test/eval/golden-dataset.ts), [`src/test/eval/scorer.ts`](../src/test/eval/scorer.ts)).
-  - **4-Layer-Evaluierung (Probabilistic CI):**
-    - _Layer 1 (Component & Contracts):_ Deterministische Zod-Validierung und Zitations-Integrität ([`src/types/eval.ts`](../src/types/eval.ts)).
+  - **4-Layer-Evaluierung (Probabilistic CI & Component-Level Benchmarking):**
+    - _Layer 1 (Ingestion & Component Parsing):_ Isolierter Benchmark für `@llamaindex/liteparse` (`npm run eval:parser`, [`src/test/eval/parser-eval.test.ts`](../src/test/eval/parser-eval.test.ts)): Misst Key-Token Recall, Bounding-Box Alignment, Geometrie-Zuordnung und PDFium-Verarbeitungszeiten (ms) vor Modellübergabe.
     - _Layer 2 (Trajectory & RAG):_ Prüfung der Wissensselektion (`Recall` und `Precision` der herangezogenen Rechtsnormen aus `knowledge_documents` via [`src/lib/evals/scorers/trajectory.ts`](../src/lib/evals/scorers/trajectory.ts)).
     - _Layer 3 (Outcome & Pluggable Judges):_ Flexible Urteilsfindung über das `IEvalJudge`-Interface mit `DeterministicJudge` sowie schlüsselfertigem `JevJudge` (TypeSafe AI System-1 Decision Model für non-autoregressive, extrem schnelle und kostengünstige Klassifikation mit automatischem Fallback).
     - _Layer 4 (Telemetry & Monitoring):_ Latenz-, Token- und Kostenmonitoring (`promptTokens`, `completionTokens`, Kosten in USD).
-  - Misst Extraktionsgenauigkeit, Token-Verbrauch und Latenzen über `npm run eval:smoke` und `npm run eval:live` im visuellen Browser-Dashboard (`npm run eval:view`).
+  - Misst Extraktionsgenauigkeit, Token-Verbrauch und Latenzen über `npm run eval:live`, `npm run eval:parser` und `npm run eval:case` im visuellen Browser-Dashboard (`npm run eval:view`).
 
 ---
 
@@ -161,6 +161,27 @@ Automatisierte Pre-Tool- und Post-Tool-Lifecycle-Hooks sichern das System gegen 
   - **`supabase` MCP:** Schema-Inspektion, SQL-Abfragen und Live-Migrationsausführung (`apply_migration`).
   - **`context7` MCP:** Semantische Dokumentationsrecherche für Bibliotheken und SDKs.
   - **`chrome-devtools` MCP:** Headless-Browser-Inspektion zur Überprüfung barrierefreier Hierarchien (A11y) und CLS-Vermeidung.
+
+### 1.5 Multi-Stage Agentic Evaluation & Visueller Artefakt-Report ([`src/test/eval/`](../src/test/eval/), [`reports/`](../reports/))
+
+Um die Qualität und Verlässlichkeit des KI-Systems ohne Blindflug zu garantieren, verfügt Notar Agent über ein mehrstufiges, schichtenbasiertes Evaluations- und Visualisierungs-Framework:
+
+- **Layer 1: Ingestion & Parser Benchmark (`npm run eval:parser`):**
+  Misst isoliert die Genauigkeit der `@llamaindex/liteparse`-Extraktion gegen das `GOLDEN_DATASET`:
+  - _Token Recall Rate (100%):_ Vollständige Erfassung aller juristisch kritischen Pflichtangaben (z.B. Energiebedarfswerte, Gültigkeitsfristen, Flurstücke).
+  - _Bounding-Box Alignment (100%):_ Geometrische Nearest-Neighbor-Zuordnung von Werten zu Labels auf derselben Zeile ($\Delta y \le 16$ pt) oder direkt darüber liegenden Spaltenköpfen ohne jegliche statische Wörterbuchabfragen.
+  - _Native Latenz (< 50 ms):_ Deterministisches PDFium-Parsing im Speicher.
+- **Layer 2: Trajectory & Knowledge Selection:**
+  Prüft, ob die JIT-Rule-Selector-Engine die für den Vorgangstyp und Sachverhalt exakt einschlägigen Normen (§ 80 GEG, § 21 BeurkG, MoPeG) selektiert.
+- **Layer 3: Outcome Accuracy & Provenance:**
+  Vergleicht das resultierende Dossier mit der juristischen Ground Truth (Accuracy $\ge 95\%$, Provenance Coverage $\ge 95\%$, Guardrail Hit Rate $100\%$).
+- **Minimalistischer, Barrierefreier HTML-Report (`npm run eval:report`, [`reports/eval-report.html`](../reports/eval-report.html)):**
+  Autarke, browserfähige Standalone-Visualisierung mit maximaler Übersichtlichkeit und vollständiger WCAG 2.1 AA Konformität:
+  - _Kompakte 1-Zeilen-Kopfleiste:_ Integriert Titel, Lauf-ID, Erfolgs-Badge und die Fallauswahl (`FALL 01`, `FALL 02`, etc.) nahtlos ohne vertikalen Platzverlust.
+  - _Originaldokument-Overlay (708 × 1002 px):_ Rendert die Original-PDF-Seite mit kalibrierten, transparenten Markern (`box-marker`) für erkannte Formularfelder und Skalen-Zeiger (`[ZEIGER ▼]`).
+  - _Interaktive Smart Tooltips:_ Ersetzt statische Textboxen durch leichtgewichtige Tooltips direkt am Marker (Hover & Keyboard-Focus), die Typ und erkannten Inhalt kontextsensitiv anzeigen.
+  - _Sticky Soll-Ist-Tabelle:_ Hält die Soll-Ist-Vergleichstabelle (`Feld`, `Soll`, `Ist`, `Status`, `Begründung`) beim Scrollen durch das Dokument dauerhaft auf Augenhöhe im Blickfeld.
+  - _Full Keyboard & Screenreader Accessibility:_ ARIA-Semantik (`role="tab"`, `role="toolbar"`, `role="region"`, `role="status"`), `:focus-visible`-Ringe und dynamische Seitennavigation (`Seite: [1] [2]...`).
 
 ### 2.5 Deterministische Quality-Gates & Tooling
 

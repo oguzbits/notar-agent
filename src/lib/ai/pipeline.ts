@@ -38,6 +38,7 @@ export interface PipelineParams {
   auditorInstructions: SystemModelMessage;
   onStep: (step: number, stepDetail: string) => void;
   onUsage?: (usage: PipelineTokenUsage) => void;
+  knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
 }
 
 function formatInternalNotes(
@@ -273,7 +274,7 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
   onStep(2, `Stufe 2: ${step2Title}...`);
 
   // C.3 Erweitertes RAG & Gesetzliche Prüfnormen aus IKnowledgeRepository
-  const knowledgeRepo = getKnowledgeRepository();
+  const knowledgeRepo = params.knowledgeRepo || getKnowledgeRepository();
   const rawDocs = parsedExtractionRaw?.detectedDocuments;
   const docNames = Array.isArray(rawDocs)
     ? rawDocs

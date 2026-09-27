@@ -59,6 +59,17 @@ export const DocumentParsedContentSchema = z.object({
   characterCount: z.number().int().min(0),
   hasTextLayer: z.boolean(),
   needsOcr: z.boolean().default(false),
+  pageScreenshots: z
+    .array(
+      z.object({
+        pageNum: z.number().int(),
+        width: z.number(),
+        height: z.number(),
+        base64Png: z.string(),
+      })
+    )
+    .optional()
+    .describe('Optionale gerenderte PNG-Screenshots für visuelle Overlays'),
   metadata: z
     .object({
       creator: z.string().optional(),

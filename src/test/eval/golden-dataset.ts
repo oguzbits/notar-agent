@@ -16,6 +16,15 @@ export interface GroundTruthField {
   mustContainInSnippet?: string[];
 }
 
+export interface ParserGroundTruth {
+  requiredTokens: string[];
+  expectedCorrelations?: Array<{
+    labelSubstring: string;
+    expectedValue: string;
+  }>;
+  maxAllowedParseMs?: number;
+}
+
 export interface GoldenTestCase {
   id: string;
   name: string;
@@ -23,6 +32,7 @@ export interface GoldenTestCase {
   caseType: typeof CASE_TYPES.IMMOBILIENKAUF;
   files: UploadedFilePayload[];
   notes: string;
+  parserGroundTruth?: ParserGroundTruth;
   groundTruth: {
     expectedOverallStatus: OverallStatus;
     fields: Record<string, GroundTruthField>;
@@ -233,6 +243,11 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
       loadTestAktenFile('fall-05-energieausweis-wohngebaeude', 'Energieausweis_Beethovenstr.pdf'),
     ],
     notes: 'Energieausweis liegt im Original vor.',
+    parserGroundTruth: {
+      requiredTokens: ['78,5', '13.05.2034', 'Beethovenstr. 12', 'Energiebedarfsausweis'],
+      expectedCorrelations: [{ labelSubstring: 'C', expectedValue: '78,5' }],
+      maxAllowedParseMs: 4000,
+    },
     groundTruth: {
       expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,
       fields: {
@@ -264,6 +279,11 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
       loadTestAktenFile('fall-06-energieausweis-prueffrist', 'Energieausweis_AachenerStr.pdf'),
     ],
     notes: '',
+    parserGroundTruth: {
+      requiredTokens: ['182,0', '205,4', '10.02.2023', 'Aachener Str. 44'],
+      expectedCorrelations: [{ labelSubstring: 'Endenergiebedarf', expectedValue: '182,0' }],
+      maxAllowedParseMs: 4000,
+    },
     groundTruth: {
       expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,
       fields: {
@@ -295,6 +315,14 @@ export const GOLDEN_DATASET: GoldenTestCase[] = [
       loadTestAktenFile('fall-07-gewerbe-energieausweis', 'Energieausweis_Hohenzollernring.pdf'),
     ],
     notes: 'Gewerbeobjekt mit Büro- und Geschäftsnutzung.',
+    parserGroundTruth: {
+      requiredTokens: ['94,0', '42,5', '1.420', 'Hohenzollernring 58'],
+      expectedCorrelations: [
+        { labelSubstring: 'Wärme', expectedValue: '94,0' },
+        { labelSubstring: 'Strom', expectedValue: '42,5' },
+      ],
+      maxAllowedParseMs: 4000,
+    },
     groundTruth: {
       expectedOverallStatus: OVERALL_STATUS.ACTION_REQUIRED,
       fields: {

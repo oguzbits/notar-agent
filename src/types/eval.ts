@@ -87,6 +87,61 @@ export const TelemetryMetricsSchema = z.object({
 export type TelemetryMetrics = z.infer<typeof TelemetryMetricsSchema>;
 
 /**
+ * Layer 1: Ingestion & Parser Benchmark Result (LiteParse / PDFium).
+ * Misst isoliert die Genauigkeit und Vollständigkeit der PDF-Textextraktion und Layout-Strukturierung.
+ */
+export const ParserEvalResultSchema = z.object({
+  caseId: z.string(),
+  fileName: z.string(),
+  totalTokensExpected: z.number().int().nonnegative(),
+  matchedTokensCount: z.number().int().nonnegative(),
+  tokenRecallRate: z
+    .number()
+    .min(0)
+    .max(100.0)
+    .describe('Anteil gefundener kritischer Pflichtangaben in %'),
+  requiredCorrelationsExpected: z.number().int().nonnegative(),
+  matchedCorrelationsCount: z.number().int().nonnegative(),
+  correlationRate: z
+    .number()
+    .min(0)
+    .max(100.0)
+    .describe('Anteil korrekt zugeordneter räumlicher Bounding-Boxes in %'),
+  parseDurationMs: z.number().nonnegative(),
+  passed: z.boolean(),
+  missingTokens: z.array(z.string()).default([]),
+  missingCorrelations: z.array(z.string()).default([]),
+});
+export type ParserEvalResult = z.infer<typeof ParserEvalResultSchema>;
+
+export const WorkflowStepTraceSchema = z.object({
+  stepNumber: z.number().int().positive(),
+  stepName: z.string(),
+  status: z.enum(['SUCCESS', 'FAILED', 'SKIPPED', 'RUNNING']),
+  durationMs: z.number().nonnegative(),
+  inputSummary: z.string().describe('Kurzzusammenfassung der Eingaben in diese Stufe'),
+  outputSummary: z.string().describe('Kurzzusammenfassung der erzeugten Artefakte'),
+  artifacts: z
+    .record(z.string(), z.unknown())
+    .describe('Schlüssel-Wert-Paare der Stufen-Artefakte'),
+});
+export type WorkflowStepTrace = z.infer<typeof WorkflowStepTraceSchema>;
+
+export const CaseTraceArtifactSchema = z.object({
+  caseId: z.string(),
+  caseName: z.string(),
+  description: z.string(),
+  timestamp: z.string(),
+  steps: z.array(WorkflowStepTraceSchema),
+  parserResult: ParserEvalResultSchema.optional(),
+  trajectoryResult: TrajectoryEvalResultSchema.optional(),
+  outcomeResult: OutcomeEvalResultSchema.optional(),
+  telemetry: TelemetryMetricsSchema.optional(),
+  passed: z.boolean(),
+});
+export type CaseTraceArtifact = z.infer<typeof CaseTraceArtifactSchema>;
+
+/**
  * Gesamter 4-Layer-Suite-Report über alle Testfälle hinweg.
  */
 export const LayerEvalSuiteReportSchema = z.object({
@@ -98,5 +153,6 @@ export const LayerEvalSuiteReportSchema = z.object({
   layer4Telemetry: TelemetryMetricsSchema,
   casesTested: z.number().int().positive(),
   passed: z.boolean(),
+  caseTraces: z.array(CaseTraceArtifactSchema).default([]),
 });
 export type LayerEvalSuiteReport = z.infer<typeof LayerEvalSuiteReportSchema>;

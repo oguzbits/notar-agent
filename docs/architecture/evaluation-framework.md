@@ -72,7 +72,8 @@ _Ziel: Trennung zwischen Retrieval-Fehlern und LLM-Reasoning-Fehlern._
 ### Phase 4: Token- & Kosten-Optimierung für Massen-Evals
 
 - **Prompt Caching:** Bei 100 Testfällen sind die Systemprompts identisch. Mit Prompt Caching sinken die Token-Kosten um bis zu 75 %.
-- **Getrennte Ausführungsebenen:**
-  - `npm run eval:smoke`: 1-2 Fälle für sofortiges Feedback (< 15s).
-  - `npm run eval:case:live <1-8>`: Gezielter Test einzelner Kanzleifälle (< 10s).
-  - `npm run eval:matrix:synthetic`: 50+ synthetische Fälle für Release-Freigaben.
+- **Konsolidierte Ausführungsebenen:**
+  - `npm run eval:smoke`: Sofortiges Feedback auf Einzelaktendaten (< 15s).
+  - `npm run eval:case [1-8]`: Gezielter Test einzelner Kanzleifälle (Default: Mock-Modus; `--live` für LLM-Provider-Lauf).
+  - `npm run eval:report [1-8]`: Generierung des visuellen 2-Spalten-Artefakt-Reports (`reports/eval-report.html`).
+  - `npm run eval:live`: Parallele Batch-Evaluation aller Kanzleifälle über Promptfoo (`-j 3`).
