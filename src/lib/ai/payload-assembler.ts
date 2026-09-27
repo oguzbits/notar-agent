@@ -10,6 +10,7 @@ import {
   PDF_STREAM_TYPES,
   classifyPdfStream,
 } from '@/lib/files/pdf-stream-classifier';
+import { DocumentParsedContent } from '@/types/document';
 import {
   DOCUMENT_RELIABILITY,
   DetectedDocument,
@@ -115,14 +116,31 @@ ${notesSection}${
       const assembledFile = file as Partial<AssembledFilePayload>;
       let streamType: PdfStreamType = assembledFile.streamType || PDF_STREAM_TYPES.SCANNED_IMAGE;
       let extractedText: string | undefined = assembledFile.extractedText;
+      let parsedImages: NonNullable<DocumentParsedContent['extractedImages']> = [];
+      let parsedScreenshots: NonNullable<DocumentParsedContent['pageScreenshots']> = [];
 
       if (!extractedText) {
         try {
-          const parsedDoc = await parsePdfDocument(pdfBuffer);
           const classification = await classifyPdfStream(pdfBuffer);
           streamType = classification.streamType;
+
+          // Screenshots rendern, wenn es sich um reine Scans handelt (kein nutzbarer Text)
+          const needsScreenshots = streamType === PDF_STREAM_TYPES.SCANNED_IMAGE;
+
+          // LiteParse parst den Text und extrahiert eingebettete Bildausschnitte (Siegel/Stempel)
+          const parsedDoc = await parsePdfDocument(pdfBuffer, {
+            extractImages: true,
+            extractScreenshots: needsScreenshots,
+          });
+
           if (parsedDoc.hasTextLayer) {
             extractedText = parsedDoc.markdown;
+          }
+          if (parsedDoc.extractedImages && parsedDoc.extractedImages.length > 0) {
+            parsedImages = parsedDoc.extractedImages;
+          }
+          if (parsedDoc.pageScreenshots && parsedDoc.pageScreenshots.length > 0) {
+            parsedScreenshots = parsedDoc.pageScreenshots;
           }
         } catch (err: unknown) {
           console.warn(
@@ -141,20 +159,79 @@ ${notesSection}${
           ? ` (LAYOUT-BEWUSST STRUKTURIERT IN ${layout.blocks.length} LOGISCHE BLÖCKE/TABELLEN)`
           : '';
 
+        let markdownContent = layout.structuredMarkdown;
+
+        // Falls eingebettete Bilder vorhanden sind, Kontextangaben mit Koordinaten anhängen
+        if (parsedImages.length > 0) {
+          const imageManifest = parsedImages
+            .map(
+              (img, idx) =>
+                `- Bild #${idx + 1} (${img.id}): Seite ${img.pageNumber} bei Position [x: ${Math.round(img.bbox.x)}, y: ${Math.round(img.bbox.y)}, Breite: ${Math.round(img.bbox.width)}, Höhe: ${Math.round(img.bbox.height)}] (${img.width}x${img.height}px)`
+            )
+            .join('\n');
+
+          markdownContent += `\n\n### In "${file.name}" erkannte grafische Elemente & Stempel/Siegel:\n${imageManifest}\n`;
+        }
+
         filePromptParts.push({
           type: 'text',
-          text: `\n=== DIREKTER UNICODE-TEXTLAYER AUS "${file.name}"${headerInfo} ===\n${layout.structuredMarkdown}\n=== ENDE TEXTLAYER AUS "${file.name}" ===\n`,
+          text: `\n=== DIREKTER UNICODE-TEXTLAYER AUS "${file.name}"${headerInfo} ===\n${markdownContent}\n=== ENDE TEXTLAYER AUS "${file.name}" ===\n`,
         });
       }
 
-      // 2. Multimodale PDF-Übergabe nur für visuelle Siegel, Stempel, Handschriften (Scans/Hybride)
-      //    oder wenn kein Unicode-Text extrahiert werden konnte.
-      const requiresVisualInspection =
-        streamType !== PDF_STREAM_TYPES.DIGITAL_BORN_TEXT ||
-        !extractedText ||
-        extractedText.trim().length === 0;
+      // 2. Multimodale Übergabe:
+      // A) Wenn eingebettete Bilder (Siegel, Stempel, Signaturen) extrahiert wurden -> gezielt als Bilder übergeben
+      if (parsedImages.length > 0) {
+        let imgIdx = 0;
+        for (const img of parsedImages) {
+          imgIdx++;
+          filePromptParts.push({
+            type: 'file',
+            data: img.base64Data,
+            mediaType: img.mediaType,
+            filename: `${file.name}_img_${img.pageNumber}_${imgIdx}.${img.format}`,
+          });
+          filePromptParts.push({
+            type: 'text',
+            text: `\n[Obiges Bild gehört zu: "${file.name}" | Seite ${img.pageNumber} | Koordinaten: x: ${Math.round(img.bbox.x)}, y: ${Math.round(img.bbox.y)}, w: ${Math.round(img.bbox.width)}, h: ${Math.round(img.bbox.height)}]\n`,
+          });
+        }
+      }
 
-      if (requiresVisualInspection) {
+      // B) Bei reinen Scans (ohne Text): Ganze Seiten als PNG-Screenshots übergeben
+      if (streamType === PDF_STREAM_TYPES.SCANNED_IMAGE) {
+        if (parsedScreenshots.length > 0) {
+          for (const shot of parsedScreenshots) {
+            const pureBase64 = shot.base64Png.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
+            filePromptParts.push({
+              type: 'file',
+              data: pureBase64,
+              mediaType: 'image/png',
+              filename: `${file.name}_seite_${shot.pageNum}.png`,
+            });
+          }
+          filePromptParts.push({
+            type: 'text',
+            text: `\n[Obige gerenderte Seiten-Screenshots gehören zum Scan: "${file.name}"]\n`,
+          });
+        } else {
+          // Fallback falls Screenshot-Rendering fehlschlug
+          filePromptParts.push({
+            type: 'file',
+            data: rawBase64,
+            mediaType: 'application/pdf',
+            filename: file.name,
+          });
+          filePromptParts.push({
+            type: 'text',
+            text: `\n[Obiges PDF-Dokument: "${file.name}" | Modus: ${streamType}]\n`,
+          });
+        }
+      } else if (
+        parsedImages.length === 0 &&
+        (!extractedText || extractedText.trim().length === 0)
+      ) {
+        // Fallback: Weder Text noch Bilder extrahiert -> Original PDF übergeben
         filePromptParts.push({
           type: 'file',
           data: rawBase64,
@@ -168,7 +245,7 @@ ${notesSection}${
       } else {
         filePromptParts.push({
           type: 'text',
-          text: `\n[PDF-Dokument: "${file.name}" vollständig als hochpräziser Unicode-Textlayer verarbeitet | Modus: ${streamType}]\n`,
+          text: `\n[PDF-Dokument: "${file.name}" erfolgreich verarbeitet | Modus: ${streamType} | Eingebettete Grafiken: ${parsedImages.length}]\n`,
         });
       }
 

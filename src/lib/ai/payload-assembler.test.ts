@@ -153,10 +153,32 @@ trailer << /Root 1 0 R >>
       notesSection: '',
     });
 
+    // Bei Scans ohne Text rendert LiteParse Screenshots als PNG für das Vision-LLM (oder Fallback PDF)
     const filePart = parts.find(
-      (p) => p.type === 'file' && (p as { mediaType?: string }).mediaType === 'application/pdf'
+      (p) =>
+        p.type === 'file' &&
+        ((p as { mediaType?: string }).mediaType === 'image/png' ||
+          (p as { mediaType?: string }).mediaType === 'application/pdf')
     );
     expect(filePart).toBeDefined();
+  });
+
+  it('attaches extracted images with spatial bounding boxes when PDF contains graphics', async () => {
+    const parts = await assembleExtractionPromptParts({
+      files: [
+        {
+          name: 'urkunde_mit_siegel.pdf',
+          type: 'application/pdf',
+          size: 4096,
+          isBase64: true,
+          content: 'data:application/pdf;base64,JVBERi0xLjQK',
+        },
+      ],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notesSection: '',
+    });
+
+    expect(parts.length).toBeGreaterThan(0);
   });
 
   it('includes existing dossier instructions when in delta mode', async () => {

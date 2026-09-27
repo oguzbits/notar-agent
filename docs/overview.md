@@ -38,9 +38,9 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 
 - **PDF-Stream-Introspektion & Geometrisches Parsing ([`src/lib/files/pdf-stream-classifier.ts`](../src/lib/files/pdf-stream-classifier.ts), [`src/lib/files/pdf-document-parser.ts`](../src/lib/files/pdf-document-parser.ts)):** Eingehende Dokumente werden auf Byte- und Strukturebene analysiert:
   - _Digital-Born PDFs & Formulare:_ Native, verlustfreie Textextraktion via `@llamaindex/liteparse` mit aktivierten PDFium-Strukturblöcken (`extractBlocks`), Formularfeldern (`extractFormFields`) und Annotationen (`extractAnnotations`). Geometrische Bounding-Box-Korrelation verknüpft frei platzierte Freitext-Annotationen und AcroForm-Werte präzise mit ihren horizontalen/vertikalen Feldbezeichnern (z. B. Skalenmarkierungen und Bedarfswerte im Energieausweis nach GEG § 80).
-  - _Scans / Bildträger:_ Multimodales Vision-Routing (`@ai-sdk/anthropic`, `@ai-sdk/google`) für Siegel, handschriftliche Änderungen und Stempel.
-  - _Hybride Dokumente:_ Parallele Übergabe von digitalem Textlayer und Bild-Payloads an das Modell (Dual-Stream Fusion).
-- **Triage & MIME-Validierung ([`src/lib/files/document-triage.ts`](../src/lib/files/document-triage.ts), [`src/lib/files/file-types.ts`](../src/lib/files/file-types.ts)):** Vorverarbeitung, Bereinigung und Typisierung vor dem eigentlichen Modellaufruf.
+  - _Scans / Bildträger:_ Automatisches Rendering vollständiger Seiten-Screenshots als PNG via `@llamaindex/liteparse` (`extractScreenshots: true`) mit direktem Multimodal-Vision-Routing (`@ai-sdk/anthropic`, `@ai-sdk/google`) für Siegel, handschriftliche Änderungen und Stempel.
+  - _Hybride Dokumente:_ Parallele Übergabe von digitalem Unicode-Textlayer und isolierten, eingebetteten Bildausschnitten (`extractImages: true`) samt exakten räumlichen Bounding-Boxen (`[x, y, w, h]`) an das Modell (Dual-Stream Fusion).
+- **Triage & MIME-Validierung ([`src/lib/files/document-triage.ts`](../src/lib/files/document-triage.ts), [`src/lib/files/file-types.ts`](../src/lib/files/file-types.ts)):** Vorverarbeitung, Bereinigung und Typisierung vor dem eigentlichen Modellaufruf (reine Bilddateien überspringen PDFium/LiteParse vollständig).
 
 ### 1.3 Multimodaler agentischer Analyse-Workflow ([`src/app/api/analyze/`](../src/app/api/analyze/), [`src/lib/ai/`](../src/lib/ai/))
 

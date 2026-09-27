@@ -32,7 +32,10 @@ export async function classifyPdfStream(
 
   try {
     const rawBuffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-    const parsedDoc = await parsePdfDocument(rawBuffer);
+    const parsedDoc = await parsePdfDocument(rawBuffer, {
+      extractImages: false,
+      extractScreenshots: false,
+    });
     const characterCount = parsedDoc.characterCount;
     const hasTextLayer = parsedDoc.hasTextLayer && characterCount >= MIN_TEXT_CHARS_THRESHOLD;
 

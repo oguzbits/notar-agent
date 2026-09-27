@@ -12,6 +12,7 @@ export interface ParsePdfDocumentOptions {
   maxPages?: number;
   preserveVerySmallText?: boolean;
   extractScreenshots?: boolean;
+  extractImages?: boolean;
 }
 
 /**
@@ -31,13 +32,13 @@ export async function parsePdfDocument(
     const parser = new LiteParse({
       outputFormat: 'json',
       ocrEnabled: false,
-      ocrLanguage: 'deu',
       maxPages: options.maxPages ?? 1000,
       preserveVerySmallText: options.preserveVerySmallText ?? true,
       extractAnnotations: true,
       extractBlocks: true,
       extractFormFields: true,
       extractScreenshots: options.extractScreenshots ?? false,
+      extractImages: options.extractImages ?? true,
       dpi: 144,
       quiet: true,
     });
@@ -232,6 +233,24 @@ export async function parsePdfDocument(
         }))
       : undefined;
 
+    const extractedImages = Array.isArray(parsed.images)
+      ? parsed.images.map((img) => ({
+          id: img.id,
+          pageNumber: Number(img.page) || 1,
+          format: img.format || 'png',
+          base64Data: Buffer.from(img.bytes).toString('base64'),
+          mediaType: img.format === 'jpeg' || img.format === 'jpg' ? 'image/jpeg' : 'image/png',
+          bbox: {
+            x: Number(img.bbox?.x) || 0,
+            y: Number(img.bbox?.y) || 0,
+            width: Number(img.bbox?.width) || 0,
+            height: Number(img.bbox?.height) || 0,
+          },
+          width: Number(img.width) || 0,
+          height: Number(img.height) || 0,
+        }))
+      : undefined;
+
     const result: DocumentParsedContent = {
       markdown: markdownText,
       totalPages: Number(parsed.totalPages) || (parsed.pages ? parsed.pages.length : 0),
@@ -240,6 +259,7 @@ export async function parsePdfDocument(
       hasTextLayer,
       needsOcr: !hasTextLayer,
       pageScreenshots,
+      extractedImages,
       metadata: {
         creator: parsed.creator ?? undefined,
         producer: parsed.producer ?? undefined,

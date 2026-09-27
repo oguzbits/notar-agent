@@ -32,16 +32,22 @@ graph TD
 ```
 
 1. **Digital-Born PDF (Reiner Textlayer, keine Rasterbilder):**
-   - Extrahiert den Unicode-Text direkt verlustfrei (< 10 ms via `@llamaindex/liteparse`).
+   - Extrahiert den Unicode-Text direkt verlustfrei (< 10 ms via `@llamaindex/liteparse`, `ocrEnabled: false`).
    - Geometrische Bounding-Box-Korrelation für Formularfelder, Annotationen und Skalen-Zeiger.
-   - 0 € Server-Zusatzkosten, 0 ms Kaltstart.
+   - Keine visuellen Tokens nötig: 100 % Token- und Kostenersparnis.
 
-2. **Scans / Bildträger (Reine Bildseiten, kein Text):**
-   - Multimodales Vision-Routing (Gemini Flash Vision / Claude Vision).
-   - Maximales Kontextverständnis bei Handschriften, Notarsiegeln und Stempeln.
+2. **Scans / Bildträger (Reine Bildseiten, kein nutzbarer Text):**
+   - Automatisches Vorab-Rendering vollständiger hochauflösender Seiten-Screenshots als PNG via LiteParse (`extractScreenshots: true`).
+   - Übergabe der gerenderten PNG-Seiten direkt als Multimodal-Vision-Part (`image/png`) an das LLM.
+   - Maximales Kontextverständnis bei Handschriften, Notarsiegeln und Stempeln ohne fehleranfälliges lokales Tesseract-OCR.
 
 3. **Hybride Dokumente (Digitaler Text + eingescannte Siegel/Signaturen):**
-   - **Dual-Stream Fusion:** Übergabe sowohl des exakten Unicode-Textlayers als auch der Bild-Payloads an das Modell mit striktem Abgleich.
+   - **Dual-Stream Fusion mit Objekt-Extraktion:** LiteParse extrahiert den Unicode-Textlayer und isoliert gleichzeitig die eingebetteten Bildobjekte (`extractImages: true`).
+   - Jedes Bildobjekt (Siegel, Stempel, Beglaubigungsvermerk) wird mit exakter räumlicher Bounding-Box (`[x, y, width, height]`), Format und Auflösung an das LLM übergeben.
+   - Im Textlayer verweist ein Manifest auf die exakte Position: Das LLM prüft den Text digital und verifiziert Siegel/Stempel visuell am genauen Fundort.
+
+4. **Reine Bilddateien (JPG, PNG, WebP):**
+   - Überspringen LiteParse/PDFium vollständig und werden direkt nativ als Bild-Payloads an das Vision-LLM übergeben.
 
 ---
 

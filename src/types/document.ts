@@ -70,6 +70,21 @@ export const DocumentParsedContentSchema = z.object({
     )
     .optional()
     .describe('Optionale gerenderte PNG-Screenshots für visuelle Overlays'),
+  extractedImages: z
+    .array(
+      z.object({
+        id: z.string(),
+        pageNumber: z.number().int().min(1),
+        format: z.string(),
+        base64Data: z.string(),
+        mediaType: z.string(),
+        bbox: BoundingBoxSchema,
+        width: z.number(),
+        height: z.number(),
+      })
+    )
+    .optional()
+    .describe('Eingebettete Bildausschnitte (Siegel, Stempel, Signaturen) mit Koordinaten'),
   metadata: z
     .object({
       creator: z.string().optional(),
