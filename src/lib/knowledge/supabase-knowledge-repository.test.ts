@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { KNOWLEDGE_CATEGORIES, KnowledgeDocument } from '@/types/knowledge';
+import { KNOWLEDGE_CATEGORIES, KnowledgeDocument, MATCH_SOURCES } from '@/types/knowledge';
 import { SupabaseKnowledgeRepository } from './supabase-knowledge-repository';
 
 describe('SupabaseKnowledgeRepository', () => {
@@ -36,7 +36,7 @@ describe('SupabaseKnowledgeRepository', () => {
         bm25_score: 1.25,
         vector_score: 0.88,
         combined_score: 4.5,
-        match_source: 'HYBRID_FUSION',
+        match_source: MATCH_SOURCES.HYBRID_FUSION,
         created_at: doc.createdAt,
         updated_at: doc.updatedAt,
       },
@@ -66,7 +66,7 @@ describe('SupabaseKnowledgeRepository', () => {
     expect(results).toHaveLength(1);
     expect(results[0]?.document.id).toBe(doc.id);
     expect(results[0]?.combinedScore).toBe(4.5);
-    expect(results[0]?.matchSource).toBe('HYBRID_FUSION');
+    expect(results[0]?.matchSource).toBe(MATCH_SOURCES.HYBRID_FUSION);
   });
 
   it('fails fast and throws when Supabase upsert encounters a DB error', async () => {

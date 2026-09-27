@@ -8,6 +8,7 @@ import {
 } from '@/lib/ai/prompts';
 import { GOLDEN_DATASET } from '@/test/eval/golden-dataset';
 import { createMockEvalModel } from '@/test/eval/mock-eval-model';
+import { createOfflineKnowledgeRepository } from '@/test/fixtures/offline-knowledge-repository';
 
 interface PromptfooCallContext {
   vars: {
@@ -110,12 +111,15 @@ export default class NotarAgentPipelineProvider {
       model = createMockEvalModel(testCase);
     }
 
+    const knowledgeRepo = isLive ? undefined : createOfflineKnowledgeRepository();
+
     try {
       const dossier = await runAnalysisPipeline({
         files: testCase.files,
         caseType: testCase.caseType,
         notes: testCase.notes,
         model,
+        knowledgeRepo,
         extractionInstructions: {
           role: 'system',
           content: IMMOBILIEN_EXTRACTION_AGENT_PROMPT,

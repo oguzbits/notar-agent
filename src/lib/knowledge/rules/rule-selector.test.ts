@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CASE_TYPES } from '@/types/dossier';
-import { KNOWLEDGE_CATEGORIES, KnowledgeDocument } from '@/types/knowledge';
+import { KNOWLEDGE_CATEGORIES, KnowledgeDocument, MATCH_SOURCES } from '@/types/knowledge';
 import { selectApplicableKnowledge, formatKnowledgeForPrompt } from './rule-selector';
 
 describe('RAG Knowledge Engine: selectApplicableKnowledge & formatKnowledgeForPrompt', () => {
@@ -182,7 +182,7 @@ describe('RAG Knowledge Engine: selectApplicableKnowledge & formatKnowledgeForPr
       bm25Score: 3.5,
       vectorScore: 0.9,
       combinedScore: 4.4,
-      matchSource: 'HYBRID_FUSION' as const,
+      matchSource: MATCH_SOURCES.HYBRID_FUSION,
     };
 
     const promptText = formatKnowledgeForPrompt(selected, [knowledgeResult]);

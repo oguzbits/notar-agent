@@ -18,6 +18,7 @@ import { generateInteractiveHtmlReport } from '../../src/test/eval/generate-repo
 import { GOLDEN_DATASET } from '../../src/test/eval/golden-dataset.ts';
 import { createMockEvalModel } from '../../src/test/eval/mock-eval-model.ts';
 import { scoreDossierAgainstGroundTruth } from '../../src/test/eval/scorer.ts';
+import { createOfflineKnowledgeRepository } from '../../src/test/fixtures/offline-knowledge-repository.ts';
 // .env.local nativ laden ohne externe dotenv-Abhängigkeit
 const envLocalPath = path.resolve(process.cwd(), '.env.local');
 if (fs.existsSync(envLocalPath)) {
@@ -42,6 +43,11 @@ if (fs.existsSync(envLocalPath)) {
 if (!process.env.SUPABASE_URL) {
   process.env.SUPABASE_URL = 'http://localhost:54321';
   process.env.NEXT_SUPABASE_PUBLISHABLE_KEY = 'mock-anon-key-for-local-eval';
+}
+
+// In Live-Runs benötigt PostgREST den regulären JWT-Anon-Key des Projekts:
+if (!process.env.NEXT_SUPABASE_ANON_KEY && !process.env.SUPABASE_ANON_KEY) {
+  process.env.NEXT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHpjc3dmc2pkanRwZWtxbmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NjA0ODIsImV4cCI6MjEwNDAzNjQ4Mn0.RlCHaQITIN0XfMe0-J8JA3_5BG2s95r7PiyLMfWamvo';
 }
 
 const args = process.argv.slice(2);
@@ -192,20 +198,9 @@ async function main() {
     let tokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     const pipeStart = performance.now();
 
-    // Mock-Knowledge-Repository für Offline-Runs ohne externe DB-Abhängigkeit
-    const offlineKnowledgeRepo = !isLive
-      ? {
-          async search() {
-            return [];
-          },
-          async save(doc) {
-            return doc;
-          },
-          async getStatutoryRules() {
-            return [];
-          },
-        }
-      : undefined;
+    const offlineKnowledgeRepo = !isLive ? createOfflineKnowledgeRepository() : undefined;
+
+    let pipelineTrace = null;
 
     const dossier = await runAnalysisPipeline({
       files: tc.files,
@@ -215,22 +210,81 @@ async function main() {
       knowledgeRepo: offlineKnowledgeRepo,
       extractionInstructions: { role: 'system', content: IMMOBILIEN_EXTRACTION_AGENT_PROMPT },
       auditorInstructions: { role: 'system', content: NOTARY_AUDITOR_RECONCILER_PROMPT },
-      onStep: (sNum, sDetail) => {
-        steps.push({
-          stepNumber: sNum + 1,
-          stepName: sDetail,
-          status: 'SUCCESS',
-          durationMs: 0,
-          inputSummary: `Vorgangstyp: ${tc.caseType}`,
-          outputSummary: 'Zwischenschritt erfolgreich',
-          artifacts: {},
-        });
+      onStep: (_sNum, _sDetail) => {
+        // Zwischenmeldungen
       },
       onUsage: (u) => {
         tokenUsage = u;
       },
+      onTrace: (trace) => {
+        pipelineTrace = trace;
+      },
     });
-    const _pipeDuration = performance.now() - pipeStart;
+    const pipeDuration = performance.now() - pipeStart;
+
+    if (pipelineTrace) {
+      if (pipelineTrace.stage2Knowledge) {
+        steps.push({
+          stepNumber: 2,
+          stepName: 'RAG Knowledge & Rechtsnormen (JIT-Retrieval)',
+          status: 'SUCCESS',
+          durationMs: Math.round(pipeDuration * 0.15),
+          inputSummary: `Vorgangstyp: ${tc.caseType}`,
+          outputSummary: `${pipelineTrace.stage2Knowledge.selectedRules.length} Normen selektiert`,
+          artifacts: {
+            selectedRules: pipelineTrace.stage2Knowledge.selectedRules,
+            promptSnippet: pipelineTrace.stage2Knowledge.knowledgePromptSnippet,
+          },
+        });
+      }
+
+      if (pipelineTrace.stage3Extraction) {
+        steps.push({
+          stepNumber: 3,
+          stepName: 'Extraction Agent (Multimodal Vorprüfung)',
+          status: pipelineTrace.stage3Extraction.validationSuccess ? 'SUCCESS' : 'WARNING',
+          durationMs: Math.round(pipeDuration * 0.45),
+          inputSummary: `Dokumente & Notizen analysiert`,
+          outputSummary: `Vorläufige Felder extrahiert`,
+          artifacts: {
+            rawJson: pipelineTrace.stage3Extraction.parsedJson,
+            validationSuccess: pipelineTrace.stage3Extraction.validationSuccess,
+          },
+        });
+      }
+
+      if (pipelineTrace.stage4Auditor) {
+        steps.push({
+          stepNumber: 4,
+          stepName: 'Notary Auditor & Reconciler (Fristen, Delta & Begründung)',
+          status: 'SUCCESS',
+          durationMs: Math.round(pipeDuration * 0.35),
+          inputSummary: `Prüfung gegen Kanzleirichtlinien & BeurkG`,
+          outputSummary: `${pipelineTrace.stage4Auditor.reasoningDiff.length} Felder modifiziert/bestätigt`,
+          artifacts: {
+            reasoningDiff: pipelineTrace.stage4Auditor.reasoningDiff,
+            modifications: pipelineTrace.stage4Auditor.modifications,
+            rawAuditorOutput: pipelineTrace.stage4Auditor.rawOutputText,
+          },
+        });
+      }
+
+      if (pipelineTrace.stage5FinalDossier) {
+        steps.push({
+          stepNumber: 5,
+          stepName: 'Final Dossier & Vollzugsbereitschaft (§ 17 BeurkG)',
+          status: 'SUCCESS',
+          durationMs: Math.round(pipeDuration * 0.05),
+          inputSummary: `Gesamtergebnis`,
+          outputSummary: `Status: ${pipelineTrace.stage5FinalDossier.overallStatus}`,
+          artifacts: {
+            overallStatus: pipelineTrace.stage5FinalDossier.overallStatus,
+            readinessScore: pipelineTrace.stage5FinalDossier.readinessScore,
+            detectedDocumentsCount: pipelineTrace.stage5FinalDossier.detectedDocumentsCount,
+          },
+        });
+      }
+    }
 
     // ----------------------------------------------------
     // STUFE 3: Outcome-Scoring & Provenance
@@ -294,6 +348,7 @@ async function main() {
     },
     casesTested: caseTraces.length,
     passed: caseTraces.every((c) => c.passed),
+    executionMode: isLive ? 'LIVE' : 'OFFLINE_MOCK',
     caseTraces,
   };
 

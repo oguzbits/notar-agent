@@ -62,6 +62,8 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
     }
     .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid var(--success); }
     .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-live { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
+    .badge-mock { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid #f59e0b; }
 
     /* Accessibility Focus Ring (WCAG 2.1 AA) */
     :focus-visible {
@@ -259,6 +261,31 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
       white-space: nowrap;
     }
 
+    /* Floating Tooltip: Standardmäßig VERBORGEN! Nur bei Hover oder Tastatur-Fokus sichtbar */
+    .marker-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f172a;
+      border: 1px solid #38bdf8;
+      color: #f8fafc;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+      line-height: 1.3;
+    }
+    .box-marker:hover .marker-tooltip,
+    .box-marker:focus .marker-tooltip,
+    .box-marker:focus-visible .marker-tooltip {
+      display: block !important;
+    }
+
     /* Right: Extracted Data & Verdicts - Sticky mitlaufend */
     .data-panel {
       background: var(--card);
@@ -274,29 +301,103 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
       overflow-y: auto;
     }
 
-    /* Floating Smart Tooltip direkt an der Markierung */
-    .marker-tooltip {
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
+    /* View Switcher Bar in Data Panel */
+    .view-switcher {
+      display: flex;
+      gap: 6px;
       background: #0b1329;
-      color: #38bdf8;
-      border: 1px solid #3b82f6;
+      border: 1px solid var(--border);
+      padding: 4px;
       border-radius: 6px;
+    }
+    .view-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
       padding: 6px 10px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .view-btn:hover {
+      color: #fff;
+    }
+    .view-btn.active {
+      background: #1e293b;
+      color: #38bdf8;
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    /* Workflow Stage Accordion Timeline */
+    .timeline-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .stage-card {
+      background: #0b1329;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .stage-card:hover {
+      border-color: #3b82f6;
+    }
+    .stage-header {
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .stage-header:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .stage-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stage-body {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      background: #050811;
+      display: none;
+    }
+    .stage-card.open .stage-body {
+      display: block;
+    }
+    .stage-card.open .stage-arrow {
+      transform: rotate(90deg);
+    }
+    .stage-arrow {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      transition: transform 0.15s;
+    }
+    .code-preview {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
       font-family: ui-monospace, SFMono-Regular, monospace;
       font-size: 0.75rem;
-      white-space: nowrap;
-      pointer-events: none;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 0.15s ease-in-out;
-    }
-    .box-marker:hover .marker-tooltip,
-    .box-marker:focus .marker-tooltip {
-      opacity: 1;
+      color: #93c5fd;
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
 
     /* Minimal Table */
@@ -356,22 +457,34 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
     </section>
 
     <section class="data-panel" aria-label="Erkennungs- und Prüfergebnisse">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-        <h3 style="font-size: 0.95rem; margin: 0;">⚖️ Extrahierte Daten & Soll-Ist-Abgleich</h3>
-        <span style="font-size: 0.75rem; color: var(--text-muted);">Hover über Marker zeigt Tooltip</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px;">
+        <div class="view-switcher" role="tablist" aria-label="Ergebnis-Ansicht umschalten">
+          <button id="btn-view-verdicts" class="view-btn active" role="tab" aria-selected="true" aria-controls="view-verdicts-panel" onclick="switchRightView('verdicts')">⚖️ Soll-Ist-Abgleich</button>
+          <button id="btn-view-trace" class="view-btn" role="tab" aria-selected="false" aria-controls="view-trace-panel" onclick="switchRightView('trace')">🔄 Workflow-Trace (Stufen 1–5)</button>
+        </div>
+        <span style="font-size: 0.75rem; color: var(--text-muted);" id="panel-hint">Hover über Marker zeigt Tooltip</span>
       </div>
-      <table class="verdict-table" aria-label="Soll-Ist-Abgleich der extrahierten Daten">
-        <thead>
-          <tr>
-            <th scope="col">Feld</th>
-            <th scope="col">Soll</th>
-            <th scope="col">Ist (Erkannt)</th>
-            <th scope="col">Status</th>
-            <th scope="col">Begründung</th>
-          </tr>
-        </thead>
-        <tbody id="verdict-tbody"></tbody>
-      </table>
+
+      <!-- Ansicht 1: Soll-Ist Tabelle -->
+      <div id="view-verdicts-panel" role="tabpanel" aria-labelledby="btn-view-verdicts">
+        <table class="verdict-table" aria-label="Soll-Ist-Abgleich der extrahierten Daten">
+          <thead>
+            <tr>
+              <th scope="col">Feld</th>
+              <th scope="col">Soll</th>
+              <th scope="col">Ist (Erkannt)</th>
+              <th scope="col">Status</th>
+              <th scope="col">Begründung</th>
+            </tr>
+          </thead>
+          <tbody id="verdict-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Ansicht 2: Multi-Stage Workflow-Trace Timeline -->
+      <div id="view-trace-panel" role="tabpanel" aria-labelledby="btn-view-trace" style="display: none;">
+        <div class="timeline-container" id="timeline-container" aria-label="Pipeline Ausführungsstufen"></div>
+      </div>
     </section>
   </main>
 
@@ -381,9 +494,14 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
 
     function init() {
       document.getElementById('meta-run-info').textContent = 'Lauf-ID: ' + report.runId + ' • ' + new Date(report.timestamp).toLocaleTimeString('de-DE') + ' Uhr';
-      document.getElementById('overall-badge').innerHTML = report.passed
+      const isLiveMode = report.executionMode === 'LIVE';
+      const modeHtml = isLiveMode
+        ? '<span class="badge badge-live" role="status" title="Echte LLM-Inferenz über Live-API">⚡ LIVE-MODE (LLM API)</span>'
+        : '<span class="badge badge-mock" role="status" title="Offline-Modus ohne API-Kosten mit synthetischem Modell">🧪 OFFLINE-MOCK (0,00 €)</span>';
+
+      document.getElementById('overall-badge').innerHTML = modeHtml + ' ' + (report.passed
         ? '<span class="badge badge-success" role="status">✓ 100% KORREKT</span>'
-        : '<span class="badge badge-danger" role="status">✗ ABWEICHUNG</span>';
+        : '<span class="badge badge-danger" role="status">✗ ABWEICHUNG</span>');
 
       renderChips();
       renderCase(0);
@@ -559,6 +677,137 @@ export function generateInteractiveHtmlReport(report: LayerEvalSuiteReport): str
       } else {
         tbody.innerHTML = '<tr><td colspan="5" style="color: var(--text-muted); text-align: center;">Keine Vergleichsdaten</td></tr>';
       }
+
+      // Workflow-Trace Timeline rendern
+      renderTraceTimeline(tc);
+    }
+
+    let activeRightView = 'verdicts';
+
+    function switchRightView(view) {
+      activeRightView = view;
+      const isVerdicts = view === 'verdicts';
+      document.getElementById('btn-view-verdicts').classList.toggle('active', isVerdicts);
+      document.getElementById('btn-view-verdicts').setAttribute('aria-selected', isVerdicts ? 'true' : 'false');
+      document.getElementById('btn-view-trace').classList.toggle('active', !isVerdicts);
+      document.getElementById('btn-view-trace').setAttribute('aria-selected', !isVerdicts ? 'true' : 'false');
+
+      document.getElementById('view-verdicts-panel').style.display = isVerdicts ? 'block' : 'none';
+      document.getElementById('view-trace-panel').style.display = isVerdicts ? 'none' : 'block';
+
+      const hint = document.getElementById('panel-hint');
+      if (hint) {
+        hint.textContent = isVerdicts ? 'Hover über Marker zeigt Tooltip' : 'Klick auf Stufe klappt Details auf';
+      }
+    }
+
+    function toggleStageCard(headerEl) {
+      const card = headerEl.closest('.stage-card');
+      if (card) {
+        const isOpen = card.classList.toggle('open');
+        headerEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      }
+    }
+
+    function renderTraceTimeline(tc) {
+      const container = document.getElementById('timeline-container');
+      container.innerHTML = '';
+
+      const steps = tc.steps || [];
+      if (steps.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted); padding: 12px;">Keine Trace-Schritte für diesen Fall vorhanden.</div>';
+        return;
+      }
+
+      steps.forEach((step, sIdx) => {
+        const card = document.createElement('div');
+        // Standardmäßig Stufe 2, 3 und 4 offen lassen für schnellen Überblick
+        const defaultOpen = step.stepNumber >= 2;
+        card.className = 'stage-card' + (defaultOpen ? ' open' : '');
+
+        const statusClass = step.status === 'SUCCESS' ? 'status-ok' : (step.status === 'WARNING' ? 'status-warn' : 'status-err');
+        const durationText = step.durationMs ? step.durationMs + 'ms' : '';
+
+        let bodyContentHtml = '';
+
+        if (step.stepNumber === 1) {
+          bodyContentHtml = [
+            '<div style="margin-bottom: 6px; font-size: 0.8rem; color: var(--text-muted);">',
+            '<strong>Datei:</strong> ' + escapeHtml(step.artifacts?.fileName || '-') + ' | ',
+            '<strong>Seiten:</strong> ' + (step.artifacts?.totalPages || 1) + ' | ',
+            '<strong>Textschicht:</strong> ' + (step.artifacts?.hasTextLayer ? 'Ja' : 'Nein') + ' | ',
+            '<strong>OCR nötig:</strong> ' + (step.artifacts?.needsOcr ? 'Ja' : 'Nein'),
+            '</div>',
+            step.artifacts?.extractedMarkdownPreview ? '<div class="code-preview">' + escapeHtml(step.artifacts.extractedMarkdownPreview) + '</div>' : ''
+          ].join('');
+        } else if (step.stepNumber === 2) {
+          const rules = step.artifacts?.selectedRules || [];
+          bodyContentHtml = [
+            '<div style="margin-bottom: 6px; font-size: 0.8rem;">',
+            '<strong>Injizierte Rechtsnormen (' + rules.length + '):</strong>',
+            '<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">',
+            rules.map(r => '<span class="status-pill status-ok">' + escapeHtml(r) + '</span>').join(''),
+            '</div>',
+            '</div>',
+            step.artifacts?.promptSnippet ? '<div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Prompt-Snippet (Statutory Context):</div><div class="code-preview">' + escapeHtml(step.artifacts.promptSnippet) + '</div>' : ''
+          ].join('');
+        } else if (step.stepNumber === 3) {
+          bodyContentHtml = [
+            '<div style="margin-bottom: 6px; font-size: 0.8rem; color: var(--text-muted);">',
+            '<strong>Schema-Validierung:</strong> ' + (step.artifacts?.validationSuccess ? '<span class="status-pill status-ok">Erfolgreich</span>' : '<span class="status-pill status-err">Abweichung</span>'),
+            '</div>',
+            step.artifacts?.rawJson ? '<div class="code-preview">' + escapeHtml(JSON.stringify(step.artifacts.rawJson, null, 2)) + '</div>' : '<div style="color: var(--text-muted);">Kein JSON erfasst</div>'
+          ].join('');
+        } else if (step.stepNumber === 4) {
+          const diffs = step.artifacts?.reasoningDiff || [];
+          let diffTableHtml = '';
+          if (diffs.length > 0) {
+            diffTableHtml = [
+              '<table class="verdict-table" style="margin-top: 6px;">',
+              '<thead><tr><th scope="col">Feld</th><th scope="col">Vorprüfung (Stufe 3)</th><th scope="col">Reconciler (Stufe 4)</th><th scope="col">Juristische Begründung</th></tr></thead>',
+              '<tbody>',
+              diffs.map(d => '<tr><td><strong>' + escapeHtml(d.field) + '</strong></td><td><code>' + escapeHtml(String(d.before ?? '-')) + '</code></td><td><strong style="color: var(--accent);">' + escapeHtml(String(d.after ?? '-')) + '</strong></td><td style="color: var(--text-muted); font-size: 0.75rem;">' + escapeHtml(d.reasoning || '-') + '</td></tr>').join(''),
+              '</tbody></table>'
+            ].join('');
+          } else {
+            diffTableHtml = '<div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">Keine nachträglichen Feldkorrekturen erforderlich (1:1 Übernahme).</div>';
+          }
+          bodyContentHtml = [
+            '<div style="margin-bottom: 8px;">',
+            '<strong style="font-size: 0.8rem;">Juristische Begründungen & Feld-Modifikationen:</strong>',
+            diffTableHtml,
+            '</div>',
+            step.artifacts?.rawAuditorOutput ? '<div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Roher Reconciler-Output:</div><div class="code-preview">' + escapeHtml(step.artifacts.rawAuditorOutput) + '</div>' : ''
+          ].join('');
+        } else if (step.stepNumber === 5) {
+          bodyContentHtml = [
+            '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 0.8rem;">',
+            '<div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; border: 1px solid var(--border);"><div style="color: var(--text-muted); font-size: 0.7rem;">STATUS</div><strong style="color: var(--accent);">' + escapeHtml(step.artifacts?.overallStatus || '-') + '</strong></div>',
+            '<div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; border: 1px solid var(--border);"><div style="color: var(--text-muted); font-size: 0.7rem;">BEREITSCHAFT</div><strong>' + (step.artifacts?.readinessScore ?? '-') + '%</strong></div>',
+            '<div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; border: 1px solid var(--border);"><div style="color: var(--text-muted); font-size: 0.7rem;">DOKUMENTE</div><strong>' + (step.artifacts?.documentsCount ?? 0) + ' erfasst</strong></div>',
+            '</div>'
+          ].join('');
+        }
+
+        card.innerHTML = [
+          '<div class="stage-header" role="button" tabindex="0" aria-expanded="' + (defaultOpen ? 'true' : 'false') + '" onclick="toggleStageCard(this)" onkeydown="if(event.key===&apos;Enter&apos;||event.key===&apos; &apos;){event.preventDefault();toggleStageCard(this);}">',
+          '<div class="stage-title">',
+          '<span class="stage-arrow" aria-hidden="true">▶</span>',
+          '<span style="font-weight: 600; color: #fff;">Stufe ' + step.stepNumber + ': ' + escapeHtml(step.stepName) + '</span>',
+          durationText ? '<span style="font-size: 0.72rem; color: var(--text-muted);">(' + durationText + ')</span>' : '',
+          '</div>',
+          '<div style="display: flex; align-items: center; gap: 8px;">',
+          '<span class="status-pill ' + statusClass + '">' + escapeHtml(step.status) + '</span>',
+          '</div>',
+          '</div>',
+          '<div class="stage-body">',
+          '<div style="margin-bottom: 6px; font-size: 0.78rem; color: var(--text-muted);">' + escapeHtml(step.outputSummary || step.inputSummary || '') + '</div>',
+          bodyContentHtml,
+          '</div>'
+        ].join('');
+
+        container.appendChild(card);
+      });
     }
 
     function escapeHtml(str) {

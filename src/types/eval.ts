@@ -153,6 +153,7 @@ export const LayerEvalSuiteReportSchema = z.object({
   layer4Telemetry: TelemetryMetricsSchema,
   casesTested: z.number().int().positive(),
   passed: z.boolean(),
+  executionMode: z.enum(['LIVE', 'OFFLINE_MOCK']).default('OFFLINE_MOCK').optional(),
   caseTraces: z.array(CaseTraceArtifactSchema).default([]),
 });
 export type LayerEvalSuiteReport = z.infer<typeof LayerEvalSuiteReportSchema>;

@@ -28,6 +28,8 @@ export const ServerEnvSchema = z.object({
   SUPABASE_URL: optionalTrimmedString,
   NEXT_SUPABASE_URL: optionalTrimmedString,
   NEXT_SUPABASE_PUBLISHABLE_KEY: optionalTrimmedString,
+  NEXT_SUPABASE_ANON_KEY: optionalTrimmedString,
+  SUPABASE_ANON_KEY: optionalTrimmedString,
   SUPABASE_WEBHOOK_SECRET: optionalTrimmedString,
 });
 

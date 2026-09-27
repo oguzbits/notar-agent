@@ -41,11 +41,12 @@ export { getUniformCaseTitle, computeDocumentStatus, CASE_STATUS };
 export function getServerSupabase(): SupabaseClient<Database> {
   const env = validateEnv(process.env);
   const supabaseUrl = env.NEXT_SUPABASE_URL || env.SUPABASE_URL;
-  const supabaseKey = env.NEXT_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseKey =
+    env.NEXT_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || env.NEXT_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error(
-      'Supabase-Credentials fehlen: SUPABASE_URL und NEXT_SUPABASE_PUBLISHABLE_KEY müssen in .env.local gesetzt sein.'
+      'Supabase-Credentials fehlen: SUPABASE_URL und NEXT_SUPABASE_PUBLISHABLE_KEY / NEXT_SUPABASE_ANON_KEY müssen in .env.local gesetzt sein.'
     );
   }
   return createClient<Database>(supabaseUrl, supabaseKey, {

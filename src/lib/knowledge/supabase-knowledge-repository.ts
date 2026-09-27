@@ -6,6 +6,7 @@ import {
   HybridSearchResult,
   KNOWLEDGE_CATEGORIES,
   KnowledgeDocument,
+  MATCH_SOURCES,
 } from '@/types/knowledge';
 
 export type { IKnowledgeRepository };
@@ -78,7 +79,8 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
       bm25Score: Number(row.bm25_score ?? 0),
       vectorScore: Number(row.vector_score ?? 0),
       combinedScore: Number(row.combined_score ?? 0),
-      matchSource: (row.match_source as HybridSearchResult['matchSource']) ?? 'HYBRID_FUSION',
+      matchSource:
+        (row.match_source as HybridSearchResult['matchSource']) ?? MATCH_SOURCES.HYBRID_FUSION,
     }));
   }
 

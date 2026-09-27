@@ -108,3 +108,48 @@ export const CitationMatchResultSchema = z.object({
   endOffset: z.number().optional(),
 });
 export type CitationMatchResult = z.infer<typeof CitationMatchResultSchema>;
+
+/**
+ * Durchgängige Trace-Artefakte für alle Pipeline-Stufen
+ */
+export const PipelineTraceArtifactsSchema = z.object({
+  stage2Knowledge: z
+    .object({
+      selectedRules: z.array(z.string()).default([]),
+      knowledgePromptSnippet: z.string().default(''),
+    })
+    .optional(),
+  stage3Extraction: z
+    .object({
+      rawOutputText: z.string().default(''),
+      parsedJson: z.record(z.string(), z.unknown()).nullable().default(null),
+      validationSuccess: z.boolean().default(true),
+    })
+    .optional(),
+  stage4Auditor: z
+    .object({
+      rawOutputText: z.string().default(''),
+      parsedJson: z.record(z.string(), z.unknown()).nullable().default(null),
+      modifications: z.record(z.string(), z.unknown()).default({}),
+      reasoningDiff: z
+        .array(
+          z.object({
+            fieldKey: z.string(),
+            beforeStatus: z.string().optional(),
+            afterStatus: z.string().optional(),
+            reason: z.string(),
+          })
+        )
+        .default([]),
+    })
+    .optional(),
+  stage5FinalDossier: z
+    .object({
+      overallStatus: z.string(),
+      readinessScore: z.number().optional(),
+      detectedDocumentsCount: z.number().default(0),
+      fieldsCount: z.number().default(0),
+    })
+    .optional(),
+});
+export type PipelineTraceArtifacts = z.infer<typeof PipelineTraceArtifactsSchema>;

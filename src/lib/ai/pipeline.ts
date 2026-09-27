@@ -13,6 +13,7 @@ import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows
 import {
   CaseType,
   Dossier,
+  FIELD_STATUS,
   GenericFieldDossier,
   NOTAR_DOCUMENT_TYPES,
   OverallStatus,
@@ -38,6 +39,7 @@ export interface PipelineParams {
   auditorInstructions: SystemModelMessage;
   onStep: (step: number, stepDetail: string) => void;
   onUsage?: (usage: PipelineTokenUsage) => void;
+  onTrace?: (trace: import('@/types/pipeline').PipelineTraceArtifacts) => void;
   knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
 }
 
@@ -379,5 +381,62 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     auditorInquiries: auditorExtraction.inquiries,
   });
 
-  return normalizeDossier(mergedDossier, noteList);
+  const finalDossier = normalizeDossier(mergedDossier, noteList);
+
+  if (params.onTrace) {
+    const diffList: Array<{
+      fieldKey: string;
+      beforeStatus?: string;
+      afterStatus?: string;
+      reason: string;
+    }> = [];
+
+    const extractionFields = (parsedExtractionRaw?.fields || {}) as Record<
+      string,
+      { status?: string; note?: string }
+    >;
+    for (const [key, mod] of Object.entries(auditorExtraction.modifications)) {
+      const beforeStatus = extractionFields[key]?.status;
+      const afterStatus = (mod as { status?: string }).status;
+      const reason =
+        (mod as { note?: string }).note || 'Status oder Daten vom Notar-Auditor präzisiert';
+      diffList.push({
+        fieldKey: key,
+        beforeStatus,
+        afterStatus,
+        reason,
+      });
+    }
+
+    params.onTrace({
+      stage2Knowledge: {
+        selectedRules: relevantStatutory.map((r) => r.title || r.id),
+        knowledgePromptSnippet: rulesSection.substring(0, 1500),
+      },
+      stage3Extraction: {
+        rawOutputText: extractionTextResult,
+        parsedJson: parsedExtractionRaw,
+        validationSuccess: validatedExtraction?.success ?? false,
+      },
+      stage4Auditor: {
+        rawOutputText: auditorResult.text,
+        parsedJson: parsedAuditorRaw,
+        modifications: auditorExtraction.modifications,
+        reasoningDiff: diffList,
+      },
+      stage5FinalDossier: {
+        overallStatus: finalDossier.overallStatus,
+        readinessScore: (() => {
+          const fieldEntries = Object.values(finalDossier.fields || {});
+          if (fieldEntries.length === 0) return 0;
+          const verified = fieldEntries.filter((f) => f.status === FIELD_STATUS.VERIFIED).length;
+          return Math.round((verified / fieldEntries.length) * 100);
+        })(),
+        detectedDocumentsCount: finalDossier.detectedDocuments?.length || 0,
+        fieldsCount: Object.keys(finalDossier.fields || {}).length,
+      },
+    });
+  }
+
+  return finalDossier;
 }

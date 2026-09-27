@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { calculateAuditRecordHash, GENESIS_HASH, verifyAuditChain } from '@/lib/audit/audit-crypto';
 import type { IAuditRepository, AppendAuditParams } from '@/lib/audit/audit-repository';
 import type { IJobRepository } from '@/lib/jobs/job-repository';
+import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import type {
   IDossierRepository,
   DocumentRecord,
@@ -16,6 +17,8 @@ import { CASE_STATUS } from '@/types/document';
 import type { Dossier } from '@/types/dossier';
 import { STORAGE_TYPES } from '@/types/dossier';
 import { JOB_STATUS, type DossierJob, type CreateJobPayload } from '@/types/jobs';
+import type { KnowledgeDocument } from '@/types/knowledge';
+import { KNOWLEDGE_CATEGORIES, MATCH_SOURCES } from '@/types/knowledge';
 import type { NotaryRole } from '@/types/organization';
 import {
   WORKFLOW_INSTANCE_STATUS,
@@ -25,6 +28,7 @@ import {
   type WorkflowInstance,
   type WorkflowStepStatus,
 } from '@/types/workflow';
+import seedKnowledgeData from './seed-knowledge.json';
 
 /**
  * Creates an isolated test double mock implementation of IJobRepository using vi.fn()
@@ -360,5 +364,44 @@ export function createMockWorkflowRepository(options?: {
         return inst;
       }
     ),
+  };
+}
+
+export { createOfflineKnowledgeRepository } from './offline-knowledge-repository';
+
+/**
+ * Creates an isolated mock knowledge repository loaded from canonical seed fixture data using vi.fn().
+ * Zero hardcoded domain rules in code.
+ */
+export function createMockKnowledgeRepository(
+  initialDocs: KnowledgeDocument[] = seedKnowledgeData as unknown as KnowledgeDocument[]
+): IKnowledgeRepository {
+  const docs = [...initialDocs];
+
+  return {
+    search: vi.fn(async (query: { queryText?: string }) => {
+      const q = (query.queryText || '').toLowerCase();
+      const matches = docs.filter(
+        (doc) =>
+          doc.triggerKeywords.some((k) => q.includes(k.toLowerCase())) ||
+          doc.content.toLowerCase().includes(q) ||
+          doc.title.toLowerCase().includes(q)
+      );
+
+      return matches.map((document) => ({
+        document,
+        bm25Score: 1.0,
+        vectorScore: 1.0,
+        combinedScore: 1.0,
+        matchSource: MATCH_SOURCES.BM25_EXACT,
+      }));
+    }),
+    save: vi.fn(async (doc: KnowledgeDocument) => {
+      docs.push(doc);
+      return doc;
+    }),
+    getStatutoryRules: vi.fn(async () => {
+      return docs.filter((d) => d.category === KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM);
+    }),
   };
 }

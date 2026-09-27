@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   KNOWLEDGE_CATEGORIES,
+  MATCH_SOURCES,
   KnowledgeCategorySchema,
   KnowledgeDocumentSchema,
   HybridSearchResultSchema,
@@ -68,7 +69,7 @@ describe('Knowledge Domain Types & Contracts', () => {
       bm25Score: 4.5,
       vectorScore: 0.88,
       combinedScore: 5.38,
-      matchSource: 'HYBRID_FUSION' as const,
+      matchSource: MATCH_SOURCES.HYBRID_FUSION,
     };
 
     const parsedResult = HybridSearchResultSchema.parse(result);
