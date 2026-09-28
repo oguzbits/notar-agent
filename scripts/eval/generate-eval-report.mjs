@@ -40,13 +40,8 @@ if (fs.existsSync(envLocalPath)) {
 
 // Fallback für MOCK-Modus, falls Supabase nicht lokal läuft
 if (!process.env.SUPABASE_URL) {
-  process.env.SUPABASE_URL = 'http://localhost:54321';
+  process.env.NEXT_SUPABASE_URL = 'http://localhost:54321';
   process.env.NEXT_SUPABASE_PUBLISHABLE_KEY = 'mock-anon-key-for-local-eval';
-}
-
-// In Live-Runs benötigt PostgREST den regulären JWT-Anon-Key des Projekts:
-if (!process.env.NEXT_SUPABASE_ANON_KEY && !process.env.SUPABASE_ANON_KEY) {
-  process.env.NEXT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eHpjc3dmc2pkanRwZWtxbmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0NjA0ODIsImV4cCI6MjEwNDAzNjQ4Mn0.RlCHaQITIN0XfMe0-J8JA3_5BG2s95r7PiyLMfWamvo';
 }
 
 const args = process.argv.slice(2);

@@ -48,14 +48,6 @@ describe('env validation', () => {
     expect(env.SUPABASE_WEBHOOK_SECRET).toBe('secret-token-abc');
   });
 
-  it('falls back to SUPABASE_URL if NEXT_SUPABASE_URL is not set', () => {
-    delete process.env.NEXT_SUPABASE_URL;
-    process.env.SUPABASE_URL = 'https://fallback.supabase.co';
-
-    const env = validateEnv(process.env);
-    expect(env.NEXT_SUPABASE_URL).toBe('https://fallback.supabase.co');
-  });
-
   it('exposes getEnv singleton function', () => {
     const env = getEnv();
     expect(typeof env).toBe('object');

@@ -8,7 +8,7 @@ export async function updateSession(request: NextRequest) {
   });
 
   const env = validateEnv(process.env);
-  const supabaseUrl = env.NEXT_SUPABASE_URL || env.SUPABASE_URL;
+  const supabaseUrl = env.NEXT_SUPABASE_URL;
   const supabaseKey = env.NEXT_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
