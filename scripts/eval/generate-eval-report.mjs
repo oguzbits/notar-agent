@@ -38,8 +38,9 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
-// Fallback für MOCK-Modus, falls Supabase nicht lokal läuft
-if (!process.env.SUPABASE_URL) {
+// Fallback für Eval-Modus: NEXT_SUPABASE_URL muss für getServerSupabase() gesetzt sein,
+// auch wenn die Evaluation offline läuft (knowledgeRepo wird immer offline übergeben).
+if (!process.env.NEXT_SUPABASE_URL) {
   process.env.NEXT_SUPABASE_URL = 'http://localhost:54321';
   process.env.NEXT_SUPABASE_PUBLISHABLE_KEY = 'mock-anon-key-for-local-eval';
 }
@@ -231,11 +232,11 @@ async function main() {
       const geminiKey = process.env.EVAL_GEMINI_API_KEY;
       if (anthropicKey) {
         model = createAnthropic({ apiKey: anthropicKey })(
-          process.env.EVAL_ANTHROPIC_AI_MODEL || 'claude-3-7-sonnet-20250219'
+          process.env.EVAL_ANTHROPIC_AI_MODEL || 'claude-4-5-haiku'
         );
       } else if (geminiKey) {
         model = createGoogle({ apiKey: geminiKey })(
-          process.env.EVAL_GEMINI_AI_MODEL || 'gemini-2.5-flash'
+          process.env.EVAL_GEMINI_AI_MODEL || 'gemini-2.5-flash-lite'
         );
       } else {
         throw new Error('Kein API-Key gesetzt für Live-Run.');
@@ -247,7 +248,10 @@ async function main() {
     let tokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     const pipeStart = performance.now();
 
-    const offlineKnowledgeRepo = !isLive ? createOfflineKnowledgeRepository() : undefined;
+    // Eval-Skript nutzt immer das Offline-Knowledge-Repository:
+    // --live steuert ausschließlich die Modell-Auswahl (echte API vs. Mock), nicht die DB-Verbindung.
+    // getKnowledgeRepository() setzt @supabase/ssr-Cookies voraus, die im Skript-Kontext nicht existieren.
+    const offlineKnowledgeRepo = createOfflineKnowledgeRepository();
 
     let pipelineTrace = null;
 
