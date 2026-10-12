@@ -177,3 +177,107 @@ CREATE POLICY rls_audit_logs_select ON audit_logs FOR SELECT USING (is_org_membe
 
 DROP POLICY IF EXISTS rls_audit_logs_insert ON audit_logs;
 CREATE POLICY rls_audit_logs_insert ON audit_logs FOR INSERT WITH CHECK (is_org_member(organization_id));
+
+-- 10. Kanonischer 1-Klick Demo-Benutzer & Kanzlei Seed (§ 17 BeurkG Demo-Betrieb)
+DO $$
+DECLARE
+    v_demo_user_id UUID := '0232afd4-59fa-49b2-8e59-c6c5d069a678';
+    v_demo_org_id UUID := 'd0000000-0000-0000-0000-000000000001';
+BEGIN
+    -- Demo-User in auth.users anlegen falls noch nicht vorhanden
+    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'demo@notar-agent.de') THEN
+        INSERT INTO auth.users (
+            instance_id,
+            id,
+            aud,
+            role,
+            email,
+            encrypted_password,
+            email_confirmed_at,
+            raw_app_meta_data,
+            raw_user_meta_data,
+            created_at,
+            updated_at,
+            confirmation_token,
+            recovery_token,
+            email_change_token_new,
+            email_change,
+            phone_change,
+            phone_change_token,
+            reauthentication_token,
+            is_sso_user,
+            is_anonymous
+        ) VALUES (
+            '00000000-0000-0000-0000-000000000000',
+            v_demo_user_id,
+            'authenticated',
+            'authenticated',
+            'demo@notar-agent.de',
+            crypt('DemoNotariat2026!Secured', gen_salt('bf')),
+            now(),
+            '{"provider":"email","providers":["email"]}'::jsonb,
+            '{"full_name":"Dr. Alexander Muster","title":"Notar"}'::jsonb,
+            now(),
+            now(),
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            false,
+            false
+        );
+
+        INSERT INTO auth.identities (
+            id,
+            user_id,
+            identity_data,
+            provider,
+            provider_id,
+            last_sign_in_at,
+            created_at,
+            updated_at
+        ) VALUES (
+            gen_random_uuid(),
+            v_demo_user_id,
+            jsonb_build_object('sub', v_demo_user_id::text, 'email', 'demo@notar-agent.de'),
+            'email',
+            v_demo_user_id::text,
+            now(),
+            now(),
+            now()
+        );
+    END IF;
+
+    -- Demo-Kanzlei anlegen
+    INSERT INTO public.organizations (
+        id,
+        name,
+        official_seat,
+        chamber_district
+    ) VALUES (
+        v_demo_org_id,
+        'Notariat Dr. Muster & Partner',
+        'Köln',
+        'Rheinische Notarkammer'
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        official_seat = EXCLUDED.official_seat,
+        chamber_district = EXCLUDED.chamber_district;
+
+    -- Notar-Rolle zuweisen
+    INSERT INTO public.organization_members (
+        organization_id,
+        user_id,
+        role
+    ) VALUES (
+        v_demo_org_id,
+        v_demo_user_id,
+        'NOTAR'
+    )
+    ON CONFLICT (organization_id, user_id) DO UPDATE SET
+        role = 'NOTAR';
+END $$;

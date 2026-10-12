@@ -39,10 +39,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute =
+  const isAuthEntryRoute =
     request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/register') ||
     request.nextUrl.pathname.startsWith('/invite');
+
+  const isAuthCallbackRoute = request.nextUrl.pathname.startsWith('/auth');
 
   const isApiRoute = request.nextUrl.pathname.startsWith('/api');
   const isStaticAsset =
@@ -50,13 +52,13 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.includes('.') ||
     request.nextUrl.pathname.startsWith('/favicon.ico');
 
-  if (isApiRoute || isStaticAsset) {
+  if (isApiRoute || isStaticAsset || isAuthCallbackRoute) {
     return supabaseResponse;
   }
 
   // If user is not logged in and not on an auth route, redirect to /login
   // Only enforce redirect if Supabase is actually configured with users
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthEntryRoute) {
     // In local demo or offline mode without users, allow pass-through if MOCK_AI or demo mode is active
     const allowPrototypePassThrough =
       process.env.NODE_ENV === 'development' && !request.cookies.get('sb-access-token');
@@ -68,7 +70,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If user is logged in and tries to access /login or /register, redirect to dashboard
-  if (user && isAuthRoute) {
+  if (user && isAuthEntryRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);

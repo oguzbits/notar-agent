@@ -150,3 +150,9 @@
 - Integrierte Retry-Schleife für transiente Überlastungen (`HTTP 503` / `429`) und automatischer Wechsel auf das Ausweichmodell bei `finishReason: RECITATION`.
 - Automatischer, transparenter Fallback auf den leichtgewichtigen nativen Node.js Deflate/Zlib Stream-Parser (`src/lib/files/pdf-document-parser.ts`), wenn kein `GEMINI_API_KEY` hinterlegt ist oder im Offline-/CI-Betrieb gearbeitet wird (vollständige Deinstallation von `@llamaindex/liteparse`, -33 MB native Binaries).
 - Verankerung von `GEMINI_PARSE_MODEL` und `GEMINI_PARSE_FALLBACK_MODEL` im typisierten Environment-Vertrag (`src/env.ts`, `src/env.test.ts`).
+
+#### 9. OAuth Callback Middleware Bypass & Supabase Live Demo-Kanzlei Seed (Additions Modul 17)
+
+- **OAuth Callback Middleware Bypass:** Behebung der unerwünschten HTTP-307-Interzeption bei Google SSO durch Aufnahme von `/auth` in die Route-Ausnahmen von `src/lib/supabase/middleware.ts`, wodurch der Code-Exchange-Handler `/auth/callback` deterministisch ausgeführt wird.
+- **Supabase Demo-Kanzlei & User Seed:** Bereitstellung des bestätigten Demo-Benutzers (`demo@notar-agent.de`) mit Notar-Rolle in `auth.users`, `auth.identities` und `organization_members` auf der Supabase-Produktionsinstanz sowie dauerhafte Konsolidierung in `supabase/migrations/20260915000000_core_multi_tenancy.sql`.
+- **TDD & Regression-Schutz:** Ergänzung dedizierter Unit-Tests in `src/lib/supabase/middleware.test.ts` zur Absicherung aller unauthentifizierten und authentifizierten Routenfilter.
