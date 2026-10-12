@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseDocumentWithGemini } from '../../src/lib/files/gemini-pdf-parser.ts';
-import { parsePdfWithLiteParse } from '../../src/lib/files/pdf-document-parser.ts';
+import { parsePdfNativeStreamFallback } from '../../src/lib/files/pdf-document-parser.ts';
 
 // .env.local nativ laden
 const envLocalPath = path.resolve(process.cwd(), '.env.local');
@@ -147,7 +147,7 @@ async function runBenchmark() {
     } else {
       const t0 = performance.now();
       try {
-        const parsed = await parsePdfWithLiteParse(fileBuffer);
+        const parsed = await parsePdfNativeStreamFallback(fileBuffer);
         liteDuration = Math.round(performance.now() - t0);
         liteText = parsed.markdown;
         liteTableLines = countTableLines(liteText);

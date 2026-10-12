@@ -1,10 +1,11 @@
-import { LiteParse } from '@llamaindex/liteparse';
+import zlib from 'node:zlib';
 import {
   DocumentLayoutBlock,
   DocumentParsedContent,
   DocumentParsedContentSchema,
 } from '@/types/document';
 import { parseDocumentWithGemini } from './gemini-pdf-parser';
+import { parseDocumentLayoutStructure } from './layout-structure-parser';
 
 /**
  * Optionen für die Dokumenten-Kontext-Extraktion.
@@ -14,266 +15,138 @@ export interface ParsePdfDocumentOptions {
   preserveVerySmallText?: boolean;
   extractScreenshots?: boolean;
   extractImages?: boolean;
-  preferLocal?: boolean;
+}
+
+function decodePdfLiteralString(str: string): string {
+  // 1. Unescape octal \ooo (1-3 digits)
+  let decoded = str.replace(/\\([0-7]{1,3})/g, (_, oct) => {
+    const code = parseInt(oct, 8);
+    return Buffer.from([code]).toString('latin1');
+  });
+  // 2. Unescape common escapes
+  decoded = decoded
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\b/g, '\b')
+    .replace(/\\f/g, '\f')
+    .replace(/\\([()\\])/g, '$1');
+  return decoded;
 }
 
 /**
- * Parst ein PDF-Dokument über LiteParse in strukturiertes Markdown mit Headings und Tabellen.
- * Gewährleistet lokale, DSGVO-konforme In-Memory-Verarbeitung ohne Cloud-Abhängigkeiten.
+ * Extrahiert rohen Text direkt aus unkomprimierten oder Deflate-komprimierten PDF-Textströmen.
+ * 100% nativ in TypeScript & Node.js ohne native Binaries, WASM oder externe Abhängigkeiten.
  */
-export async function parsePdfWithLiteParse(
-  buffer: Buffer | Uint8Array,
-  options: ParsePdfDocumentOptions = {}
+function extractTextFromPdfStreams(buffer: Uint8Array): string {
+  const textChunks: string[] = [];
+  const latin1 = Buffer.from(buffer).toString('latin1');
+
+  // 1. Textoperatoren aus unkomprimierten Streams extrahieren
+  const btMatches = latin1.matchAll(/BT[\s\S]*?ET/g);
+  for (const match of btMatches) {
+    const chunk = match[0];
+    const tjMatches = chunk.matchAll(/\((.*?)\)\s*Tj/g);
+    for (const tj of tjMatches) {
+      if (tj[1]) textChunks.push(decodePdfLiteralString(tj[1]));
+    }
+  }
+
+  // 2. Flate-komprimierte Streams über Node zlib dekomprimieren
+  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let streamMatch: RegExpExecArray | null;
+  while ((streamMatch = streamRegex.exec(latin1)) !== null) {
+    const rawMatch = streamMatch[1];
+    if (!rawMatch) continue;
+
+    try {
+      const rawData = Buffer.from(rawMatch, 'latin1');
+      const decompressed = zlib.inflateSync(rawData).toString('latin1');
+
+      const innerBt = decompressed.matchAll(/BT[\s\S]*?ET/g);
+      for (const b of innerBt) {
+        const tjMatches = b[0].matchAll(/\((.*?)\)\s*Tj/g);
+        for (const tj of tjMatches) {
+          if (tj[1]) textChunks.push(decodePdfLiteralString(tj[1]));
+        }
+        const arrayMatches = b[0].matchAll(/\[(.*?)\]\s*TJ/g);
+        for (const arr of arrayMatches) {
+          if (arr[1]) {
+            const parts = arr[1].matchAll(/\((.*?)\)/g);
+            for (const p of parts) {
+              if (p[1]) textChunks.push(decodePdfLiteralString(p[1]));
+            }
+          }
+        }
+      }
+    } catch (_err: unknown) {
+      // Nicht-komprimierte Streams oder Grafik-Payloads ignorieren
+    }
+  }
+
+  return textChunks.join('\n').trim();
+}
+
+/**
+ * Nativer, leichtgewichtiger Fallback-Parser für Offline-Betrieb & CI ohne API-Key.
+ */
+export async function parsePdfNativeStreamFallback(
+  buffer: Buffer | Uint8Array
 ): Promise<DocumentParsedContent> {
   try {
     const rawBuffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     const isolatedCopy = new Uint8Array(rawBuffer.byteLength);
     isolatedCopy.set(rawBuffer);
 
-    // LiteParse initialisieren (im JSON-Modus mit voller Struktur- und Annotationsextraktion)
-    const parser = new LiteParse({
-      outputFormat: 'json',
-      ocrEnabled: false,
-      maxPages: options.maxPages ?? 1000,
-      preserveVerySmallText: options.preserveVerySmallText ?? true,
-      extractAnnotations: true,
-      extractBlocks: true,
-      extractFormFields: true,
-      extractScreenshots: options.extractScreenshots ?? false,
-      extractImages: options.extractImages ?? true,
-      dpi: 144,
-      quiet: true,
-    });
-
-    const parsed = await parser.parse(isolatedCopy);
-
-    const blocks: DocumentLayoutBlock[] = [];
-    const pageMarkdownSections: string[] = [];
-
-    for (const page of parsed.pages || []) {
-      const pageNum = Number(page.pageNum) || 1;
-      const baseMarkdown = String(page.markdown || page.text || '').trim();
-
-      const pageBlocks = page.blocks || [];
-      const correlatedEntries: string[] = [];
-      const unmappedEntries: string[] = [];
-
-      // Alle Text- und Layout-Blöcke der Seite erfassen
-      for (const b of pageBlocks) {
-        if (!b.text || !b.text.trim()) continue;
-        blocks.push({
-          pageNumber: pageNum,
-          type: b.kind === 'heading' ? 'heading' : b.kind === 'table' ? 'table' : 'text',
-          content: b.text.trim(),
-          bbox: b.bbox
-            ? {
-                x: Number(b.bbox.x) || 0,
-                y: Number(b.bbox.y) || 0,
-                width: Number(b.bbox.width) || 0,
-                height: Number(b.bbox.height) || 0,
-              }
-            : undefined,
-        });
-      }
-
-      // Annotationen räumlich mit Formularfeldern und Labels abgleichen
-      if (Array.isArray(page.annotations)) {
-        for (const a of page.annotations) {
-          const content = String(a.contents || '').trim();
-          if (content.length === 0) continue;
-
-          blocks.push({
-            pageNumber: pageNum,
-            type: 'annotation',
-            content,
-            bbox: a.rect
-              ? {
-                  x: Number(a.rect.x) || 0,
-                  y: Number(a.rect.y) || 0,
-                  width: Number(a.rect.width) || 0,
-                  height: Number(a.rect.height) || 0,
-                }
-              : undefined,
-          });
-
-          const ay = a.rect?.y || 0;
-          const ax = a.rect?.x || 0;
-
-          // Rein geometrische Nearest-Neighbor-Korrelation (100% dokument- und domänenagnostisch):
-          // 0. Generische Skalen-Interpolation: Wenn die Annotation ein visueller Zeiger/Marker (z.B. ▼, ▲, v, ^) ist
-          const isPointerMarker = /^[▼▲v^<>↓↑]$/u.test(content);
-          if (isPointerMarker) {
-            const scaleBlock = pageBlocks.find(
-              (b) =>
-                b.text &&
-                b.bbox &&
-                Math.abs(b.bbox.y - ay) <= 40 &&
-                b.bbox.width > 120 &&
-                b.text.trim().split(/\s+/).length >= 4
-            );
-            if (scaleBlock && scaleBlock.bbox && scaleBlock.text) {
-              const tokens = scaleBlock.text.trim().split(/\s+/);
-              const ratio = (ax - scaleBlock.bbox.x) / scaleBlock.bbox.width;
-              const tokenIdx = Math.min(
-                Math.max(Math.floor(ratio * tokens.length), 0),
-                tokens.length - 1
-              );
-              const resolvedValue = tokens[tokenIdx];
-              // Finde das zugehörige übergeordnete Label direkt über der Skala
-              const headerBlock = pageBlocks
-                .filter(
-                  (b) =>
-                    b.text &&
-                    b.bbox &&
-                    b.bbox.y < scaleBlock.bbox!.y &&
-                    scaleBlock.bbox!.y - b.bbox.y <= 50 &&
-                    b.text.trim().length > 3
-                )
-                .sort((b1, b2) => b2.bbox!.y - b1.bbox!.y)[0];
-              const headerLabel =
-                headerBlock?.text?.split('\n')[0]?.trim().replace(/[*_#]/g, '') || 'Skala';
-              correlatedEntries.push(`[${headerLabel} (Markierung ${content})]: ${resolvedValue}`);
-              continue;
-            }
-          }
-
-          // 1. Suche den am nächsten liegenden Textblock auf derselben horizontalen Zeile links (|dy| <= 16, x <= ax + 15)
-          const lineBlocks = pageBlocks.filter(
-            (b) => b.text && b.bbox && Math.abs(b.bbox.y - ay) <= 16 && b.bbox.x <= ax + 15
-          );
-          // Sortiere nach dem am weitesten rechts liegenden Rand (nächster linker Nachbar)
-          lineBlocks.sort((b1, b2) => b2.bbox!.x + b2.bbox!.width - (b1.bbox!.x + b1.bbox!.width));
-
-          // 2. Vertikaler Fallback: Falls links kein Label existiert, suche nach dem nächsten Textblock direkt darüber (Spaltenüberschrift)
-          const aboveBlocks = pageBlocks.filter(
-            (b) =>
-              b.text &&
-              b.bbox &&
-              ay - b.bbox.y >= 0 &&
-              ay - b.bbox.y <= 32 &&
-              Math.abs(b.bbox.x - ax) <= 80
-          );
-          aboveBlocks.sort((b1, b2) => ay - b1.bbox!.y - (ay - b2.bbox!.y));
-
-          // 3. Fallback: Nächster Block nach euklidischem Abstand in enger Nachbarschaft
-          const nearbyBlocks = pageBlocks.filter(
-            (b) => b.text && b.bbox && Math.hypot(ax - b.bbox.x, ay - b.bbox.y) <= 45
-          );
-          nearbyBlocks.sort(
-            (b1, b2) =>
-              Math.hypot(ax - b1.bbox!.x, ay - b1.bbox!.y) -
-              Math.hypot(ax - b2.bbox!.x, ay - b2.bbox!.y)
-          );
-
-          const bestBlock = lineBlocks[0] || aboveBlocks[0] || nearbyBlocks[0];
-
-          if (bestBlock?.text) {
-            const firstLine = bestBlock.text.split('\n')[0] ?? '';
-            const rawLabel = firstLine.trim().replace(/[*_#]/g, '');
-            const label = rawLabel.length > 70 ? `${rawLabel.substring(0, 70)}...` : rawLabel;
-            correlatedEntries.push(`[${label}]: ${content}`);
-          } else {
-            unmappedEntries.push(content);
-          }
-        }
-      }
-
-      if (Array.isArray(page.formFields)) {
-        for (const f of page.formFields) {
-          const val = String(f.value || '').trim();
-          if (val.length > 0) {
-            const fieldText = f.name ? `[${f.name}]: ${val}` : val;
-            correlatedEntries.push(fieldText);
-            blocks.push({
-              pageNumber: pageNum,
-              type: 'form_field',
-              content: fieldText,
-            });
-          }
-        }
-      }
-
-      let sectionText = baseMarkdown;
-      const combinedNotes: string[] = [];
-
-      if (correlatedEntries.length > 0) {
-        const uniqueCorrelated = Array.from(new Set(correlatedEntries));
-        combinedNotes.push(
-          `### Zugeordnete Formularangaben (Seite ${pageNum}):\n` +
-            uniqueCorrelated.map((item) => `- ${item}`).join('\n')
-        );
-      }
-
-      if (unmappedEntries.length > 0) {
-        const uniqueUnmapped = Array.from(new Set(unmappedEntries));
-        combinedNotes.push(
-          `### Weitere Vermerke & Einträge (Seite ${pageNum}):\n` +
-            uniqueUnmapped.map((item) => `- ${item}`).join('\n')
-        );
-      }
-
-      if (combinedNotes.length > 0) {
-        const notesBlock = combinedNotes.join('\n\n');
-        sectionText = sectionText ? `${sectionText}\n\n${notesBlock}` : notesBlock;
-      }
-
-      if (sectionText.trim().length > 0) {
-        pageMarkdownSections.push(sectionText.trim());
-      }
+    // Validiere minimale PDF-Header-Signatur
+    const latin1 = Buffer.from(isolatedCopy).toString('latin1');
+    if (!latin1.startsWith('%PDF-')) {
+      return {
+        markdown: '',
+        totalPages: 0,
+        blocks: [],
+        characterCount: 0,
+        hasTextLayer: false,
+        needsOcr: true,
+        metadata: {},
+      };
     }
 
-    const markdownText = pageMarkdownSections.join('\n\n---\n\n').trim();
+    const pageMatches = latin1.match(/\/Type\s*\/Page\b/g);
+    const rawText = extractTextFromPdfStreams(isolatedCopy);
+    const layout = parseDocumentLayoutStructure(rawText);
+
+    const blocks: DocumentLayoutBlock[] = layout.blocks.map((b) => ({
+      pageNumber: 1,
+      type:
+        b.type === 'clause' || b.type === 'department'
+          ? 'heading'
+          : b.type === 'table'
+            ? 'table'
+            : 'text',
+      content: b.content,
+    }));
+
+    const markdownText = layout.structuredMarkdown.trim();
     const characterCount = markdownText.length;
     const hasTextLayer = characterCount > 0;
-
-    const pageScreenshots = Array.isArray(parsed.screenshots)
-      ? parsed.screenshots.map((s) => ({
-          pageNum: s.pageNum,
-          width: s.width,
-          height: s.height,
-          base64Png: `data:image/png;base64,${s.imageBuffer.toString('base64')}`,
-        }))
-      : undefined;
-
-    const extractedImages = Array.isArray(parsed.images)
-      ? parsed.images.map((img) => ({
-          id: img.id,
-          pageNumber: Number(img.page) || 1,
-          format: img.format || 'png',
-          base64Data: Buffer.from(img.bytes).toString('base64'),
-          mediaType: img.format === 'jpeg' || img.format === 'jpg' ? 'image/jpeg' : 'image/png',
-          bbox: {
-            x: Number(img.bbox?.x) || 0,
-            y: Number(img.bbox?.y) || 0,
-            width: Number(img.bbox?.width) || 0,
-            height: Number(img.bbox?.height) || 0,
-          },
-          width: Number(img.width) || 0,
-          height: Number(img.height) || 0,
-        }))
-      : undefined;
+    const totalPages = pageMatches ? pageMatches.length : hasTextLayer ? 1 : 0;
 
     const result: DocumentParsedContent = {
       markdown: markdownText,
-      totalPages: Number(parsed.totalPages) || (parsed.pages ? parsed.pages.length : 0),
+      totalPages,
       blocks,
       characterCount,
       hasTextLayer,
       needsOcr: !hasTextLayer,
-      pageScreenshots,
-      extractedImages,
       metadata: {
-        creator: parsed.creator ?? undefined,
-        producer: parsed.producer ?? undefined,
-        formType: typeof parsed.formType === 'number' ? parsed.formType : undefined,
+        creator: 'native-stream-parser',
       },
     };
 
     return DocumentParsedContentSchema.parse(result);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.debug(`[pdf-document-parser] Extraktion fehlgeschlagen oder unleserlich: ${msg}`);
-
+    console.debug('[pdf-document-parser] Nativer Stream-Fallback fehlgeschlagen:', err);
     return {
       markdown: '',
       totalPages: 0,
@@ -289,17 +162,17 @@ export async function parsePdfWithLiteParse(
 /**
  * Universeller PDF-Parser für notarielle Akten und Scans.
  * Nutzt primär Google Gemini Vision (gemini-3.1-flash-lite) für bit- und tabellengenaue Transkription
- * und fällt bei fehlenden Keys oder im Offline-Modus transparent auf LiteParse zurück.
+ * und fällt bei fehlenden Keys oder im Offline-Modus transparent auf den nativen Stream-Parser zurück.
  */
 export async function parsePdfDocument(
   buffer: Buffer | Uint8Array,
-  options: ParsePdfDocumentOptions = {}
+  _options: ParsePdfDocumentOptions = {}
 ): Promise<DocumentParsedContent> {
   const hasGeminiKey = Boolean(
     process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
   );
 
-  if (hasGeminiKey && !options.preferLocal) {
+  if (hasGeminiKey) {
     try {
       const geminiResult = await parseDocumentWithGemini(buffer);
       if (geminiResult.hasTextLayer && geminiResult.characterCount > 0) {
@@ -307,11 +180,11 @@ export async function parsePdfDocument(
       }
     } catch (err: unknown) {
       console.warn(
-        '[pdf-document-parser] Gemini-Parsing fehlgeschlagen. Aktiviere LiteParse-Fallback:',
+        '[pdf-document-parser] Gemini-Vision Parsing fehlgeschlagen. Aktiviere nativen Stream-Fallback:',
         err
       );
     }
   }
 
-  return parsePdfWithLiteParse(buffer, options);
+  return parsePdfNativeStreamFallback(buffer);
 }
