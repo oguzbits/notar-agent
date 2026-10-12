@@ -94,3 +94,11 @@ export const DocumentParsedContentSchema = z.object({
     .default({}),
 });
 export type DocumentParsedContent = z.infer<typeof DocumentParsedContentSchema>;
+
+export const GEMINI_FINISH_REASONS = {
+  STOP: 'STOP',
+  RECITATION: 'RECITATION',
+  MAX_TOKENS: 'MAX_TOKENS',
+} as const;
+
+export type GeminiFinishReason = (typeof GEMINI_FINISH_REASONS)[keyof typeof GEMINI_FINISH_REASONS];

@@ -29,6 +29,7 @@
 | **Additions** | Modul 13 Codebase Health & Quality Gates   | [x] Abgeschlossen | AST-Komplexitäts-Auditor (`repo-health.mjs`), 94/100 Health Score, PII/N+1 Invarianten & harter 90%-CI-Abbruch                     |
 | **Additions** | Modul 14 1-Klick Demo, SSO Proxy & Queue   | [x] Abgeschlossen | 1-Klick Gastzugang (`POST /api/auth/demo`), robuste SSO-Proxy-Auflösung, autarke Next.js `after()` Queue & Testakten-Dokumentation |
 | **Additions** | Modul 15 Webhook-Sunset & Zero-Config      | [x] Abgeschlossen | Vollständiges Sunset des externen Database-Webhooks (`/api/jobs/process-webhook`), Bereinigung von `SUPABASE_WEBHOOK_SECRET`       |
+| **Additions** | Modul 16 Hybrid Gemini Ingestion & Parser  | [x] Abgeschlossen | Gemini Vision Parser (`gemini-3.1-flash-lite`) für bit- und tabellengenaue Transkription mit automatischem LiteParse-Fallback      |
 
 ---
 
@@ -140,3 +141,11 @@
 - Vollständige Eliminierung des veralteten Webhook-Endpunkts `/api/jobs/process-webhook` und der dazugehörigen Schemas `SupabaseJobWebhookPayloadSchema`.
 - Entfernung von `SUPABASE_WEBHOOK_SECRET` aus dem Environment-Vertrag (`src/env.ts`, `src/env.test.ts`), wodurch eine Umgebungsvariable und potenzielle Angriffsfläche entfällt.
 - Asynchrone Ingestion stützt sich nun exklusiv und autark auf den nativen Next.js 16 `after()` Lifecycle in `/api/analyze`.
+
+#### 8. Hybrid Gemini Ingestion & Document Parser (Additions Modul 16)
+
+- Integration der Erkenntnisse aus dem Modell-Spike (`notebooklm-klon`): Ersetzung der reinen Text-/OCR-Extraktion durch Google Gemini Vision (`gemini-3.1-flash-lite` mit Fallback auf `gemini-3.5-flash-lite`).
+- Bit- und tabellengenaue Markdown-Transkription (`src/lib/files/gemini-pdf-parser.ts`) löst das Tabellen-Problem von Grundbuchauszügen und Mieterlisten.
+- Integrierte Retry-Schleife für transiente Überlastungen (`HTTP 503` / `429`) und automatischer Wechsel auf das Ausweichmodell bei `finishReason: RECITATION`.
+- Automatischer, transparenter Fallback auf den lokalen In-Memory-Parser `LiteParse` (`src/lib/files/pdf-document-parser.ts`), wenn kein `GEMINI_API_KEY` hinterlegt ist oder im Offline-/CI-Betrieb gearbeitet wird.
+- Verankerung von `GEMINI_PARSE_MODEL` und `GEMINI_PARSE_FALLBACK_MODEL` im typisierten Environment-Vertrag (`src/env.ts`, `src/env.test.ts`).

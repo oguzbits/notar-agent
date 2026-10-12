@@ -18,6 +18,8 @@ export const ServerEnvSchema = z.object({
   EVAL_ANTHROPIC_API_KEY: optionalTrimmedString,
   EVAL_ANTHROPIC_AI_MODEL: optionalTrimmedString,
   AI_MODEL: optionalTrimmedString.default('claude-haiku-5-5'),
+  GEMINI_PARSE_MODEL: optionalTrimmedString.default('gemini-3.1-flash-lite'),
+  GEMINI_PARSE_FALLBACK_MODEL: optionalTrimmedString.default('gemini-3.5-flash-lite'),
   AI_PROVIDER: optionalTrimmedString,
   MOCK_AI: z.preprocess(
     (val) => val === 'true' || val === true || val === '1',

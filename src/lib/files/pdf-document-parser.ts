@@ -4,6 +4,7 @@ import {
   DocumentParsedContent,
   DocumentParsedContentSchema,
 } from '@/types/document';
+import { parseDocumentWithGemini } from './gemini-pdf-parser';
 
 /**
  * Optionen für die Dokumenten-Kontext-Extraktion.
@@ -13,13 +14,14 @@ export interface ParsePdfDocumentOptions {
   preserveVerySmallText?: boolean;
   extractScreenshots?: boolean;
   extractImages?: boolean;
+  preferLocal?: boolean;
 }
 
 /**
  * Parst ein PDF-Dokument über LiteParse in strukturiertes Markdown mit Headings und Tabellen.
  * Gewährleistet lokale, DSGVO-konforme In-Memory-Verarbeitung ohne Cloud-Abhängigkeiten.
  */
-export async function parsePdfDocument(
+export async function parsePdfWithLiteParse(
   buffer: Buffer | Uint8Array,
   options: ParsePdfDocumentOptions = {}
 ): Promise<DocumentParsedContent> {
@@ -282,4 +284,34 @@ export async function parsePdfDocument(
       metadata: {},
     };
   }
+}
+
+/**
+ * Universeller PDF-Parser für notarielle Akten und Scans.
+ * Nutzt primär Google Gemini Vision (gemini-3.1-flash-lite) für bit- und tabellengenaue Transkription
+ * und fällt bei fehlenden Keys oder im Offline-Modus transparent auf LiteParse zurück.
+ */
+export async function parsePdfDocument(
+  buffer: Buffer | Uint8Array,
+  options: ParsePdfDocumentOptions = {}
+): Promise<DocumentParsedContent> {
+  const hasGeminiKey = Boolean(
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+  );
+
+  if (hasGeminiKey && !options.preferLocal) {
+    try {
+      const geminiResult = await parseDocumentWithGemini(buffer);
+      if (geminiResult.hasTextLayer && geminiResult.characterCount > 0) {
+        return geminiResult;
+      }
+    } catch (err: unknown) {
+      console.warn(
+        '[pdf-document-parser] Gemini-Parsing fehlgeschlagen. Aktiviere LiteParse-Fallback:',
+        err
+      );
+    }
+  }
+
+  return parsePdfWithLiteParse(buffer, options);
 }
