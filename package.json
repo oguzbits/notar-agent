@@ -28,6 +28,7 @@
     "test:e2e": "playwright test --last-failed-file=/dev/null; rm -rf test-results",
     "eval": "promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache",
     "eval:parser": "vitest run src/test/eval/parser-eval.test.ts",
+    "eval:benchmark": "tsx scripts/eval/run-parser-benchmark.mjs",
     "eval:report": "tsx scripts/eval/generate-eval-report.mjs",
     "eval:report:live": "tsx scripts/eval/generate-eval-report.mjs --live",
     "eval:case": "node scripts/eval/run-eval-case.mjs",
