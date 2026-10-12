@@ -87,7 +87,7 @@ export const TelemetryMetricsSchema = z.object({
 export type TelemetryMetrics = z.infer<typeof TelemetryMetricsSchema>;
 
 /**
- * Layer 1: Ingestion & Parser Benchmark Result (LiteParse / PDFium).
+ * Layer 1: Ingestion & Parser Benchmark Result (Gemini Vision / Native Stream Fallback).
  * Misst isoliert die Genauigkeit und Vollständigkeit der PDF-Textextraktion und Layout-Strukturierung.
  */
 export const ParserEvalResultSchema = z.object({

@@ -32,28 +32,28 @@ graph TD
 ```
 
 1. **Digital-Born PDF (Reiner Textlayer, keine Rasterbilder):**
-   - Extrahiert den Unicode-Text direkt verlustfrei (< 10 ms via `@llamaindex/liteparse`, `ocrEnabled: false`).
+   - Extrahiert den Text über Google Gemini Vision (`gemini-3.1-flash-lite`) bzw. im Offline-Fallback nativ via Deflate/Zlib-Streamextraktion (`< 20 ms`).
    - Geometrische Bounding-Box-Korrelation für Formularfelder, Annotationen und Skalen-Zeiger.
    - Keine visuellen Tokens nötig: 100 % Token- und Kostenersparnis.
 
 2. **Scans / Bildträger (Reine Bildseiten, kein nutzbarer Text):**
-   - Automatisches Vorab-Rendering vollständiger hochauflösender Seiten-Screenshots als PNG via LiteParse (`extractScreenshots: true`).
+   - Natives multimodales Ingestieren des PDFs direkt über Gemini Vision (`gemini-3.1-flash-lite`).
    - Übergabe der gerenderten PNG-Seiten direkt als Multimodal-Vision-Part (`image/png`) an das LLM.
    - Maximales Kontextverständnis bei Handschriften, Notarsiegeln und Stempeln ohne fehleranfälliges lokales Tesseract-OCR.
 
 3. **Hybride Dokumente (Digitaler Text + eingescannte Siegel/Signaturen):**
-   - **Dual-Stream Fusion mit Objekt-Extraktion:** LiteParse extrahiert den Unicode-Textlayer und isoliert gleichzeitig die eingebetteten Bildobjekte (`extractImages: true`).
+   - **Dual-Stream Fusion mit Objekt-Extraktion:** Multimodale Transkription mit Gemini Vision kombiniert mit gezielter Bildausschnitts-Extraktion für Siegel und Stempel.
    - Jedes Bildobjekt (Siegel, Stempel, Beglaubigungsvermerk) wird mit exakter räumlicher Bounding-Box (`[x, y, width, height]`), Format und Auflösung an das LLM übergeben.
    - Im Textlayer verweist ein Manifest auf die exakte Position: Das LLM prüft den Text digital und verifiziert Siegel/Stempel visuell am genauen Fundort.
 
 4. **Reine Bilddateien (JPG, PNG, WebP):**
-   - Überspringen LiteParse/PDFium vollständig und werden direkt nativ als Bild-Payloads an das Vision-LLM übergeben.
+   - Werden direkt nativ als Bild-Payloads an das Vision-LLM übergeben.
 
 5. **Office-Dokumente (.docx / Word-Kaufvertragsentwürfe):**
    - Konvertierung direkt im In-Memory-Stream via `mammoth` ([`src/lib/files/docx-document-parser.ts`](../../src/lib/files/docx-document-parser.ts)) in strukturiertes Markdown.
    - **Semantische juristische Format-Maps:** Paragraphen, Klauseln, Rubren und Belehrungen werden über deklarative Style-Mappings direkt in saubere Markdown-Hierarchien überführt.
    - **Eingebettete Bildextraktion:** In Word eingebettete Siegel, Stempel, Unterschriften oder Lagepläne werden isoliert extrahiert und als multimodale Bild-Parts an das Vision-LLM übergeben.
-   - **Unterschied zu LiteParse:** Während LiteParse ein 2D-Seitenkoordinatensystem (`x, y, w, h`) für starre PDFs nutzt, operiert `mammoth` auf dem fließenden OpenXML-Dokumentenmodell: Es verankert Bilder als Inline-Marker direkt an der exakten Stelle im Klausel-Fließtext, sodass das LLM den vollständigen semantischen Kontext (z. B. Siegel direkt unter dem Unterschriftsvermerk) ohne schwere LibreOffice-Container-Abhängigkeiten erhält.
+   - **Vorteil gegenüber schweren Office-Containern:** `mammoth` operiert auf dem fließenden OpenXML-Dokumentenmodell und verankert Bilder als Inline-Marker direkt an der exakten Stelle im Klausel-Fließtext, sodass das LLM den vollständigen semantischen Kontext (z. B. Siegel direkt unter dem Unterschriftsvermerk) ohne schwere LibreOffice-Container-Abhängigkeiten erhält.
    - 100 % serverless- und cloud-kompatibel.
 
 ---

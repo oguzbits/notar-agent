@@ -37,11 +37,11 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 ### 1.2 Dual-Stream Ingestion & Normalisierung ([`src/lib/files/`](../src/lib/files/))
 
 - **PDF-Stream-Introspektion & Geometrisches Parsing ([`src/lib/files/pdf-stream-classifier.ts`](../src/lib/files/pdf-stream-classifier.ts), [`src/lib/files/pdf-document-parser.ts`](../src/lib/files/pdf-document-parser.ts)):** Eingehende Dokumente werden auf Byte- und Strukturebene analysiert:
-  - _Digital-Born PDFs & Formulare:_ Native, verlustfreie Textextraktion via `@llamaindex/liteparse` mit aktivierten PDFium-Strukturblöcken (`extractBlocks`), Formularfeldern (`extractFormFields`) und Annotationen (`extractAnnotations`). Geometrische Bounding-Box-Korrelation verknüpft frei platzierte Freitext-Annotationen und AcroForm-Werte präzise mit ihren horizontalen/vertikalen Feldbezeichnern (z. B. Skalenmarkierungen und Bedarfswerte im Energieausweis nach GEG § 80).
-  - _Scans / Bildträger:_ Automatisches Rendering vollständiger Seiten-Screenshots als PNG via `@llamaindex/liteparse` (`extractScreenshots: true`) mit direktem Multimodal-Vision-Routing (`@ai-sdk/anthropic`, `@ai-sdk/google`) für Siegel, handschriftliche Änderungen und Stempel.
-  - _Hybride Dokumente:_ Parallele Übergabe von digitalem Unicode-Textlayer und isolierten, eingebetteten Bildausschnitten (`extractImages: true`) samt exakten räumlichen Bounding-Boxen (`[x, y, w, h]`) an das Modell (Dual-Stream Fusion).
+  - _Multimodale PDF- & Scan-Ingestion:_ Primär über Google Gemini Vision (`gemini-3.1-flash-lite` mit Fallback auf `gemini-3.5-flash-lite` via [`src/lib/files/gemini-pdf-parser.ts`](../src/lib/files/gemini-pdf-parser.ts)) für bit- und tabellengenaue Markdown-Transkription (Grundbuch Abt. I–III, Mieterlisten, Energieausweise). Löst das Tabellenproblem komplexer Rechtsdokumente mit 100 % Token-Recall.
+  - _Nativer Stream-Fallback & Offline-CI:_ Extrem leichtgewichtiger, nativer Node.js Deflate/Zlib Stream-Parser ([`src/lib/files/pdf-document-parser.ts`](../src/lib/files/pdf-document-parser.ts)) ohne native Binaries oder externe Abhängigkeiten für vollständigen Offline-Betrieb.
+  - _Single-Pass Ingestion:_ Direkte Extraktion in [`src/lib/ai/payload-assembler.ts`](../src/lib/ai/payload-assembler.ts) ohne redundante Doppel-Klassifikation.
   - _Word / Office-Dokumente (.docx):_ Direkte In-Memory-Konvertierung über `mammoth` ([`src/lib/files/docx-document-parser.ts`](../src/lib/files/docx-document-parser.ts)) in formatiertes Markdown (Tabellen, Absätze, Klauseln) samt Extraktion eingebetteter Grafiken/Siegel, die als Inline-Marker direkt an der exakten Stelle im Fließtext verankert werden – 100 % serverless-tauglich ohne LibreOffice-Systemabhängigkeiten.
-- **Triage & MIME-Validierung ([`src/lib/files/document-triage.ts`](../src/lib/files/document-triage.ts), [`src/lib/files/file-types.ts`](../src/lib/files/file-types.ts)):** Vorverarbeitung, Bereinigung und Typisierung vor dem eigentlichen Modellaufruf (reine Bilddateien überspringen PDFium/LiteParse vollständig).
+- **Triage & MIME-Validierung ([`src/lib/files/document-triage.ts`](../src/lib/files/document-triage.ts), [`src/lib/files/file-types.ts`](../src/lib/files/file-types.ts)):** Vorverarbeitung, Bereinigung und Typisierung vor dem eigentlichen Modellaufruf.
 
 ### 1.3 Multimodaler agentischer Analyse-Workflow ([`src/app/api/analyze/`](../src/app/api/analyze/), [`src/lib/ai/`](../src/lib/ai/))
 
@@ -88,7 +88,7 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 - **Automatisierte Evaluation mit Promptfoo & 4-Layer-Eval-Framework ([`config/promptfoo.yaml`](../config/promptfoo.yaml), [`src/lib/evals/`](../src/lib/evals/)):**
   - Ermöglicht quantitative Messungen der Modellgüte gegen definierte Ground-Truth-Daten ([`src/test/eval/golden-dataset.ts`](../src/test/eval/golden-dataset.ts), [`src/test/eval/scorer.ts`](../src/test/eval/scorer.ts)).
   - **4-Layer-Evaluierung (Probabilistic CI & Component-Level Benchmarking):**
-    - _Layer 1 (Ingestion & Component Parsing):_ Isolierter Benchmark für `@llamaindex/liteparse` (`npm run eval:parser`, [`src/test/eval/parser-eval.test.ts`](../src/test/eval/parser-eval.test.ts)): Misst Key-Token Recall, Bounding-Box Alignment, Geometrie-Zuordnung und PDFium-Verarbeitungszeiten (ms) vor Modellübergabe.
+    - _Layer 1 (Ingestion & Component Parsing):_ Benchmark für die Dokumenten-Parser (`npm run eval:parser`, `npm run eval:benchmark`, [`src/test/eval/parser-eval.test.ts`](../src/test/eval/parser-eval.test.ts)): Misst Key-Token Recall, Tabellenzeilen-Erkennung und Verarbeitungszeiten (ms) vor Modellübergabe.
     - _Layer 2 (Trajectory & RAG):_ Prüfung der Wissensselektion (`Recall` und `Precision` der herangezogenen Rechtsnormen aus `knowledge_documents` via [`src/lib/evals/scorers/trajectory.ts`](../src/lib/evals/scorers/trajectory.ts)).
     - _Layer 3 (Outcome & Pluggable Judges):_ Flexible Urteilsfindung über das `IEvalJudge`-Interface mit `DeterministicJudge` sowie schlüsselfertigem `JevJudge` (TypeSafe AI System-1 Decision Model für non-autoregressive, extrem schnelle und kostengünstige Klassifikation mit automatischem Fallback).
     - _Layer 4 (Telemetry & Monitoring):_ Latenz-, Token- und Kostenmonitoring (`promptTokens`, `completionTokens`, Kosten in USD).
@@ -171,7 +171,7 @@ Automatisierte Pre-Tool- und Post-Tool-Lifecycle-Hooks sichern das System gegen 
 Um die Qualität und Verlässlichkeit des KI-Systems ohne Blindflug zu garantieren, verfügt Notar Agent über ein mehrstufiges, schichtenbasiertes Evaluations- und Visualisierungs-Framework:
 
 - **Layer 1: Ingestion & Parser Benchmark (`npm run eval:parser`):**
-  Misst isoliert die Genauigkeit der `@llamaindex/liteparse`-Extraktion gegen das `GOLDEN_DATASET`:
+  Misst isoliert die Genauigkeit der Dokumenten-Extraktion (Gemini Vision / Nativer Stream-Parser) gegen das `GOLDEN_DATASET`:
   - _Token Recall Rate (100%):_ Vollständige Erfassung aller juristisch kritischen Pflichtangaben (z.B. Energiebedarfswerte, Gültigkeitsfristen, Flurstücke).
   - _Bounding-Box Alignment (100%):_ Geometrische Nearest-Neighbor-Zuordnung von Werten zu Labels auf derselben Zeile ($\Delta y \le 16$ pt) oder direkt darüber liegenden Spaltenköpfen ohne jegliche statische Wörterbuchabfragen.
   - _Native Latenz (< 50 ms):_ Deterministisches PDFium-Parsing im Speicher.

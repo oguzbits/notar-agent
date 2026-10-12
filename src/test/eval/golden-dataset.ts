@@ -42,7 +42,7 @@ export interface GoldenTestCase {
 
 /**
  * Liest eine reale Datei aus dem Verzeichnis test-akten/ deterministisch
- * als UploadedFilePayload (Base64 kodiert für Multimodalität & LiteParse) ein.
+ * als UploadedFilePayload (Base64 kodiert für multimodale Ingestion) ein.
  */
 function loadTestAktenFile(subfolder: string, filename: string): UploadedFilePayload {
   const absolutePath = path.resolve(process.cwd(), 'test-akten', subfolder, filename);

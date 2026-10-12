@@ -50,7 +50,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
     - [ ] Modulare, flache Validierungsschemas pro Dokumenttyp (z. B. Grundbuch, Energieausweis, Mietliste)
   - [ ] **B.8.3 Native Dual-Stream Vision-Fusion (Serverless & Zero Cold Start):**
     - [ ] 100 % Serverless-Kompatibilität auf Vercel + Supabase (Verzicht auf schwere Python/PyTorch-Container wie Docling)
-    - [ ] Verlustfreier Unicode-Textlayer (`unpdf`) für digitale Textseiten (0 ms Kaltstart, 0 € Serverkosten) kombiniert mit selektiver Vision-Analyse für komplexe Tabellen, Siegel und Handschriften
+    - [ ] Verlustfreier nativer Node.js Stream-Layer für digitale Textseiten (0 ms Kaltstart, 0 € Serverkosten) kombiniert mit Gemini Vision (`gemini-3.1-flash-lite`) für komplexe Tabellen, Siegel und Handschriften
   - [ ] **B.8.4 Triage-gestütztes Dokumenten-Routing bei Großakten:**
     - [ ] Standardakten (bis 80 Seiten) verbleiben im vollen globalen Kontext, um alle Querverweise (z. B. Vollmachten in Anlagen) zu sichern
     - [ ] Selektives Dokumenten-Windowing ausschließlich als Schutzmechanismus für extrem umfangreiche Archivbände (> 150 Seiten)

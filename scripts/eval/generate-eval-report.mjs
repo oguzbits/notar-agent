@@ -78,7 +78,7 @@ async function main() {
     const steps = [];
 
     // ----------------------------------------------------
-    // STUFE 1: Ingestion / LiteParse
+    // STUFE 1: Ingestion / Document Parser
     // ----------------------------------------------------
     const pdfFile = tc.files.find(
       (f) => f.type === 'application/pdf' || (f.name && f.name.toLowerCase().endsWith('.pdf'))
@@ -158,7 +158,7 @@ async function main() {
 
       steps.push({
         stepNumber: 1,
-        stepName: 'Ingestion & Layout Parsing (LiteParse native)',
+        stepName: 'Ingestion & Layout Parsing (Gemini Vision / Native)',
         status: pPassed ? 'SUCCESS' : 'FAILED',
         durationMs: Math.round(pDuration),
         inputSummary: `Dokument: ${pdfFile.name} (${(pdfFile.size / 1024).toFixed(1)} KB)`,

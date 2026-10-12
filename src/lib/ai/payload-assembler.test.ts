@@ -153,7 +153,7 @@ trailer << /Root 1 0 R >>
       notesSection: '',
     });
 
-    // Bei Scans ohne Text rendert LiteParse Screenshots als PNG für das Vision-LLM (oder Fallback PDF)
+    // Bei Scans ohne Text werden Screenshots als PNG für das Vision-LLM (oder Fallback PDF)
     const filePart = parts.find(
       (p) =>
         p.type === 'file' &&

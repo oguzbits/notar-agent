@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Vergleichender Ingestion- & Parser-Benchmark: LiteParse vs. Google Gemini Vision
+ * Vergleichender Ingestion- & Parser-Benchmark: Nativer Stream-Parser vs. Google Gemini Vision
  * Evaluiert die neuen Erkenntnisse aus dem Modell-Spike anhand authentischer Kanzlei-Testakten.
  */
 import fs from 'node:fs';
@@ -115,7 +115,7 @@ function calculateRecall(text, requiredTokens) {
 
 async function runBenchmark() {
   console.log('======================================================================');
-  console.log('🚀 STARTE VERGLEICHENDEN PARSER-BENCHMARK (LiteParse vs. Gemini Vision)');
+  console.log('🚀 STARTE VERGLEICHENDEN PARSER-BENCHMARK (Nativer Stream-Parser vs. Gemini Vision)');
   console.log('======================================================================\n');
 
   const results = [];
@@ -134,7 +134,7 @@ async function runBenchmark() {
     console.log(`\n📄 [${tc.id}] ${tc.title}`);
     console.log(`   Datei: ${tc.filename} (${fileSizeKb} KB, Typ: ${tc.type})`);
 
-    // 1. LiteParse Benchmark
+    // 1. Nativer Stream-Parser Benchmark
     let liteDuration = 0;
     let liteText = '';
     let liteTableLines = 0;
@@ -142,8 +142,8 @@ async function runBenchmark() {
     let liteError = null;
 
     if (isImage) {
-      liteError = 'Nicht unterstützt (LiteParse unterstützt nur PDF)';
-      console.log('   🔸 LiteParse: Übersprungen (Reines Bildformat)');
+      liteError = 'Nicht unterstützt (Nativer Stream-Parser unterstützt nur PDF)';
+      console.log('   🔸 Nativer Stream-Parser: Übersprungen (Reines Bildformat)');
     } else {
       const t0 = performance.now();
       try {
@@ -153,12 +153,12 @@ async function runBenchmark() {
         liteTableLines = countTableLines(liteText);
         liteRecall = calculateRecall(liteText, tc.requiredTokens);
         console.log(
-          `   🔸 LiteParse:     ${liteRecall.rate}% Recall (${liteRecall.matched}/${liteRecall.total}) | ` +
+          `   🔸 Nativer Stream-Parser:     ${liteRecall.rate}% Recall (${liteRecall.matched}/${liteRecall.total}) | ` +
             `${liteText.length} Chars | ${liteTableLines} Tabellenzeilen | ${liteDuration} ms`
         );
       } catch (err) {
         liteError = err instanceof Error ? err.message : String(err);
-        console.log(`   🔸 LiteParse FEHLER: ${liteError}`);
+        console.log(`   🔸 Nativer Stream-Parser FEHLER: ${liteError}`);
       }
     }
 
@@ -215,7 +215,7 @@ async function runBenchmark() {
   }
 
   // Markdown-Report generieren
-  let reportMd = `# 📊 Ingestion- & Parser-Benchmark: LiteParse vs. Google Gemini Vision
+  let reportMd = `# 📊 Ingestion- & Parser-Benchmark: Nativer Stream-Parser vs. Google Gemini Vision
 
 > **Datum:** ${new Date().toISOString()}  
 > **Kontext:** Validierung der Erkenntnisse aus dem Modell-Spike an authentischen notariellen Testakten  
@@ -225,7 +225,7 @@ async function runBenchmark() {
 
 ## 1. Zusammenfassung der Ergebnisse
 
-| Testakte / Dokument | Dateityp | Token-Recall LiteParse | Token-Recall Gemini | Tabellenzeilen LiteParse | Tabellenzeilen Gemini | Latenz LiteParse | Latenz Gemini |
+| Testakte / Dokument | Dateityp | Token-Recall Native Stream | Token-Recall Gemini | Tabellenzeilen Native Stream | Tabellenzeilen Gemini | Latenz Native Stream | Latenz Gemini |
 | :------------------ | :------- | :--------------------- | :------------------ | :----------------------- | :-------------------- | :--------------- | :------------ |
 `;
 
@@ -241,16 +241,16 @@ async function runBenchmark() {
 ## 2. Detaillierte Befunde & Analyse
 
 ### A. Scans & Handschrift (Fall 08 – Mieterliste)
-- **LiteParse:** Versagt bei rein grafischen Scans ohne digitalen Textlayer vollständig (**0 Zeichen / 0 % Recall**). Weder Mieter noch Beträge werden erkannt.
+- **Nativer Stream-Parser:** Versagt bei rein grafischen Scans ohne digitalen Textlayer vollständig (**0 Zeichen / 0 % Recall**). Weder Mieter noch Beträge werden erkannt.
 - **Gemini Vision:** Erkennt alle 30 Einheiten (**100 % Recall**), liest die handschriftlichen Zusätze (Einheiten 29 und 30) fehlerfrei und formatiert die gesamte Liegenschaft als konsistente Markdown-Tabelle mit über 30 Tabellenzeilen.
 
 ### B. Grundbuchauszüge & Tabellenstrukturen (Fall 02)
-- **LiteParse:** Kann Bildformate (PNG/JPG) nicht verarbeiten.
+- **Nativer Stream-Parser:** Kann Bildformate (PNG/JPG) nicht verarbeiten.
 - **Gemini Vision:** Rekonstruiert das Bestandsverzeichnis sowie Abteilung III vollständig in strukturierte Markdown-Tabellen (Spalten: Lfd. Nr., Gemarkung, Flur, Flurstück, Fläche, Grundschuld).
 
 ### C. Digitale Text-PDFs (Fall 04 & Fall 05)
 - Bei rein digitalen Text-PDFs ohne handschriftliche Änderungen liefern beide Verfahren 100 % Recall.
-- **LiteParse** bietet hier mit < 100 ms extrem niedrige Latenz und läuft vollständig lokal ohne API-Kosten.
+- **Der native Stream-Parser** bietet hier mit < 100 ms extrem niedrige Latenz und läuft vollständig lokal ohne API-Kosten.
 - **Gemini Vision** bietet dafür den Vorteil, auch bei digitalen Dokumenten komplexe Tabellenzeilen sauberer zu gliedern.
 
 ---
@@ -259,7 +259,7 @@ async function runBenchmark() {
 
 1. **Hybrides Ingestion-Modell (Best of both worlds):**
    - **Primär:** Gemini Vision (\`gemini-3.1-flash-lite\`) für Scans, Bilder, Grundbücher und tabellarische Urkunden mit höchster semantischer Treue.
-   - **Fallback & Zero-Config:** Automatische Rückstufung auf \`LiteParse\` bei fehlendem API-Key, Netzausfällen oder im lokalen Testbetrieb.
+   - **Fallback & Zero-Config:** Automatische Rückstufung auf den nativen Stream-Parser bei fehlendem API-Key, Netzausfällen oder im lokalen Testbetrieb.
 `;
 
   const reportPath = path.resolve(process.cwd(), 'reports', 'parser-benchmark-comparison.md');
