@@ -74,5 +74,28 @@ describe('Knowledge Domain Types & Contracts', () => {
 
     const parsedResult = HybridSearchResultSchema.parse(result);
     expect(parsedResult.combinedScore).toBe(5.38);
+
+    const rrfQuery = {
+      queryText: '§ 80 Abs. 2 GEG',
+      topK: 5,
+      textWeight: 0.85,
+      vectorWeight: 0.15,
+      rrfK: 60,
+    };
+    const parsedRrfQuery = HybridSearchQuerySchema.parse(rrfQuery);
+    expect(parsedRrfQuery.textWeight).toBe(0.85);
+    expect(parsedRrfQuery.vectorWeight).toBe(0.15);
+    expect(parsedRrfQuery.rrfK).toBe(60);
+
+    const rrfResult = {
+      ...result,
+      textRank: 1,
+      vectorRank: 3,
+      rrfScore: 0.016,
+    };
+    const parsedRrfResult = HybridSearchResultSchema.parse(rrfResult);
+    expect(parsedRrfResult.textRank).toBe(1);
+    expect(parsedRrfResult.vectorRank).toBe(3);
+    expect(parsedRrfResult.rrfScore).toBe(0.016);
   });
 });

@@ -9,6 +9,8 @@ import {
   MATCH_SOURCES,
 } from '@/types/knowledge';
 
+import { calculateDynamicWeights } from './dynamic-weights';
+
 export type { IKnowledgeRepository };
 
 /**
@@ -57,13 +59,23 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
   }
 
   async search(query: HybridSearchQuery): Promise<HybridSearchResult[]> {
+    // Dynamische Gewichtung zwischen Volltext & Vektor ermitteln
+    const dynamic = calculateDynamicWeights(query.queryText);
+    const textWeight =
+      query.textWeight ??
+      (query.vectorWeight !== undefined ? 1.0 - query.vectorWeight : dynamic.textWeight);
+    const vectorWeight = query.vectorWeight ?? dynamic.vectorWeight;
+    const rrfK = query.rrfK ?? 60;
+
     const { data, error } = await this.supabase.rpc('match_knowledge_documents', {
       p_query_text: query.queryText,
       p_query_embedding: query.queryEmbedding ?? null,
       p_organization_id: query.organizationId ?? null,
       p_category: query.category ?? null,
       p_match_count: query.topK ?? 5,
-      p_vector_weight: query.vectorWeight ?? 0.5,
+      p_vector_weight: vectorWeight,
+      p_text_weight: textWeight,
+      p_rrf_k: rrfK,
     });
 
     if (error || !data) {
@@ -81,6 +93,9 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
       combinedScore: Number(row.combined_score ?? 0),
       matchSource:
         (row.match_source as HybridSearchResult['matchSource']) ?? MATCH_SOURCES.HYBRID_FUSION,
+      textRank: row.text_rank ? Number(row.text_rank) : null,
+      vectorRank: row.vector_rank ? Number(row.vector_rank) : null,
+      rrfScore: Number(row.combined_score ?? 0),
     }));
   }
 

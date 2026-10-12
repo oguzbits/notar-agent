@@ -97,14 +97,16 @@ CREATE POLICY p_delete_knowledge_documents ON knowledge_documents
         organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::UUID
     );
 
--- 6. Native Hybrid RPC-Funktion (Vektor-Kosinus-Ähnlichkeit + deutsches Volltext-Ranking)
+-- 6. Native Hybrid RPC-Funktion mit Reciprocal Rank Fusion (RRF gem. Cormack et al. / notebooklm-klon)
 CREATE OR REPLACE FUNCTION match_knowledge_documents(
     p_query_text TEXT,
     p_query_embedding vector(1536) DEFAULT NULL,
     p_organization_id UUID DEFAULT NULL,
     p_category knowledge_category DEFAULT NULL,
     p_match_count INT DEFAULT 5,
-    p_vector_weight FLOAT DEFAULT 0.5
+    p_vector_weight FLOAT DEFAULT 0.5,
+    p_text_weight FLOAT DEFAULT 0.5,
+    p_rrf_k INT DEFAULT 60
 )
 RETURNS TABLE (
     id UUID,
@@ -119,6 +121,8 @@ RETURNS TABLE (
     vector_score FLOAT,
     combined_score FLOAT,
     match_source TEXT,
+    text_rank INT,
+    vector_rank INT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 )
@@ -135,66 +139,98 @@ BEGIN
     END IF;
 
     RETURN QUERY
-    WITH ranked_docs AS (
+    WITH
+    vector_ranked AS (
         SELECT
             kd.id,
-            kd.organization_id,
-            kd.category,
-            kd.legal_basis,
-            kd.court_or_authority,
-            kd.title,
-            kd.content,
-            kd.trigger_keywords,
-            CASE 
-                WHEN v_parsed_query IS NOT NULL THEN ts_rank_cd(kd.tsv, v_parsed_query)::FLOAT
-                ELSE 0.0::FLOAT
-            END AS raw_bm25,
-            CASE 
-                WHEN p_query_embedding IS NOT NULL AND kd.embedding IS NOT NULL THEN
-                    GREATEST(0.0::FLOAT, (1.0::FLOAT - (kd.embedding <=> p_query_embedding)::FLOAT))
-                ELSE 0.0::FLOAT
-            END AS raw_vector,
-            kd.created_at,
-            kd.updated_at
+            row_number() OVER (ORDER BY (kd.embedding <=> p_query_embedding), kd.id)::INT AS rank,
+            GREATEST(0.0::FLOAT, (1.0::FLOAT - (kd.embedding <=> p_query_embedding)::FLOAT)) AS raw_vector
         FROM knowledge_documents kd
         WHERE
             (kd.organization_id IS NULL OR kd.organization_id = p_organization_id)
             AND
             (p_category IS NULL OR kd.category = p_category)
             AND
-            (
-                (v_parsed_query IS NOT NULL AND kd.tsv @@ v_parsed_query)
-                OR
-                (p_query_embedding IS NOT NULL AND kd.embedding IS NOT NULL)
-            )
+            p_query_embedding IS NOT NULL
+            AND
+            kd.embedding IS NOT NULL
+        ORDER BY (kd.embedding <=> p_query_embedding), kd.id
+        LIMIT 20
+    ),
+    text_ranked AS (
+        SELECT
+            kd.id,
+            row_number() OVER (ORDER BY ts_rank_cd(kd.tsv, v_parsed_query) DESC, kd.id)::INT AS rank,
+            ts_rank_cd(kd.tsv, v_parsed_query)::FLOAT AS raw_bm25
+        FROM knowledge_documents kd
+        WHERE
+            (kd.organization_id IS NULL OR kd.organization_id = p_organization_id)
+            AND
+            (p_category IS NULL OR kd.category = p_category)
+            AND
+            v_parsed_query IS NOT NULL
+            AND
+            kd.tsv @@ v_parsed_query
+        ORDER BY ts_rank_cd(kd.tsv, v_parsed_query) DESC, kd.id
+        LIMIT 20
+    ),
+    fused AS (
+        SELECT
+            c.id,
+            sum(c.part)::FLOAT AS rrf_score,
+            max(c.raw_bm25) AS bm25_score,
+            max(c.raw_vector) AS vector_score,
+            min(c.text_rank) AS text_rank,
+            min(c.vector_rank) AS vector_rank
+        FROM (
+            SELECT
+                vr.id,
+                (p_vector_weight::NUMERIC / (p_rrf_k + vr.rank))::FLOAT AS part,
+                0.0::FLOAT AS raw_bm25,
+                vr.raw_vector,
+                NULL::INT AS text_rank,
+                vr.rank AS vector_rank
+            FROM vector_ranked vr
+            UNION ALL
+            SELECT
+                tr.id,
+                (p_text_weight::NUMERIC / (p_rrf_k + tr.rank))::FLOAT AS part,
+                tr.raw_bm25,
+                0.0::FLOAT AS raw_vector,
+                tr.rank AS text_rank,
+                NULL::INT AS vector_rank
+            FROM text_ranked tr
+        ) c
+        GROUP BY c.id
     )
     SELECT
-        rd.id,
-        rd.organization_id,
-        rd.category,
-        rd.legal_basis,
-        rd.court_or_authority,
-        rd.title,
-        rd.content,
-        rd.trigger_keywords,
-        rd.raw_bm25 AS bm25_score,
-        rd.raw_vector AS vector_score,
-        ROUND(
-            (((1.0 - p_vector_weight) * rd.raw_bm25 * 5.0) + (p_vector_weight * rd.raw_vector * 5.0))::NUMERIC,
-            2
-        )::FLOAT AS combined_score,
+        kd.id,
+        kd.organization_id,
+        kd.category,
+        kd.legal_basis,
+        kd.court_or_authority,
+        kd.title,
+        kd.content,
+        kd.trigger_keywords,
+        f.bm25_score,
+        f.vector_score,
+        f.rrf_score AS combined_score,
         CASE
-            WHEN rd.raw_bm25 > 0 AND rd.raw_vector > 0 THEN 'HYBRID_FUSION'
-            WHEN rd.raw_vector > 0 THEN 'SEMANTIC_VECTOR'
+            WHEN f.text_rank IS NOT NULL AND f.vector_rank IS NOT NULL THEN 'HYBRID_FUSION'
+            WHEN f.vector_rank IS NOT NULL THEN 'SEMANTIC_VECTOR'
             ELSE 'BM25_EXACT'
         END AS match_source,
-        rd.created_at,
-        rd.updated_at
-    FROM ranked_docs rd
-    ORDER BY combined_score DESC
+        f.text_rank,
+        f.vector_rank,
+        kd.created_at,
+        kd.updated_at
+    FROM fused f
+    JOIN knowledge_documents kd ON kd.id = f.id
+    ORDER BY f.rrf_score DESC, kd.id
     LIMIT p_match_count;
 END;
 $$;
+
 
 -- 7. Juristischer Normen- und Richtlinienbestand (Konsolidierte Seeds)
 INSERT INTO knowledge_documents (

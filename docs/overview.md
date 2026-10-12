@@ -71,6 +71,7 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 
 - **Kernel-Level Isolation:** PostgreSQL Row-Level Security (`ENABLE ROW LEVEL SECURITY`) auf allen Tabellen ([`supabase/migrations/`](../supabase/migrations/)) bindet Daten strikt an `organization_id`.
 - **Database-First SSOT:** Materielle Rechtsnormen (BGB, BeurkG, GEG) und Kanzleistandards liegen in `knowledge_documents` und werden dynamisch über [`src/lib/knowledge/rules/rule-selector.ts`](../src/lib/knowledge/rules/rule-selector.ts) in Prompts injiziert – der Anwendungscode bleibt frei von statischen Gesetzes-Strings.
+- **RRF-Hybridsuche & Dynamisches `TEXT_WEIGHT` ([`src/lib/knowledge/`](../src/lib/knowledge/)):** Die PostgreSQL-RPC `match_knowledge_documents` implementiert skaleninvariantes Reciprocal Rank Fusion (RRF mit $k=60$) über CTEs. [`src/lib/knowledge/dynamic-weights.ts`](../src/lib/knowledge/dynamic-weights.ts) steuert die Gewichte dynamisch: Exakte Paragraphen (§), HRB-Nummern oder Flurstücke priorisieren die Volltext-Suche (0.85), während abstrakte Rechtsfragen die semantische Vektorsuche priorisieren (0.75).
 
 ### 1.7 Authentische Real-World Testakten & Model-Evaluation ([`test-akten/`](../test-akten/), `promptfoo`)
 

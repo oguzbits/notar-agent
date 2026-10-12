@@ -61,12 +61,37 @@ describe('SupabaseKnowledgeRepository', () => {
       p_category: null,
       p_match_count: 3,
       p_vector_weight: 0.6,
+      p_text_weight: 0.4,
+      p_rrf_k: 60,
     });
 
     expect(results).toHaveLength(1);
     expect(results[0]?.document.id).toBe(doc.id);
     expect(results[0]?.combinedScore).toBe(4.5);
     expect(results[0]?.matchSource).toBe(MATCH_SOURCES.HYBRID_FUSION);
+  });
+
+  it('automatically calculates dynamic weights when weights are omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const mockSupabase = { rpc: mockRpc };
+    const repo = new SupabaseKnowledgeRepository(mockSupabase as never);
+
+    await repo.search({
+      queryText: '§ 80 Abs. 2 GEG Energieausweis',
+      topK: 5,
+    });
+
+    // Wegen §-Zeichen muss textWeight dynamisch 0.85 sein
+    expect(mockRpc).toHaveBeenCalledWith('match_knowledge_documents', {
+      p_query_text: '§ 80 Abs. 2 GEG Energieausweis',
+      p_query_embedding: null,
+      p_organization_id: null,
+      p_category: null,
+      p_match_count: 5,
+      p_vector_weight: 0.15,
+      p_text_weight: 0.85,
+      p_rrf_k: 60,
+    });
   });
 
   it('fails fast and throws when Supabase upsert encounters a DB error', async () => {

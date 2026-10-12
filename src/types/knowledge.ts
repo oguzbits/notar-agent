@@ -61,7 +61,7 @@ export const MATCH_SOURCES = {
 export type MatchSource = (typeof MATCH_SOURCES)[keyof typeof MATCH_SOURCES];
 
 /**
- * Treffer-Struktur für hybride Suchläufe (BM25 Keyword + Vector Similarity).
+ * Treffer-Struktur für hybride Suchläufe (BM25 Keyword + Vector Similarity + RRF Fusion).
  */
 export const HybridSearchResultSchema = z.object({
   document: KnowledgeDocumentSchema,
@@ -73,12 +73,15 @@ export const HybridSearchResultSchema = z.object({
     MATCH_SOURCES.SEMANTIC_VECTOR,
     MATCH_SOURCES.HYBRID_FUSION,
   ]),
+  textRank: z.number().int().positive().nullable().optional(),
+  vectorRank: z.number().int().positive().nullable().optional(),
+  rrfScore: z.number().min(0).optional(),
 });
 
 export type HybridSearchResult = z.infer<typeof HybridSearchResultSchema>;
 
 /**
- * Parameter für die hybride Suche.
+ * Parameter für die hybride Suche (inkl. dynamischer RRF-Gewichtung).
  */
 export const HybridSearchQuerySchema = z.object({
   queryText: z.string().min(1),
@@ -87,6 +90,8 @@ export const HybridSearchQuerySchema = z.object({
   organizationId: z.uuid().optional(),
   topK: z.number().int().positive().optional().default(5),
   vectorWeight: z.number().min(0).max(1).optional().default(0.5),
+  textWeight: z.number().min(0).max(1).optional().default(0.5),
+  rrfK: z.number().int().positive().optional().default(60),
 });
 
 export type HybridSearchQuery = z.input<typeof HybridSearchQuerySchema>;

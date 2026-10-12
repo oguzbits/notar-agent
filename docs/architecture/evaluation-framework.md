@@ -59,15 +59,22 @@ _Ziel: Messung der Robustheit gegenüber realen Scan-Mängeln._
   3. **Scan-Artefakte:** JPEG-Kompression, Handyschatten (radialer Verlauf), Knicke
 - **Messziel:** Den exakten Kipppunkt ermitteln, ab welchem Grad der Unschärfe das Modell ehrlich `NEEDS_REVIEW` meldet, statt falsche Daten zu halluzinieren.
 
-### Phase 3: RAG- & Retrieval-Evaluation (RAGAS-Standard)
+### Phase 3: Deterministische RAG- & Retrieval-Evaluation (MRR, Hit@K, RRF)
 
-_Ziel: Trennung zwischen Retrieval-Fehlern und LLM-Reasoning-Fehlern._
+_Ziel: Trennung zwischen Retrieval-Fehlern und LLM-Reasoning-Fehlern sowie kontinuierliches Benchmarking der Wissensdatenbank._
 
-- Aktuell wird nur das finale Dossier bewertet.
-- **Erweiterung des Scorers (`src/test/eval/scorer.ts`) um Retrieval-Metriken:**
-  - **Context Recall:** Wurde die einschlägige Norm (z. B. § 21 BeurkG, § 80 GEG) vom Hybrid-Matching aus PostgreSQL abgerufen?
-  - **Context Precision:** Welcher Anteil des abgerufenen Kontexts war für den konkreten Fall relevant (Vermeidung von Token-Verschwendung)?
-  - **Faithfulness:** Stammen alle generierten Aussagen im Dossier nachweisbar aus den Belegen (Halluzinations-Score)?
+- **Deterministische Retrieval-Scorer ([`src/lib/knowledge/eval-scorers.ts`](../../src/lib/knowledge/eval-scorers.ts)):**
+  - **Mean Reciprocal Rank (MRR):** Berechnet die inverse Rangposition ($1/\text{Rank}$) des ersten korrekten Treffers.
+  - **Hit@1, Hit@3, Hit@5:** Misst die Auffindungsrate relevanter Rechtsgrundlagen in den Top-$K$-Ergebnissen.
+  - **Anchor Recall:** Anteil gefundener Textanker im Top-$K$-Kontext.
+  - **Quality-Gate-Vergleich (`compareWithBaseline`):** Automatischer Schutz vor Regressionen gegenüber gespeicherten Baselines (analog zu Manda `gate.ts`).
+- **Benchmark-Korpus & Abfragen ([`src/lib/knowledge/fixtures/`](../../src/lib/knowledge/fixtures/)):**
+  - 35 juristische Wissensdokumente (GEG, BeurkG, BauGB, WEG, MoPeG, MaBV, GmbHG, BGB, Distraktoren).
+  - 20 kuratierte Test-Queries mit Ground-Truth-Ankern (7x `STATUTORY_EXACT`, 6x `NUMBER_PARCEL`, 5x `SEMANTIC_CONCEPT`, 2x `DISTRACTOR`).
+- **Konsolidierte CLI-Befehle:**
+  - `npm run eval:retrieval`: Ausführung des aktuellen Retrieval-Benchmarks.
+  - `npm run eval:retrieval:baseline`: Speichern des aktuellen Laufs als Referenz-Baseline (`reports/retrieval-baseline.json`).
+  - `npm run eval:retrieval:compare`: Automatischer Baseline-Vergleich mit Delta-Prüfung und CI/CD-Quality-Gate.
 
 ### Phase 4: Token- & Kosten-Optimierung für Massen-Evals
 
