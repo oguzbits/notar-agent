@@ -106,27 +106,110 @@ export function extractDomainTextFromData(data: unknown): string {
   return '';
 }
 
+export interface ResolvedSourceDocument {
+  docIndex: number;
+  fileName: string;
+  textContent: string;
+}
+
+/**
+ * Löst Quellendokumente flexibel über docIndex, Kurzschlüssel ([DOC-1], doc_1) oder Dateinamen auf.
+ */
+export function resolveSourceDocument(
+  source: { fileName?: string; docIndex?: number; citationId?: string } | undefined,
+  sourceDocuments: SourceDocumentText[]
+): ResolvedSourceDocument | undefined {
+  if (!source) return undefined;
+
+  // 1. Prioritärer Lookup über expliziten 1-basierten docIndex
+  if (typeof source.docIndex === 'number' && source.docIndex > 0) {
+    const doc = sourceDocuments[source.docIndex - 1];
+    if (doc) {
+      return {
+        docIndex: source.docIndex,
+        fileName: doc.fileName,
+        textContent: doc.textContent,
+      };
+    }
+  }
+
+  // 2. Lookup über Dateiname oder Kurzschlüssel (z. B. "[DOC-1]", "doc_1", "Dokument #1", "1")
+  const key = (source.citationId || source.fileName || '').trim();
+  if (!key) return undefined;
+
+  // Regex-Check auf Kurzschlüssel wie [DOC-1], DOC-1, doc_1, Dokument #1, [Dokument #1] oder reine Ziffer "1"
+  const docNumMatch = key.match(
+    /(?:(?:\[\s*)?(?:doc|dokument|c)[\s\-_#]*(\d+)(?:\s*\])?)|^(\d+)$/i
+  );
+  if (docNumMatch) {
+    const rawNum = docNumMatch[1] || docNumMatch[2];
+    const parsedNum = rawNum ? parseInt(rawNum, 10) : NaN;
+    if (!isNaN(parsedNum) && parsedNum > 0 && parsedNum <= sourceDocuments.length) {
+      const doc = sourceDocuments[parsedNum - 1];
+      if (doc) {
+        return {
+          docIndex: parsedNum,
+          fileName: doc.fileName,
+          textContent: doc.textContent,
+        };
+      }
+    }
+  }
+
+  // 3. Fallback: Exakter & case-insensitiver Dateinamen-Abgleich
+  const lowerKey = key.toLowerCase();
+  const foundIdx = sourceDocuments.findIndex((d) => d.fileName.toLowerCase().trim() === lowerKey);
+  if (foundIdx !== -1) {
+    const doc = sourceDocuments[foundIdx];
+    if (doc) {
+      return {
+        docIndex: foundIdx + 1,
+        fileName: doc.fileName,
+        textContent: doc.textContent,
+      };
+    }
+  }
+
+  return undefined;
+}
+
 function verifyCitationField(
   key: string,
   field: NonNullable<ExtractionFieldsRecord[string]>,
-  sourceMap: Map<string, string>,
+  sourceDocuments: SourceDocumentText[],
   verificationIssues: VerificationIssue[]
 ): NonNullable<ExtractionFieldsRecord[string]> {
-  if (field.status !== FIELD_STATUS.VERIFIED || !field.source?.fileName || !field.source?.snippet) {
+  if (
+    field.status !== FIELD_STATUS.VERIFIED ||
+    (!field.source?.fileName && !field.source?.docIndex) ||
+    !field.source?.snippet
+  ) {
     return { ...field };
   }
 
-  const targetFileName = field.source.fileName.toLowerCase().trim();
-  const rawDocText = sourceMap.get(targetFileName);
-  if (!rawDocText?.trim()) {
+  const resolved = resolveSourceDocument(field.source, sourceDocuments);
+  if (!resolved || !resolved.textContent?.trim()) {
     return { ...field };
   }
+
+  const rawDocText = resolved.textContent;
+  const canonicalFileName = resolved.fileName;
+  const canonicalDocIndex = resolved.docIndex;
+
+  let updatedField: NonNullable<ExtractionFieldsRecord[string]> = {
+    ...field,
+    source: {
+      ...field.source,
+      fileName: canonicalFileName,
+      docIndex: canonicalDocIndex,
+    },
+  };
 
   const matchResult = matchCitationSnippet(rawDocText, field.source.snippet);
   if (matchResult.status === CITATION_MATCH_STATUS.NOT_FOUND) {
     verificationIssues.push({
       fieldKey: key,
-      fileName: field.source.fileName,
+      fileName: canonicalFileName,
       expectedSnippet: field.source.snippet,
       reason: 'Quellen-Snippet nicht wörtlich im Dokument nachweisbar',
     });
@@ -135,18 +218,17 @@ function verifyCitationField(
     const appendNote =
       'Automatische Verifikation: Quellen-Snippet nicht wörtlich im Dokument nachweisbar';
     return {
-      ...field,
+      ...updatedField,
       status: FIELD_STATUS.NEEDS_REVIEW,
       note: existingNote ? `${existingNote} (${appendNote})` : appendNote,
     };
   }
 
-  let updatedField = { ...field };
   if (matchResult.matchedSnippet && matchResult.status === CITATION_MATCH_STATUS.FUZZY_MATCH) {
     updatedField = {
-      ...field,
+      ...updatedField,
       source: {
-        ...field.source,
+        ...updatedField.source,
         snippet: matchResult.matchedSnippet,
       },
     };
@@ -162,7 +244,7 @@ function verifyCitationField(
         const reason = `Nicht belegte Zahlenangabe: Der Wert '${unsupported.join("', '")}' ist im Quellendokument nicht nachweisbar`;
         verificationIssues.push({
           fieldKey: key,
-          fileName: field.source.fileName,
+          fileName: canonicalFileName,
           expectedSnippet: field.source.snippet,
           reason,
         });
@@ -270,15 +352,10 @@ export function verifyExtractionFacts(
   const { stageOutput, sourceDocuments } = options;
   const verificationIssues: VerificationIssue[] = [];
 
-  const sourceMap = new Map<string, string>();
-  for (const doc of sourceDocuments) {
-    sourceMap.set(doc.fileName.toLowerCase().trim(), doc.textContent);
-  }
-
   const updatedFields: ExtractionFieldsRecord = {};
   for (const [key, field] of Object.entries(stageOutput.fields)) {
     if (field) {
-      updatedFields[key] = verifyCitationField(key, field, sourceMap, verificationIssues);
+      updatedFields[key] = verifyCitationField(key, field, sourceDocuments, verificationIssues);
     }
   }
 

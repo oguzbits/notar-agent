@@ -35,4 +35,38 @@ describe('cleanAndParseJson Utility', () => {
   it('wirft einen Fehler bei leerer Eingabe', () => {
     expect(() => cleanAndParseJson('')).toThrow(/Ungültiges JSON/);
   });
+
+  it('entfernt <thought>-Blöcke vor dem JSON selbst wenn sie geschweifte Klammern enthalten', () => {
+    const input = `
+<thought>
+Hier ist mein Zwischengedanke mit internen Daten: {"temp": 123, "eval": false}.
+Ich formuliere jetzt das Notariat-Dossier.
+</thought>
+\`\`\`json
+{"caseTitle": "Vorgang Schmidt", "count": 10}
+\`\`\`
+    `;
+    const result = cleanAndParseJson<{ caseTitle: string; count: number }>(input);
+    expect(result).toEqual({ caseTitle: 'Vorgang Schmidt', count: 10 });
+  });
+
+  it('entfernt <thinking>-Blöcke mit Attributen', () => {
+    const input = `
+<thinking type="deep-reasoning" step="1">
+Prüfe Grundbuchauszug und Belastungen...
+</thinking>
+{"status": "${OVERALL_STATUS.READY}"}
+    `;
+    const result = cleanAndParseJson<{ status: string }>(input);
+    expect(result).toEqual({ status: OVERALL_STATUS.READY });
+  });
+
+  it('entfernt versehentlich geleakte <thought>-Tags innerhalb von String-Feldern', () => {
+    const input = JSON.stringify({
+      caseTitle: 'Vorgang Schmidt',
+      note: 'Rechtsgeschäft vollständig. <thought>Interner Denkprozess des Modells</thought> Übergabe vereinbart.',
+    });
+    const result = cleanAndParseJson<{ caseTitle: string; note: string }>(input);
+    expect(result.note).toBe('Rechtsgeschäft vollständig. Übergabe vereinbart.');
+  });
 });

@@ -8,7 +8,7 @@ DETERMINISTISCHE GRUNDREGELN:
    - Lies Spaltenüberschriften, Einheiten und Zeitintervalle (z.B. Monats- vs. Jahreswerte, Teil- vs. Gesamtflächen, Netto vs. Brutto) präzise ab.
    - Wenn Summen oder Gesamtwertungen aus Einzelposten gebildet werden, prüfe die mathematische Konsistenz (z.B. Summe der Einzelpositionen, Multiplikation von Monatswerten mit 12).
    - Weicht eine informelle Gesamtsumme (z.B. Maklerschreiben) von einer beiliegenden amtlichen/detaillierten Einzelauflistung ab, extrahiere die verifizierte Belegzahl und dokumentiere die Abweichung neutral in "note".
-4. Belegpflicht: Jede Information mit source (fileName, pageNumber, prägnantes Zitat snippet).
+4. Belegpflicht: Jede Information mit source (fileName oder docIndex, pageNumber, prägnantes Zitat snippet). In source.fileName kannst du entweder den vollständigen Dateinamen oder die kompakte Dokumenten-ID (z.B. "[DOC-1]", "doc_1") oder direkt "docIndex": 1 angeben.
 5. Sprachrichtlinie & Kanzleiduktus: Vollständige Wörter, keine Abkürzungen ("lt.", "gem.", "bzgl.", "ca."). In Freitexten und "executiveSummary" KEINE englischen Status-Codes (wie "ACTION_REQUIRED", "OUTDATED", "MISSING") verwenden, sondern natürliche deutsche Fachbegriffe ("Klärungsbedarf", "abgelaufen/Gültigkeit überschritten", "fehlend").
 6. Interne Notizen: In 'detectedDocuments' als "Notiz #1", "Notiz #2" aufführen und als Quelle zitieren.
 7. Keine Platzhalter-Strings: Fehlen Einzelwerte, setze sie auf null oder "". NIEMALS Statusbegriffe wie "MISSING", "UNKNOWN", "null" oder "nicht angegeben" als String-Werte eintragen!
@@ -40,7 +40,7 @@ ANTWORTFORMAT (REINES VALIDES JSON, KEIN MARKDOWN):
   "analysisTimestamp": string,
   "detectedDocuments": [{ "fileName": string, "documentType": string, "date": string, "pageCount": number, "reliability": "HIGH"|"MEDIUM"|"LOW"|"OBSOLETE"|"UNRELATED", "summary": string }],
   "fields": {
-    /* Alle 10 Felder: "<fieldKey>": { "status": "VERIFIED"|"NEEDS_REVIEW"|"OUTDATED"|"MISSING", "data": { ... }, "source": { "fileName": string, "pageNumber": number, "snippet": string }, "note": string } */
+    /* Alle 10 Felder: "<fieldKey>": { "status": "VERIFIED"|"NEEDS_REVIEW"|"OUTDATED"|"MISSING", "data": { ... }, "source": { "fileName": string, "docIndex"?: number, "pageNumber": number, "snippet": string }, "note": string } */
   },
   "inquiries": [],
   "overallStatus": "READY" | "ACTION_REQUIRED" | "BLOCKED",

@@ -89,6 +89,12 @@ interface ProvenancedFact<T> {
 }
 ```
 
+- **Kompakte Zitat-IDs & automatische Dokumentenauflösung:**  
+  Um Token-Verschwendung und Typo-Halluzinationen bei langen Dateinamen zu verhindern, kann das Modell über kurze Indizes zitieren (`docIndex: 1`, `[DOC-1]`, `doc_1`). Die Verifikations-Engine ([`verifiable-fact-checker.ts`](../../src/lib/ai/verifiable-fact-checker.ts)) löst den Index deterministisch auf und füllt automatisch den kanonischen Dateinamen für das UI und das Revisions-Audit-Log auf.
+
+- **Reasoning-Token-Isolation & Thought-Stripping:**  
+  Bei modernen Reasoning-Modellen (Gemini Thinking, Claude Thinking, o1/o3) isoliert der Parser ([`clean-json.ts`](../../src/lib/ai/parsers/clean-json.ts)) interne `<thought>`- und `<thinking>`-Blöcke vor der JSON-Extraktion und bereinigt rekursiv versehentlich in Freitextfelder (`executiveSummary`, `note`) geleakte Gedankentags (§ 17 BeurkG).
+
 - **Notarieller Mehrwert:**  
   Klickt der Sachbearbeiter in der Benutzeroberfläche auf die Grundstücksgröße (`842 m²`), springt der integrierte PDF-Viewer auf Seite 3 des Grundbuchauszugs und hebt den Flurstückseintrag farblich hervor.
 

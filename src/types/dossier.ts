@@ -24,7 +24,18 @@ export const FieldStatusSchema = z.enum([
 export type FieldStatus = (typeof FIELD_STATUS)[keyof typeof FIELD_STATUS];
 
 export const SourceLocationSchema = z.object({
-  fileName: z.string().describe('Name der hochgeladenen Quelldatei oder leer'),
+  fileName: z
+    .string()
+    .describe('Name der hochgeladenen Quelldatei oder Dokumenten-Key wie [DOC-1]'),
+  docIndex: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(
+      '1-basierter Dokumenten-Index aus dem XML-Container (z. B. 1 für <document index="1">)'
+    ),
+  citationId: z.string().optional().describe('Kompakter Zitations-Schlüssel wie [DOC-1] oder c1'),
   pageNumber: z.number().describe('Seitenzahl im Dokument oder 0 falls nicht feststellbar'),
   snippet: z.string().describe('Exakter oder sinngemäßer Textausschnitt als Nachweis oder leer'),
 });

@@ -283,6 +283,69 @@ describe('verifyExtractionFacts', () => {
       result.verificationIssues.some((i) => i.reason.includes('Nicht belegte Zahlenangabe'))
     ).toBe(true);
   });
+
+  it('resolves citation via docIndex and backfills canonical fileName', () => {
+    const stageOutput: ExtractionStageOutput = {
+      caseTitle: 'Test Fall',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      analysisTimestamp: new Date().toISOString(),
+      executiveSummary: '',
+      detectedDocuments: [],
+      inquiries: [],
+      fields: {
+        kaufpreis: {
+          data: { amountInFigures: 450000 },
+          status: FIELD_STATUS.VERIFIED,
+          source: {
+            fileName: '',
+            docIndex: 1, // Points to dummyFileSources[0] ('Kaufvertrag_Entwurf.pdf')
+            snippet: 'Der Gesamtkaufpreis beträgt 450.000 Euro.',
+          },
+        },
+      },
+    };
+
+    const result = verifyExtractionFacts({
+      stageOutput,
+      sourceDocuments: dummyFileSources,
+    });
+
+    expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.VERIFIED);
+    expect(result.fields.kaufpreis?.source?.fileName).toBe('Kaufvertrag_Entwurf.pdf');
+    expect(result.fields.kaufpreis?.source?.docIndex).toBe(1);
+  });
+
+  it('resolves citation when LLM uses short citation key like [DOC-2] or doc_2', () => {
+    const stageOutput: ExtractionStageOutput = {
+      caseTitle: 'Test Fall',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      analysisTimestamp: new Date().toISOString(),
+      executiveSummary: '',
+      detectedDocuments: [],
+      inquiries: [],
+      fields: {
+        eigentuemer: {
+          data: { name: 'Anna Schmidt' },
+          status: FIELD_STATUS.VERIFIED,
+          source: {
+            fileName: '[DOC-2]', // Refers to 2nd document Grundbuchauszug.pdf
+            snippet: 'Eigentümerin: Anna Schmidt.',
+          },
+        },
+      },
+    };
+
+    const result = verifyExtractionFacts({
+      stageOutput,
+      sourceDocuments: dummyFileSources,
+    });
+
+    expect(result.fields.eigentuemer?.status).toBe(FIELD_STATUS.VERIFIED);
+    expect(result.fields.eigentuemer?.source?.fileName).toBe('Grundbuchauszug.pdf');
+    expect(result.fields.eigentuemer?.source?.docIndex).toBe(2);
+  });
 });
 
 describe('findUnsupportedNumbers', () => {
