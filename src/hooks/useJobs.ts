@@ -7,8 +7,15 @@ import { DossierJob, JOB_STATUS } from '@/types/jobs';
 
 export const JOBS_QUERY_KEY = ['jobs'] as const;
 
-async function fetchJobs(): Promise<DossierJob[]> {
-  const res = await fetch('/api/jobs');
+export function getJobsQueryKey(organizationId?: string) {
+  return organizationId ? (['jobs', organizationId] as const) : JOBS_QUERY_KEY;
+}
+
+async function fetchJobs(organizationId?: string): Promise<DossierJob[]> {
+  const url = organizationId
+    ? `/api/jobs?organizationId=${encodeURIComponent(organizationId)}`
+    : '/api/jobs';
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error('Hintergrund-Jobs konnten nicht geladen werden');
   }
@@ -37,9 +44,10 @@ async function apiCancelJob(jobId: string): Promise<void> {
   }
 }
 
-export function useJobs() {
+export function useJobs(organizationId?: string) {
   const queryClient = useQueryClient();
   const previousActiveCount = useRef<number>(0);
+  const queryKey = getJobsQueryKey(organizationId);
 
   const {
     data: jobs = [],
@@ -47,8 +55,9 @@ export function useJobs() {
     error: jobsError,
     refetch: loadJobs,
   } = useQuery({
-    queryKey: JOBS_QUERY_KEY,
-    queryFn: fetchJobs,
+    queryKey,
+    queryFn: () => fetchJobs(organizationId),
+
     // Poll every 3 seconds while active jobs exist
     refetchInterval: (query) => {
       const currentJobs = query.state.data ?? [];

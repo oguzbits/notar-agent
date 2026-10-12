@@ -108,17 +108,25 @@ export function getWorkflowRepository(
 }
 
 // Abwärtskompatible Fassaden-Funktionen für bestehende Aufrufer mit optionaler Kanzleitrennung (§ 203 StGB)
-export async function fetchDossierRecords(organizationId?: string): Promise<DocumentRecord[]> {
-  return getDossierRepository().list(organizationId);
+export async function fetchDossierRecords(
+  organizationId?: string,
+  client?: SupabaseClient<Database> | null
+): Promise<DocumentRecord[]> {
+  return getDossierRepository(client).list(organizationId);
 }
 
 export async function fetchDossierRecordById(
   id: string,
-  organizationId?: string
+  organizationId?: string,
+  client?: SupabaseClient<Database> | null
 ): Promise<DocumentRecord | null> {
-  return getDossierRepository().findById(id, organizationId);
+  return getDossierRepository(client).findById(id, organizationId);
 }
 
-export async function deleteDossierRecord(id: string, organizationId?: string): Promise<boolean> {
-  return getDossierRepository().delete(id, organizationId);
+export async function deleteDossierRecord(
+  id: string,
+  organizationId?: string,
+  client?: SupabaseClient<Database> | null
+): Promise<boolean> {
+  return getDossierRepository(client).delete(id, organizationId);
 }

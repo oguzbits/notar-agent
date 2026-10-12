@@ -7,8 +7,15 @@ import { Dossier } from '@/types/dossier';
 
 export const DOCUMENTS_QUERY_KEY = [DB_TABLES.DOCUMENTS] as const;
 
-async function fetchDocuments(): Promise<DocumentRecord[]> {
-  const res = await fetch('/api/documents');
+export function getDocumentsQueryKey(organizationId?: string) {
+  return organizationId ? ([DB_TABLES.DOCUMENTS, organizationId] as const) : DOCUMENTS_QUERY_KEY;
+}
+
+async function fetchDocuments(organizationId?: string): Promise<DocumentRecord[]> {
+  const url = organizationId
+    ? `/api/documents?organizationId=${encodeURIComponent(organizationId)}`
+    : '/api/documents';
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error('Vorgänge konnten nicht geladen werden');
   }
@@ -16,8 +23,11 @@ async function fetchDocuments(): Promise<DocumentRecord[]> {
   return (data.documents || []) as DocumentRecord[];
 }
 
-async function apiDeleteDocument(id: string): Promise<boolean> {
-  const res = await fetch(`/api/documents?id=${id}`, { method: 'DELETE' });
+async function apiDeleteDocument(id: string, organizationId?: string): Promise<boolean> {
+  const url = organizationId
+    ? `/api/documents?id=${encodeURIComponent(id)}&organizationId=${encodeURIComponent(organizationId)}`
+    : `/api/documents?id=${encodeURIComponent(id)}`;
+  const res = await fetch(url, { method: 'DELETE' });
   if (!res.ok) {
     throw new Error('Fehler beim Löschen des Dokuments');
   }
@@ -53,8 +63,9 @@ async function apiUpdateDossier({
   }
 }
 
-export function useDocuments() {
+export function useDocuments(organizationId?: string) {
   const queryClient = useQueryClient();
+  const queryKey = getDocumentsQueryKey(organizationId);
 
   const {
     data: documents = [],
@@ -62,17 +73,17 @@ export function useDocuments() {
     error: loadError,
     refetch: loadDocuments,
   } = useQuery({
-    queryKey: DOCUMENTS_QUERY_KEY,
-    queryFn: fetchDocuments,
+    queryKey,
+    queryFn: () => fetchDocuments(organizationId),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: apiDeleteDocument,
+    mutationFn: (id: string) => apiDeleteDocument(id, organizationId),
     onSuccess: (_, deletedId) => {
-      queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
+      queryClient.setQueryData<DocumentRecord[]>(queryKey, (prev = []) =>
         prev.filter((d) => d.id !== deletedId)
       );
-      queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -80,10 +91,10 @@ export function useDocuments() {
     mutationFn: apiUpdateDossier,
     onSuccess: (_, variables) => {
       // Nach erfolgreicher Server-Bestätigung (200 OK) den Cache verbindlich aktualisieren
-      queryClient.setQueryData<DocumentRecord[]>(DOCUMENTS_QUERY_KEY, (prev = []) =>
+      queryClient.setQueryData<DocumentRecord[]>(queryKey, (prev = []) =>
         prev.map((d) => (d.id === variables.documentId ? { ...d, content: variables.dossier } : d))
       );
-      queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 

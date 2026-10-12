@@ -3,12 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
 import { DocumentRecord, CASE_STATUS } from '@/lib/supabase/repository';
 import * as serverDb from '@/lib/supabase/server';
+import * as serverAuth from '@/lib/supabase/server-auth';
 import { GET, DELETE } from './route';
 
 vi.mock('@/lib/supabase/server', () => ({
   fetchDossierRecords: vi.fn(),
   fetchDossierRecordById: vi.fn(),
   deleteDossierRecord: vi.fn(),
+}));
+
+vi.mock('@/lib/supabase/server-auth', () => ({
+  createServerAuthClient: vi.fn().mockResolvedValue(null),
+  resolveSessionOrganizationId: vi.fn(async (_client, override) => override),
 }));
 
 describe('Documents API Route (/api/documents)', () => {
@@ -38,7 +44,19 @@ describe('Documents API Route (/api/documents)', () => {
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.documents).toEqual(mockDocs);
-      expect(serverDb.fetchDossierRecords).toHaveBeenCalledWith('org-123');
+      expect(serverDb.fetchDossierRecords).toHaveBeenCalledWith('org-123', null);
+    });
+
+    it('resolves organizationId from session if not provided in request', async () => {
+      const mockDocs: DocumentRecord[] = [sampleRecord];
+      vi.mocked(serverDb.fetchDossierRecords).mockResolvedValueOnce(mockDocs);
+      vi.mocked(serverAuth.resolveSessionOrganizationId).mockResolvedValueOnce('org-session-456');
+
+      const req = new NextRequest('http://localhost:3000/api/documents');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(serverDb.fetchDossierRecords).toHaveBeenCalledWith('org-session-456', null);
     });
 
     it('returns single document when id is provided', async () => {
@@ -87,7 +105,7 @@ describe('Documents API Route (/api/documents)', () => {
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);
-      expect(serverDb.deleteDossierRecord).toHaveBeenCalledWith('doc-1', 'org-123');
+      expect(serverDb.deleteDossierRecord).toHaveBeenCalledWith('doc-1', 'org-123', null);
     });
 
     it('returns 400 when id is missing', async () => {

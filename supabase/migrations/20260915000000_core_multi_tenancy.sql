@@ -168,7 +168,11 @@ CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE U
 DROP POLICY IF EXISTS rls_org_members_delete ON public.organization_members;
 CREATE POLICY rls_org_members_delete ON public.organization_members FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
 
--- Documents & Audit Logs
+-- Documents & Audit Logs & Jobs (Veraltete Prototyp-Policies bereinigen)
+DROP POLICY IF EXISTS "Allow all access to documents for prototype" ON documents;
+DROP POLICY IF EXISTS "Allow select audit_logs" ON audit_logs;
+DROP POLICY IF EXISTS "Allow all access to dossier_jobs for prototype" ON dossier_jobs;
+
 DROP POLICY IF EXISTS rls_documents_all ON documents;
 CREATE POLICY rls_documents_all ON documents FOR ALL USING (is_org_member(organization_id)) WITH CHECK (is_org_member(organization_id));
 
@@ -179,6 +183,7 @@ DROP POLICY IF EXISTS rls_audit_logs_insert ON audit_logs;
 CREATE POLICY rls_audit_logs_insert ON audit_logs FOR INSERT WITH CHECK (is_org_member(organization_id));
 
 -- 10. Kanonischer 1-Klick Demo-Benutzer & Kanzlei Seed (§ 17 BeurkG Demo-Betrieb)
+
 DO $$
 DECLARE
     v_demo_user_id UUID := '0232afd4-59fa-49b2-8e59-c6c5d069a678';
@@ -280,4 +285,10 @@ BEGIN
     )
     ON CONFLICT (organization_id, user_id) DO UPDATE SET
         role = 'NOTAR';
+
+    -- Bestehende Demo-Vorgänge der Demo-Kanzlei zuordnen (§ 17 BeurkG)
+    UPDATE public.documents
+    SET organization_id = v_demo_org_id
+    WHERE organization_id = '550e8400-e29b-41d4-a716-446655440000';
 END $$;
+

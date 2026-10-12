@@ -39,11 +39,15 @@ function HomeContent() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
 
-  const { currentUser, hasActiveOrganization } = useAuth();
+  const { currentUser, organization, hasActiveOrganization } = useAuth();
 
-  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
+  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments(
+    organization?.id
+  );
+
   const { jobs, activeJobs, failedJobs, retryJob, isRetrying, cancelJob, isCancelling, loadJobs } =
-    useJobs();
+    useJobs(organization?.id);
+
   const { job: singleJob } = useJob(jobParam);
   const {
     isAnalyzing,

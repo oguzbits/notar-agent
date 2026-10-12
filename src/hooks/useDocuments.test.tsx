@@ -150,4 +150,24 @@ describe('useDocuments with TanStack Query & MSW', () => {
     const doc = result.current.documents.find((d) => d.id === 'doc-1');
     expect((doc as { content?: typeof mockUpdatedDossier })?.content?.caseTitle).toBeUndefined();
   });
+
+  it('scopes query and fetches with organizationId parameter when passed', async () => {
+    let requestedUrl = '';
+    server.use(
+      http.get('/api/documents', ({ request }) => {
+        requestedUrl = request.url;
+        return HttpResponse.json({ documents: [{ id: 'org-doc-1', title: 'Kanzleidokument' }] });
+      })
+    );
+
+    const { result } = renderHook(() => useDocuments('org-test-uuid'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoadingDocs).toBe(false);
+    });
+
+    expect(requestedUrl).toContain('organizationId=org-test-uuid');
+    expect(result.current.documents).toHaveLength(1);
+    expect(result.current.documents[0]?.id).toBe('org-doc-1');
+  });
 });

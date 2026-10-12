@@ -7,30 +7,31 @@
 
 ## 📋 Übersicht der erreichten Meilensteine
 
-| Bereich       | Meilenstein                                | Status            | Kern-Ergebnis                                                                                                                      |
-| :------------ | :----------------------------------------- | :---------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase A**   | A.1 Playwright E2E Basis-Schutz            | [x] Abgeschlossen | Smoke-Test Workflow (`e2e/smoke-workflow.spec.ts`) mit Upload, Stepper, Table & Overrides                                          |
-| **Phase A**   | A.2 RAG-Auditor (JIT Rule Retrieval)       | [x] Abgeschlossen | Typisierte Regel-Registry & JIT-Selektor für BGB, BeurkG, HGB, GBO, GEG, BauGB in Stufe 2                                          |
-| **Phase A**   | A.4.1 Baseline-Scorer & Golden Dataset     | [x] Abgeschlossen | 8 synthetische Referenzakten, P50–P99 Latenz- und Provenance-Scorer (`scripts/eval-pipeline.ts`)                                   |
-| **Phase A**   | A.4.2 Promptfoo Integration                | [x] Abgeschlossen | Multi-Modell Evaluation Matrix & Web-Dashboard (`config/promptfoo.yaml`, `npx promptfoo view`)                                     |
-| **Phase B**   | B.1 PostgreSQL Job-Queue                   | [x] Abgeschlossen | Entkoppelte Queue `dossier_jobs` (`PENDING/PROCESSING/COMPLETED/FAILED`), `202 Accepted` < 250ms                                   |
-| **Phase B**   | B.2 Dual-Stream Ingestion Pipeline         | [x] Abgeschlossen | Byte-Introspektion (`unpdf` Unicode-Textlayer + Vision-Fusion für Siegel & Handschrift)                                            |
-| **Phase B**   | B.2.1 Step 1 Document Intelligence         | [x] Abgeschlossen | Layout-Aware Block-Parsing (`layout-structure-parser.ts`) & Verifiable Fact-Checking (`verifiable-fact-checker.ts`)                |
-| **Phase B**   | B.3 SSE Teilfortschritt-Streaming          | [x] Abgeschlossen | Server-Sent Events Stage-Updates live in die Cockpit-Oberfläche                                                                    |
-| **Phase B**   | B.4 Worker-Daemon & Zombie-Sweeper         | [x] Abgeschlossen | Graceful Shutdown (`SIGTERM`/`SIGINT`) & automatisches Recovery verwaister Jobs nach Lease-Timeout                                 |
-| **Phase B**   | B.5 Supabase Database Webhooks             | [x] Abgeschlossen | Ereignisgesteuerte Aktivierung (`trigger_dossier_job_pending`) via Shared-Secret Webhook                                           |
-| **Phase B**   | B.6 Vercel Webhook Live-Schaltung          | [x] Abgeschlossen | Produktionseinsatz auf `notar-agent.vercel.app` mit `SUPABASE_WEBHOOK_SECRET`                                                      |
-| **Phase B**   | B.8.2 Zitat-Grounding via diff-match-patch | [x] Abgeschlossen | Bit- & zeichengenaue Fundstellen-Verifikation (§ 17 BeurkG), Hyphenation-Toleranz & Anti-Halluzinations-Herabstufung               |
-| **Phase C**   | C.1 Append-Only Audit-Trail (§ 17 BeurkG)  | [x] Abgeschlossen | Revisionssichere `audit_logs` Tabelle mit SHA-256 Hash-Chaining & Pflichtbegründungen                                              |
-| **Phase C**   | C.2 PostgreSQL RLS Mandantentrennung       | [x] Abgeschlossen | Kernel-Level Row-Level Security (§ 203 StGB), Zod Notar-Rollen & `organization_id` Isolation                                       |
-| **Phase C**   | C.3 Kanzlei- & DNotI-RAG (pgvector + BM25) | [x] Abgeschlossen | Hybrid-Suche, `seed-knowledge.ts` für Amtsgericht-Präzedenzen & RLS-Klauselsammlung                                                |
-| **Additions** | Modul 10 Kanzlei-Auth & Rollen-UI          | [x] Abgeschlossen | Login (`/login`), Session-Guard Middleware, Header-Rollenbadge & Team-Settings-View                                                |
-| **Additions** | Modul 12 Fail-Fast Repository-Architektur  | [x] Abgeschlossen | Bereinigung stiller Fallbacks in Repositories (PostgreSQL als Single Source of Truth)                                              |
-| **Additions** | Modul 13 Codebase Health & Quality Gates   | [x] Abgeschlossen | AST-Komplexitäts-Auditor (`repo-health.mjs`), 94/100 Health Score, PII/N+1 Invarianten & harter 90%-CI-Abbruch                     |
-| **Additions** | Modul 14 1-Klick Demo, SSO Proxy & Queue   | [x] Abgeschlossen | 1-Klick Gastzugang (`POST /api/auth/demo`), robuste SSO-Proxy-Auflösung, autarke Next.js `after()` Queue & Testakten-Dokumentation |
-| **Additions** | Modul 15 Webhook-Sunset & Zero-Config      | [x] Abgeschlossen | Vollständiges Sunset des externen Database-Webhooks (`/api/jobs/process-webhook`), Bereinigung von `SUPABASE_WEBHOOK_SECRET`       |
-| **Additions** | Modul 16 Hybrid Gemini Ingestion & Parser  | [x] Abgeschlossen | Gemini Vision Parser (`gemini-3.1-flash-lite`) für bit- und tabellengenaue Transkription mit nativem Stream-Fallback               |
-| **Additions** | Modul 17 LiteParse-Sunset & Single-Pass    | [x] Abgeschlossen | Vollständige Deinstallation von `@llamaindex/liteparse` (-33 MB), Bereinigung der doppelten PDF-Ingestion in `payload-assembler`   |
+| Bereich       | Meilenstein                                | Status            | Kern-Ergebnis                                                                                                                          |
+| :------------ | :----------------------------------------- | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase A**   | A.1 Playwright E2E Basis-Schutz            | [x] Abgeschlossen | Smoke-Test Workflow (`e2e/smoke-workflow.spec.ts`) mit Upload, Stepper, Table & Overrides                                              |
+| **Phase A**   | A.2 RAG-Auditor (JIT Rule Retrieval)       | [x] Abgeschlossen | Typisierte Regel-Registry & JIT-Selektor für BGB, BeurkG, HGB, GBO, GEG, BauGB in Stufe 2                                              |
+| **Phase A**   | A.4.1 Baseline-Scorer & Golden Dataset     | [x] Abgeschlossen | 8 synthetische Referenzakten, P50–P99 Latenz- und Provenance-Scorer (`scripts/eval-pipeline.ts`)                                       |
+| **Phase A**   | A.4.2 Promptfoo Integration                | [x] Abgeschlossen | Multi-Modell Evaluation Matrix & Web-Dashboard (`config/promptfoo.yaml`, `npx promptfoo view`)                                         |
+| **Phase B**   | B.1 PostgreSQL Job-Queue                   | [x] Abgeschlossen | Entkoppelte Queue `dossier_jobs` (`PENDING/PROCESSING/COMPLETED/FAILED`), `202 Accepted` < 250ms                                       |
+| **Phase B**   | B.2 Dual-Stream Ingestion Pipeline         | [x] Abgeschlossen | Byte-Introspektion (`unpdf` Unicode-Textlayer + Vision-Fusion für Siegel & Handschrift)                                                |
+| **Phase B**   | B.2.1 Step 1 Document Intelligence         | [x] Abgeschlossen | Layout-Aware Block-Parsing (`layout-structure-parser.ts`) & Verifiable Fact-Checking (`verifiable-fact-checker.ts`)                    |
+| **Phase B**   | B.3 SSE Teilfortschritt-Streaming          | [x] Abgeschlossen | Server-Sent Events Stage-Updates live in die Cockpit-Oberfläche                                                                        |
+| **Phase B**   | B.4 Worker-Daemon & Zombie-Sweeper         | [x] Abgeschlossen | Graceful Shutdown (`SIGTERM`/`SIGINT`) & automatisches Recovery verwaister Jobs nach Lease-Timeout                                     |
+| **Phase B**   | B.5 Supabase Database Webhooks             | [x] Abgeschlossen | Ereignisgesteuerte Aktivierung (`trigger_dossier_job_pending`) via Shared-Secret Webhook                                               |
+| **Phase B**   | B.6 Vercel Webhook Live-Schaltung          | [x] Abgeschlossen | Produktionseinsatz auf `notar-agent.vercel.app` mit `SUPABASE_WEBHOOK_SECRET`                                                          |
+| **Phase B**   | B.8.2 Zitat-Grounding via diff-match-patch | [x] Abgeschlossen | Bit- & zeichengenaue Fundstellen-Verifikation (§ 17 BeurkG), Hyphenation-Toleranz & Anti-Halluzinations-Herabstufung                   |
+| **Phase C**   | C.1 Append-Only Audit-Trail (§ 17 BeurkG)  | [x] Abgeschlossen | Revisionssichere `audit_logs` Tabelle mit SHA-256 Hash-Chaining & Pflichtbegründungen                                                  |
+| **Phase C**   | C.2 PostgreSQL RLS Mandantentrennung       | [x] Abgeschlossen | Kernel-Level Row-Level Security (§ 203 StGB), Zod Notar-Rollen & `organization_id` Isolation                                           |
+| **Phase C**   | C.3 Kanzlei- & DNotI-RAG (pgvector + BM25) | [x] Abgeschlossen | Hybrid-Suche, `seed-knowledge.ts` für Amtsgericht-Präzedenzen & RLS-Klauselsammlung                                                    |
+| **Additions** | Modul 10 Kanzlei-Auth & Rollen-UI          | [x] Abgeschlossen | Login (`/login`), Session-Guard Middleware, Header-Rollenbadge & Team-Settings-View                                                    |
+| **Additions** | Modul 12 Fail-Fast Repository-Architektur  | [x] Abgeschlossen | Bereinigung stiller Fallbacks in Repositories (PostgreSQL als Single Source of Truth)                                                  |
+| **Additions** | Modul 13 Codebase Health & Quality Gates   | [x] Abgeschlossen | AST-Komplexitäts-Auditor (`repo-health.mjs`), 94/100 Health Score, PII/N+1 Invarianten & harter 90%-CI-Abbruch                         |
+| **Additions** | Modul 14 1-Klick Demo, SSO Proxy & Queue   | [x] Abgeschlossen | 1-Klick Gastzugang (`POST /api/auth/demo`), robuste SSO-Proxy-Auflösung, autarke Next.js `after()` Queue & Testakten-Dokumentation     |
+| **Additions** | Modul 15 Webhook-Sunset & Zero-Config      | [x] Abgeschlossen | Vollständiges Sunset des externen Database-Webhooks (`/api/jobs/process-webhook`), Bereinigung von `SUPABASE_WEBHOOK_SECRET`           |
+| **Additions** | Modul 16 Hybrid Gemini Ingestion & Parser  | [x] Abgeschlossen | Gemini Vision Parser (`gemini-3.1-flash-lite`) für bit- und tabellengenaue Transkription mit nativem Stream-Fallback                   |
+| **Additions** | Modul 17 LiteParse-Sunset & Single-Pass    | [x] Abgeschlossen | Vollständige Deinstallation von `@llamaindex/liteparse` (-33 MB), Bereinigung der doppelten PDF-Ingestion in `payload-assembler`       |
+| **Additions** | Modul 18 Mandantenisolation & RLS Cleanup  | [x] Abgeschlossen | Session-basierte Kanzleiauflösung in Vorgangs-API & React Query, Bereinigung von Prototyp-RLS-Policies, strikte Isolation Demo vs. SSO |
 
 ---
 
@@ -156,3 +157,10 @@
 - **OAuth Callback Middleware Bypass:** Behebung der unerwünschten HTTP-307-Interzeption bei Google SSO durch Aufnahme von `/auth` in die Route-Ausnahmen von `src/lib/supabase/middleware.ts`, wodurch der Code-Exchange-Handler `/auth/callback` deterministisch ausgeführt wird.
 - **Supabase Demo-Kanzlei & User Seed:** Bereitstellung des bestätigten Demo-Benutzers (`demo@notar-agent.de`) mit Notar-Rolle in `auth.users`, `auth.identities` und `organization_members` auf der Supabase-Produktionsinstanz sowie dauerhafte Konsolidierung in `supabase/migrations/20260915000000_core_multi_tenancy.sql`.
 - **TDD & Regression-Schutz:** Ergänzung dedizierter Unit-Tests in `src/lib/supabase/middleware.test.ts` zur Absicherung aller unauthentifizierten und authentifizierten Routenfilter.
+
+#### 10. Kanzlei-Mandantenisolation & Bereinigung historischer Prototyp-RLS-Policies (Additions Modul 18)
+
+- **Session-basierte Kanzleiauflösung:** Einführung von `resolveSessionOrganizationId()` in `src/lib/supabase/server-auth.ts`, wodurch `/api/documents` automatisch die Kanzlei des authentifizierten Benutzers ermittelt und per `organization_id` abfragt.
+- **Mandantenspezifischer Client-Cache:** Erweiterung von `useDocuments` und `useJobs` um `organizationId`, sodass der `@tanstack/react-query`-Cache strikt pro Kanzlei (`['documents', orgId]`, `['jobs', orgId]`) partitioniert wird und Benutzer beim Wechsel zwischen Demo-Kanzlei und eigenem SSO-Login keine fremden Daten sehen.
+- **Bereinigung historischer Prototyp-RLS-Policies:** Deaktivierung/Bereinigung der permissiven Prototyp-Regeln (`"Allow all access to documents for prototype"`, `"Allow select audit_logs"`, `"Allow all access to dossier_jobs for prototype"`) in Supabase zugunsten der kanonischen `is_org_member(organization_id)`-Policies.
+- **Kanonische Demo-Daten-Zuordnung:** Neuzuordnung der bestehenden Musterakten zur Demo-Kanzlei (`Notariat Dr. Muster & Partner`, `d0000000-0000-0000-0000-000000000001`), sodass Demo-Gäste die Musterfälle sehen, während individuelle SSO-Notare ein sauberes, mandantenisoliertes Kanzleipostfach vorfinden.

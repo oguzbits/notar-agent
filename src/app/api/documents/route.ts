@@ -4,6 +4,7 @@ import {
   fetchDossierRecordById,
   deleteDossierRecord,
 } from '@/lib/supabase/server';
+import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,17 +18,19 @@ function extractDocumentQueryParams(req: NextRequest) {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const { id, orgId } = extractDocumentQueryParams(req);
+    const authSupabase = await createServerAuthClient();
+    const { id, orgId: queryOrgId } = extractDocumentQueryParams(req);
+    const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
 
     if (id) {
-      const record = await fetchDossierRecordById(id, orgId);
+      const record = await fetchDossierRecordById(id, orgId, authSupabase);
       if (!record) {
         return NextResponse.json({ error: 'Vorgang nicht gefunden.' }, { status: 404 });
       }
       return NextResponse.json({ document: record });
     }
 
-    const records = await fetchDossierRecords(orgId);
+    const records = await fetchDossierRecords(orgId, authSupabase);
     return NextResponse.json({ documents: records });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Fehler beim Laden der Vorgänge.';
@@ -37,13 +40,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   try {
-    const { id, orgId } = extractDocumentQueryParams(req);
+    const authSupabase = await createServerAuthClient();
+    const { id, orgId: queryOrgId } = extractDocumentQueryParams(req);
+    const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
 
     if (!id) {
       return NextResponse.json({ error: 'ID fehlt.' }, { status: 400 });
     }
 
-    const success = await deleteDossierRecord(id, orgId);
+    const success = await deleteDossierRecord(id, orgId, authSupabase);
     if (!success) {
       return NextResponse.json({ error: 'Vorgang konnte nicht gelöscht werden.' }, { status: 500 });
     }

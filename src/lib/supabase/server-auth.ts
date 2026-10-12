@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { validateEnv } from '@/env';
-import { Database } from '@/types/database';
+import { DB_TABLES, Database } from '@/types/database';
 
 /**
  * Creates an SSR Supabase client bound to Next.js server cookie store.
@@ -40,4 +40,36 @@ export async function createServerAuthClient() {
       },
     },
   });
+}
+
+/**
+ * Löst die Kanzlei-ID des aktuell authentifizierten Benutzers aus der Sitzung auf.
+ * Beachtet einen expliziten Override (z.B. aus Header/Query), falls vorhanden.
+ */
+export async function resolveSessionOrganizationId(
+  authSupabase: ReturnType<typeof createServerClient<Database>> | null,
+  overrideOrgId?: string
+): Promise<string | undefined> {
+  if (overrideOrgId) return overrideOrgId;
+  if (!authSupabase) return undefined;
+
+  try {
+    const {
+      data: { user },
+      error: authError,
+    } = await authSupabase.auth.getUser();
+
+    if (authError || !user) return undefined;
+
+    const { data: member } = await authSupabase
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    return (member as { organization_id?: string } | null)?.organization_id ?? undefined;
+  } catch (err: unknown) {
+    console.debug('Fehler beim Auflösen der Kanzlei-ID aus der Sitzung:', err);
+    return undefined;
+  }
 }
