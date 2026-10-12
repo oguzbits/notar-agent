@@ -1,9 +1,11 @@
 import zlib from 'node:zlib';
+import { calculateFileFingerprint } from '@/lib/audit/audit-crypto';
 import {
   DocumentLayoutBlock,
   DocumentParsedContent,
   DocumentParsedContentSchema,
 } from '@/types/document';
+import { toCanonicalText } from './canonical-text';
 import { parseDocumentWithGemini } from './gemini-pdf-parser';
 import { parseDocumentLayoutStructure } from './layout-structure-parser';
 
@@ -127,13 +129,15 @@ export async function parsePdfNativeStreamFallback(
       content: b.content,
     }));
 
-    const markdownText = layout.structuredMarkdown.trim();
-    const characterCount = markdownText.length;
+    const canonicalMarkdown = toCanonicalText(layout.structuredMarkdown);
+    const contentHash = calculateFileFingerprint(buffer);
+    const characterCount = canonicalMarkdown.length;
     const hasTextLayer = characterCount > 0;
     const totalPages = pageMatches ? pageMatches.length : hasTextLayer ? 1 : 0;
 
     const result: DocumentParsedContent = {
-      markdown: markdownText,
+      markdown: canonicalMarkdown,
+      contentHash,
       totalPages,
       blocks,
       characterCount,
@@ -149,6 +153,7 @@ export async function parsePdfNativeStreamFallback(
     console.debug('[pdf-document-parser] Nativer Stream-Fallback fehlgeschlagen:', err);
     return {
       markdown: '',
+      contentHash: calculateFileFingerprint(buffer),
       totalPages: 0,
       blocks: [],
       characterCount: 0,

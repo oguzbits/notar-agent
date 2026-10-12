@@ -54,6 +54,11 @@ export const DocumentParsedContentSchema = z.object({
   markdown: z
     .string()
     .describe('Strukturiertes Markdown (Überschriften, Tabellen, Absätze) für LLM-Prompts'),
+  contentHash: z
+    .string()
+    .length(64)
+    .optional()
+    .describe('Deterministischer SHA-256 Hash des Originaldokuments für idempotente Ingestion'),
   totalPages: z.number().int().min(0),
   blocks: z.array(DocumentLayoutBlockSchema).default([]),
   characterCount: z.number().int().min(0),

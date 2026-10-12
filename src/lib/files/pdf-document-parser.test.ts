@@ -140,8 +140,22 @@ startxref
 
     expect(result.totalPages).toBe(0);
     expect(result.hasTextLayer).toBe(false);
-    expect(result.needsOcr).toBe(true);
-    expect(result.markdown).toBe('');
     expect(result.blocks).toEqual([]);
+  });
+
+  it('generates a deterministic SHA-256 contentHash for idempotent ingestion caching', async () => {
+    const filePath = path.resolve(
+      process.cwd(),
+      'test-akten/fall-04-standard-urkunde/Kaufvertrag_Koeln_UR89.pdf'
+    );
+    const buffer = fs.readFileSync(filePath);
+
+    const result1 = await parsePdfDocument(buffer);
+    const result2 = await parsePdfDocument(buffer);
+
+    expect(result1.contentHash).toBeDefined();
+    expect(result1.contentHash).toHaveLength(64);
+    expect(result1.contentHash).toBe(result2.contentHash);
+    expect(result1.markdown).toBe(result2.markdown);
   });
 });

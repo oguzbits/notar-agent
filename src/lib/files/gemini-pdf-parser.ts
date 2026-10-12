@@ -1,4 +1,6 @@
 import { validateEnv } from '@/env';
+import { calculateFileFingerprint } from '@/lib/audit/audit-crypto';
+import { toCanonicalText } from '@/lib/files/canonical-text';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import {
   DocumentLayoutBlock,
@@ -214,13 +216,12 @@ export async function parseDocumentWithGemini(
     }
   }
 
-  const transcribedMarkdown = (candidate.content?.parts ?? [])
-    .map((p) => p.text ?? '')
-    .join('')
-    .trim();
+  const rawMarkdown = (candidate.content?.parts ?? []).map((p) => p.text ?? '').join('');
+  const canonicalMarkdown = toCanonicalText(rawMarkdown);
+  const contentHash = calculateFileFingerprint(buffer);
 
   // Rekonstruiere logische Layout-Blöcke aus der Markdown-Struktur
-  const layout = parseDocumentLayoutStructure(transcribedMarkdown);
+  const layout = parseDocumentLayoutStructure(canonicalMarkdown);
   const blocks: DocumentLayoutBlock[] = layout.blocks.map((b) => ({
     pageNumber: 1,
     type:
@@ -232,11 +233,12 @@ export async function parseDocumentWithGemini(
     content: b.content,
   }));
 
-  const characterCount = transcribedMarkdown.length;
+  const characterCount = canonicalMarkdown.length;
   const hasTextLayer = characterCount > 0;
 
   const result: DocumentParsedContent = {
-    markdown: transcribedMarkdown,
+    markdown: canonicalMarkdown,
+    contentHash,
     totalPages: 1,
     blocks,
     characterCount,

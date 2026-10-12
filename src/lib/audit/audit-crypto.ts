@@ -38,7 +38,7 @@ export function calculateAuditRecordHash(payload: UnhashedAuditPayload): string 
  * Berechnet den SHA-256 Hash über Datei-Inhalte (Text oder Binärpuffer)
  * für den manipulationssicheren Ingestion-Fingerprint.
  */
-export function calculateFileFingerprint(content: string | Buffer): string {
+export function calculateFileFingerprint(content: string | Buffer | Uint8Array): string {
   return createHash('sha256').update(content).digest('hex');
 }
 

@@ -129,5 +129,20 @@ describe('Document Domain Contract & Schemas', () => {
 
     const parsed = DocumentParsedContentSchema.safeParse(validParsedContent);
     expect(parsed.success).toBe(true);
+
+    const withHash = DocumentParsedContentSchema.safeParse({
+      ...validParsedContent,
+      contentHash: 'a'.repeat(64),
+    });
+    expect(withHash.success).toBe(true);
+    if (withHash.success) {
+      expect(withHash.data.contentHash).toBe('a'.repeat(64));
+    }
+
+    const invalidHash = DocumentParsedContentSchema.safeParse({
+      ...validParsedContent,
+      contentHash: 'short',
+    });
+    expect(invalidHash.success).toBe(false);
   });
 });

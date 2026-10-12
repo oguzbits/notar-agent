@@ -64,3 +64,19 @@ graph TD
   Zeichengenaue Verifikation von Beleg-Snippets auf dem PDF-Textlayer zur Vermeidung von Halluzinationen (§ 17 BeurkG Provenance) mit exakter Koordinaten- und Offset-Lokalisierung.
 - **Serverless Ingestion Overhaul (B.8):**
   Flache, modulare Zod-Sub-Schemas pro Dokumenttyp (Grundbuch, Energieausweis, Mietlisten) und selektives Windowing für Großakten (> 150 Seiten) bei 100 % Serverless-Kompatibilität.
+
+---
+
+## 4. Idempotente Ingestion & Kanonische Text-Normalisierung
+
+Um redundante OCR-Aufrufe, Token-Kosten und Zitations-Offset-Drifts zu eliminieren, implementiert die Pipeline strikte Idempotenz:
+
+1. **Deterministischer Ingestion-Fingerprint (`contentHash`):**
+   - Jedes eingehende Dokument wird unmittelbar bei Einreichung über seinen kryptografischen SHA-256 Hash erfasst (`calculateFileFingerprint`).
+   - Identische Dokumente (z. B. bei Retries, doppelten Uploads oder Delta-Nachreichungen) werden dedupliziert.
+
+2. **Kanonische Textnormalisierung (`toCanonicalText`):**
+   - Garantiert mathematische Idempotenz: $f(f(x)) = f(x)$ (nachgewiesen via Property-Based Tests).
+   - Bereinigt Steuerzeichen (BOM, Nullbytes), normalisiert Zeilenumbrüche (`\n`), Leerzeilen und Unicode (NFC für stabile deutsche Umlaute).
+   - Repariert Markdown-Tabellentrennerzeilen, sodass LLM- und OCR-Tabellen stabil formatiert bleiben.
+   - Hält Zeichen-Offsets für Diff-Matching und Beleg-Hervorhebung im Viewer konsistent.
