@@ -38,7 +38,7 @@ ANTHROPIC_API_KEY="sk-ant-..."
 # oder GOOGLE_GENERATIVE_AI_API_KEY="..."
 
 # Modell-Wahl (Standard: schnelles & kosteneffizientes Parsing)
-AI_MODEL="claude-haiku-4-5"
+AI_MODEL="claude-haiku-5-5"
 
 # Supabase (Werte für lokale Docker-Instanz bereits vorbereitet)
 NEXT_SUPABASE_URL="http://127.0.0.1:54321"

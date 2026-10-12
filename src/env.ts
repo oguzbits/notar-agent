@@ -17,7 +17,7 @@ export const ServerEnvSchema = z.object({
   EVAL_GEMINI_AI_MODEL: optionalTrimmedString,
   EVAL_ANTHROPIC_API_KEY: optionalTrimmedString,
   EVAL_ANTHROPIC_AI_MODEL: optionalTrimmedString,
-  AI_MODEL: optionalTrimmedString.default('claude-haiku-4-5'),
+  AI_MODEL: optionalTrimmedString.default('claude-haiku-5-5'),
   AI_PROVIDER: optionalTrimmedString,
   MOCK_AI: z.preprocess(
     (val) => val === 'true' || val === true || val === '1',

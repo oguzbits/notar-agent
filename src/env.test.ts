@@ -22,7 +22,7 @@ describe('env validation', () => {
     delete process.env.NEXT_SUPABASE_PUBLISHABLE_KEY;
 
     const env = validateEnv(process.env);
-    expect(env.AI_MODEL).toBe('claude-haiku-4-5');
+    expect(env.AI_MODEL).toBe('claude-haiku-5-5');
     expect(env.MOCK_AI).toBe(false);
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     expect(env.GEMINI_API_KEY).toBeUndefined();
