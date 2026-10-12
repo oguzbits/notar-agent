@@ -4,6 +4,10 @@ import {
   JUDGE_VERDICT_STATUS,
   TrajectoryEvalResultSchema,
   LayerEvalSuiteReportSchema,
+  RETRIEVAL_QUERY_TYPES,
+  RetrievalTestCaseSchema,
+  RetrievalScoreSchema,
+  RetrievalBenchmarkReportSchema,
 } from './eval';
 
 describe('Eval Contracts (src/types/eval.ts)', () => {
@@ -72,5 +76,61 @@ describe('Eval Contracts (src/types/eval.ts)', () => {
 
     const parsed = LayerEvalSuiteReportSchema.safeParse(fullReport);
     expect(parsed.success).toBe(true);
+  });
+
+  it('validates RetrievalTestCaseSchema and RetrievalScoreSchema', () => {
+    const testCase = {
+      id: 'case-geg-10y',
+      query: '§ 80 Abs. 2 GEG',
+      queryType: RETRIEVAL_QUERY_TYPES.STATUTORY_EXACT,
+      description: 'Prüfung der Gültigkeitsdauer eines Energieausweises',
+      expectedLegalBases: ['§ 80 Abs. 2 GEG'],
+      expectedAnchors: ['10 Jahre'],
+      requiredFacts: ['10 Jahre', 'Gültigkeitsdauer'],
+    };
+
+    const score = {
+      caseId: 'case-geg-10y',
+      query: '§ 80 Abs. 2 GEG',
+      queryType: RETRIEVAL_QUERY_TYPES.STATUTORY_EXACT,
+      hit: true,
+      rank: 1,
+      reciprocalRank: 1.0,
+      anchorRecall: 1.0,
+      topLegalBases: ['§ 80 Abs. 2 GEG'],
+      latencyMs: 12.5,
+    };
+
+    const benchmarkReport = {
+      timestamp: new Date().toISOString(),
+      strategy: 'BASELINE_LINEAR',
+      totalQueries: 1,
+      corpusSize: 35,
+      hitAt1Rate: 100.0,
+      hitAt3Rate: 100.0,
+      hitAt5Rate: 100.0,
+      meanReciprocalRank: 1.0,
+      averageAnchorRecall: 1.0,
+      averageLatencyMs: 12.5,
+      byQueryType: {
+        [RETRIEVAL_QUERY_TYPES.STATUTORY_EXACT]: {
+          count: 1,
+          hitAt3Rate: 100.0,
+          meanReciprocalRank: 1.0,
+        },
+        [RETRIEVAL_QUERY_TYPES.NUMBER_PARCEL]: { count: 0, hitAt3Rate: 0, meanReciprocalRank: 0 },
+        [RETRIEVAL_QUERY_TYPES.SEMANTIC_CONCEPT]: {
+          count: 0,
+          hitAt3Rate: 0,
+          meanReciprocalRank: 0,
+        },
+        [RETRIEVAL_QUERY_TYPES.DISTRACTOR]: { count: 0, hitAt3Rate: 0, meanReciprocalRank: 0 },
+      },
+      results: [score],
+    };
+
+    expect(RetrievalTestCaseSchema.safeParse(testCase).success).toBe(true);
+    expect(RetrievalScoreSchema.safeParse(score).success).toBe(true);
+    expect(RetrievalBenchmarkReportSchema.safeParse(benchmarkReport).success).toBe(true);
   });
 });

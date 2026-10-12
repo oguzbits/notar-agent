@@ -170,3 +170,78 @@ export const LayerEvalSuiteReportSchema = z.object({
   caseTraces: z.array(CaseTraceArtifactSchema).default([]),
 });
 export type LayerEvalSuiteReport = z.infer<typeof LayerEvalSuiteReportSchema>;
+
+/**
+ * Retrieval Benchmark Evaluation Schemas (inspiriert von notebooklm-klon & manda)
+ */
+export const RETRIEVAL_QUERY_TYPES = {
+  STATUTORY_EXACT: 'STATUTORY_EXACT',
+  NUMBER_PARCEL: 'NUMBER_PARCEL',
+  SEMANTIC_CONCEPT: 'SEMANTIC_CONCEPT',
+  DISTRACTOR: 'DISTRACTOR',
+} as const;
+
+export const RetrievalQueryTypeSchema = z.enum([
+  RETRIEVAL_QUERY_TYPES.STATUTORY_EXACT,
+  RETRIEVAL_QUERY_TYPES.NUMBER_PARCEL,
+  RETRIEVAL_QUERY_TYPES.SEMANTIC_CONCEPT,
+  RETRIEVAL_QUERY_TYPES.DISTRACTOR,
+]);
+export type RetrievalQueryType = (typeof RETRIEVAL_QUERY_TYPES)[keyof typeof RETRIEVAL_QUERY_TYPES];
+
+export const RetrievalTestCaseSchema = z.object({
+  id: z.string().min(1),
+  query: z.string().min(1),
+  queryType: RetrievalQueryTypeSchema,
+  description: z.string(),
+  expectedLegalBases: z.array(z.string()).default([]),
+  expectedAnchors: z.array(z.string()).default([]),
+  requiredFacts: z.array(z.string()).default([]),
+});
+export type RetrievalTestCase = z.infer<typeof RetrievalTestCaseSchema>;
+
+export const RetrievalScoreSchema = z.object({
+  caseId: z.string(),
+  query: z.string(),
+  queryType: RetrievalQueryTypeSchema,
+  hit: z.boolean().describe('Ob mindestens ein erwarteter Treffer in den Top K gefunden wurde'),
+  rank: z
+    .number()
+    .int()
+    .positive()
+    .nullable()
+    .describe('1-basierter Rang des ersten Treffers oder null'),
+  reciprocalRank: z.number().min(0).max(1.0).describe('1 / rank oder 0 wenn kein Treffer'),
+  anchorRecall: z
+    .number()
+    .min(0)
+    .max(1.0)
+    .nullable()
+    .describe('Anteil gefundener Textanker in Top K'),
+  topLegalBases: z.array(z.string()).describe('Rechtsgrundlagen der zurückgegebenen Top-K-Treffer'),
+  latencyMs: z.number().nonnegative(),
+});
+export type RetrievalScore = z.infer<typeof RetrievalScoreSchema>;
+
+export const RetrievalBenchmarkReportSchema = z.object({
+  timestamp: z.string(),
+  strategy: z.string(),
+  totalQueries: z.number().int().positive(),
+  corpusSize: z.number().int().positive(),
+  hitAt1Rate: z.number().min(0).max(100.0),
+  hitAt3Rate: z.number().min(0).max(100.0),
+  hitAt5Rate: z.number().min(0).max(100.0),
+  meanReciprocalRank: z.number().min(0).max(1.0),
+  averageAnchorRecall: z.number().min(0).max(1.0),
+  averageLatencyMs: z.number().nonnegative(),
+  byQueryType: z.record(
+    RetrievalQueryTypeSchema,
+    z.object({
+      count: z.number().int().nonnegative(),
+      hitAt3Rate: z.number().min(0).max(100.0),
+      meanReciprocalRank: z.number().min(0).max(1.0),
+    })
+  ),
+  results: z.array(RetrievalScoreSchema),
+});
+export type RetrievalBenchmarkReport = z.infer<typeof RetrievalBenchmarkReportSchema>;
