@@ -78,6 +78,16 @@ export const LoginRequestSchema = z.object({
   redirectTo: z.string().optional(),
 });
 
+export const demoUserCredentials = {
+  EMAIL: 'demo@notar-agent.de',
+  PASSWORD: 'DemoNotariat2026!Secured',
+  FULL_NAME: 'Dr. Alexander Muster',
+  TITLE: 'Notar',
+  ORGANIZATION_NAME: 'Notariat Dr. Muster & Partner',
+  OFFICIAL_SEAT: 'Köln',
+  CHAMBER_DISTRICT: 'Rheinische Notarkammer',
+} as const;
+
 export const SSO_PROVIDERS = {
   GOOGLE: 'google',
 } as const;

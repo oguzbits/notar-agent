@@ -71,18 +71,44 @@ Die App ist anschließend unter [http://localhost:3000](http://localhost:3000) i
 
 ---
 
-## 📂 Unterlagen testen & Lade-Anleitung
+## 📂 Unterlagen testen & Real-World Testakten
 
-Aus Datenschutzgründen sind keine echten Mandantendokumente im Git-Repository versioniert. Zum Testen:
+Im Verzeichnis [`test-akten/`](test-akten/) stehen **10 synthetische, datenschutzkonforme Referenzakten** (§ 203 StGB / DSGVO) bereit. Sie bilden reale Bedingungen des notariellen Alltags nach (Multimodalität, Handschriften, Scan-Artefakte, Fristprüfungen nach GEG und Vollständigkeitskontrollen nach § 21 BeurkG).
 
-1. Öffne die Web-Applikation unter [http://localhost:3000](http://localhost:3000).
-2. Klicke auf **„Neuen Vorgang starten“** (oder nutze bei leerem Datenbestand **„Erste Akte anlegen“**).
-3. **Dateien hochladen (Drag-and-Drop):**
-   - **PDFs:** Grundbuchauszüge, Kaufvertragsentwürfe, Energieausweise, Flurkarten, Mietaufstellungen.
-   - **Bild-Scans (JPG, PNG):** Abfotografierte Urkunden, Personalausweise, handschriftliche Vermerke.
-   - **Text- & E-Mail-Dateien:** Makler-Notizen, `.txt`, `.eml`.
-4. **Ergänzende Hinweise (Optional):** Informelle Absprachen im Textfeld notieren (z. B. _„Kaufpreis wurde nachverhandelt auf 500.000 €“_).
-5. Klicke auf **„Unterlagen prüfen“**: Der agentische Prüfprozess extrahiert die 10 Pflichtfelder, führt Fristenabgleiche durch und stellt das Ergebnis im Cockpit dar.
+### Empfohlene Testabläufe für die Evaluierung:
+
+1. **Happy Path (Empfohlener Einstieg):**
+   - **Datei:** [`test-akten/fall-04-standard-urkunde/Kaufvertrag_Koeln_UR89.pdf`](test-akten/fall-04-standard-urkunde/Kaufvertrag_Koeln_UR89.pdf)
+   - **Prüfziel:** Vollständige Urkunde ohne Mängel.
+   - **Ergebnis:** Gesamtstatus `READY`, alle 10 Pflichtfelder `VERIFIED`, 0 Beanstandungen.
+
+2. **Handschriften- & Randkorrektur-Erkennung:**
+   - **Datei:** [`test-akten/fall-03-vertragsaenderung-handschrift/Kaufvertrag_Scan.png`](test-akten/fall-03-vertragsaenderung-handschrift/Kaufvertrag_Scan.png)
+   - **Prüfziel:** Priorisiert die KI die handschriftliche Randkorrektur über dem Drucktext?
+   - **Ergebnis:** Kaufpreis `425.000,00 EUR` (nicht 450.000 €!), Status `NEEDS_REVIEW` mit Prüfhinweis zur handschriftlichen Korrektur.
+
+3. **Gesetzliche Fristenfalle (§ 80 GEG – Energieausweis):**
+   - **Datei:** [`test-akten/fall-06-energieausweis-prueffrist/Energieausweis_AachenerStr.pdf`](test-akten/fall-06-energieausweis-prueffrist/Energieausweis_AachenerStr.pdf)
+   - **Prüfziel:** Erkennt das Modell die 10-Jahres-Gültigkeit eigenständig?
+   - **Ergebnis:** Status `NEEDS_REVIEW`, Warnung: _„Energieausweis abgelaufen (Gültig bis 10.02.2023)“_.
+
+4. **Vollständigkeitsprüfung & Grundbuchrecht (§ 21 BeurkG):**
+   - **Datei:** [`test-akten/fall-02-grundbuch-vollstaendigkeit/Grundbuchauszug_Lindenthal.png`](test-akten/fall-02-grundbuch-vollstaendigkeit/Grundbuchauszug_Lindenthal.png)
+   - **Prüfziel:** Erkennt die KI, dass Seite 2 (Abt. I Eigentümer) fehlt?
+   - **Ergebnis:** Status `NEEDS_REVIEW`, Beurkundungssperre wegen fehlender Eigentümerdaten.
+
+5. **MFH-Mieterliste & Arithmetik:**
+   - **Datei:** [`test-akten/fall-08-mieterliste-handschrift/Mieterliste_Objekt_Lindenthal.pdf`](test-akten/fall-08-mieterliste-handschrift/Mieterliste_Objekt_Lindenthal.pdf)
+   - **Prüfziel:** Erkennt das System 28 gedruckte + 2 handschriftliche Parteien und errechnet die korrekte Gesamtmiete?
+   - **Ergebnis:** 30 Parteien erkannt, Monatsmiete Netto: `19.125,00 EUR`, Jahresmiete: `229.500,00 EUR`.
+
+### So führst du den Test in der App durch:
+
+1. Öffne die Web-Applikation unter [http://localhost:3000](http://localhost:3000) (oder [notar-agent.vercel.app](https://notar-agent.vercel.app)).
+2. Klicke auf **„Neuen Vorgang starten“** (oder **„Erste Akte anlegen“**).
+3. Ziehe die gewünschte Datei (z. B. `Kaufvertrag_Koeln_UR89.pdf`) per Drag-and-Drop in den Upload-Bereich.
+4. _(Optional)_ Informelle Notizen im Textfeld vermerken (z. B. _„Käufer reicht Ausweis nach“_).
+5. Klicke auf **„Unterlagen prüfen“**: Der agentische Prüfprozess extrahiert die 10 Pflichtfelder mit Belegzitaten, prüft juristische Regeln und stellt das Ergebnis im Cockpit dar.
 
 ---
 

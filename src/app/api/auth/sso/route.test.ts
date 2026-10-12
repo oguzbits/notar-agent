@@ -53,4 +53,30 @@ describe('SSO Route (POST /api/auth/sso)', () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
   });
+
+  it('respects x-forwarded-host and x-forwarded-proto headers behind proxies', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?...' },
+      error: null,
+    });
+
+    const req = new NextRequest('http://internal-host:3000/api/auth/sso', {
+      method: 'POST',
+      headers: {
+        'x-forwarded-host': 'notar-agent.vercel.app',
+        'x-forwarded-proto': 'https',
+      },
+      body: JSON.stringify({ provider: SSO_PROVIDERS.GOOGLE, redirectTo: '/dossier' }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: SSO_PROVIDERS.GOOGLE,
+      options: {
+        redirectTo: 'https://notar-agent.vercel.app/auth/callback?next=%2Fdossier',
+      },
+    });
+  });
 });

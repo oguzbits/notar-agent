@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { fromError } from 'zod-validation-error';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
@@ -72,8 +72,19 @@ export async function POST(req: NextRequest): Promise<Response> {
       const jobRepo = getJobRepository(authSupabase);
       const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
 
-      // Starte Hintergrund-Worker ohne auf Fertigstellung zu blockieren
-      void executeDossierJob(job.id);
+      // Starte Hintergrund-Worker entkoppelt und serverless-sicher via Next.js after()
+      try {
+        after(async () => {
+          await executeDossierJob(job.id);
+        });
+      } catch (afterErr: unknown) {
+        // Fallback falls after() im aktuellen Laufzeit-/Testkontext nicht aktiv ist
+        console.debug(
+          '[analyze] after() nicht verfügbar, nutze direkten Hintergrund-Aufruf:',
+          afterErr
+        );
+        void executeDossierJob(job.id);
+      }
 
       return NextResponse.json(
         {

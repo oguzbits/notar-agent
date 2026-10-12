@@ -10,10 +10,12 @@ export interface UseAuthActionsOptions {
 export interface UseAuthActionsResult {
   isLoadingPassword: boolean;
   isLoadingSso: boolean;
+  isLoadingDemo: boolean;
   error: string | null;
   setError: (error: string | null) => void;
   loginWithPassword: (email: string, password: string) => Promise<boolean>;
   loginWithGoogleSso: () => Promise<void>;
+  loginWithDemo: () => Promise<boolean>;
 }
 
 export function useAuthActions({
@@ -23,6 +25,7 @@ export function useAuthActions({
   const router = useRouter();
   const [isLoadingPassword, setIsLoadingPassword] = useState(false);
   const [isLoadingSso, setIsLoadingSso] = useState(false);
+  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
 
   const loginWithPassword = async (email: string, password: string): Promise<boolean> => {
@@ -80,12 +83,43 @@ export function useAuthActions({
     }
   };
 
+  const loginWithDemo = async (): Promise<boolean> => {
+    setError(null);
+    setIsLoadingDemo(true);
+
+    try {
+      const res = await fetch('/api/auth/demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirectTo }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Demo-Anmeldung fehlgeschlagen.');
+      }
+
+      router.push(data.redirectTo || redirectTo);
+      router.refresh();
+      return true;
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Unerwarteter Fehler bei der Demo-Anmeldung.';
+      setError(msg);
+      return false;
+    } finally {
+      setIsLoadingDemo(false);
+    }
+  };
+
   return {
     isLoadingPassword,
     isLoadingSso,
+    isLoadingDemo,
     error,
     setError,
     loginWithPassword,
     loginWithGoogleSso,
+    loginWithDemo,
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import React, { Suspense, useState } from 'react';
@@ -22,8 +22,15 @@ function LoginForm() {
     return null;
   }, [urlError]);
 
-  const { isLoadingPassword, isLoadingSso, error, loginWithPassword, loginWithGoogleSso } =
-    useAuthActions({ redirectTo, initialError });
+  const {
+    isLoadingPassword,
+    isLoadingSso,
+    isLoadingDemo,
+    error,
+    loginWithPassword,
+    loginWithGoogleSso,
+    loginWithDemo,
+  } = useAuthActions({ redirectTo, initialError });
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,6 +53,24 @@ function LoginForm() {
             <span>{error}</span>
           </div>
         )}
+
+        {/* 1-Klick Demo-Kanzlei Zugang */}
+        <div className="mb-4">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            isLoading={isLoadingDemo}
+            onClick={() => void loginWithDemo()}
+            className="w-full justify-center"
+            leftIcon={<Sparkles className="text-warning h-5 w-5" />}
+          >
+            1-Klick Demo-Kanzlei starten
+          </Button>
+          <p className="text-muted-foreground mt-2 text-center text-sm">
+            Sofort testen ohne Registrierung – vollständiger Funktionsumfang
+          </p>
+        </div>
 
         {/* Google SSO Button */}
         <div>

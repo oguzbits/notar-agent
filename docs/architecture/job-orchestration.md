@@ -66,10 +66,22 @@ sequenceDiagram
 
 ---
 
-## 3. Serverlose Event-Orchestrierung via Supabase Webhooks
+## 3. Serverlose Event-Orchestrierung & Autarke Ausführung
 
-Statt dauerhaft laufender Polling-Prozesse (`setInterval`) nutzt das System native PostgreSQL Database Webhooks:
+Das System unterstützt zwei komplementäre Ausführungsmodelle für asynchrone Jobs:
 
-- **Realtime Trigger:** Bei Anlage eines Jobs feuert der Trigger `trigger_dossier_job_pending` via Supabase sofort an `/api/jobs/process-webhook`.
+### A. Interner Standard: Entkoppelte Ausführung via Next.js `after()`
+
+Für Uploads und Analysen aus der eigenen Web-Applikation (`POST /api/analyze?async=true`) wird der Hintergrund-Worker direkt im Serverless-Lifecycle verankert:
+
+- **Sofortige Antwort:** Der Client erhält binnen < 250 ms ein `202 Accepted` mit `jobId`.
+- **Runtime-Garantie:** Über `after(() => executeDossierJob(job.id))` garantiert die Next.js-Laufzeit auf Vercel, dass die Lambda-Funktion bis zum Abschluss der Analyse aktiv bleibt, ohne auf externe HTTP-Aufrufe angewiesen zu sein.
+- **Lokale Autarkie:** Funktioniert lokal in `npm run dev` ohne Ngrok oder externe Tunnel.
+
+### B. Externer Adapter: Supabase Database Webhooks
+
+Für externe Systeme oder asynchrone Datenbank-Trigger bleibt der Webhook-Pfad als Adapter verfügbar:
+
+- **Realtime Trigger:** Bei Anlage eines Jobs feuert der Trigger `trigger_dossier_job_pending` via Supabase an `/api/jobs/process-webhook`.
 - **Kryptografische Sicherheit:** Header `x-webhook-secret` gleicht mit `SUPABASE_WEBHOOK_SECRET` ab.
-- **Orphan Sweeper:** Falls ein Serverless-Container hart abbricht, reaktiviert ein Lease-Timeout-Sweeper verwaiste Jobs automatisch.
+- **Orphan Sweeper:** Falls ein Container abbricht, reaktiviert ein Lease-Timeout-Sweeper verwaiste Jobs automatisch.

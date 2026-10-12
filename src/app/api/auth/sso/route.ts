@@ -26,7 +26,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const origin = req.nextUrl.origin;
+    const forwardedHost = req.headers.get('x-forwarded-host');
+    const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+    const origin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : req.nextUrl.origin;
     const targetNext = redirectTo || '/';
     const callbackUrl = `${origin}/auth/callback?next=${encodeURIComponent(targetNext)}`;
 

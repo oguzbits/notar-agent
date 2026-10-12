@@ -79,4 +79,41 @@ describe('useAuthActions Hook', () => {
       value: originalLocation,
     });
   });
+
+  it('handles successful demo login and redirects', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, redirectTo: '/custom-path' }),
+    } as Response);
+
+    const { result } = renderHook(() => useAuthActions({ redirectTo: '/' }));
+
+    let success = false;
+    await act(async () => {
+      success = await result.current.loginWithDemo();
+    });
+
+    expect(success).toBe(true);
+    expect(result.current.error).toBeNull();
+    expect(mockPush).toHaveBeenCalledWith('/custom-path');
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('sets error message when demo login fails', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: 'Demo-Server nicht erreichbar' }),
+    } as Response);
+
+    const { result } = renderHook(() => useAuthActions());
+
+    let success = true;
+    await act(async () => {
+      success = await result.current.loginWithDemo();
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.error).toBe('Demo-Server nicht erreichbar');
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });
