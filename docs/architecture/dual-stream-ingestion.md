@@ -80,3 +80,19 @@ Um redundante OCR-Aufrufe, Token-Kosten und Zitations-Offset-Drifts zu eliminier
    - Bereinigt Steuerzeichen (BOM, Nullbytes), normalisiert Zeilenumbrüche (`\n`), Leerzeilen und Unicode (NFC für stabile deutsche Umlaute).
    - Repariert Markdown-Tabellentrennerzeilen, sodass LLM- und OCR-Tabellen stabil formatiert bleiben.
    - Hält Zeichen-Offsets für Diff-Matching und Beleg-Hervorhebung im Viewer konsistent.
+
+---
+
+## 5. Strukturierte XML-Prompt-Kapselung & Injection-Sanitization (`payload-assembler.ts`)
+
+Um Indirect Prompt Injections (z. B. durch manipulierte Kaufvertragsentwürfe, Anschreiben oder bösartige PDFs) deterministisch abzuwehren (§ 17 BeurkG):
+
+1. **Strukturierte XML-Container:**
+   - Alle eingereichten Dokumente werden in wohlgeformte `<documents><document index="..." filename="..." type="..." source="...">...</document></documents>` Container gekapselt.
+   - Das System instruiert das Extraktionsmodell explizit, Daten innerhalb dieser Container ausschließlich als unvertrauenswürdige Fremddaten/Quellenbelege und niemals als Systemanweisungen zu behandeln.
+
+2. **Deterministische XML-Sanitization (`sanitizeXmlDocumentContent` & `escapeXmlAttr`):**
+   - Attribute (`filename`, `type`) werden strikt escaped (`&quot;`, `&amp;`, `&lt;`, `&gt;`).
+   - Innerhalb der Dokumentinhalte werden bösartige Container-Breakout-Tags (`</document>`, `<document>`, `<system>`, `<instructions>`, `<prompt>`, `<!--`, `<![CDATA[`) unschädlich maskiert (`&lt;...&gt;`).
+   - Unsichtbare Zero-Width-Steuerzeichen (`\u200B` etc.), die zur Filterumgehung dienen, werden bereinigt.
+   - Legale juristische Zeichen und mathematische Vergleiche (`< 500.000 EUR`, `> 120 m²`) bleiben unverändert erhalten.
