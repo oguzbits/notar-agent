@@ -28,6 +28,7 @@
 | **Additions** | Modul 12 Fail-Fast Repository-Architektur  | [x] Abgeschlossen | Bereinigung stiller Fallbacks in Repositories (PostgreSQL als Single Source of Truth)                                              |
 | **Additions** | Modul 13 Codebase Health & Quality Gates   | [x] Abgeschlossen | AST-Komplexitäts-Auditor (`repo-health.mjs`), 94/100 Health Score, PII/N+1 Invarianten & harter 90%-CI-Abbruch                     |
 | **Additions** | Modul 14 1-Klick Demo, SSO Proxy & Queue   | [x] Abgeschlossen | 1-Klick Gastzugang (`POST /api/auth/demo`), robuste SSO-Proxy-Auflösung, autarke Next.js `after()` Queue & Testakten-Dokumentation |
+| **Additions** | Modul 15 Webhook-Sunset & Zero-Config      | [x] Abgeschlossen | Vollständiges Sunset des externen Database-Webhooks (`/api/jobs/process-webhook`), Bereinigung von `SUPABASE_WEBHOOK_SECRET`       |
 
 ---
 
@@ -133,3 +134,9 @@
 - Automatischer Schutz vor PII-Leaks (§ 203 StGB) durch Verbot von `console.log` im Produktionscode.
 - Automatischer Performance-Guard gegen N+1-Datenbankabfragen innerhalb von Schleifenkörpern (`for`, `while`, `for await`).
 - Harter CI-Abbruch bei Unterschreitung des Schwellenwerts von 90/100 Punkten sowie verbindliche Verankerung ereignisgesteuerter Refactoring-Trigger in `AGENTS.md`.
+
+#### 7. Webhook-Sunset & Zero-Config Background Processing (Additions Modul 15)
+
+- Vollständige Eliminierung des veralteten Webhook-Endpunkts `/api/jobs/process-webhook` und der dazugehörigen Schemas `SupabaseJobWebhookPayloadSchema`.
+- Entfernung von `SUPABASE_WEBHOOK_SECRET` aus dem Environment-Vertrag (`src/env.ts`, `src/env.test.ts`), wodurch eine Umgebungsvariable und potenzielle Angriffsfläche entfällt.
+- Asynchrone Ingestion stützt sich nun exklusiv und autark auf den nativen Next.js 16 `after()` Lifecycle in `/api/analyze`.

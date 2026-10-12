@@ -24,7 +24,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 - 🏛️ **Gesamtsystem & Schichten:** [docs/overview.md](./docs/overview.md)
 - ⚖️ **5-Stufen Enterprise Legal Processing:** [docs/architecture/enterprise-legal-processing.md](./docs/architecture/enterprise-legal-processing.md)
 - 📄 **Dual-Stream Ingestion (Unicode + Vision):** [docs/architecture/dual-stream-ingestion.md](./docs/architecture/dual-stream-ingestion.md)
-- ⚡ **Asynchrone Job-Orchestrierung & Webhooks:** [docs/architecture/job-orchestration.md](./docs/architecture/job-orchestration.md)
+- ⚡ **Asynchrone Job-Orchestrierung (`after()`):** [docs/architecture/job-orchestration.md](./docs/architecture/job-orchestration.md)
 - 🔒 **Mandantenfähigkeit & RLS (§ 203 StGB):** [docs/architecture/multi-tenancy-compliance.md](./docs/architecture/multi-tenancy-compliance.md)
 - 🧪 **Eval- & Benchmark-Framework:** [docs/architecture/evaluation-framework.md](./docs/architecture/evaluation-framework.md)
 

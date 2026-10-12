@@ -1,7 +1,7 @@
-# Asynchrone Job-Orchestrierung & Webhooks
+# Asynchrone Job-Orchestrierung
 
 > **Architektur-Spezifikation:** Asynchrone Hintergrundverarbeitung im 24/7-Kanzleibetrieb  
-> **Kernkomponenten:** `src/types/jobs.ts`, `src/lib/jobs/job-repository.ts`, `src/app/api/jobs/process-webhook/route.ts`, PostgreSQL `dossier_jobs`
+> **Kernkomponenten:** `src/types/jobs.ts`, `src/lib/jobs/job-repository.ts`, `src/lib/jobs/job-worker.ts`, PostgreSQL `dossier_jobs`
 
 ---
 
@@ -21,8 +21,8 @@
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING: Upload empfangen (< 250ms, 202 Accepted)
-    PENDING --> PROCESSING: Webhook/Worker greift Job (Stufe 1 Extraction)
-    PROCESSING --> PROCESSING: Stage-Update via SSE (Stufe 2 RAG-Auditor)
+    PENDING --> PROCESSING: Worker greift Job via after() (Stufe 1 Extraction)
+    PROCESSING --> PROCESSING: Stage-Update in DB (Stufe 2 RAG-Auditor)
     PROCESSING --> COMPLETED: Transaktionssicher im Dossier persistiert
     PROCESSING --> FAILED: LLM Timeout / Unleserlicher Scan
     FAILED --> PENDING: Manueller oder automatischer Retry
@@ -34,22 +34,22 @@ sequenceDiagram
     autonumber
     actor Notar as Sachbearbeiter / Notar
     participant UI as Cockpit Frontend
-    participant API as Next.js API (Ingestion)
+    participant API as Next.js API (Ingestion /api/analyze)
+    participant Worker as Background Task (Next.js after)
     participant DB as Postgres (dossier_jobs & dossiers)
-    participant Worker as Webhook Route Handler (/api/jobs/process-webhook)
     participant LLM as Vercel AI SDK (Claude / Gemini)
 
     Notar->>UI: Upload Dokumentensatz (z.B. 120 Seiten PDF)
-    UI->>API: POST /api/dossiers/upload
+    UI->>API: POST /api/analyze?async=true
     API->>DB: Job anlegen: status = 'PENDING', payload = { files, caseType }
-    API-->>UI: 202 Accepted { jobId, status: "PENDING" }
+    API->>Worker: Enqueue via after(() => executeDossierJob(job.id))
+    API-->>UI: 202 Accepted { jobId, status: "PENDING", pollUrl }
 
     Note over UI,API: Sofortige Entlastung des Webservers (< 250ms)
-    UI->>API: SSE-Stream (/api/dossiers/jobs/:id/status)
+    UI->>API: Status-Polling (/api/jobs/:id)
 
     rect rgb(240, 248, 255)
-    Note over DB,Worker: Serverlose Webhook-Aktivierung
-    DB->>Worker: Trigger trigger_dossier_job_pending -> POST mit x-webhook-secret
+    Note over Worker,DB: Autarke Hintergrundausführung ohne externe Webhooks
     Worker->>DB: Status: { stage: "PAGE_SPLITTING", progress: 15% }
     Worker->>Worker: Hybrides OCR / Vision-Chunking
     Worker->>DB: Status: { stage: "EXTRACTION", progress: 45% }
@@ -68,20 +68,11 @@ sequenceDiagram
 
 ## 3. Serverlose Event-Orchestrierung & Autarke Ausführung
 
-Das System unterstützt zwei komplementäre Ausführungsmodelle für asynchrone Jobs:
+### Entkoppelte Ausführung via Next.js `after()`
 
-### A. Interner Standard: Entkoppelte Ausführung via Next.js `after()`
-
-Für Uploads und Analysen aus der eigenen Web-Applikation (`POST /api/analyze?async=true`) wird der Hintergrund-Worker direkt im Serverless-Lifecycle verankert:
+Für Uploads und Analysen aus der Web-Applikation (`POST /api/analyze?async=true`) wird der Hintergrund-Worker direkt im Serverless-Lifecycle verankert:
 
 - **Sofortige Antwort:** Der Client erhält binnen < 250 ms ein `202 Accepted` mit `jobId`.
 - **Runtime-Garantie:** Über `after(() => executeDossierJob(job.id))` garantiert die Next.js-Laufzeit auf Vercel, dass die Lambda-Funktion bis zum Abschluss der Analyse aktiv bleibt, ohne auf externe HTTP-Aufrufe angewiesen zu sein.
-- **Lokale Autarkie:** Funktioniert lokal in `npm run dev` ohne Ngrok oder externe Tunnel.
-
-### B. Externer Adapter: Supabase Database Webhooks
-
-Für externe Systeme oder asynchrone Datenbank-Trigger bleibt der Webhook-Pfad als Adapter verfügbar:
-
-- **Realtime Trigger:** Bei Anlage eines Jobs feuert der Trigger `trigger_dossier_job_pending` via Supabase an `/api/jobs/process-webhook`.
-- **Kryptografische Sicherheit:** Header `x-webhook-secret` gleicht mit `SUPABASE_WEBHOOK_SECRET` ab.
-- **Orphan Sweeper:** Falls ein Container abbricht, reaktiviert ein Lease-Timeout-Sweeper verwaiste Jobs automatisch.
+- **Lokale Autarkie & Zero-Config:** Funktioniert lokal in `npm run dev` sowie in Produktion ohne Ngrok, externe Tunnel, Webhook-Pings oder zusätzliche `SUPABASE_WEBHOOK_SECRET`-Keys.
+- **Lease Timeout & Orphan Sweeper:** Bricht ein Serverless-Container unerwartet ab, identifiziert die Abfrage verwaiste Jobs anhand von `lease_timeout_at` und ermöglicht automatische Retries.
