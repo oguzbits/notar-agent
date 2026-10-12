@@ -111,9 +111,12 @@ Die Trennung von deterministischer Mathematik und semantischer Rechtsauslegung:
 │ • Rechnerische Prüfungen:      │ • DNotI-Rechtsabgleich:        │
 │   Monatsmiete × 12 = Jahres-   │   Liegt eine unzulässige       │
 │   rohertrag? MaBV-Staffel 100% │   Veräußerungssperre vor?      │
-│ • Typ- & Formatvalidierung:    │ • Widerspruchsauflösung:       │
-│   Flurstücksnummer-Format,     │   Makler verlangt 500k,        │
-│   Handelsregisternummer-Format │   Notiz des Notars sagt 450k.  │
+│ • Zahlen-Halluzinationsschutz: │ • Widerspruchsauflösung:       │
+│   findUnsupportedNumbers gleicht│   Makler verlangt 500k,        │
+│   alle Ziffern mit Belegen ab  │   Notiz des Notars sagt 450k.  │
+│ • Typ- & Formatvalidierung:    │                                │
+│   Flurstücksnummer-Format,     │                                │
+│   Handelsregisternummer-Format │                                │
 └────────────────────────────────┴────────────────────────────────┘
 ```
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verifyExtractionFacts } from '@/lib/ai/verifiable-fact-checker';
+import { findUnsupportedNumbers, verifyExtractionFacts } from '@/lib/ai/verifiable-fact-checker';
 import { CASE_TYPES, CONTRIBUTION_TYPE, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { ExtractionStageOutput } from '@/types/pipeline';
 
@@ -249,5 +249,68 @@ describe('verifyExtractionFacts', () => {
 
     expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.VERIFIED);
     expect(result.verificationIssues.length).toBe(0);
+  });
+
+  it('downgrades field to NEEDS_REVIEW when an extracted number is not supported by source evidence', () => {
+    const stageOutput: ExtractionStageOutput = {
+      caseTitle: 'Kaufvertrag Mitte',
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      analysisTimestamp: new Date().toISOString(),
+      executiveSummary: '',
+      detectedDocuments: [],
+      inquiries: [],
+      fields: {
+        kaufpreis: {
+          data: { amountInFigures: 650000, currency: 'EUR' }, // Halluzinierter Betrag 650.000 €
+          status: FIELD_STATUS.VERIFIED,
+          source: {
+            fileName: 'Kaufvertrag_Entwurf.pdf',
+            snippet: 'Der Gesamtkaufpreis beträgt 450.000 Euro.',
+          },
+        },
+      },
+    };
+
+    const result = verifyExtractionFacts({
+      stageOutput,
+      sourceDocuments: dummyFileSources,
+    });
+
+    expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+    expect(result.fields.kaufpreis?.note).toContain('Nicht belegte Zahlenangabe');
+    expect(
+      result.verificationIssues.some((i) => i.reason.includes('Nicht belegte Zahlenangabe'))
+    ).toBe(true);
+  });
+});
+
+describe('findUnsupportedNumbers', () => {
+  it('returns empty array when all numbers in statement exist in evidence', () => {
+    const statement = 'Kaufpreis 450.000 Euro, Grundbuchblatt 1234, Flurstück 108/4';
+    const evidence =
+      'Der Kaufpreis beträgt 450.000 Euro im Grundbuchblatt 1234 für Flurstück 108/4.';
+    expect(findUnsupportedNumbers(statement, evidence)).toEqual([]);
+  });
+
+  it('identifies hallucinated numbers that no cited passage contains', () => {
+    const statement = 'Kaufpreis 650.000 Euro und Zinsen 18 %';
+    const evidence = 'Kaufpreis beträgt 450.000 Euro mit 5 % Zinsen.';
+    expect(findUnsupportedNumbers(statement, evidence)).toEqual(['650000', '18']);
+  });
+
+  it('recognizes figures across different thousands and decimal formatting', () => {
+    expect(findUnsupportedNumbers('450000 Euro', 'Kaufpreis 450.000 Euro')).toEqual([]);
+    expect(findUnsupportedNumbers('450 000 Euro', 'Kaufpreis 450.000,00 Euro')).toEqual([]);
+  });
+
+  it('accepts unit-converted figures (e.g. thousands to full figure)', () => {
+    expect(findUnsupportedNumbers('450.000 Euro', 'Kaufpreis 450 Tsd. Euro')).toEqual([]);
+    expect(findUnsupportedNumbers('1,25 Millionen', 'Budget 1 250 000 Euro')).toEqual([]);
+  });
+
+  it('handles German and ISO dates consistently', () => {
+    expect(findUnsupportedNumbers('Beurkundung am 10.02.2023', 'Datum: 10.02.2023')).toEqual([]);
+    expect(findUnsupportedNumbers('Datum 2023-02-10', 'Urkunde vom 10.02.2023')).toEqual([]);
   });
 });
