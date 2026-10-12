@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useTeam } from '@/hooks/useTeam';
 import { hasPermission } from '@/lib/auth/rbac';
 import { KanzleiUserProfile, PermissionAction, AuthSessionResponse } from '@/types/auth';
@@ -58,7 +58,7 @@ const FALLBACK_DEFAULT_USER: KanzleiUserProfile = {
 
 export const AUTH_SESSION_QUERY_KEY = ['auth-session'] as const;
 
-const AUTH_STORAGE_KEY_USER_ID = 'notar_active_user_id';
+export const AUTH_STORAGE_KEY_USER_ID = 'notar_active_user_id';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -86,32 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: sessionData, isLoading: isLoadingSession } = useQuery({
     queryKey: AUTH_SESSION_QUERY_KEY,
     queryFn: fetchAuthSession,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
     retry: false,
   });
 
-  const [currentUserId, setCurrentUserId] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem(AUTH_STORAGE_KEY_USER_ID) || '';
-      } catch (err) {
-        console.warn('Fehler beim Laden der Benutzer-ID aus localStorage:', err);
-      }
-    }
-    return '';
-  });
-
+  const [simulatedUserId, setSimulatedUserId] = useState<string | null>(null);
   const [simulatedRole, setSimulatedRole] = useState<NotaryRole | null>(null);
-
-  useEffect(() => {
-    if (currentUserId && typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY_USER_ID, currentUserId);
-      } catch (err) {
-        console.warn('Fehler beim Persistieren der Benutzer-ID in localStorage:', err);
-      }
-    }
-  }, [currentUserId]);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -119,6 +99,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) throw new Error('Fehler beim Abmelden');
     },
     onSuccess: () => {
+      setSimulatedUserId(null);
+      setSimulatedRole(null);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem(AUTH_STORAGE_KEY_USER_ID);
+        } catch (err) {
+          console.debug('Fehler beim Entfernen des Auth-Storage:', err);
+        }
+      }
+      queryClient.clear();
       queryClient.setQueryData(AUTH_SESSION_QUERY_KEY, null);
       router.push('/login');
       router.refresh();
@@ -184,7 +174,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Falls authentifizierte Session vorliegt, nutze diese bevorzugt
   const sessionUser: KanzleiUserProfile | null = sessionData?.user || null;
+  const currentUserId =
+    simulatedUserId && teamMembers.some((m) => m.id === simulatedUserId)
+      ? simulatedUserId
+      : sessionUser?.id || teamMembers[0]?.id || '';
+
   const activeMember =
+    (sessionUser && sessionUser.id === currentUserId
+      ? { ...sessionUser, joinedAt: new Date().toISOString() }
+      : null) ||
     teamMembers.find((m) => m.id === currentUserId) ||
     (sessionUser ? { ...sessionUser, joinedAt: new Date().toISOString() } : teamMembers[0]);
 
@@ -217,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const switchUser = (userId: string) => {
     if (teamMembers.some((m) => m.id === userId)) {
-      setCurrentUserId(userId);
+      setSimulatedUserId(userId);
       setSimulatedRole(null);
     }
   };

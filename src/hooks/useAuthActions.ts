@@ -1,5 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { AUTH_SESSION_QUERY_KEY, AUTH_STORAGE_KEY_USER_ID } from '@/providers/AuthProvider';
 import { SSO_PROVIDERS } from '@/types/auth';
 
 export interface UseAuthActionsOptions {
@@ -23,10 +25,23 @@ export function useAuthActions({
   initialError = null,
 }: UseAuthActionsOptions = {}): UseAuthActionsResult {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isLoadingPassword, setIsLoadingPassword] = useState(false);
   const [isLoadingSso, setIsLoadingSso] = useState(false);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
+
+  const resetClientSessionState = () => {
+    queryClient.clear();
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(AUTH_STORAGE_KEY_USER_ID);
+      } catch (err) {
+        console.debug('Fehler beim Zurücksetzen des Auth-Storage:', err);
+      }
+    }
+    void queryClient.invalidateQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+  };
 
   const loginWithPassword = async (email: string, password: string): Promise<boolean> => {
     setError(null);
@@ -45,6 +60,7 @@ export function useAuthActions({
         throw new Error(data.error || 'Anmeldung fehlgeschlagen.');
       }
 
+      resetClientSessionState();
       router.push(redirectTo);
       router.refresh();
       return true;
@@ -73,6 +89,7 @@ export function useAuthActions({
         throw new Error(data.error || 'Fehler beim Starten der Google-Anmeldung.');
       }
 
+      resetClientSessionState();
       if (data.url && typeof window !== 'undefined') {
         window.location.href = data.url;
       }
@@ -99,6 +116,7 @@ export function useAuthActions({
         throw new Error(data.error || 'Demo-Anmeldung fehlgeschlagen.');
       }
 
+      resetClientSessionState();
       router.push(data.redirectTo || redirectTo);
       router.refresh();
       return true;

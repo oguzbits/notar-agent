@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, act } from '@testing-library/react';
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuthActions } from './useAuthActions';
 
@@ -13,24 +15,38 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('useAuthActions Hook', () => {
+  let queryClient: QueryClient;
+
+  function wrapper({ children }: { children: React.ReactNode }) {
+    return React.createElement(QueryClientProvider, { client: queryClient }, children);
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     global.fetch = vi.fn();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
   });
 
   it('handles successful password login and redirects', async () => {
+    const clearSpy = vi.spyOn(queryClient, 'clear');
     vi.mocked(global.fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true }),
     } as Response);
 
-    const { result } = renderHook(() => useAuthActions({ redirectTo: '/dashboard' }));
+    const { result } = renderHook(() => useAuthActions({ redirectTo: '/dashboard' }), { wrapper });
 
     await act(async () => {
       await result.current.loginWithPassword('notar@kanzlei.de', 'geheim123');
     });
 
     expect(result.current.error).toBeNull();
+    expect(clearSpy).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith('/dashboard');
     expect(mockRefresh).toHaveBeenCalled();
   });
@@ -41,7 +57,7 @@ describe('useAuthActions Hook', () => {
       json: async () => ({ error: 'Falsches Passwort' }),
     } as Response);
 
-    const { result } = renderHook(() => useAuthActions());
+    const { result } = renderHook(() => useAuthActions(), { wrapper });
 
     await act(async () => {
       await result.current.loginWithPassword('notar@kanzlei.de', 'falsch');
@@ -66,7 +82,7 @@ describe('useAuthActions Hook', () => {
       json: async () => ({ url: 'https://accounts.google.com/oauth' }),
     } as Response);
 
-    const { result } = renderHook(() => useAuthActions());
+    const { result } = renderHook(() => useAuthActions(), { wrapper });
 
     await act(async () => {
       await result.current.loginWithGoogleSso();
@@ -81,12 +97,13 @@ describe('useAuthActions Hook', () => {
   });
 
   it('handles successful demo login and redirects', async () => {
+    const clearSpy = vi.spyOn(queryClient, 'clear');
     vi.mocked(global.fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true, redirectTo: '/custom-path' }),
     } as Response);
 
-    const { result } = renderHook(() => useAuthActions({ redirectTo: '/' }));
+    const { result } = renderHook(() => useAuthActions({ redirectTo: '/' }), { wrapper });
 
     let success = false;
     await act(async () => {
@@ -95,6 +112,7 @@ describe('useAuthActions Hook', () => {
 
     expect(success).toBe(true);
     expect(result.current.error).toBeNull();
+    expect(clearSpy).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith('/custom-path');
     expect(mockRefresh).toHaveBeenCalled();
   });
@@ -105,7 +123,7 @@ describe('useAuthActions Hook', () => {
       json: async () => ({ error: 'Demo-Server nicht erreichbar' }),
     } as Response);
 
-    const { result } = renderHook(() => useAuthActions());
+    const { result } = renderHook(() => useAuthActions(), { wrapper });
 
     let success = true;
     await act(async () => {
