@@ -184,7 +184,10 @@ export async function parseDocumentWithGemini(
       fallbackModel !== primaryModel
     ) {
       console.warn(
-        `[gemini-pdf-parser] FinishReason ${candidate.finishReason} bei ${primaryModel}. Aktiviere Fallback: ${fallbackModel}`
+        '[gemini-pdf-parser] FinishReason bei Primärmodell. Aktiviere Fallback:',
+        candidate.finishReason,
+        primaryModel,
+        fallbackModel
       );
       candidate = await callGeminiGenerateContent(
         apiKey,
@@ -199,7 +202,9 @@ export async function parseDocumentWithGemini(
   } catch (primaryErr: unknown) {
     if (fallbackModel && fallbackModel !== primaryModel) {
       console.warn(
-        `[gemini-pdf-parser] Fehler bei ${primaryModel}. Versuche Fallback ${fallbackModel}:`,
+        '[gemini-pdf-parser] Fehler beim Primärmodell. Versuche Fallback:',
+        primaryModel,
+        fallbackModel,
         primaryErr
       );
       candidate = await callGeminiGenerateContent(
