@@ -6,11 +6,7 @@ import {
 import { parseDocxDocument, DocxExtractedImage } from '@/lib/files/docx-document-parser';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
-import {
-  PdfStreamType,
-  PDF_STREAM_TYPES,
-  classifyPdfStream,
-} from '@/lib/files/pdf-stream-classifier';
+import { PdfStreamType, PDF_STREAM_TYPES } from '@/lib/files/pdf-stream-classifier';
 import { DocumentParsedContent } from '@/types/document';
 import {
   DOCUMENT_RELIABILITY,
@@ -42,7 +38,7 @@ export interface AssembleExtractionPromptOptions {
 
 /**
  * Baut aus Dokumenten und Notizen deterministisch die multimodalen Teile für den Stufe-1-Prompt.
- * Führt serverseitige Dual-Stream-Extraktion (LiteParse) für PDFs aus.
+ * Führt serverseitige Extraktion für PDFs aus (einzelner Durchlauf, ohne redundante Doppel-Klassifikation).
  */
 export async function assembleExtractionPromptParts(
   options: AssembleExtractionPromptOptions
@@ -113,7 +109,7 @@ ${notesSection}${
       const rawBase64 = (file.content || '').replace(/^data:application\/pdf;base64,/, '');
       const pdfBuffer = Buffer.from(rawBase64, 'base64');
 
-      // Serverseitige Dual-Stream-Analyse: Entlastet den Client vollständig von unpdf / PDF.js
+      // Serverseitige Analyse: Entlastet den Client vollständig von unpdf / PDF.js
       const assembledFile = file as Partial<AssembledFilePayload>;
       let streamType: PdfStreamType = assembledFile.streamType || PDF_STREAM_TYPES.SCANNED_IMAGE;
       let extractedText: string | undefined = assembledFile.extractedText;
@@ -122,21 +118,22 @@ ${notesSection}${
 
       if (!extractedText) {
         try {
-          const classification = await classifyPdfStream(pdfBuffer);
-          streamType = classification.streamType;
-
-          // Screenshots rendern, wenn es sich um reine Scans handelt (kein nutzbarer Text)
-          const needsScreenshots = streamType === PDF_STREAM_TYPES.SCANNED_IMAGE;
-
-          // LiteParse parst den Text und extrahiert eingebettete Bildausschnitte (Siegel/Stempel)
+          // Extrahiert Text und grafische Elemente in einem einzigen Durchlauf (ohne redundanten Vorab-Klassifikations-Parse)
           const parsedDoc = await parsePdfDocument(pdfBuffer, {
             extractImages: true,
-            extractScreenshots: needsScreenshots,
+            extractScreenshots: true,
           });
 
-          if (parsedDoc.hasTextLayer) {
+          if (parsedDoc.hasTextLayer && parsedDoc.characterCount > 0) {
             extractedText = parsedDoc.markdown;
+            streamType =
+              parsedDoc.extractedImages && parsedDoc.extractedImages.length > 0
+                ? PDF_STREAM_TYPES.HYBRID_COMPOSITE
+                : PDF_STREAM_TYPES.DIGITAL_BORN_TEXT;
+          } else {
+            streamType = PDF_STREAM_TYPES.SCANNED_IMAGE;
           }
+
           if (parsedDoc.extractedImages && parsedDoc.extractedImages.length > 0) {
             parsedImages = parsedDoc.extractedImages;
           }
@@ -199,40 +196,23 @@ ${notesSection}${
         }
       }
 
-      // B) Bei reinen Scans (ohne Text): Ganze Seiten als PNG-Screenshots übergeben
-      if (streamType === PDF_STREAM_TYPES.SCANNED_IMAGE) {
-        if (parsedScreenshots.length > 0) {
-          for (const shot of parsedScreenshots) {
-            const pureBase64 = shot.base64Png.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
-            filePromptParts.push({
-              type: 'file',
-              data: pureBase64,
-              mediaType: 'image/png',
-              filename: `${file.name}_seite_${shot.pageNum}.png`,
-            });
-          }
-          filePromptParts.push({
-            type: 'text',
-            text: `\n[Obige gerenderte Seiten-Screenshots gehören zum Scan: "${file.name}"]\n`,
-          });
-        } else {
-          // Fallback falls Screenshot-Rendering fehlschlug
+      // B) Bei reinen Scans (ohne Text): Ganze Seiten als PNG-Screenshots übergeben, falls vorhanden
+      if (streamType === PDF_STREAM_TYPES.SCANNED_IMAGE && parsedScreenshots.length > 0) {
+        for (const shot of parsedScreenshots) {
+          const pureBase64 = shot.base64Png.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
           filePromptParts.push({
             type: 'file',
-            data: rawBase64,
-            mediaType: 'application/pdf',
-            filename: file.name,
-          });
-          filePromptParts.push({
-            type: 'text',
-            text: `\n[Obiges PDF-Dokument: "${file.name}" | Modus: ${streamType}]\n`,
+            data: pureBase64,
+            mediaType: 'image/png',
+            filename: `${file.name}_seite_${shot.pageNum}.png`,
           });
         }
-      } else if (
-        parsedImages.length === 0 &&
-        (!extractedText || extractedText.trim().length === 0)
-      ) {
-        // Fallback: Weder Text noch Bilder extrahiert -> Original PDF übergeben
+        filePromptParts.push({
+          type: 'text',
+          text: `\n[Obige gerenderte Seiten-Screenshots gehören zum Scan: "${file.name}"]\n`,
+        });
+      } else if (!extractedText || extractedText.trim().length === 0) {
+        // Fallback: Weder Text noch Screenshots extrahiert -> Original PDF übergeben
         filePromptParts.push({
           type: 'file',
           data: rawBase64,
