@@ -4,7 +4,7 @@ import { getJobRepository } from '@/lib/supabase/server';
 import { createMockJobRepository } from '@/test/fixtures/mock-repositories';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS, JOB_STAGES } from '@/types/jobs';
-import { GET } from './route';
+import { GET, DELETE } from './route';
 
 const mockJobRepo = createMockJobRepository();
 
@@ -62,5 +62,32 @@ describe('API Route: GET /api/jobs/[id]', () => {
     expect(data.stage).toBe(JOB_STAGES.EXTRACTION);
     expect(data.progressDetails?.currentStep).toBe(2);
     expect(data.progressDetails?.currentActivity).toBe('Beteiligte extrahieren...');
+  });
+
+  describe('DELETE /api/jobs/[id]', () => {
+    it('returns 404 when job to delete is not found', async () => {
+      const req = new NextRequest('http://localhost:3000/api/jobs/missing-id', {
+        method: 'DELETE',
+      });
+      const res = await DELETE(req, { params: Promise.resolve({ id: 'missing-id' }) });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('deletes job and returns 200 success', async () => {
+      const job = await repo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: 'Zu löschender Job',
+      });
+
+      const req = new NextRequest(`http://localhost:3000/api/jobs/${job.id}`, { method: 'DELETE' });
+      const res = await DELETE(req, { params: Promise.resolve({ id: job.id }) });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(await repo.getJobById(job.id)).toBeNull();
+    });
   });
 });

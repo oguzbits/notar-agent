@@ -31,6 +31,7 @@ export interface IJobRepository {
   updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null>;
   claimNextPendingJob(organizationId?: string): Promise<DossierJob | null>;
   listJobs(organizationId?: string): Promise<DossierJob[]>;
+  deleteJob(id: string, organizationId?: string): Promise<boolean>;
   pruneCompletedJobs(maxAgeMs?: number): Promise<number>;
   recoverOrphanJobs(leaseTimeoutMs?: number, organizationId?: string): Promise<DossierJob[]>;
 }
@@ -199,6 +200,22 @@ export class SupabaseJobRepository implements IJobRepository {
     }
 
     return data ? data.length : 0;
+  }
+
+  async deleteJob(id: string, organizationId?: string): Promise<boolean> {
+    let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).delete().eq('id', id);
+
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { error } = await query;
+
+    if (error) {
+      throw new Error(`Supabase deleteJob fehlgeschlagen: ${error.message}`);
+    }
+
+    return true;
   }
 
   async recoverOrphanJobs(leaseTimeoutMs = 5 * 60 * 1000): Promise<DossierJob[]> {

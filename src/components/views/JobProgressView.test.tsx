@@ -77,4 +77,34 @@ describe('JobProgressView Component', () => {
 
     expect(onCancel).toHaveBeenCalledWith('job-999');
   });
+
+  it('renders dismiss/delete button for failed jobs and invokes onDeleteJob upon confirmation', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    const failedJob: DossierJob = {
+      ...mockJob,
+      status: JOB_STATUS.FAILED,
+      errorMessage: 'Verarbeitung unterbrochen.',
+    };
+    const onDelete = vi.fn().mockResolvedValue(true);
+    const onBack = vi.fn();
+
+    render(<JobProgressView job={failedJob} onBackToTable={onBack} onDeleteJob={onDelete} />);
+
+    const dismissButtons = screen.getAllByText('Vorgang verwerfen');
+    expect(dismissButtons.length).toBeGreaterThan(0);
+    const firstDismissButton = dismissButtons[0];
+    expect(firstDismissButton).toBeDefined();
+    if (!firstDismissButton) throw new Error('Dismiss button not found');
+
+    // Click dismiss button -> opens ConfirmDialog
+    fireEvent.click(firstDismissButton);
+
+    expect(screen.getByText('Fehlgeschlagenen Vorgang verwerfen?')).toBeDefined();
+
+    // Confirm dismissal
+    const confirmButton = screen.getByText('Ja, Vorgang löschen');
+    fireEvent.click(confirmButton);
+
+    expect(onDelete).toHaveBeenCalledWith('job-999');
+  });
 });

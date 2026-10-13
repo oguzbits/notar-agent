@@ -44,6 +44,16 @@ async function apiCancelJob(jobId: string): Promise<void> {
   }
 }
 
+async function apiDeleteJob(jobId: string): Promise<void> {
+  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Fehler beim Löschen des Jobs');
+  }
+}
+
 export interface UseJobsOptions {
   enabled?: boolean;
 }
@@ -100,6 +110,13 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: apiDeleteJob,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: JOBS_QUERY_KEY });
+    },
+  });
+
   const failedJobs = jobs.filter((j) => j.status === JOB_STATUS.FAILED);
 
   const retryJob = async (jobId: string): Promise<boolean> => {
@@ -122,6 +139,16 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
     }
   };
 
+  const deleteJob = async (jobId: string): Promise<boolean> => {
+    try {
+      await deleteMutation.mutateAsync(jobId);
+      return true;
+    } catch (err) {
+      console.error('Job-Löschen fehlgeschlagen:', err);
+      return false;
+    }
+  };
+
   return {
     jobs,
     activeJobs,
@@ -132,8 +159,10 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
     loadJobs,
     retryJob,
     cancelJob,
+    deleteJob,
     isRetrying: retryMutation.isPending,
     isCancelling: cancelMutation.isPending,
+    isDeletingJob: deleteMutation.isPending,
   };
 }
 

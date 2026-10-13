@@ -55,6 +55,8 @@ function HomeContent() {
     isRetrying,
     cancelJob,
     isCancelling,
+    deleteJob,
+    isDeletingJob,
     loadJobs,
     isLoadingJobs,
   } = useJobs(organization?.id, { enabled: !isLoadingSession });
@@ -295,6 +297,7 @@ function HomeContent() {
                 activeJobs={[...activeJobs, ...failedJobs]}
                 onRetryJob={retryJob}
                 onCancelJob={cancelJob}
+                onDeleteJob={deleteJob}
               />
             );
           })()}
@@ -323,6 +326,8 @@ function HomeContent() {
               isRetrying={isRetrying}
               onCancelJob={cancelJob}
               isCancelling={isCancelling}
+              onDeleteJob={deleteJob}
+              isDeleting={isDeletingJob}
             />
           ) : isLoadingSingleJob ? (
             <div className="animate-pulse space-y-4" aria-busy="true" aria-label="Job wird geladen">

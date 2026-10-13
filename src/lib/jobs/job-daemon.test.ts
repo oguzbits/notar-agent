@@ -62,6 +62,7 @@ function createMockJobRepo(): IJobRepository {
       }
       return recovered;
     }),
+    deleteJob: vi.fn(async (id: string) => jobs.delete(id)),
     pruneCompletedJobs: vi.fn(async () => 0),
   };
 }

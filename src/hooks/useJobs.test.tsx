@@ -124,6 +124,29 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
     expect(jobsState[0]?.status).toBe(JOB_STATUS.CANCELLED);
   });
 
+  it('deletes a job via deleteJob', async () => {
+    server.use(
+      http.delete('/api/jobs/:id', async ({ params }) => {
+        const id = params.id as string;
+        jobsState = jobsState.filter((j) => j.id !== id);
+        return HttpResponse.json({ success: true });
+      })
+    );
+
+    const { result } = renderHook(() => useJobs(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.jobs.length).toBe(1);
+    });
+
+    await act(async () => {
+      const success = await result.current.deleteJob('job-123');
+      expect(success).toBe(true);
+    });
+
+    expect(jobsState.length).toBe(0);
+  });
+
   it('fetches a single job by id via useJob and polls until completed', async () => {
     const singleJob: DossierJob = {
       ...sampleJob,

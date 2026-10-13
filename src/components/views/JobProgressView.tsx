@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, RotateCw, AlertTriangle, ArrowLeft, Ban } from 'lucide-react';
+import { FileText, RotateCw, AlertTriangle, ArrowLeft, Ban, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { AgenticWorkflowStepper } from '@/components/AgenticWorkflowStepper';
 import { Button } from '@/components/ui/Button';
@@ -45,8 +45,10 @@ interface JobProgressViewProps {
   onBackToTable: () => void;
   onRetryJob?: (jobId: string) => Promise<boolean | void>;
   onCancelJob?: (jobId: string) => Promise<boolean | void>;
+  onDeleteJob?: (jobId: string) => Promise<boolean | void>;
   isRetrying?: boolean;
   isCancelling?: boolean;
+  isDeleting?: boolean;
 }
 
 export const JobProgressView: React.FC<JobProgressViewProps> = ({
@@ -54,10 +56,13 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
   onBackToTable,
   onRetryJob,
   onCancelJob,
+  onDeleteJob,
   isRetrying = false,
   isCancelling = false,
+  isDeleting = false,
 }) => {
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   // Map job stage to stepper activeStep (1, 2, or 3)
   const activeStep: 1 | 2 | 3 =
     job.stage === JOB_STAGES.AUDITING ? 2 : job.stage === JOB_STAGES.PERSISTING ? 3 : 1;
@@ -105,6 +110,19 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
                 Vorgang abbrechen
               </Button>
             )}
+          {onDeleteJob && job.status === JOB_STATUS.FAILED && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              disabled={isDeleting || isRetrying}
+              isLoading={isDeleting}
+              leftIcon={<Trash2 className="h-4 w-4" />}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+            >
+              Vorgang verwerfen
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -146,21 +164,34 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
               </p>
             </div>
           </div>
-          {onRetryJob && (
-            <div className="flex justify-end pt-1">
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+            {onDeleteJob && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isDeleting || isRetrying}
+                isLoading={isDeleting}
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                onClick={() => setIsDeleteConfirmOpen(true)}
+              >
+                Vorgang verwerfen
+              </Button>
+            )}
+            {onRetryJob && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={isRetrying}
+                disabled={isRetrying || isDeleting}
                 isLoading={isRetrying}
                 leftIcon={<RotateCw className="h-4 w-4" />}
                 onClick={() => onRetryJob(job.id)}
               >
                 Prüfung wiederholen
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
@@ -180,6 +211,27 @@ export const JobProgressView: React.FC<JobProgressViewProps> = ({
         cancelLabel="Fortsetzen"
         variant="danger"
         isLoading={isCancelling}
+      />
+
+      {/* Sicherheits-Bestätigungsdialog vor Verwerfen/Löschen */}
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={async () => {
+          setIsDeleteConfirmOpen(false);
+          if (onDeleteJob) {
+            const ok = await onDeleteJob(job.id);
+            if (ok !== false) {
+              onBackToTable();
+            }
+          }
+        }}
+        title="Fehlgeschlagenen Vorgang verwerfen?"
+        description="Möchten Sie diesen fehlgeschlagenen Vorgang wirklich aus der Kanzleiübersicht entfernen? Nicht gespeicherte Zwischendaten werden gelöscht."
+        confirmLabel="Ja, Vorgang löschen"
+        cancelLabel="Abbrechen"
+        variant="danger"
+        isLoading={isDeleting}
       />
 
       {/* Großer prominenter AgenticWorkflowStepper */}

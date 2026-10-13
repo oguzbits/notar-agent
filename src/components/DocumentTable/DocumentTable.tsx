@@ -20,6 +20,7 @@ export interface DocumentTableProps {
   activeJobs?: DossierJob[];
   onRetryJob?: (jobId: string) => Promise<boolean | void>;
   onCancelJob?: (jobId: string) => Promise<boolean | void>;
+  onDeleteJob?: (jobId: string) => Promise<boolean | void>;
 }
 
 export const DOCUMENT_FILTERS = {
@@ -44,12 +45,14 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   activeJobs = [],
   onRetryJob,
   onCancelJob,
+  onDeleteJob,
 }) => {
   const { hasRolePermission } = useAuth();
   const canDelete = hasRolePermission(PERMISSION_ACTIONS.DELETE_DOSSIER);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterStatus>(DOCUMENT_FILTERS.ALL);
   const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentRecord | null>(null);
+  const [pendingDeleteJob, setPendingDeleteJob] = useState<DossierJob | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
@@ -102,6 +105,17 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
     try {
       await onDeleteDocument(pendingDeleteDoc.id);
       setPendingDeleteDoc(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmDeleteJob = async () => {
+    if (!pendingDeleteJob || !onDeleteJob) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteJob(pendingDeleteJob.id);
+      setPendingDeleteJob(null);
     } finally {
       setIsDeleting(false);
     }
@@ -338,21 +352,49 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       {/* Aktionen: Bei FAILED Wiederholen, bei PENDING/PROCESSING Abbrechen */}
                       <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {job.status === JOB_STATUS.FAILED && onRetryJob && (
-                            <button
-                              type="button"
-                              disabled={isRetrying}
-                              onClick={(e) => handleRetryJob(job.id, e)}
-                              className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
-                              title="Vorgang erneut starten"
-                            >
-                              {isRetrying ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <RotateCw className="h-4 w-4" />
+                          {job.status === JOB_STATUS.FAILED && (
+                            <>
+                              {onRetryJob && (
+                                <button
+                                  type="button"
+                                  disabled={isRetrying}
+                                  onClick={(e) => handleRetryJob(job.id, e)}
+                                  className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
+                                  title="Vorgang erneut starten"
+                                >
+                                  {isRetrying ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RotateCw className="h-4 w-4" />
+                                  )}
+                                  <span>Wiederholen</span>
+                                </button>
                               )}
-                              <span>Wiederholen</span>
-                            </button>
+                              {onDeleteJob && (
+                                <button
+                                  type="button"
+                                  disabled={!canDelete}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPendingDeleteJob(job);
+                                  }}
+                                  className={cn(
+                                    'focus-visible:ring-destructive flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:ring-2',
+                                    canDelete
+                                      ? 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+                                      : 'text-muted-foreground cursor-not-allowed opacity-30'
+                                  )}
+                                  title={
+                                    canDelete
+                                      ? 'Fehlgeschlagenen Vorgang verwerfen'
+                                      : 'Vorgänge können nur durch Notare oder Administratoren gelöscht werden'
+                                  }
+                                  aria-label="Fehlgeschlagenen Vorgang verwerfen"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </>
                           )}
 
                           {(job.status === JOB_STATUS.PENDING ||
@@ -508,6 +550,27 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           </span>
         }
         confirmLabel="Unwiderruflich löschen"
+        cancelLabel="Abbrechen"
+        variant="danger"
+      />
+
+      {/* Bestätigungsdialog für das Verwerfen/Löschen fehlgeschlagener Hintergrund-Jobs */}
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteJob)}
+        isLoading={isDeleting}
+        onClose={() => setPendingDeleteJob(null)}
+        onConfirm={handleConfirmDeleteJob}
+        title="Fehlgeschlagenen Vorgang verwerfen?"
+        description={
+          <span>
+            Möchten Sie den fehlgeschlagenen Vorgang{' '}
+            <strong className="text-foreground font-semibold">
+              {pendingDeleteJob?.payload.notes || 'diese Vorbereitung'}
+            </strong>{' '}
+            wirklich verwerfen und aus der Kanzleiübersicht entfernen?
+          </span>
+        }
+        confirmLabel="Vorgang verwerfen"
         cancelLabel="Abbrechen"
         variant="danger"
       />

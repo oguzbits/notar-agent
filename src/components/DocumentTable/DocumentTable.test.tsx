@@ -191,4 +191,43 @@ describe('DocumentTable Component', () => {
     });
     expect(handleRetry).toHaveBeenCalledWith(failedJob.id);
   });
+
+  it('renders delete/dismiss button for failed job and calls onDeleteJob after confirmation', async () => {
+    const failedJob: DossierJob = {
+      ...mockJob,
+      id: 'job-failed-delete',
+      status: JOB_STATUS.FAILED,
+      errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
+    };
+    const handleDeleteJob = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DocumentTable
+        documents={[]}
+        activeJobs={[failedJob]}
+        isLoading={false}
+        onSelectDocument={vi.fn()}
+        onCreateNew={vi.fn()}
+        onDeleteDocument={vi.fn()}
+        onDeleteJob={handleDeleteJob}
+      />
+    );
+
+    const deleteBtn = screen.getByRole('button', { name: 'Fehlgeschlagenen Vorgang verwerfen' });
+    expect(deleteBtn).toBeDefined();
+
+    await act(async () => {
+      fireEvent.click(deleteBtn);
+    });
+
+    // Confirmation dialog opens
+    expect(screen.getByText('Fehlgeschlagenen Vorgang verwerfen?')).toBeDefined();
+    const confirmBtn = screen.getByText('Vorgang verwerfen');
+
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    expect(handleDeleteJob).toHaveBeenCalledWith(failedJob.id);
+  });
 });
