@@ -145,6 +145,38 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
     });
 
     expect(jobsState.length).toBe(0);
+    await waitFor(() => {
+      expect(result.current.jobs.length).toBe(0);
+    });
+  });
+
+  it('rolls back optimistically deleted job if delete API fails', async () => {
+    const jobsState: DossierJob[] = [sampleJob];
+    server.use(
+      http.get('/api/jobs', () => {
+        return HttpResponse.json({ jobs: jobsState });
+      }),
+      http.delete('/api/jobs/:id', () => {
+        return new HttpResponse(null, { status: 500 });
+      })
+    );
+
+    const { result } = renderHook(() => useJobs(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.jobs.length).toBe(1);
+    });
+
+    let success = true;
+    await act(async () => {
+      success = await result.current.deleteJob('job-123');
+    });
+
+    expect(success).toBe(false);
+    await waitFor(() => {
+      expect(result.current.jobs.length).toBe(1);
+    });
+    expect(result.current.jobs[0]?.id).toBe('job-123');
   });
 
   it('fetches a single job by id via useJob and polls until completed', async () => {

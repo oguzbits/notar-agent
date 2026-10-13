@@ -116,10 +116,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
   const handleConfirmDelete = async () => {
     if (!pendingDeleteDoc) return;
+    const docToDelete = pendingDeleteDoc;
+    setPendingDeleteDoc(null);
     setIsDeleting(true);
     try {
-      await onDeleteDocument(pendingDeleteDoc.id);
-      setPendingDeleteDoc(null);
+      await onDeleteDocument(docToDelete.id);
+    } catch (err) {
+      console.error('Fehler beim Löschen des Dokuments:', err);
     } finally {
       setIsDeleting(false);
     }
@@ -127,10 +130,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
   const handleConfirmDeleteJob = async () => {
     if (!pendingDeleteJob || !onDeleteJob) return;
+    const jobToDelete = pendingDeleteJob;
+    setPendingDeleteJob(null);
     setIsDeleting(true);
     try {
-      await onDeleteJob(pendingDeleteJob.id);
-      setPendingDeleteJob(null);
+      await onDeleteJob(jobToDelete.id);
+    } catch (err) {
+      console.error('Fehler beim Löschen des Jobs:', err);
     } finally {
       setIsDeleting(false);
     }

@@ -93,6 +93,32 @@ describe('useDocuments with TanStack Query & MSW', () => {
     expect(result.current.documents[0]?.id).toBe('doc-2');
   });
 
+  it('rolls back optimistically deleted document if server responds with error', async () => {
+    const { result } = renderHook(() => useDocuments(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoadingDocs).toBe(false);
+      expect(result.current.documents).toHaveLength(2);
+    });
+
+    server.use(
+      http.delete('/api/documents', () => {
+        return new HttpResponse(null, { status: 500 });
+      })
+    );
+
+    let success = true;
+    await act(async () => {
+      success = await result.current.deleteDocument('doc-1');
+    });
+
+    expect(success).toBe(false);
+    await waitFor(() => {
+      expect(result.current.documents).toHaveLength(2);
+    });
+    expect(result.current.documents.some((d) => d.id === 'doc-1')).toBe(true);
+  });
+
   it('pessimistically updates query cache only after successful server response', async () => {
     const { result } = renderHook(() => useDocuments(), { wrapper });
 

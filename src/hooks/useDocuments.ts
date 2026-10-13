@@ -108,13 +108,27 @@ export function useDocuments(organizationId?: string, options?: UseDocumentsOpti
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiDeleteDocument(id, organizationId),
-    onSuccess: (_, deletedId) => {
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousDocuments = queryClient.getQueryData<DocumentListItem[]>(queryKey);
+
       queryClient.setQueryData<DocumentListItem[]>(queryKey, (prev = []) =>
         prev.filter((d) => d.id !== deletedId)
       );
-      queryClient.removeQueries({
-        queryKey: getDocumentDetailQueryKey(deletedId, organizationId),
-      });
+
+      return { previousDocuments };
+    },
+    onError: (_err, _deletedId, context) => {
+      if (context?.previousDocuments) {
+        queryClient.setQueryData(queryKey, context.previousDocuments);
+      }
+    },
+    onSettled: (_data, _error, deletedId) => {
+      if (deletedId) {
+        queryClient.removeQueries({
+          queryKey: getDocumentDetailQueryKey(deletedId, organizationId),
+        });
+      }
       queryClient.invalidateQueries({ queryKey });
     },
   });

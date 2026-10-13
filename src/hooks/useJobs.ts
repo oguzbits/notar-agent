@@ -112,7 +112,22 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
 
   const deleteMutation = useMutation({
     mutationFn: apiDeleteJob,
-    onSuccess: () => {
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousJobs = queryClient.getQueryData<DossierJob[]>(queryKey);
+
+      queryClient.setQueryData<DossierJob[]>(queryKey, (old = []) =>
+        old.filter((j) => j.id !== deletedId)
+      );
+
+      return { previousJobs };
+    },
+    onError: (_err, _deletedId, context) => {
+      if (context?.previousJobs) {
+        queryClient.setQueryData(queryKey, context.previousJobs);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: JOBS_QUERY_KEY });
     },
   });
