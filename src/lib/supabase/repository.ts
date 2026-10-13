@@ -153,15 +153,11 @@ export class SupabaseDossierRepository implements IDossierRepository {
     return data.map((doc) => {
       const rawContent = doc.content;
       const uniformTitle = getUniformCaseTitle(rawContent?.caseType, doc.id);
-      const normalizedContent = rawContent
-        ? normalizeDossier({ ...rawContent, caseTitle: uniformTitle })
-        : createEmptyImmobilienDossier(uniformTitle);
-      const computedStatus = computeDocumentStatus(normalizedContent);
       return {
         id: doc.id,
-        title: uniformTitle,
-        content: normalizedContent,
-        status: computedStatus,
+        title: doc.title || uniformTitle,
+        content: rawContent || createEmptyImmobilienDossier(uniformTitle),
+        status: (doc.status as CaseStatus) || CASE_STATUS.IN_PROGRESS,
         created_at: doc.created_at,
         updated_at: doc.updated_at,
       };

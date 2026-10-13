@@ -18,12 +18,10 @@ export async function GET(req?: NextRequest): Promise<Response> {
     const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
     const repo = getJobRepository(authSupabase);
 
-    // Automatisches Self-Healing: Verwaiste / festsitzende Jobs nach Timeout (3 Min) bereinigen
-    try {
-      await repo.recoverOrphanJobs(3 * 60 * 1000);
-    } catch (healErr) {
+    // Asynchrones Self-Healing im Hintergrund (blockiert den schnellen Read-Pfad der Tabelle nicht mit 2 Extra-DB-Roundtrips)
+    void repo.recoverOrphanJobs(3 * 60 * 1000).catch((healErr) => {
       console.warn('[jobs GET] Self-healing fehlgeschlagen:', healErr);
-    }
+    });
 
     const jobs = await repo.listJobs(orgId);
     return NextResponse.json({ jobs }, { status: 200 });

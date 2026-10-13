@@ -47,9 +47,7 @@ function HomeContent() {
 
   const { currentUser, organization, hasActiveOrganization, isLoadingSession } = useAuth();
 
-  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments(
-    organization?.id
-  );
+  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
 
   const {
     jobs,
@@ -62,8 +60,7 @@ function HomeContent() {
     deleteJob,
     isDeletingJob,
     loadJobs,
-    isLoadingJobs,
-  } = useJobs(organization?.id);
+  } = useJobs();
 
   const { job: singleJob, isLoading: isLoadingSingleJob } = useJob(
     effectiveJobId,
@@ -294,8 +291,8 @@ function HomeContent() {
         {/* Ansicht 1: Kanzlei Vorgangsübersicht */}
         {effectiveView === VIEW_MODE.TABLE &&
           (() => {
-            const isTableLoading =
-              isLoadingSession || isLoadingDocs || (hasActiveOrganization && isLoadingJobs);
+            // Tabelle sofort anzeigen, sobald Daten vorliegen (nicht künstlich auf Session oder Hintergrund-Jobs warten)
+            const isTableLoading = isLoadingDocs && documents.length === 0;
 
             return (
               <DocumentTable
