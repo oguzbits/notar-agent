@@ -19,6 +19,7 @@ export interface UpdateJobParams {
   status?: JobStatus;
   stage?: JobStage;
   progressDetails?: JobProgressDetails;
+  payload?: CreateJobPayload;
   resultDossierId?: string;
   errorMessage?: string;
   retryCount?: number;
@@ -94,6 +95,7 @@ export class SupabaseJobRepository implements IJobRepository {
       status: 'status',
       stage: 'stage',
       progressDetails: 'progress_details',
+      payload: 'payload',
       resultDossierId: 'result_dossier_id',
       errorMessage: 'error_message',
       retryCount: 'retry_count',

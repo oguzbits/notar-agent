@@ -606,12 +606,16 @@ export const AnalyzeRequestSchema = z
     documentId: z.string().optional(),
     organizationId: z.uuid().optional(),
     existingDossier: DossierSchema.optional(),
+    stage1Output: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe('Zwischenergebnis aus Stufe 1 (Extraction Agent) für 2-Stufen-Resilienz'),
   })
   .refine(
     (data) => {
-      // Wenn keine Dateien übermittelt werden, müssen entweder ein bestehendes Dossier oder Notizen vorliegen
+      // Wenn keine Dateien übermittelt werden, müssen entweder ein bestehendes Dossier, Notizen oder Stufe-1-Output vorliegen
       if (data.files.length === 0) {
-        return Boolean(data.existingDossier || data.notes.trim());
+        return Boolean(data.existingDossier || data.notes.trim() || data.stage1Output);
       }
       return true;
     },

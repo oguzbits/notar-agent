@@ -1,5 +1,10 @@
 import pLimit from 'p-limit';
-import { PipelineParams } from '@/lib/ai/pipeline';
+import type {
+  PipelineParams,
+  ExtractionStageParams,
+  ExtractionStageResult,
+  AuditorStageParams,
+} from '@/lib/ai/pipeline';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { IJobRepository } from '@/lib/jobs/job-repository';
 import { IDossierRepository } from '@/lib/supabase/repository';
@@ -11,6 +16,8 @@ export interface WorkerDependencies {
   jobRepo?: IJobRepository;
   dossierRepo?: IDossierRepository;
   pipelineFn?: (params: PipelineParams) => Promise<Dossier>;
+  extractionFn?: (params: ExtractionStageParams) => Promise<ExtractionStageResult>;
+  auditorFn?: (params: AuditorStageParams) => Promise<Dossier>;
   abortSignal?: AbortSignal;
 }
 
@@ -67,9 +74,7 @@ export async function executeDossierJob(
     : internalController.signal;
 
   try {
-    return await limit(() =>
-      runJobExecution(jobId, jobRepo, dossierRepo, deps.pipelineFn, combinedSignal)
-    );
+    return await limit(() => runJobExecution(jobId, jobRepo, dossierRepo, deps, combinedSignal));
   } finally {
     activeJobControllers.delete(jobId);
   }
@@ -91,7 +96,7 @@ async function runJobExecution(
   jobId: string,
   jobRepo: IJobRepository,
   dossierRepo: IDossierRepository,
-  pipelineFn?: (params: PipelineParams) => Promise<Dossier>,
+  deps: WorkerDependencies,
   abortSignal?: AbortSignal
 ): Promise<DossierJob | null> {
   const job = await jobRepo.getJobById(jobId);
@@ -117,20 +122,24 @@ async function runJobExecution(
   }
 
   const totalFiles = job.payload.files.length;
+  let stage1Output = job.payload.stage1Output;
+  const orgId = job.organizationId || job.payload.organizationId;
 
-  // Job auf PROCESSING setzen mit aktuellem Lease-Lock
+  // Job auf PROCESSING setzen mit aktuellem Lease-Lock.
+  // Falls stage1Output bereits vorliegt, direkt in Stufe 2 (AUDITING) einsteigen!
   await jobRepo.updateJobStatus(jobId, {
     status: JOB_STATUS.PROCESSING,
-    stage: JOB_STAGES.PAGE_SPLITTING,
+    stage: stage1Output ? JOB_STAGES.AUDITING : JOB_STAGES.PAGE_SPLITTING,
     lockedAt: new Date().toISOString(),
     progressDetails: {
-      currentStep: 1,
+      currentStep: stage1Output ? 3 : 1,
       totalSteps: 4,
-      processedUnits: 0,
+      processedUnits: stage1Output ? totalFiles : 0,
       totalUnits: totalFiles,
-      unitLabel: PROGRESS_UNIT_LABELS.DOCUMENTS,
-      currentActivity:
-        totalFiles > 0
+      unitLabel: stage1Output ? PROGRESS_UNIT_LABELS.FIELDS : PROGRESS_UNIT_LABELS.DOCUMENTS,
+      currentActivity: stage1Output
+        ? 'Stufe-1-Checkpoint geladen. Notarielle Vorprüfung (Stufe 2) starten...'
+        : totalFiles > 0
           ? `${totalFiles} Dokument(e) vorbereiten und Layout prüfen...`
           : 'Sachverhaltsnotizen strukturieren...',
     },
@@ -178,8 +187,8 @@ async function runJobExecution(
     const { validateEnv } = await import('@/env');
     const currentEnv = validateEnv(process.env);
 
-    if (pipelineFn) {
-      dossier = await pipelineFn({
+    if (deps.pipelineFn) {
+      dossier = await deps.pipelineFn({
         files,
         caseType,
         notes,
@@ -189,7 +198,7 @@ async function runJobExecution(
         auditorInstructions: {} as PipelineParams['auditorInstructions'],
         onStep: handleStepUpdate,
       });
-    } else if (currentEnv.MOCK_AI) {
+    } else if (currentEnv.MOCK_AI && !deps.extractionFn && !deps.auditorFn) {
       const { runMockSimulation } = await import('@/lib/jobs/mock-simulation');
       dossier = await runMockSimulation({
         files,
@@ -198,17 +207,74 @@ async function runJobExecution(
         stepDelayMs: 6000,
       });
     } else {
-      const { getAiConfiguration } = await import('@/lib/ai/ai-provider');
-      const { runAnalysisPipeline } = await import('@/lib/ai/pipeline');
-      const aiConfig = getAiConfiguration();
+      // 2-Stufen-Job-Chunking für Serverless Runtime Resilience (60s-Budget je Stufe)
+      const { runExtractionStage, runAuditorStage } = await import('@/lib/ai/pipeline');
 
-      dossier = await runAnalysisPipeline({
-        files,
+      let aiConfig: {
+        model: PipelineParams['model'];
+        extractionInstructions: PipelineParams['extractionInstructions'];
+        auditorInstructions: PipelineParams['auditorInstructions'];
+      } = {
+        model: {} as PipelineParams['model'],
+        extractionInstructions: { role: 'system', content: '' },
+        auditorInstructions: { role: 'system', content: '' },
+      };
+
+      if (!deps.extractionFn || !deps.auditorFn) {
+        const { getAiConfiguration } = await import('@/lib/ai/ai-provider');
+        aiConfig = getAiConfiguration();
+      }
+
+      const runExtraction = deps.extractionFn ?? runExtractionStage;
+      const runAuditor = deps.auditorFn ?? runAuditorStage;
+
+      let noteList: string[] | undefined;
+      let notesSection: string | undefined;
+
+      // Stufe 1: Ingestion & Extraction (nur ausführen, falls noch kein Checkpoint in job.payload existiert)
+      if (!stage1Output) {
+        handleStepUpdate(1, STAGE_ACTIVITY_LABELS_DE.EXTRACTION);
+        const extractionResult = await runExtraction({
+          files,
+          caseType,
+          notes,
+          existingDossier,
+          model: aiConfig.model,
+          extractionInstructions: aiConfig.extractionInstructions,
+          onStep: handleStepUpdate,
+        });
+
+        stage1Output = extractionResult.parsedExtractionRaw;
+        noteList = extractionResult.noteList;
+        notesSection = extractionResult.notesSection;
+
+        // Checkpoint in Postgres persistieren für Serverless Timeout-Resilienz und Wiederanlauf
+        await jobRepo.updateJobStatus(jobId, {
+          stage: JOB_STAGES.AUDITING,
+          payload: {
+            ...job.payload,
+            stage1Output,
+          },
+          progressDetails: {
+            currentStep: 3,
+            totalSteps: 4,
+            unitLabel: PROGRESS_UNIT_LABELS.FIELDS,
+            currentActivity: STAGE_ACTIVITY_LABELS_DE.AUDITING,
+          },
+        });
+      }
+
+      // Stufe 2: Notary Auditor & Reconciler
+      handleStepUpdate(2, STAGE_ACTIVITY_LABELS_DE.AUDITING);
+      dossier = await runAuditor({
+        stage1Output,
         caseType,
         notes,
+        noteList,
+        notesSection,
         existingDossier,
+        organizationId: orgId,
         model: aiConfig.model,
-        extractionInstructions: aiConfig.extractionInstructions,
         auditorInstructions: aiConfig.auditorInstructions,
         onStep: handleStepUpdate,
       });
@@ -225,7 +291,6 @@ async function runJobExecution(
     });
 
     let resultDossierId: string;
-    const orgId = job.organizationId || job.payload.organizationId;
     if (documentId) {
       await dossierRepo.update(documentId, dossier, orgId);
       resultDossierId = documentId;

@@ -162,4 +162,76 @@ describe('job-worker (executeDossierJob)', () => {
     const finishedJob = await executionPromise;
     expect(finishedJob?.status).toBe(JOB_STATUS.CANCELLED);
   });
+
+  it('runs 2-stage chunking: executes Stage 1, checkpoints stage1Output to DB, and completes Stage 2', async () => {
+    const stage1OutputMock = { extractedParties: ['Käufer Schmidt'], rawFacts: {} };
+    const extractionMock = vi.fn(async () => ({
+      parsedExtractionRaw: stage1OutputMock,
+      noteList: [],
+      notesSection: '',
+      usage: { promptTokens: 50, completionTokens: 50, totalTokens: 100 },
+      extractionTextResult: JSON.stringify(stage1OutputMock),
+      validationSuccess: true,
+    }));
+
+    const auditorMock = vi.fn(async () => mockResultDossier);
+
+    const job = await jobRepo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [{ name: 'kaufvertrag.pdf', size: 200, type: 'application/pdf', content: 'test' }],
+      notes: 'Testnotiz',
+    });
+
+    const finishedJob = await executeDossierJob(job.id, {
+      jobRepo,
+      dossierRepo,
+      extractionFn: extractionMock,
+      auditorFn: auditorMock,
+    });
+
+    expect(extractionMock).toHaveBeenCalledTimes(1);
+    expect(auditorMock).toHaveBeenCalledTimes(1);
+    expect(auditorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage1Output: stage1OutputMock,
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+      })
+    );
+
+    expect(finishedJob?.status).toBe(JOB_STATUS.COMPLETED);
+    expect(finishedJob?.payload.stage1Output).toEqual(stage1OutputMock);
+    expect(dossierRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips Stage 1 when stage1Output checkpoint already exists in job payload', async () => {
+    const existingCheckpoint = { preExtracted: true, testField: 'value' };
+    const extractionMock = vi.fn();
+    const auditorMock = vi.fn(async () => mockResultDossier);
+
+    const job = await jobRepo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [],
+      notes: '',
+      stage1Output: existingCheckpoint,
+    });
+
+    const finishedJob = await executeDossierJob(job.id, {
+      jobRepo,
+      dossierRepo,
+      extractionFn: extractionMock,
+      auditorFn: auditorMock,
+    });
+
+    // Stufe 1 darf NICHT erneut aufgerufen werden
+    expect(extractionMock).not.toHaveBeenCalled();
+    // Stufe 2 wird direkt mit dem existierenden Checkpoint ausgeführt
+    expect(auditorMock).toHaveBeenCalledTimes(1);
+    expect(auditorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage1Output: existingCheckpoint,
+      })
+    );
+
+    expect(finishedJob?.status).toBe(JOB_STATUS.COMPLETED);
+  });
 });

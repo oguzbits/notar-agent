@@ -75,11 +75,11 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [x] **B.10.3 Performance & Network I/O Härtung:**
     - [x] Lazy-Loading von `useTeam()` (wird erst beim Öffnen des `TeamSettingsModal` geladen, entlastet Root-Layout)
     - [x] Schlanke Tabellen-Projektion für Dokumente (Metadaten-Only für die Tabelle, Detail-Dossier on demand)
-  - [ ] **B.10.4 2-Stufen-Job-Chunking für Serverless-Resilienz (60s-Budget-Schutz):**
-    - Sequentielle Abwicklung von Stufe 1 (Extraktion) und Stufe 2 (Auditor) über `dossier_jobs.stage` mit jeweils eigenem 60s-Laufzeitbudget
+  - [x] **B.10.4 2-Stufen-Job-Chunking für Serverless-Resilienz (60s-Budget-Schutz):**
+    - Sequentielle Abwicklung von Stufe 1 (Extraktion) und Stufe 2 (Auditor) über `dossier_jobs.stage` & `dossier_jobs.payload.stage1Output` mit jeweils eigenem 60s-Laufzeitbudget
   - [ ] **B.10.5 Code-Komplexitäts-Entflechtung & Deep Modules:**
-    - Zerlegung von `verifiable-fact-checker.ts` (Komplexität 51) in modulare Seams
-    - Verlagerung juristischer Prüfnormen aus `domain-guardrails.ts` in die deklarative `knowledge_documents`-Tabelle gem. `AGENTS.md`
+    - [x] Zerlegung von `verifiable-fact-checker.ts` (Komplexität von 51 auf < 25 gesenkt via `number-verifier.ts` und `source-document-resolver.ts`)
+    - [ ] Verlagerung juristischer Prüfnormen aus `domain-guardrails.ts` in die deklarative `knowledge_documents`-Tabelle gem. `AGENTS.md`
 
 ### Phase C: Enterprise Compliance & Ökosystem
 

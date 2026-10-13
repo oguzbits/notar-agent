@@ -99,12 +99,48 @@ function extractAuditorModifications(raw: Record<string, unknown>): {
   };
 }
 
+export interface ExtractionStageParams {
+  files: UploadedFilePayload[];
+  caseType: CaseType;
+  notes: string;
+  existingDossier?: Dossier;
+  model: LanguageModel;
+  extractionInstructions: SystemModelMessage;
+  onStep: (step: number, stepDetail: string) => void;
+  onUsage?: (usage: PipelineTokenUsage) => void;
+}
+
+export interface ExtractionStageResult {
+  parsedExtractionRaw: Record<string, unknown>;
+  noteList: string[];
+  notesSection: string;
+  usage: PipelineTokenUsage;
+  extractionTextResult: string;
+  validationSuccess: boolean;
+}
+
+export interface AuditorStageParams extends Pick<
+  PipelineParams,
+  'caseType' | 'model' | 'auditorInstructions' | 'onStep' | 'onUsage' | 'onTrace' | 'knowledgeRepo'
+> {
+  stage1Output: Record<string, unknown>;
+  notes?: string;
+  noteList?: string[];
+  notesSection?: string;
+  existingDossier?: Dossier;
+  organizationId?: string;
+  initialUsage?: PipelineTokenUsage;
+  extractionTextResult?: string;
+  validationSuccess?: boolean;
+}
+
 /**
- * Orchestriert den 2-Stufen-KI-Lauf für Urkundenprüfung:
- * 1. Stufe: Ingestion & Extraction Agent (Multimodal mit Dual-Stream Textlayer)
- * 2. Stufe: Notary Auditor & Reconciler Agent (JIT-Regel-Prüfung & Delta-Reconciliation)
+ * Stufe 1: Ingestion & Extraction Agent (Multimodal Payload-Assembly & Faktenverifikation)
+ * Kann autark mit eigenem 60s-Budget auf Serverless ausgeführt werden.
  */
-export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossier> {
+export async function runExtractionStage(
+  params: ExtractionStageParams
+): Promise<ExtractionStageResult> {
   const {
     files,
     caseType,
@@ -112,7 +148,6 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
     existingDossier,
     model,
     extractionInstructions,
-    auditorInstructions,
     onStep,
     onUsage,
   } = params;
@@ -120,15 +155,9 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
   let totalPromptTokens = 0;
   let totalCompletionTokens = 0;
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  // Aktiven Workflow-Ablaufplan für den Vorgangstyp abrufen
   const activeWorkflow = DEFAULT_WORKFLOWS_BY_CASE_TYPE[caseType];
   const { noteList, notesSection } = formatInternalNotes(notes, existingDossier);
 
-  // =========================================================================
-  // STUFE 1: Ingestion & Extraction Agent (Multimodal Payload-Assembly)
-  // =========================================================================
   const step1Title = activeWorkflow.steps[0]?.title || 'Urkunden- & Sachverhaltserfassung';
   onStep(1, `Stufe 1: ${step1Title} läuft...`);
 
@@ -176,9 +205,7 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
     ? ExtractionStageOutputSchema.safeParse(rawExtractionJson)
     : null;
 
-  // Self-Correction Reflection Pass (Enterprise-Grade Fault Tolerance):
-  // Falls das Stufe-1-JSON syntaktisch invalide ist oder Zod-Fehler wirft,
-  // führen wir genau einen gezielten Reflection-Turn durch, um die Integrität zu reparieren.
+  // Self-Correction Reflection Pass (Enterprise-Grade Fault Tolerance)
   if (!validatedExtraction || !validatedExtraction.success) {
     const errorDetails = parseSyntaxError
       ? `JSON-Syntaxfehler: ${parseSyntaxError}`
@@ -187,8 +214,6 @@ export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossi
           .join('\n') || 'Unbekannter Schema-Fehler';
 
     try {
-      // Token-Optimierung: Statt die gesamten Dokumente (PDFs/Bilder) erneut zu senden,
-      // übergeben wir dem Modell zur Korrektur nur die Schema-Mängel und das bisherige JSON.
       const repairedResult = await generateText({
         model,
         instructions: extractionInstructions,
@@ -233,14 +258,10 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     ? validatedExtraction.data
     : rawExtractionJson || {};
 
-  // UNIFIED VERIFICATION & DETERMINISTIC GUARDRAILS (Deep Module):
-  // 1. Quellensnippets & Zitate verifizieren (Verifiable Rewards / Fact Checks)
-  // 2. Arithmetische Raten- & Anteilskonsistenz prüfen
-  // 3. Normative Guardrails (Eigentümeridentität, GEG-Fristen, Parzellen)
+  // UNIFIED VERIFICATION & DETERMINISTIC GUARDRAILS
   if (validatedExtraction?.success) {
     const textSources: Array<{ fileName: string; textContent: string }> = [];
 
-    // Notizen als Textquelle
     if (notesSection.trim()) {
       textSources.push({
         fileName: 'Bearbeitungsnotiz',
@@ -248,7 +269,6 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
       });
     }
 
-    // Extrahierte Unicode-Dateiinhalte
     for (const file of files) {
       if (file.content && !file.isBase64) {
         textSources.push({
@@ -266,17 +286,65 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     parsedExtractionRaw.fields = verified.fields;
   }
 
-  // =========================================================================
-  // STUFE 2: Notary Auditor & Reconciler Agent (JIT-Regel-Retrieval & Delta)
-  // =========================================================================
+  const usage: PipelineTokenUsage = {
+    promptTokens: totalPromptTokens,
+    completionTokens: totalCompletionTokens,
+    totalTokens: totalPromptTokens + totalCompletionTokens,
+  };
+
+  if (onUsage) {
+    onUsage(usage);
+  }
+
+  return {
+    parsedExtractionRaw,
+    noteList,
+    notesSection,
+    usage,
+    extractionTextResult,
+    validationSuccess: validatedExtraction?.success ?? false,
+  };
+}
+
+/**
+ * Stufe 2: Notary Auditor & Reconciler Agent (JIT-Regel-Prüfung & Delta-Reconciliation)
+ * Verarbeitet das Stufe-1-Zwischenergebnis mit eigenem 60s-Budget.
+ */
+export async function runAuditorStage(params: AuditorStageParams): Promise<Dossier> {
+  const {
+    stage1Output: parsedExtractionRaw,
+    caseType,
+    existingDossier,
+    organizationId,
+    model,
+    auditorInstructions,
+    onStep,
+    onUsage,
+    onTrace,
+    knowledgeRepo: passedKnowledgeRepo,
+    initialUsage,
+    extractionTextResult,
+    validationSuccess,
+  } = params;
+
+  let totalPromptTokens = initialUsage?.promptTokens || 0;
+  let totalCompletionTokens = initialUsage?.completionTokens || 0;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const activeWorkflow = DEFAULT_WORKFLOWS_BY_CASE_TYPE[caseType];
+
+  const { noteList, notesSection } =
+    params.noteList && params.notesSection !== undefined
+      ? { noteList: params.noteList, notesSection: params.notesSection }
+      : formatInternalNotes(params.notes || '', existingDossier);
+
   const step2Title =
     activeWorkflow.steps.find((s) => s.type === WORKFLOW_STEP_TYPES.AUDITOR)?.title ||
     activeWorkflow.steps[1]?.title ||
     'Notarielle Vorprüfung, Fristen & Plausibilisierung';
   onStep(2, `Stufe 2: ${step2Title}...`);
 
-  // C.3 Erweitertes RAG & Gesetzliche Prüfnormen aus IKnowledgeRepository
-  const knowledgeRepo = params.knowledgeRepo || getKnowledgeRepository();
+  const knowledgeRepo = passedKnowledgeRepo || getKnowledgeRepository();
   const rawDocs = parsedExtractionRaw?.detectedDocuments;
   const docNames = Array.isArray(rawDocs)
     ? rawDocs
@@ -296,14 +364,14 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     notes: notesSection,
   };
 
-  const statutoryRules = await knowledgeRepo.getStatutoryRules(params.organizationId);
+  const statutoryRules = await knowledgeRepo.getStatutoryRules(organizationId);
   const relevantStatutory = selectApplicableKnowledge(statutoryRules, selectionContext);
 
   const searchTerms = [caseType, notesSection, ...docNames].filter(Boolean).join(' ');
 
   const knowledgeResults = await knowledgeRepo.search({
     queryText: searchTerms || caseType,
-    organizationId: params.organizationId,
+    organizationId,
     topK: 3,
   });
 
@@ -367,9 +435,6 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
 
   const auditorExtraction = extractAuditorModifications(parsedAuditorRaw);
 
-  // =========================================================================
-  // MERGE & NORMALIZATION
-  // =========================================================================
   const mergedDossier = mergeDossierStages({
     caseType,
     existingDossier,
@@ -383,7 +448,7 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
 
   const finalDossier = normalizeDossier(mergedDossier, noteList);
 
-  if (params.onTrace) {
+  if (onTrace) {
     const diffList: Array<{
       fieldKey: string;
       beforeStatus?: string;
@@ -408,15 +473,15 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
       });
     }
 
-    params.onTrace({
+    onTrace({
       stage2Knowledge: {
         selectedRules: relevantStatutory.map((r) => r.title || r.id),
         knowledgePromptSnippet: rulesSection.substring(0, 1500),
       },
       stage3Extraction: {
-        rawOutputText: extractionTextResult,
+        rawOutputText: extractionTextResult || '',
         parsedJson: parsedExtractionRaw,
-        validationSuccess: validatedExtraction?.success ?? false,
+        validationSuccess: validationSuccess ?? true,
       },
       stage4Auditor: {
         rawOutputText: auditorResult.text,
@@ -439,4 +504,22 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
   }
 
   return finalDossier;
+}
+
+/**
+ * Orchestriert den 2-Stufen-KI-Lauf für Urkundenprüfung:
+ * 1. Stufe: Ingestion & Extraction Agent (Multimodal mit Dual-Stream Textlayer)
+ * 2. Stufe: Notary Auditor & Reconciler Agent (JIT-Regel-Prüfung & Delta-Reconciliation)
+ */
+export async function runAnalysisPipeline(params: PipelineParams): Promise<Dossier> {
+  const extractionResult = await runExtractionStage(params);
+  return runAuditorStage({
+    ...params,
+    stage1Output: extractionResult.parsedExtractionRaw,
+    noteList: extractionResult.noteList,
+    notesSection: extractionResult.notesSection,
+    initialUsage: extractionResult.usage,
+    extractionTextResult: extractionResult.extractionTextResult,
+    validationSuccess: extractionResult.validationSuccess,
+  });
 }

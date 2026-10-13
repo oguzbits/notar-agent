@@ -35,6 +35,20 @@ export const getStatusBadge = (status?: CaseStatus) => {
   return <StatusBadge status={status || CASE_STATUS.IN_PROGRESS} size="sm" />;
 };
 
+function TableHeadColumns() {
+  return (
+    <thead className="border-border bg-muted/40 text-muted-foreground border-b text-sm font-semibold tracking-wider uppercase">
+      <tr>
+        <th className="px-4 py-3.5">Vorgang / Aktenzeichen</th>
+        <th className="px-4 py-3.5">Typ</th>
+        <th className="px-4 py-3.5">Status</th>
+        <th className="px-4 py-3.5">Stand</th>
+        <th className="px-4 py-3.5 text-right">Aktionen</th>
+      </tr>
+    </thead>
+  );
+}
+
 export const DocumentTable: React.FC<DocumentTableProps> = ({
   documents,
   isLoading,
@@ -206,15 +220,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         {isLoading ? (
           <div className="overflow-x-auto" aria-busy="true" aria-label="Vorgänge werden geladen">
             <table className="w-full text-left">
-              <thead className="border-border bg-muted/40 text-muted-foreground border-b text-sm font-medium">
-                <tr>
-                  <th className="px-4 py-3.5">Vorgang / Aktenzeichen</th>
-                  <th className="px-4 py-3.5">Typ</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-4 py-3.5">Stand</th>
-                  <th className="px-4 py-3.5 text-right">Aktionen</th>
-                </tr>
-              </thead>
+              <TableHeadColumns />
               <tbody className="divide-border divide-y">
                 {[1, 2, 3, 4].map((i) => (
                   <tr key={i} className="animate-pulse">
@@ -274,15 +280,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-base">
-              <thead className="border-border bg-muted/40 text-muted-foreground border-b text-sm font-semibold tracking-wider uppercase">
-                <tr>
-                  <th className="px-4 py-3.5">Vorgang &amp; Aktenzeichen</th>
-                  <th className="px-4 py-3.5">Typ</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-4 py-3.5">Stand</th>
-                  <th className="px-4 py-3.5 text-right">Aktionen</th>
-                </tr>
-              </thead>
+              <TableHeadColumns />
               <tbody className="divide-border divide-y">
                 {/* 1. Laufende Hintergrund-Jobs direkt in der Tabelle */}
                 {filteredActiveJobs.map((job) => {

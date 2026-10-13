@@ -62,6 +62,10 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
   - Entkoppelt rechenintensive Großakten (50–200 Seiten) vom HTTP-Request (`202 Accepted` in < 250 ms), um 504-Gateway-Timeouts zu verhindern.
   - Transaktionssichere Job-Vergabe via `SELECT ... FOR UPDATE SKIP LOCKED` mit Concurrency-Limiting (`p-limit`, max. 2 parallele Läufe) gegen Provider-Rate-Limits (429) ([`src/lib/jobs/job-worker.ts`](../src/lib/jobs/job-worker.ts), [`src/lib/jobs/job-repository.ts`](../src/lib/jobs/job-repository.ts)).
   - Robustes Worker-Lifecycle-Management mit automatischem Orphan-Recovery und Retry-Mechanismen ([`src/lib/jobs/job-daemon.ts`](../src/lib/jobs/job-daemon.ts)).
+  - **2-Stufen-Job-Chunking & 60s Serverless-Budget-Schutz ([`src/lib/ai/pipeline.ts`](../src/lib/ai/pipeline.ts), [`src/lib/jobs/job-worker.ts`](../src/lib/jobs/job-worker.ts)):**
+    - Dekomposition der Pipeline in Stufe 1 (Ingestion, Extraktion & Faktenprüfung) und Stufe 2 (Notary Auditor & Reconciliation).
+    - Zwischenergebnisse werden nach Stufe 1 als `stage1Output` im Job-Payload in PostgreSQL persistiert.
+    - Bei Wiederanlauf oder Folgeaufrufen wird Stufe 1 übersprungen und Stufe 2 mit frischem 60s-Laufzeitbudget direkt mit dem Checkpoint ausgeführt.
 - **Workflow-Orchestrator ([`src/lib/workflow/orchestrator.ts`](../src/lib/workflow/orchestrator.ts), [`src/lib/workflow/engine.ts`](../src/lib/workflow/engine.ts)):**
   - Deterministischer Zustandsautomat für mehrstufige Workflows mit Rollenprüfung ([`src/lib/workflow/default-workflows.ts`](../src/lib/workflow/default-workflows.ts)).
   - Hält an Human-in-the-Loop Gates (z. B. Freigabe durch den Notar) automatisch an.
