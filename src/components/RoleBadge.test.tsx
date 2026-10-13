@@ -1,31 +1,64 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NOTARY_ROLES } from '@/types/organization';
 import { RoleBadge } from './RoleBadge';
 
 const mockLogout = vi.fn();
+let mockAuthState = {
+  organization: {
+    id: 'org-1',
+    name: 'Notariat Mitte',
+    officialSeat: 'Berlin',
+    chamberDistrict: 'Notarkammer Berlin',
+  },
+  hasActiveOrganization: true,
+  currentUser: {
+    id: 'user-1',
+    name: 'Dr. Test Notar',
+    email: 'notar@kanzlei.de',
+    role: NOTARY_ROLES.NOTAR,
+  },
+  logout: mockLogout,
+  isLoadingSession: false,
+};
 
 vi.mock('@/providers/AuthProvider', () => ({
-  useAuth: () => ({
-    organization: {
-      id: 'org-1',
-      name: 'Notariat Mitte',
-      officialSeat: 'Berlin',
-      chamberDistrict: 'Notarkammer Berlin',
-    },
-    hasActiveOrganization: true,
-    currentUser: {
-      id: 'user-1',
-      name: 'Dr. Test Notar',
-      email: 'notar@kanzlei.de',
-      role: NOTARY_ROLES.NOTAR,
-    },
-    logout: mockLogout,
-  }),
+  useAuth: () => mockAuthState,
 }));
 
 describe('RoleBadge', () => {
-  it('renders user details and organization in trigger button', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthState = {
+      organization: {
+        id: 'org-1',
+        name: 'Notariat Mitte',
+        officialSeat: 'Berlin',
+        chamberDistrict: 'Notarkammer Berlin',
+      },
+      hasActiveOrganization: true,
+      currentUser: {
+        id: 'user-1',
+        name: 'Dr. Test Notar',
+        email: 'notar@kanzlei.de',
+        role: NOTARY_ROLES.NOTAR,
+      },
+      logout: mockLogout,
+      isLoadingSession: false,
+    };
+  });
+
+  it('renders skeleton loader while session is loading (zero layout shift)', () => {
+    mockAuthState.isLoadingSession = true;
+    render(<RoleBadge />);
+
+    const skeleton = screen.getByLabelText('Kanzleistatus wird geladen');
+    expect(skeleton).toBeDefined();
+    expect(skeleton.getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByText('Dr. Test Notar')).toBeNull();
+  });
+
+  it('renders user details and organization in trigger button when loaded', () => {
     render(<RoleBadge />);
 
     expect(screen.getByText('Dr. Test Notar')).toBeDefined();
