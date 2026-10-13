@@ -57,7 +57,11 @@ async function apiRemoveMember(memberId: string): Promise<boolean> {
   return true;
 }
 
-export function useTeam() {
+export interface UseTeamOptions {
+  enabled?: boolean;
+}
+
+export function useTeam(options?: UseTeamOptions) {
   const queryClient = useQueryClient();
 
   const {
@@ -68,6 +72,7 @@ export function useTeam() {
   } = useQuery({
     queryKey: TEAM_QUERY_KEY,
     queryFn: fetchTeamMembers,
+    enabled: options?.enabled,
   });
 
   const updateRoleMutation = useMutation({

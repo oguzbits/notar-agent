@@ -47,6 +47,19 @@ vi.mock('@/providers/AuthProvider', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useTeam', () => ({
+  useTeam: () => ({
+    members: mockTeamMembers,
+    isLoading: false,
+    isError: false,
+    error: null,
+    inviteMember: mockInviteMember,
+    updateMemberRole: mockUpdateMemberRole,
+    removeMember: mockRemoveMember,
+    invalidate: vi.fn(),
+  }),
+}));
+
 describe('TeamSettingsModal', () => {
   it('renders settings modal with tabs and pre-filled organization stammdaten', () => {
     render(<TeamSettingsModal isOpen={true} onClose={vi.fn()} />);

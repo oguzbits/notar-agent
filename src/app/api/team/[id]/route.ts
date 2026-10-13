@@ -1,27 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTeamRepository } from '@/lib/supabase/server';
-import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { UpdateMemberRoleRequestSchema } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
-
-const DEFAULT_ORG_ID = '550e8400-e29b-41d4-a716-446655440000';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-async function resolveTeamRequest(req: NextRequest, context: RouteContext) {
+type ResolvedTeamRequest =
+  | { errorResponse: NextResponse }
+  | {
+      id: string;
+      orgId: string;
+      repo: ReturnType<typeof getTeamRepository>;
+    };
+
+async function resolveTeamRequest(
+  req: NextRequest,
+  context: RouteContext
+): Promise<ResolvedTeamRequest> {
   const { id } = await context.params;
   const authSupabase = await createServerAuthClient();
-  const orgId = req.headers.get('x-organization-id') || DEFAULT_ORG_ID;
-  const repo = getTeamRepository(authSupabase);
-  return { id, orgId, repo };
+  const queryOrgId =
+    req.headers.get('x-organization-id') ||
+    req.nextUrl.searchParams.get('organizationId') ||
+    undefined;
+  const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
+
+  if (!orgId) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      ),
+    };
+  }
+
+  return { id, orgId, repo: getTeamRepository(authSupabase) };
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
-    const { id, orgId, repo } = await resolveTeamRequest(req, context);
+    const resolved = await resolveTeamRequest(req, context);
+    if ('errorResponse' in resolved) return resolved.errorResponse;
+    const { id, orgId, repo } = resolved;
+
     const body = await req.json();
 
     const parsed = UpdateMemberRoleRequestSchema.safeParse(body);
@@ -47,7 +72,9 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
 
 export async function DELETE(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
-    const { id, orgId, repo } = await resolveTeamRequest(req, context);
+    const resolved = await resolveTeamRequest(req, context);
+    if ('errorResponse' in resolved) return resolved.errorResponse;
+    const { id, orgId, repo } = resolved;
 
     const success = await repo.removeMember(id, orgId);
     if (!success) {

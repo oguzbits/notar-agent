@@ -41,9 +41,9 @@ interface AuthContextType {
 
 const FALLBACK_DEFAULT_USER: KanzleiUserProfile = {
   id: '00000000-0000-0000-0000-000000000001',
-  name: 'Kanzleimitglied',
-  email: 'notar@kanzlei.de',
-  role: NOTARY_ROLES.NOTAR,
+  name: 'Nicht angemeldet',
+  email: 'gast@kanzlei.de',
+  role: NOTARY_ROLES.SACHBEARBEITER,
 };
 
 export const AUTH_SESSION_QUERY_KEY = ['auth-session'] as const;
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateMemberRole: apiUpdateRole,
     removeMember: apiRemove,
     inviteMember: apiInvite,
-  } = useTeam();
+  } = useTeam({ enabled: false });
 
   // Reale Supabase SSR Session laden (30s staleTime für Deduping bei Klickfolgen ohne lange Rechte-Latenz)
   const { data: sessionData, isLoading: isLoadingSession } = useQuery({

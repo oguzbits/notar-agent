@@ -3,6 +3,7 @@
 import { UserPlus, Mail, UserX, Building2, Users, Check, AlertCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import { BaseModalShell, Button, Input } from '@/components/ui';
+import { useTeam } from '@/hooks/useTeam';
 import { ROLE_LABELS_DE } from '@/lib/auth/role-labels';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
@@ -18,13 +19,31 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
   const {
     organization,
     currentUser,
-    teamMembers,
-    updateMemberRole,
-    removeMember,
-    inviteMember,
+    teamMembers: authTeamMembers,
+    updateMemberRole: authUpdateMemberRole,
+    removeMember: authRemoveMember,
+    inviteMember: authInviteMember,
     updateOrganization,
     hasRolePermission,
   } = useAuth();
+
+  const {
+    members: hookMembers,
+    updateMemberRole: hookUpdateRole,
+    removeMember: hookRemove,
+    inviteMember: hookInvite,
+  } = useTeam({ enabled: isOpen });
+
+  const teamMembers = hookMembers.length > 0 ? hookMembers : authTeamMembers;
+  const updateMemberRole = hookMembers.length > 0 ? hookUpdateRole : authUpdateMemberRole;
+  const removeMember = hookMembers.length > 0 ? hookRemove : authRemoveMember;
+  const inviteMember = async (name: string, email: string, role: NotaryRole) => {
+    if (hookMembers.length > 0) {
+      await hookInvite({ name, email, role });
+    } else {
+      await authInviteMember(name, email, role);
+    }
+  };
 
   const canManageTeam = hasRolePermission(PERMISSION_ACTIONS.MANAGE_TEAM);
   const canEditOrg =
