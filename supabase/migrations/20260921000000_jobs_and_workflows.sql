@@ -6,38 +6,6 @@
 --          Supabase Object Storage (dossier-files Bucket & Tenant-RLS)
 -- ============================================================================
 
--- 0. Supabase Object Storage (dossier-files Bucket & RLS gem. § 203 StGB)
-INSERT INTO storage.buckets (id, name, public, file_size_limit)
-VALUES ('dossier-files', 'dossier-files', false, 52428800)
-ON CONFLICT (id) DO NOTHING;
-
-DROP POLICY IF EXISTS "RLS dossier_files select" ON storage.objects;
-CREATE POLICY "RLS dossier_files select"
-ON storage.objects FOR SELECT
-TO authenticated
-USING (
-  bucket_id = 'dossier-files'
-  AND is_org_member((storage.foldername(name))[1]::uuid)
-);
-
-DROP POLICY IF EXISTS "RLS dossier_files insert" ON storage.objects;
-CREATE POLICY "RLS dossier_files insert"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'dossier-files'
-  AND is_org_member((storage.foldername(name))[1]::uuid)
-);
-
-DROP POLICY IF EXISTS "RLS dossier_files delete" ON storage.objects;
-CREATE POLICY "RLS dossier_files delete"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (
-  bucket_id = 'dossier-files'
-  AND is_org_member((storage.foldername(name))[1]::uuid)
-);
-
 -- 1. Dossier Jobs (Asynchrone Verarbeitungs-Queue)
 CREATE TABLE IF NOT EXISTS dossier_jobs (
     id TEXT PRIMARY KEY,
@@ -67,6 +35,51 @@ CREATE POLICY rls_jobs_all ON dossier_jobs
     FOR ALL
     USING (is_org_member(organization_id))
     WITH CHECK (is_org_member(organization_id));
+
+-- Helper-Funktion für sicheren Serverless Worker Storage-Zugriff auf Job-Dateien
+CREATE OR REPLACE FUNCTION is_dossier_job_file(object_name text)
+RETURNS boolean AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM dossier_jobs,
+        LATERAL jsonb_array_elements(payload->'files') AS f
+        WHERE f->>'storagePath' = object_name
+    );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- 2. Supabase Object Storage (dossier-files Bucket & RLS gem. § 203 StGB)
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('dossier-files', 'dossier-files', false, 52428800)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "RLS dossier_files select" ON storage.objects;
+CREATE POLICY "RLS dossier_files select"
+ON storage.objects FOR SELECT
+TO public
+USING (
+  bucket_id = 'dossier-files'
+  AND (
+    (auth.role() = 'authenticated' AND is_org_member((storage.foldername(name))[1]::uuid))
+    OR is_dossier_job_file(name)
+  )
+);
+
+DROP POLICY IF EXISTS "RLS dossier_files insert" ON storage.objects;
+CREATE POLICY "RLS dossier_files insert"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'dossier-files'
+  AND is_org_member((storage.foldername(name))[1]::uuid)
+);
+
+DROP POLICY IF EXISTS "RLS dossier_files delete" ON storage.objects;
+CREATE POLICY "RLS dossier_files delete"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'dossier-files'
+  AND is_org_member((storage.foldername(name))[1]::uuid)
+);
 
 -- Trigger für Realtime / Webhook-Events bei neuen Jobs
 CREATE OR REPLACE FUNCTION notify_dossier_job_pending()
