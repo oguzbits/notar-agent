@@ -239,8 +239,8 @@ export class SupabaseJobRepository implements IJobRepository {
       const updated = await this.updateJobStatus(job.id, {
         status: isExhausted ? JOB_STATUS.FAILED : JOB_STATUS.PENDING,
         errorMessage: isExhausted
-          ? `Maximale Versuche (${job.maxRetries}) nach Timeout/Absturz überschritten.`
-          : 'Verwaister Job nach Timeout reaktiviert.',
+          ? 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.'
+          : undefined,
         retryCount: nextRetry,
         lockedAt: undefined,
       });
@@ -255,8 +255,7 @@ export class SupabaseJobRepository implements IJobRepository {
       const job = this.mapRowToJob(row);
       const updated = await this.updateJobStatus(job.id, {
         status: JOB_STATUS.FAILED,
-        errorMessage:
-          'Verarbeitung nach Zeitüberschreitung in der Warteschlange unterbrochen. Bitte Vorgang wiederholen.',
+        errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
         retryCount: job.retryCount + 1,
       });
 

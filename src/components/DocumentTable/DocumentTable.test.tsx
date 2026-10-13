@@ -165,8 +165,7 @@ describe('DocumentTable Component', () => {
       ...mockJob,
       id: 'job-failed-1',
       status: JOB_STATUS.FAILED,
-      errorMessage:
-        'Verarbeitung nach Zeitüberschreitung unterbrochen (> 10 Min.). Bitte Vorgang wiederholen.',
+      errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
     };
     const handleRetry = vi.fn().mockResolvedValue(undefined);
 
@@ -183,9 +182,7 @@ describe('DocumentTable Component', () => {
     );
 
     expect(
-      screen.getByText(
-        'Verarbeitung nach Zeitüberschreitung unterbrochen (> 10 Min.). Bitte Vorgang wiederholen.'
-      )
+      screen.getByText('Verarbeitung unterbrochen. Bitte Vorgang erneut starten.')
     ).toBeDefined();
     const retryBtn = screen.getByText('Wiederholen');
     expect(retryBtn).toBeDefined();
