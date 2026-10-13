@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fromError } from 'zod-validation-error';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
-import { getJobRepository } from '@/lib/supabase/server';
+import { getDossierRepository, getJobRepository } from '@/lib/supabase/server';
+import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { JOB_STATUS, RetryJobRequestSchema } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req?: NextRequest): Promise<Response> {
   try {
-    const orgId = req
+    const authSupabase = await createServerAuthClient();
+    const queryOrgId = req
       ? req.headers.get('x-organization-id') ||
         req.nextUrl.searchParams.get('organizationId') ||
         undefined
       : undefined;
-    const repo = getJobRepository();
+    const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
+    const repo = getJobRepository(authSupabase);
     const jobs = await repo.listJobs(orgId);
     return NextResponse.json({ jobs }, { status: 200 });
   } catch (error: unknown) {
@@ -34,7 +37,8 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     const { jobId } = parseResult.data;
 
-    const repo = getJobRepository();
+    const authSupabase = await createServerAuthClient();
+    const repo = getJobRepository(authSupabase);
     const job = await repo.getJobById(jobId);
 
     if (!job) {
@@ -47,8 +51,11 @@ export async function POST(req: NextRequest): Promise<Response> {
       errorMessage: undefined,
     });
 
-    // Worker asynchron anstoßen
-    void executeDossierJob(jobId);
+    // Worker asynchron anstoßen mit authentifizierten Repositories
+    void executeDossierJob(jobId, {
+      jobRepo: repo,
+      dossierRepo: getDossierRepository(authSupabase),
+    });
 
     return NextResponse.json(
       {

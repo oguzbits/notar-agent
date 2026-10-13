@@ -67,7 +67,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
     const title = job.payload.notes || 'Neuer Urkundenvorgang';
     const matchesSearch =
       title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.payload.caseType.toLowerCase().includes(searchQuery.toLowerCase());
+      (job.payload.caseType
+        ? job.payload.caseType.toLowerCase().includes(searchQuery.toLowerCase())
+        : false);
 
     if (!matchesSearch) return false;
     if (activeFilter === DOCUMENT_FILTERS.DRAFT_READY) return false; // Jobs in Bearbeitung sind noch nicht entwurfsreif
@@ -162,9 +164,48 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       {/* Tabelle */}
       <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
         {isLoading ? (
-          <div className="text-muted-foreground flex flex-col items-center justify-center gap-3 p-12">
-            <Loader2 className="text-notar-800 h-6 w-6 animate-spin" />
-            <span className="text-base font-medium">Vorgänge werden geladen...</span>
+          <div className="overflow-x-auto" aria-busy="true" aria-label="Vorgänge werden geladen">
+            <table className="w-full text-left">
+              <thead className="border-border bg-muted/40 text-muted-foreground border-b text-sm font-medium">
+                <tr>
+                  <th className="px-4 py-3.5">Vorgang / Aktenzeichen</th>
+                  <th className="px-4 py-3.5">Typ</th>
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="px-4 py-3.5">Stand</th>
+                  <th className="px-4 py-3.5 text-right">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-border divide-y">
+                {[1, 2, 3, 4].map((i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-muted h-8 w-8 shrink-0 rounded-lg" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="bg-muted h-4 w-44 rounded" />
+                          <div className="bg-muted h-3 w-28 rounded" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="bg-muted h-5 w-24 rounded-md" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="bg-muted h-5 w-20 rounded-md" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="bg-muted h-4 w-28 rounded" />
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <div className="bg-muted h-8 w-8 rounded-lg" />
+                        <div className="bg-muted h-8 w-8 rounded-lg" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : totalItemCount === 0 ? (
           <div className="text-muted-foreground flex flex-col items-center justify-center gap-3 p-12 text-center">

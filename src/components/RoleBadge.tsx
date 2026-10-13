@@ -15,7 +15,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
   onOpenTeamSettings,
   onOpenOrganizationGateway,
 }) => {
-  const { organization, hasActiveOrganization, currentUser, logout } = useAuth();
+  const { organization, hasActiveOrganization, currentUser, logout, isLoadingSession } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +29,22 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  if (isLoadingSession) {
+    return (
+      <div
+        className="border-border bg-card/90 flex animate-pulse items-center gap-3 rounded-xl border py-1.5 pr-3.5 pl-2 shadow-xs"
+        aria-busy="true"
+        aria-label="Kanzleistatus wird geladen"
+      >
+        <div className="bg-muted h-9 w-9 shrink-0 rounded-lg" />
+        <div className="flex flex-col gap-1 text-left">
+          <div className="bg-muted h-4 w-28 rounded" />
+          <div className="bg-muted h-3 w-36 rounded" />
+        </div>
+      </div>
+    );
+  }
 
   const initials = currentUser.name
     .split(' ')

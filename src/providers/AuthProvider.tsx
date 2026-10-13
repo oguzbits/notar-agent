@@ -39,16 +39,6 @@ interface AuthContextType {
   isLoadingSession: boolean;
 }
 
-// Kanonische Standard-Kanzlei gem. C.2
-const DEFAULT_ORGANIZATION: Organization = {
-  id: '550e8400-e29b-41d4-a716-446655440000',
-  name: 'Notariat Standard Kanzlei',
-  officialSeat: 'Münster',
-  chamberDistrict: 'Westfälische Notarkammer',
-  createdAt: '2026-01-01T08:00:00.000Z',
-  updatedAt: '2026-01-01T08:00:00.000Z',
-};
-
 const FALLBACK_DEFAULT_USER: KanzleiUserProfile = {
   id: '00000000-0000-0000-0000-000000000001',
   name: 'Kanzleimitglied',
@@ -194,20 +184,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : FALLBACK_DEFAULT_USER;
 
   // Wenn der Benutzer explizit angemeldet ist, aber keine Kanzlei hat, ist currentOrg null
-  const hasActiveOrganization = sessionData ? sessionData.hasActiveOrganization : true; // Im un-authentifizierten/Demo-Modus bleibt Fallback-Kanzlei
+  const hasActiveOrganization = sessionData?.hasActiveOrganization ?? false;
 
-  const currentOrg: Organization | null = sessionData
-    ? sessionData.organization
-      ? {
-          id: sessionData.organization.id,
-          name: sessionData.organization.name,
-          officialSeat: sessionData.organization.officialSeat,
-          chamberDistrict: sessionData.organization.chamberDistrict,
-          createdAt: '2026-01-01T08:00:00.000Z',
-          updatedAt: '2026-01-01T08:00:00.000Z',
-        }
-      : null
-    : DEFAULT_ORGANIZATION;
+  const currentOrg: Organization | null = sessionData?.organization
+    ? {
+        id: sessionData.organization.id,
+        name: sessionData.organization.name,
+        officialSeat: sessionData.organization.officialSeat,
+        chamberDistrict: sessionData.organization.chamberDistrict,
+        createdAt: '2026-01-01T08:00:00.000Z',
+        updatedAt: '2026-01-01T08:00:00.000Z',
+      }
+    : null;
 
   const switchRole = (newRole: NotaryRole) => {
     setSimulatedRole(newRole);

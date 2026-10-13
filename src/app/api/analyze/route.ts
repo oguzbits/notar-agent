@@ -70,12 +70,14 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     if (isAsync) {
       const jobRepo = getJobRepository(authSupabase);
+      const dossierRepo = getDossierRepository(authSupabase);
       const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
+      const workerDeps = { jobRepo, dossierRepo };
 
       // Starte Hintergrund-Worker entkoppelt und serverless-sicher via Next.js after()
       try {
         after(async () => {
-          await executeDossierJob(job.id);
+          await executeDossierJob(job.id, workerDeps);
         });
       } catch (afterErr: unknown) {
         // Fallback falls after() im aktuellen Laufzeit-/Testkontext nicht aktiv ist
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           '[analyze] after() nicht verfügbar, nutze direkten Hintergrund-Aufruf:',
           afterErr
         );
-        void executeDossierJob(job.id);
+        void executeDossierJob(job.id, workerDeps);
       }
 
       return NextResponse.json(

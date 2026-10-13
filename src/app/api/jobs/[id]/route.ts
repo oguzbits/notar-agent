@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getJobRepository } from '@/lib/supabase/server';
+import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 
 export async function GET(
   req: NextRequest,
@@ -11,11 +12,13 @@ export async function GET(
     return NextResponse.json({ error: 'Job-ID erforderlich' }, { status: 400 });
   }
 
-  const orgId =
+  const authSupabase = await createServerAuthClient();
+  const queryOrgId =
     req.headers.get('x-organization-id') ||
     req.nextUrl.searchParams.get('organizationId') ||
     undefined;
-  const repo = getJobRepository();
+  const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
+  const repo = getJobRepository(authSupabase);
   const job = await repo.getJobById(id, orgId);
 
   if (!job) {

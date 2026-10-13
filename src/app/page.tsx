@@ -1,10 +1,11 @@
 'use client';
 
-import { Loader2, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { DocumentTable } from '@/components/DocumentTable';
 import { Header } from '@/components/Header';
+import { Button } from '@/components/ui/Button';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
 import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
@@ -48,7 +49,7 @@ function HomeContent() {
   const { jobs, activeJobs, failedJobs, retryJob, isRetrying, cancelJob, isCancelling, loadJobs } =
     useJobs(organization?.id);
 
-  const { job: singleJob } = useJob(jobParam);
+  const { job: singleJob, isLoading: isLoadingSingleJob } = useJob(jobParam);
   const {
     isAnalyzing,
     activeStep,
@@ -94,14 +95,13 @@ function HomeContent() {
   const rawDisplayedDossier = activeRecord?.content || session.dossier;
   const displayedDossier = rawDisplayedDossier ? normalizeDossier(rawDisplayedDossier) : null;
 
-  const effectiveView: ViewMode =
-    vorgangParam && displayedDossier
-      ? VIEW_MODE.DETAIL
-      : jobParam && activeJob
-        ? VIEW_MODE.JOB
-        : viewParam === VIEW_MODE.UPLOAD
-          ? VIEW_MODE.UPLOAD
-          : VIEW_MODE.TABLE;
+  const effectiveView: ViewMode = vorgangParam
+    ? VIEW_MODE.DETAIL
+    : jobParam
+      ? VIEW_MODE.JOB
+      : viewParam === VIEW_MODE.UPLOAD
+        ? VIEW_MODE.UPLOAD
+        : VIEW_MODE.TABLE;
 
   // Navigation Aktionen
   const handleSelectDocument = (doc: DocumentRecord) => {
@@ -256,7 +256,8 @@ function HomeContent() {
                 ? 'Neuer Urkundenvorgang'
                 : effectiveView === VIEW_MODE.JOB
                   ? activeJob?.payload.notes?.slice(0, 40) || 'Vorgang in Prüfung'
-                  : displayedDossier?.caseTitle || 'Urkunden-Zuarbeit'}
+                  : displayedDossier?.caseTitle ||
+                    (isLoadingDocs ? 'Vorgang wird geladen...' : 'Urkunden-Zuarbeit')}
             </span>
           </nav>
         )}
@@ -294,39 +295,90 @@ function HomeContent() {
         )}
 
         {/* Ansicht 3: Laufender / fehlgeschlagener Hintergrund-Job (Live-Workflow & Stepper) */}
-        {effectiveView === VIEW_MODE.JOB && activeJob && (
-          <JobProgressView
-            job={activeJob}
-            onBackToTable={handleBackToTable}
-            onRetryJob={retryJob}
-            isRetrying={isRetrying}
-            onCancelJob={cancelJob}
-            isCancelling={isCancelling}
-          />
-        )}
+        {effectiveView === VIEW_MODE.JOB &&
+          (activeJob ? (
+            <JobProgressView
+              job={activeJob}
+              onBackToTable={handleBackToTable}
+              onRetryJob={retryJob}
+              isRetrying={isRetrying}
+              onCancelJob={cancelJob}
+              isCancelling={isCancelling}
+            />
+          ) : isLoadingSingleJob ? (
+            <div className="animate-pulse space-y-4" aria-busy="true" aria-label="Job wird geladen">
+              <div className="bg-muted h-8 w-48 rounded" />
+              <div className="bg-card border-border h-24 rounded-xl border" />
+              <div className="bg-card border-border h-48 rounded-xl border" />
+            </div>
+          ) : (
+            <div className="border-border bg-card space-y-4 rounded-xl border p-8 text-center shadow-xs">
+              <p className="text-foreground text-lg font-semibold">
+                Hintergrund-Vorgang nicht gefunden
+              </p>
+              <p className="text-muted-foreground text-sm">
+                Der angeforderte Job existiert nicht oder wurde bereits archiviert.
+              </p>
+              <Button onClick={handleBackToTable} variant="outline" size="md">
+                Zurück zur Vorgangsübersicht
+              </Button>
+            </div>
+          ))}
 
         {/* Ansicht 4: Ergebnis-Ansicht (Dossier Cockpit) */}
-        {effectiveView === VIEW_MODE.DETAIL && displayedDossier && (
-          <DossierDetailView
-            dossier={displayedDossier}
-            activeRecord={activeRecord || null}
-            onOverrideFieldStatus={handleOverrideFieldStatus}
-            updatingFieldKey={updatingFieldKey}
-            isAppending={session.isAppending}
-            onToggleAppending={() => actions.setIsAppending(!session.isAppending)}
-            appendFiles={session.appendFiles}
-            onAppendFilesChange={actions.setAppendFiles}
-            appendNotes={session.appendNotes}
-            onAppendNotesChange={actions.setAppendNotes}
-            onCancelAppend={actions.resetAppend}
-            onSubmitAppend={handleStartAppendAnalysis}
-            isAnalyzing={isAnalyzing}
-            activeStep={activeStep}
-            stepDetail={stepDetail}
-            errorMessage={errorMessage}
-            onClearError={() => setErrorMessage(null)}
-          />
-        )}
+        {effectiveView === VIEW_MODE.DETAIL &&
+          (displayedDossier ? (
+            <DossierDetailView
+              dossier={displayedDossier}
+              activeRecord={activeRecord || null}
+              onOverrideFieldStatus={handleOverrideFieldStatus}
+              updatingFieldKey={updatingFieldKey}
+              isAppending={session.isAppending}
+              onToggleAppending={() => actions.setIsAppending(!session.isAppending)}
+              appendFiles={session.appendFiles}
+              onAppendFilesChange={actions.setAppendFiles}
+              appendNotes={session.appendNotes}
+              onAppendNotesChange={actions.setAppendNotes}
+              onCancelAppend={actions.resetAppend}
+              onSubmitAppend={handleStartAppendAnalysis}
+              isAnalyzing={isAnalyzing}
+              activeStep={activeStep}
+              stepDetail={stepDetail}
+              errorMessage={errorMessage}
+              onClearError={() => setErrorMessage(null)}
+            />
+          ) : isLoadingDocs ? (
+            <div
+              className="animate-pulse space-y-6"
+              aria-busy="true"
+              aria-label="Vorgangsdossier wird geladen"
+            >
+              <div className="border-border flex items-center justify-between border-b pb-3">
+                <div className="space-y-2">
+                  <div className="bg-muted h-6 w-56 rounded" />
+                  <div className="bg-muted h-4 w-36 rounded" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="bg-muted h-9 w-24 rounded-md" />
+                  <div className="bg-muted h-9 w-28 rounded-md" />
+                </div>
+              </div>
+              <div className="bg-card border-border h-20 rounded-xl border" />
+              <div className="bg-card border-border h-80 rounded-xl border" />
+            </div>
+          ) : (
+            <div className="border-border bg-card space-y-4 rounded-xl border p-8 text-center shadow-xs">
+              <p className="text-foreground text-lg font-semibold">
+                Vorgangsdossier nicht gefunden
+              </p>
+              <p className="text-muted-foreground text-sm">
+                Der gesuchte Urkundenvorgang konnte in der Kanzleidatenbank nicht gefunden werden.
+              </p>
+              <Button onClick={handleBackToTable} variant="outline" size="md">
+                Zurück zur Vorgangsübersicht
+              </Button>
+            </div>
+          ))}
       </main>
 
       <footer className="border-border bg-background mt-auto border-t py-4">
@@ -351,8 +403,18 @@ export default function Home() {
   return (
     <Suspense
       fallback={
-        <div className="bg-background flex min-h-screen items-center justify-center">
-          <Loader2 className="text-notar-900 h-8 w-8 animate-spin" />
+        <div className="bg-background flex min-h-screen animate-pulse flex-col font-sans antialiased">
+          <div className="border-border flex items-center justify-between border-b px-8 py-3">
+            <div className="bg-muted h-6 w-40 rounded" />
+            <div className="bg-muted h-9 w-36 rounded-xl" />
+          </div>
+          <div className="mx-auto w-full max-w-7xl space-y-6 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="bg-muted h-8 w-48 rounded" />
+              <div className="bg-muted h-9 w-36 rounded-lg" />
+            </div>
+            <div className="bg-card border-border h-96 rounded-xl border" />
+          </div>
         </div>
       }
     >
