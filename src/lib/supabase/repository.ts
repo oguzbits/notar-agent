@@ -206,7 +206,7 @@ export class SupabaseDossierRepository implements IDossierRepository {
         await delJobsQuery;
       }
     } catch (jobErr) {
-      console.warn(`[delete] Warnung beim Bereinigen verknüpfter Jobs für Dossier ${id}:`, jobErr);
+      console.warn('[delete] Warnung beim Bereinigen verknüpfter Jobs für Dossier:', id, jobErr);
     }
 
     // 2. Kaltarchiv-Dateien im Storage ermitteln (falls vorhanden)
@@ -224,7 +224,8 @@ export class SupabaseDossierRepository implements IDossierRepository {
         }
       } catch (archiveListErr) {
         console.warn(
-          `[delete] Warnung beim Ermitteln von Archiv-Dateien für ${id}:`,
+          '[delete] Warnung beim Ermitteln von Archiv-Dateien für Dossier:',
+          id,
           archiveListErr
         );
       }
@@ -237,7 +238,8 @@ export class SupabaseDossierRepository implements IDossierRepository {
         await this.supabase.storage.from(STORAGE_BUCKET_NAMES.DOSSIER_FILES).remove(uniquePaths);
       } catch (storageErr) {
         console.warn(
-          `[delete] Warnung beim Entfernen von Storage-Dateien für Dossier ${id}:`,
+          '[delete] Warnung beim Entfernen von Storage-Dateien für Dossier:',
+          id,
           storageErr
         );
       }

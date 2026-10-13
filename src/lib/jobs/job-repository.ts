@@ -237,7 +237,8 @@ export class SupabaseJobRepository implements IJobRepository {
       }
     } catch (storageErr) {
       console.warn(
-        `[deleteJob] Warnung beim Bereinigen von Storage-Dateien für Job ${id}:`,
+        '[deleteJob] Warnung beim Bereinigen von Storage-Dateien für Job:',
+        id,
         storageErr
       );
     }
