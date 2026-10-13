@@ -204,22 +204,34 @@ export class SupabaseJobRepository implements IJobRepository {
   async recoverOrphanJobs(leaseTimeoutMs = 5 * 60 * 1000): Promise<DossierJob[]> {
     const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
 
-    const { data: stuckJobs, error } = await this.supabase
+    // 1. Suche nach hängengebliebenen PROCESSING-Jobs (Lease abgelaufen)
+    const { data: stuckProcessingJobs, error: procError } = await this.supabase
       .from(DB_TABLES.DOSSIER_JOBS)
       .select('*')
       .eq('status', JOB_STATUS.PROCESSING)
       .or(`locked_at.lte.${cutoffIso},and(locked_at.is.null,updated_at.lte.${cutoffIso})`);
 
-    if (error) {
-      throw new Error(`Supabase recoverOrphanJobs fehlgeschlagen: ${error.message}`);
+    if (procError) {
+      throw new Error(
+        `Supabase recoverOrphanJobs (PROCESSING) fehlgeschlagen: ${procError.message}`
+      );
     }
 
-    if (!stuckJobs || stuckJobs.length === 0) {
-      return [];
+    // 2. Suche nach verwaisten PENDING-Jobs, die seit Ablauf des Timeouts nie übernommen wurden
+    const { data: stuckPendingJobs, error: pendError } = await this.supabase
+      .from(DB_TABLES.DOSSIER_JOBS)
+      .select('*')
+      .eq('status', JOB_STATUS.PENDING)
+      .lte('created_at', cutoffIso);
+
+    if (pendError) {
+      throw new Error(`Supabase recoverOrphanJobs (PENDING) fehlgeschlagen: ${pendError.message}`);
     }
 
     const recovered: DossierJob[] = [];
-    for (const row of stuckJobs) {
+
+    // Verwaiste PROCESSING-Jobs behandeln (Re-queue oder FAILED bei maxRetries)
+    for (const row of stuckProcessingJobs ?? []) {
       const job = this.mapRowToJob(row);
       const nextRetry = job.retryCount + 1;
       const isExhausted = nextRetry >= job.maxRetries;
@@ -231,6 +243,21 @@ export class SupabaseJobRepository implements IJobRepository {
           : 'Verwaister Job nach Timeout reaktiviert.',
         retryCount: nextRetry,
         lockedAt: undefined,
+      });
+
+      if (updated) {
+        recovered.push(updated);
+      }
+    }
+
+    // Verwaiste PENDING-Jobs behandeln (Automatisch FAILED mit verständlicher Notar-Fehlermeldung)
+    for (const row of stuckPendingJobs ?? []) {
+      const job = this.mapRowToJob(row);
+      const updated = await this.updateJobStatus(job.id, {
+        status: JOB_STATUS.FAILED,
+        errorMessage:
+          'Verarbeitung nach Zeitüberschreitung in der Warteschlange unterbrochen. Bitte Vorgang wiederholen.',
+        retryCount: job.retryCount + 1,
       });
 
       if (updated) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Search, Plus, Trash2, ExternalLink, Loader2, RotateCw } from 'lucide-react';
+import { FileText, Search, Plus, Trash2, ExternalLink, Loader2, RotateCw, Ban } from 'lucide-react';
 import React, { useState } from 'react';
 import { ConfirmDialog } from '@/components/ui';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -19,6 +19,7 @@ export interface DocumentTableProps {
   onDeleteDocument: (id: string) => Promise<void>;
   activeJobs?: DossierJob[];
   onRetryJob?: (jobId: string) => Promise<boolean | void>;
+  onCancelJob?: (jobId: string) => Promise<boolean | void>;
 }
 
 export const DOCUMENT_FILTERS = {
@@ -42,6 +43,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   onDeleteDocument,
   activeJobs = [],
   onRetryJob,
+  onCancelJob,
 }) => {
   const { hasRolePermission } = useAuth();
   const canDelete = hasRolePermission(PERMISSION_ACTIONS.DELETE_DOSSIER);
@@ -50,6 +52,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+  const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
 
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch =
@@ -101,6 +104,28 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       setPendingDeleteDoc(null);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRetryJob = async (jobId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onRetryJob || retryingJobId) return;
+    setRetryingJobId(jobId);
+    try {
+      await onRetryJob(jobId);
+    } finally {
+      setRetryingJobId(null);
+    }
+  };
+
+  const handleCancelJob = async (jobId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onCancelJob || cancellingJobId) return;
+    setCancellingJobId(jobId);
+    try {
+      await onCancelJob(jobId);
+    } finally {
+      setCancellingJobId(null);
     }
   };
 
@@ -247,11 +272,14 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 {/* 1. Laufende Hintergrund-Jobs direkt in der Tabelle */}
                 {filteredActiveJobs.map((job) => {
                   const isRetrying = retryingJobId === job.id;
-                  const activity =
-                    job.progressDetails?.currentActivity ||
-                    (job.status === JOB_STATUS.PENDING
-                      ? 'In Warteschlange eingereiht...'
-                      : 'Dokumente werden geprüft...');
+                  const isCancelling = cancellingJobId === job.id;
+                  const isFailed = job.status === JOB_STATUS.FAILED;
+                  const activity = isFailed
+                    ? job.errorMessage || 'Verarbeitung fehlgeschlagen'
+                    : job.progressDetails?.currentActivity ||
+                      (job.status === JOB_STATUS.PENDING
+                        ? 'In Warteschlange eingereiht...'
+                        : 'Dokumente werden geprüft...');
 
                   return (
                     <tr
@@ -266,7 +294,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="border-border bg-notar-100 text-notar-800 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border">
-                            {job.status === JOB_STATUS.FAILED ? (
+                            {isFailed ? (
                               <RotateCw className="text-destructive h-4 w-4" />
                             ) : (
                               <Loader2 className="text-notar-800 h-4 w-4 animate-spin" />
@@ -278,7 +306,14 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 ? job.payload.notes.slice(0, 50)
                                 : 'Neuer Urkundenvorgang'}
                             </span>
-                            <span className="text-muted-foreground text-sm">{activity}</span>
+                            <span
+                              className={cn(
+                                'text-sm',
+                                isFailed ? 'text-destructive font-medium' : 'text-muted-foreground'
+                              )}
+                            >
+                              {activity}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -300,48 +335,68 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         {formatDate(job.createdAt)}
                       </td>
 
-                      {/* Aktionen: Bei FAILED Retry, ansonsten deaktivierte Standardaktionen ohne Text */}
+                      {/* Aktionen: Bei FAILED Wiederholen, bei PENDING/PROCESSING Abbrechen */}
                       <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        {job.status === JOB_STATUS.FAILED && onRetryJob ? (
-                          <button
-                            type="button"
-                            disabled={isRetrying}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRetryingJobId(job.id);
-                              void onRetryJob(job.id).finally(() => setRetryingJobId(null));
-                            }}
-                            className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
-                          >
-                            {isRetrying ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RotateCw className="h-4 w-4" />
+                        <div className="flex items-center justify-end gap-1.5">
+                          {job.status === JOB_STATUS.FAILED && onRetryJob && (
+                            <button
+                              type="button"
+                              disabled={isRetrying}
+                              onClick={(e) => handleRetryJob(job.id, e)}
+                              className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
+                              title="Vorgang erneut starten"
+                            >
+                              {isRetrying ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RotateCw className="h-4 w-4" />
+                              )}
+                              <span>Wiederholen</span>
+                            </button>
+                          )}
+
+                          {(job.status === JOB_STATUS.PENDING ||
+                            job.status === JOB_STATUS.PROCESSING) &&
+                            onCancelJob && (
+                              <button
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={(e) => handleCancelJob(job.id, e)}
+                                className="border-border text-muted-foreground hover:bg-muted hover:text-foreground inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
+                                title="Vorgang abbrechen"
+                              >
+                                {isCancelling ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Ban className="h-4 w-4" />
+                                )}
+                                <span>Abbrechen</span>
+                              </button>
                             )}
-                            <span>Wiederholen</span>
-                          </button>
-                        ) : (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              disabled
-                              className="text-muted-foreground/40 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg"
-                              title="Vorgang wird noch analysiert"
-                              aria-label="Vorgang wird analysiert"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled
-                              className="text-muted-foreground/40 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg"
-                              title="Vorgang wird noch analysiert"
-                              aria-label="Vorgang wird analysiert"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
+
+                          {job.status !== JOB_STATUS.FAILED && !onCancelJob && (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                disabled
+                                className="text-muted-foreground/40 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg"
+                                title="Vorgang wird noch analysiert"
+                                aria-label="Vorgang wird analysiert"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled
+                                className="text-muted-foreground/40 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg"
+                                title="Vorgang wird noch analysiert"
+                                aria-label="Vorgang wird analysiert"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

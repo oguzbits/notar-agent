@@ -17,6 +17,14 @@ export async function GET(req?: NextRequest): Promise<Response> {
       : undefined;
     const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
     const repo = getJobRepository(authSupabase);
+
+    // Automatisches Self-Healing: Verwaiste / festsitzende Jobs nach Timeout (10 Min) bereinigen
+    try {
+      await repo.recoverOrphanJobs(10 * 60 * 1000);
+    } catch (healErr) {
+      console.warn('[jobs GET] Self-healing fehlgeschlagen:', healErr);
+    }
+
     const jobs = await repo.listJobs(orgId);
     return NextResponse.json({ jobs }, { status: 200 });
   } catch (error: unknown) {

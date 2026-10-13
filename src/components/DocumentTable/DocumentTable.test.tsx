@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { DocumentRecord, CASE_STATUS } from '@/types/document';
@@ -38,8 +38,8 @@ const mockJob: DossierJob = {
     notes: 'Laufender Hintergrund-Job',
     files: [{ name: 'Urkunde.pdf', type: 'application/pdf', size: 1024 }],
   },
-  createdAt: '2026-03-01T11:00:00Z',
-  updatedAt: '2026-03-01T11:00:00Z',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
   retryCount: 0,
   maxRetries: 3,
 };
@@ -135,5 +135,63 @@ describe('DocumentTable Component', () => {
 
     fireEvent.click(createBtn);
     expect(handleCreateNew).toHaveBeenCalled();
+  });
+
+  it('renders cancel button for active job and calls onCancelJob when clicked', async () => {
+    const handleCancelJob = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DocumentTable
+        documents={[]}
+        activeJobs={[mockJob]}
+        isLoading={false}
+        onSelectDocument={vi.fn()}
+        onCreateNew={vi.fn()}
+        onDeleteDocument={vi.fn()}
+        onCancelJob={handleCancelJob}
+      />
+    );
+
+    const cancelBtn = screen.getByText('Abbrechen');
+    expect(cancelBtn).toBeDefined();
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+    expect(handleCancelJob).toHaveBeenCalledWith(mockJob.id);
+  });
+
+  it('renders failed job with error reason and displays retry button calling onRetryJob', async () => {
+    const failedJob: DossierJob = {
+      ...mockJob,
+      id: 'job-failed-1',
+      status: JOB_STATUS.FAILED,
+      errorMessage:
+        'Verarbeitung nach Zeitüberschreitung unterbrochen (> 10 Min.). Bitte Vorgang wiederholen.',
+    };
+    const handleRetry = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DocumentTable
+        documents={[]}
+        activeJobs={[failedJob]}
+        isLoading={false}
+        onSelectDocument={vi.fn()}
+        onCreateNew={vi.fn()}
+        onDeleteDocument={vi.fn()}
+        onRetryJob={handleRetry}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'Verarbeitung nach Zeitüberschreitung unterbrochen (> 10 Min.). Bitte Vorgang wiederholen.'
+      )
+    ).toBeDefined();
+    const retryBtn = screen.getByText('Wiederholen');
+    expect(retryBtn).toBeDefined();
+    await act(async () => {
+      fireEvent.click(retryBtn);
+    });
+    expect(handleRetry).toHaveBeenCalledWith(failedJob.id);
   });
 });

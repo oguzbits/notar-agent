@@ -294,6 +294,7 @@ function HomeContent() {
                 }}
                 activeJobs={[...activeJobs, ...failedJobs]}
                 onRetryJob={retryJob}
+                onCancelJob={cancelJob}
               />
             );
           })()}

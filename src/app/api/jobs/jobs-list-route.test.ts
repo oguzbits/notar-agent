@@ -42,6 +42,13 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     expect(found.payload.notes).toBe('Test List Job');
   });
 
+  it('GET /api/jobs triggers self-healing for orphan/stuck jobs', async () => {
+    const orphanSpy = vi.spyOn(repo, 'recoverOrphanJobs');
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect(orphanSpy).toHaveBeenCalledWith(10 * 60 * 1000);
+  });
+
   it('POST /api/jobs retries a failed job', async () => {
     const job = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
