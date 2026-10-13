@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { DB_TABLES } from '@/types/database';
 import { DocumentRecord } from '@/types/document';
 import { Dossier } from '@/types/dossier';
@@ -63,7 +63,11 @@ async function apiUpdateDossier({
   }
 }
 
-export function useDocuments(organizationId?: string) {
+export interface UseDocumentsOptions {
+  enabled?: boolean;
+}
+
+export function useDocuments(organizationId?: string, options?: UseDocumentsOptions) {
   const queryClient = useQueryClient();
   const queryKey = getDocumentsQueryKey(organizationId);
 
@@ -75,6 +79,8 @@ export function useDocuments(organizationId?: string) {
   } = useQuery({
     queryKey,
     queryFn: () => fetchDocuments(organizationId),
+    enabled: options?.enabled,
+    placeholderData: keepPreviousData,
   });
 
   const deleteMutation = useMutation({

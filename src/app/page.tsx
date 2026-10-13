@@ -40,14 +40,24 @@ function HomeContent() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
 
-  const { currentUser, organization, hasActiveOrganization } = useAuth();
+  const { currentUser, organization, hasActiveOrganization, isLoadingSession } = useAuth();
 
   const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments(
-    organization?.id
+    organization?.id,
+    { enabled: !isLoadingSession }
   );
 
-  const { jobs, activeJobs, failedJobs, retryJob, isRetrying, cancelJob, isCancelling, loadJobs } =
-    useJobs(organization?.id);
+  const {
+    jobs,
+    activeJobs,
+    failedJobs,
+    retryJob,
+    isRetrying,
+    cancelJob,
+    isCancelling,
+    loadJobs,
+    isLoadingJobs,
+  } = useJobs(organization?.id, { enabled: !isLoadingSession });
 
   const { job: singleJob, isLoading: isLoadingSingleJob } = useJob(jobParam);
   const {
@@ -257,7 +267,9 @@ function HomeContent() {
                 : effectiveView === VIEW_MODE.JOB
                   ? activeJob?.payload.notes?.slice(0, 40) || 'Vorgang in Prüfung'
                   : displayedDossier?.caseTitle ||
-                    (isLoadingDocs ? 'Vorgang wird geladen...' : 'Urkunden-Zuarbeit')}
+                    (isLoadingDocs || isLoadingSession
+                      ? 'Vorgang wird geladen...'
+                      : 'Urkunden-Zuarbeit')}
             </span>
           </nav>
         )}
@@ -265,20 +277,26 @@ function HomeContent() {
 
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 pt-3 pb-8 sm:px-6 lg:px-8">
         {/* Ansicht 1: Kanzlei Vorgangsübersicht */}
-        {effectiveView === VIEW_MODE.TABLE && (
-          <DocumentTable
-            documents={documents}
-            isLoading={isLoadingDocs}
-            onSelectDocument={handleSelectDocument}
-            onSelectJob={handleSelectJob}
-            onCreateNew={handleCreateNew}
-            onDeleteDocument={async (id) => {
-              await deleteDocument(id);
-            }}
-            activeJobs={[...activeJobs, ...failedJobs]}
-            onRetryJob={retryJob}
-          />
-        )}
+        {effectiveView === VIEW_MODE.TABLE &&
+          (() => {
+            const isTableLoading =
+              isLoadingSession || isLoadingDocs || (hasActiveOrganization && isLoadingJobs);
+
+            return (
+              <DocumentTable
+                documents={documents}
+                isLoading={isTableLoading}
+                onSelectDocument={handleSelectDocument}
+                onSelectJob={handleSelectJob}
+                onCreateNew={handleCreateNew}
+                onDeleteDocument={async (id) => {
+                  await deleteDocument(id);
+                }}
+                activeJobs={[...activeJobs, ...failedJobs]}
+                onRetryJob={retryJob}
+              />
+            );
+          })()}
 
         {/* Ansicht 2: Upload-Bereich für neue Zuarbeit */}
         {effectiveView === VIEW_MODE.UPLOAD && (
@@ -347,7 +365,7 @@ function HomeContent() {
               errorMessage={errorMessage}
               onClearError={() => setErrorMessage(null)}
             />
-          ) : isLoadingDocs ? (
+          ) : isLoadingDocs || isLoadingSession ? (
             <div
               className="animate-pulse space-y-6"
               aria-busy="true"

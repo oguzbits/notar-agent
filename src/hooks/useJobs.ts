@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { DOCUMENTS_QUERY_KEY } from '@/hooks/useDocuments';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
@@ -44,7 +44,11 @@ async function apiCancelJob(jobId: string): Promise<void> {
   }
 }
 
-export function useJobs(organizationId?: string) {
+export interface UseJobsOptions {
+  enabled?: boolean;
+}
+
+export function useJobs(organizationId?: string, options?: UseJobsOptions) {
   const queryClient = useQueryClient();
   const previousActiveCount = useRef<number>(0);
   const queryKey = getJobsQueryKey(organizationId);
@@ -57,6 +61,8 @@ export function useJobs(organizationId?: string) {
   } = useQuery({
     queryKey,
     queryFn: () => fetchJobs(organizationId),
+    enabled: options?.enabled,
+    placeholderData: keepPreviousData,
 
     // Poll every 3 seconds while active jobs exist
     refetchInterval: (query) => {

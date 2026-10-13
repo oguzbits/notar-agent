@@ -175,4 +175,32 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: DOCUMENTS_QUERY_KEY });
     });
   });
+
+  it('respects enabled option and defers fetching until enabled is true', async () => {
+    let fetchCalled = false;
+    server.use(
+      http.get('/api/jobs', () => {
+        fetchCalled = true;
+        return HttpResponse.json({ jobs: [] });
+      })
+    );
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useJobs('org-test-uuid', { enabled }),
+      {
+        wrapper,
+        initialProps: { enabled: false },
+      }
+    );
+
+    expect(result.current.isLoadingJobs).toBe(false);
+    expect(result.current.jobs).toEqual([]);
+    expect(fetchCalled).toBe(false);
+
+    rerender({ enabled: true });
+
+    await waitFor(() => {
+      expect(fetchCalled).toBe(true);
+    });
+  });
 });

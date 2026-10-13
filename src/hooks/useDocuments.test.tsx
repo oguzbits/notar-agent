@@ -170,4 +170,32 @@ describe('useDocuments with TanStack Query & MSW', () => {
     expect(result.current.documents).toHaveLength(1);
     expect(result.current.documents[0]?.id).toBe('org-doc-1');
   });
+
+  it('respects enabled option and defers fetching until enabled is true', async () => {
+    let fetchCalled = false;
+    server.use(
+      http.get('/api/documents', () => {
+        fetchCalled = true;
+        return HttpResponse.json({ documents: [] });
+      })
+    );
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useDocuments('org-test-uuid', { enabled }),
+      {
+        wrapper,
+        initialProps: { enabled: false },
+      }
+    );
+
+    expect(result.current.isLoadingDocs).toBe(false);
+    expect(result.current.documents).toEqual([]);
+    expect(fetchCalled).toBe(false);
+
+    rerender({ enabled: true });
+
+    await waitFor(() => {
+      expect(fetchCalled).toBe(true);
+    });
+  });
 });
