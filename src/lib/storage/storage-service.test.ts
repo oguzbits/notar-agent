@@ -4,6 +4,7 @@ import {
   createSignedUploadUrl,
   downloadFileBuffer,
   deleteStorageFile,
+  deleteStorageFiles,
   sanitizeStorageFileName,
   resolveFileBuffer,
 } from './storage-service';
@@ -128,6 +129,55 @@ describe('Storage Service', () => {
       expect(mockStorage.from).toHaveBeenCalledWith(STORAGE_BUCKET_NAMES.DOSSIER_FILES);
       expect(mockRemove).toHaveBeenCalledWith(['org-123/doc.pdf']);
       expect(success).toBe(true);
+    });
+  });
+
+  describe('deleteStorageFiles', () => {
+    it('deletes multiple files from storage bucket in batch', async () => {
+      const mockRemove = vi.fn().mockResolvedValue({
+        data: [{ name: 'org-1/f1.pdf' }, { name: 'org-1/f2.pdf' }],
+        error: null,
+      });
+
+      const mockStorage = {
+        from: vi.fn().mockReturnValue({
+          remove: mockRemove,
+        }),
+      };
+      const mockSupabase = { storage: mockStorage } as never;
+
+      const success = await deleteStorageFiles(mockSupabase, ['org-1/f1.pdf', 'org-1/f2.pdf']);
+
+      expect(mockStorage.from).toHaveBeenCalledWith(STORAGE_BUCKET_NAMES.DOSSIER_FILES);
+      expect(mockRemove).toHaveBeenCalledWith(['org-1/f1.pdf', 'org-1/f2.pdf']);
+      expect(success).toBe(true);
+    });
+
+    it('returns true without calling storage if paths array is empty', async () => {
+      const mockStorage = {
+        from: vi.fn(),
+      };
+      const mockSupabase = { storage: mockStorage } as never;
+
+      const success = await deleteStorageFiles(mockSupabase, []);
+
+      expect(mockStorage.from).not.toHaveBeenCalled();
+      expect(success).toBe(true);
+    });
+
+    it('throws error when remove returns error', async () => {
+      const mockStorage = {
+        from: vi.fn().mockReturnValue({
+          remove: vi
+            .fn()
+            .mockResolvedValue({ data: null, error: { message: 'Permission denied' } }),
+        }),
+      };
+      const mockSupabase = { storage: mockStorage } as never;
+
+      await expect(deleteStorageFiles(mockSupabase, ['org-1/f1.pdf'])).rejects.toThrow(
+        'Storage Löschen fehlgeschlagen: Permission denied'
+      );
     });
   });
 

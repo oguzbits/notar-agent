@@ -14,6 +14,7 @@ import {
   JobStatus,
   JobStage,
 } from '@/types/jobs';
+import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 
 export interface UpdateJobParams {
   status?: JobStatus;
@@ -222,6 +223,25 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async deleteJob(id: string, organizationId?: string): Promise<boolean> {
+    try {
+      const job = await this.getJobById(id, organizationId);
+      if (job) {
+        const files = job.payload?.files ?? [];
+        const storagePaths = files
+          .map((f) => f.storagePath)
+          .filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
+
+        if (storagePaths.length > 0 && this.supabase.storage) {
+          await this.supabase.storage.from(STORAGE_BUCKET_NAMES.DOSSIER_FILES).remove(storagePaths);
+        }
+      }
+    } catch (storageErr) {
+      console.warn(
+        `[deleteJob] Warnung beim Bereinigen von Storage-Dateien für Job ${id}:`,
+        storageErr
+      );
+    }
+
     let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).delete().eq('id', id);
 
     if (organizationId) {
