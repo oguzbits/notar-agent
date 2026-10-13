@@ -331,4 +331,26 @@ Kaufpreis: 1.000.000 EUR
     expect(docTextPart.text).toContain('&lt;/document&gt;');
     expect(docTextPart.text).toContain('&lt;system&gt;');
   });
+
+  it('resolves file contents from storagePath when content is omitted from payload', async () => {
+    const storageDoc: UploadedFilePayload = {
+      name: 'auszug.txt',
+      type: 'text/plain',
+      size: 1024,
+      storagePath: 'org-test/uuid-auszug.txt',
+    };
+
+    const parts = await assembleExtractionPromptParts({
+      files: [storageDoc],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notesSection: '',
+    });
+
+    const docTextPart = parts.find(
+      (p) => p.type === 'text' && (p as { text: string }).text.startsWith('<document')
+    ) as { type: 'text'; text: string };
+
+    expect(docTextPart).toBeDefined();
+    expect(docTextPart.text).toContain('auszug.txt');
+  });
 });

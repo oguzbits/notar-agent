@@ -10,7 +10,7 @@ export const CaseStatusSchema = z.enum([CASE_STATUS.IN_PROGRESS, CASE_STATUS.DRA
 
 export type CaseStatus = (typeof CASE_STATUS)[keyof typeof CASE_STATUS];
 
-export const DocumentRecordSchema = z.object({
+export const DocumentListItemSchema = z.object({
   id: z.string().min(1, 'ID darf nicht leer sein'),
   organizationId: z
     .uuid()
@@ -18,9 +18,18 @@ export const DocumentRecordSchema = z.object({
     .describe('Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'),
   title: z.string(),
   status: CaseStatusSchema,
-  content: DossierSchema,
+  caseType: z
+    .string()
+    .optional()
+    .describe('Dokument- oder Falltyp (z.B. IMMOBILIENKAUF, GMBH_GRUENDUNG)'),
   created_at: z.string(),
   updated_at: z.string().optional(),
+});
+
+export type DocumentListItem = z.infer<typeof DocumentListItemSchema>;
+
+export const DocumentRecordSchema = DocumentListItemSchema.extend({
+  content: DossierSchema,
 });
 
 export type DocumentRecord = z.infer<typeof DocumentRecordSchema>;

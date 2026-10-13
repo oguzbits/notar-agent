@@ -7,11 +7,11 @@ import {
   executeList,
 } from '@/lib/supabase/db-query-helpers';
 import { DB_TABLES, Database, TableInsert } from '@/types/database';
-import { CaseStatus, DocumentRecord, CASE_STATUS } from '@/types/document';
+import { CaseStatus, DocumentRecord, DocumentListItem, CASE_STATUS } from '@/types/document';
 import { Dossier, PersistenceMeta, STORAGE_TYPES } from '@/types/dossier';
 
 export { createEmptyImmobilienFields, CASE_STATUS };
-export type { CaseStatus, DocumentRecord };
+export type { CaseStatus, DocumentRecord, DocumentListItem };
 
 export type PersistenceResult = PersistenceMeta & {
   persisted: boolean;
@@ -28,7 +28,7 @@ export interface IDossierRepository {
   findById(id: string, organizationId?: string): Promise<DocumentRecord | null>;
   save(dossier: Dossier, organizationId?: string): Promise<PersistenceResult>;
   update(id: string, dossier: Dossier, organizationId?: string): Promise<UpdateResult>;
-  list(organizationId?: string): Promise<DocumentRecord[]>;
+  list(organizationId?: string): Promise<DocumentListItem[]>;
   delete(id: string, organizationId?: string): Promise<boolean>;
 }
 
@@ -142,21 +142,23 @@ export class SupabaseDossierRepository implements IDossierRepository {
     return { success: true };
   }
 
-  async list(organizationId?: string): Promise<DocumentRecord[]> {
+  async list(organizationId?: string): Promise<DocumentListItem[]> {
     const query = applyOrganizationFilter(
-      this.supabase.from(DB_TABLES.DOCUMENTS).select('*'),
+      this.supabase
+        .from(DB_TABLES.DOCUMENTS)
+        .select('id, title, status, created_at, updated_at, caseType:content->>caseType'),
       organizationId
     );
 
     const data = await executeList(query.order('created_at', { ascending: false }), 'Dossier list');
 
     return data.map((doc) => {
-      const rawContent = doc.content;
-      const uniformTitle = getUniformCaseTitle(rawContent?.caseType, doc.id);
+      const caseType = typeof doc.caseType === 'string' ? doc.caseType : undefined;
+      const uniformTitle = getUniformCaseTitle(caseType, doc.id);
       return {
         id: doc.id,
         title: doc.title || uniformTitle,
-        content: rawContent || createEmptyImmobilienDossier(uniformTitle),
+        caseType,
         status: (doc.status as CaseStatus) || CASE_STATUS.IN_PROGRESS,
         created_at: doc.created_at,
         updated_at: doc.updated_at,

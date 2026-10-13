@@ -19,6 +19,17 @@ interface SSEAnalysisEvent {
   persistence?: PersistenceMeta;
 }
 
+function formatFilesForApi(files: UploadedFilePayload[]) {
+  return files.map((f) => ({
+    name: f.name,
+    size: f.size,
+    type: f.type,
+    content: f.storagePath ? undefined : f.content,
+    isBase64: f.storagePath ? undefined : f.isBase64,
+    storagePath: f.storagePath,
+  }));
+}
+
 export function useAnalysisWorkflow() {
   const auth = useOptionalAuth();
   const organization = auth?.organization;
@@ -88,13 +99,7 @@ export function useAnalysisWorkflow() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          files: files.map((f) => ({
-            name: f.name,
-            size: f.size,
-            type: f.type,
-            content: f.content,
-            isBase64: f.isBase64,
-          })),
+          files: formatFilesForApi(files),
           caseType,
           notes,
           organizationId: organization?.id,
@@ -147,13 +152,7 @@ export function useAnalysisWorkflow() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          files: appendFiles.map((f) => ({
-            name: f.name,
-            size: f.size,
-            type: f.type,
-            content: f.content,
-            isBase64: f.isBase64,
-          })),
+          files: formatFilesForApi(appendFiles),
           caseType: currentDossier.caseType,
           notes: appendNotes,
           existingDossier: currentDossier,

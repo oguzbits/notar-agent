@@ -7,13 +7,13 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
 import { PERMISSION_ACTIONS } from '@/types/auth';
-import { DocumentRecord, CaseStatus, CASE_STATUS } from '@/types/document';
+import { DocumentListItem, CaseStatus, CASE_STATUS } from '@/types/document';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
 
 export interface DocumentTableProps {
-  documents: DocumentRecord[];
+  documents: DocumentListItem[];
   isLoading: boolean;
-  onSelectDocument: (doc: DocumentRecord) => void;
+  onSelectDocument: (doc: DocumentListItem) => void;
   onSelectJob?: (job: DossierJob) => void;
   onCreateNew: () => void;
   onDeleteDocument: (id: string) => Promise<void>;
@@ -51,16 +51,17 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   const canDelete = hasRolePermission(PERMISSION_ACTIONS.DELETE_DOSSIER);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterStatus>(DOCUMENT_FILTERS.ALL);
-  const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentRecord | null>(null);
+  const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentListItem | null>(null);
   const [pendingDeleteJob, setPendingDeleteJob] = useState<DossierJob | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
 
   const filteredDocuments = documents.filter((doc) => {
+    const caseTypeStr = doc.caseType || '';
     const matchesSearch =
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (doc.content?.caseTitle || '').toLowerCase().includes(searchQuery.toLowerCase());
+      caseTypeStr.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
     if (activeFilter === DOCUMENT_FILTERS.ALL) return true;
@@ -470,9 +471,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       {/* Typ */}
                       <td className="text-muted-foreground px-4 py-3.5">
                         <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm">
-                          {doc.content?.caseType
-                            ? doc.content.caseType.charAt(0) +
-                              doc.content.caseType.slice(1).toLowerCase().replace(/_/g, ' ')
+                          {doc.caseType
+                            ? doc.caseType.charAt(0) +
+                              doc.caseType.slice(1).toLowerCase().replace(/_/g, ' ')
                             : 'Immobilienkauf'}
                         </span>
                       </td>

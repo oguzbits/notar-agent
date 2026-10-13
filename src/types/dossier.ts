@@ -594,6 +594,7 @@ export const UploadedFilePayloadSchema = z.object({
   size: z.number().nonnegative(),
   content: z.string().optional(),
   isBase64: z.boolean().optional(),
+  storagePath: z.string().optional(),
 });
 export type UploadedFilePayload = z.infer<typeof UploadedFilePayloadSchema>;
 

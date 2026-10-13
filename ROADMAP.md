@@ -65,16 +65,16 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 - [ ] **B.9 k6 API- & Supabase-Lasttest-Suite:**
   - _(Detaillierte Spezifikation und Aufgabenplan in [BACKLOG.md §18](./BACKLOG.md#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing) hinterlegt)_
 - [ ] **B.10 Enterprise Ingestion, Supabase Object Storage & System-Härtung:**
-  - [ ] **B.10.1 Supabase Object Storage (`dossier-files`) & Zero-Base64-Postgres:**
+  - [x] **B.10.1 Supabase Object Storage (`dossier-files`) & Zero-Base64-Postgres:**
     - Privater, RLS-gesicherter Bucket `dossier-files` (Mandantentrennung nach `organization_id`)
     - Direkter Browser-to-Storage Upload (Überwindung des 4,5-MB-Vercel-Limits für Großakten > 50 Seiten)
     - Ersatz von Base64-Strings in `dossier_jobs.payload` durch schlanke Storage-Pfade (`storagePath`)
-  - [ ] **B.10.2 Beseitigung von Sicherheits- & Spoofing-Schwachstellen (§ 203 StGB):**
+  - [x] **B.10.2 Beseitigung von Sicherheits- & Spoofing-Schwachstellen (§ 203 StGB):**
     - Beseitigung der hardcodierten `DEFAULT_ORG_ID` und Header-Overrides in `api/team/route.ts` und `api/team/[id]/route.ts`
     - Striktes Least-Privilege für unauthentifizierte Fallback-Profile im `AuthProvider`
-  - [ ] **B.10.3 Performance & Network I/O Härtung:**
-    - Lazy-Loading von `useTeam()` (wird erst beim Öffnen des `TeamSettingsModal` geladen, entlastet Root-Layout)
-    - Schlanke Tabellen-Projektion für Dokumente (Metadaten-Only für die Tabelle, Detail-Dossier on demand)
+  - [x] **B.10.3 Performance & Network I/O Härtung:**
+    - [x] Lazy-Loading von `useTeam()` (wird erst beim Öffnen des `TeamSettingsModal` geladen, entlastet Root-Layout)
+    - [x] Schlanke Tabellen-Projektion für Dokumente (Metadaten-Only für die Tabelle, Detail-Dossier on demand)
   - [ ] **B.10.4 2-Stufen-Job-Chunking für Serverless-Resilienz (60s-Budget-Schutz):**
     - Sequentielle Abwicklung von Stufe 1 (Extraktion) und Stufe 2 (Auditor) über `dossier_jobs.stage` mit jeweils eigenem 60s-Laufzeitbudget
   - [ ] **B.10.5 Code-Komplexitäts-Entflechtung & Deep Modules:**

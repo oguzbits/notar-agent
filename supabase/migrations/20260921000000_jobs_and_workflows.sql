@@ -2,8 +2,41 @@
 -- Domain-Migration 03: Jobs Queue & Workflow Engine
 -- Consolidated Migration (gem. AGENTS.md Invariante 8)
 -- Enthält: dossier_jobs (Queue & Webhook/Notify Trigger),
---          workflow_definitions, workflow_instances & Workflow-RLS-Policies
+--          workflow_definitions, workflow_instances & Workflow-RLS-Policies,
+--          Supabase Object Storage (dossier-files Bucket & Tenant-RLS)
 -- ============================================================================
+
+-- 0. Supabase Object Storage (dossier-files Bucket & RLS gem. § 203 StGB)
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('dossier-files', 'dossier-files', false, 52428800)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "RLS dossier_files select" ON storage.objects;
+CREATE POLICY "RLS dossier_files select"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'dossier-files'
+  AND is_org_member((storage.foldername(name))[1]::uuid)
+);
+
+DROP POLICY IF EXISTS "RLS dossier_files insert" ON storage.objects;
+CREATE POLICY "RLS dossier_files insert"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'dossier-files'
+  AND is_org_member((storage.foldername(name))[1]::uuid)
+);
+
+DROP POLICY IF EXISTS "RLS dossier_files delete" ON storage.objects;
+CREATE POLICY "RLS dossier_files delete"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'dossier-files'
+  AND is_org_member((storage.foldername(name))[1]::uuid)
+);
 
 -- 1. Dossier Jobs (Asynchrone Verarbeitungs-Queue)
 CREATE TABLE IF NOT EXISTS dossier_jobs (

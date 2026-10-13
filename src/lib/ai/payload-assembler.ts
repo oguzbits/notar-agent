@@ -7,6 +7,7 @@ import { parseDocxDocument, DocxExtractedImage } from '@/lib/files/docx-document
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
 import { PdfStreamType, PDF_STREAM_TYPES } from '@/lib/files/pdf-stream-classifier';
+import { resolveFileBuffer } from '@/lib/storage/storage-service';
 import { DocumentParsedContent } from '@/types/document';
 import {
   DOCUMENT_RELIABILITY,
@@ -128,12 +129,25 @@ ${notesSection}${
     if (!file) continue;
     const docIndex = i + 1;
 
-    if (file.isBase64 && file.type.startsWith('image/')) {
-      const rawBase64 = (file.content || '').replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isDocx =
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.name.toLowerCase().endsWith('.docx');
+    const hasSource = Boolean(file.storagePath || file.content);
+
+    if (isImage && hasSource) {
+      let rawBase64 = '';
+      if (file.content && file.isBase64) {
+        rawBase64 = file.content.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
+      } else {
+        const buffer = await resolveFileBuffer(file);
+        rawBase64 = buffer.toString('base64');
+      }
       filePromptParts.push({
         type: 'file',
         data: rawBase64,
-        mediaType: file.type,
+        mediaType: file.type || 'image/jpeg',
         filename: file.name,
       });
       filePromptParts.push({
@@ -145,12 +159,8 @@ ${notesSection}${
           fileName: file.name,
         })
       );
-    } else if (
-      file.isBase64 &&
-      (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-    ) {
-      const rawBase64 = (file.content || '').replace(/^data:application\/pdf;base64,/, '');
-      const pdfBuffer = Buffer.from(rawBase64, 'base64');
+    } else if (isPdf && hasSource) {
+      const pdfBuffer = await resolveFileBuffer(file);
 
       // Serverseitige Analyse: Entlastet den Client vollständig von unpdf / PDF.js
       const assembledFile = file as Partial<AssembledFilePayload>;
@@ -263,7 +273,7 @@ ${notesSection}${
         // Fallback: Weder Text noch Screenshots extrahiert -> Original PDF übergeben
         filePromptParts.push({
           type: 'file',
-          data: rawBase64,
+          data: pdfBuffer.toString('base64'),
           mediaType: 'application/pdf',
           filename: file.name,
         });
@@ -284,22 +294,14 @@ ${notesSection}${
           textContent: extractedText || '',
         })
       );
-    } else if (
-      file.name.toLowerCase().endsWith('.docx') ||
-      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ) {
+    } else if (isDocx && hasSource) {
       let docxMarkdown = '';
       let docxImages: DocxExtractedImage[] = [];
       try {
-        if (file.isBase64 && file.content) {
-          const rawBase64 = file.content.replace(/^data:application\/[a-zA-Z0-9+.-]+;base64,/, '');
-          const buffer = Buffer.from(rawBase64, 'base64');
-          const parsed = await parseDocxDocument(buffer);
-          docxMarkdown = parsed.markdown;
-          docxImages = parsed.extractedImages;
-        } else if (file.content) {
-          docxMarkdown = file.content;
-        }
+        const buffer = await resolveFileBuffer(file);
+        const parsed = await parseDocxDocument(buffer);
+        docxMarkdown = parsed.markdown;
+        docxImages = parsed.extractedImages;
       } catch (err: unknown) {
         console.warn('[payload-assembler] DOCX-Extraktion fehlgeschlagen:', file.name, err);
       }
@@ -342,8 +344,21 @@ ${notesSection}${
           textContent: docxMarkdown,
         })
       );
-    } else if (file.content) {
-      const sanitized = sanitizeXmlDocumentContent(file.content);
+    } else if (hasSource) {
+      let textContent = file.content;
+      if (!textContent && file.storagePath) {
+        try {
+          const buffer = await resolveFileBuffer(file);
+          textContent = buffer.toString('utf-8');
+        } catch (err: unknown) {
+          console.warn(
+            '[payload-assembler] Text-Extraktion aus Storage fehlgeschlagen:',
+            file.name,
+            err
+          );
+        }
+      }
+      const sanitized = sanitizeXmlDocumentContent(textContent || '');
       filePromptParts.push({
         type: 'text',
         text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="${escapeXmlAttr(file.type || 'text/plain')}">\n${sanitized}\n</document>`,
@@ -351,7 +366,7 @@ ${notesSection}${
       triageList.push(
         triageDocument({
           fileName: file.name,
-          textContent: file.content,
+          textContent: textContent,
         })
       );
     } else {

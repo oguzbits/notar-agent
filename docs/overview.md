@@ -41,6 +41,10 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
   - _Nativer Stream-Fallback & Offline-CI:_ Extrem leichtgewichtiger, nativer Node.js Deflate/Zlib Stream-Parser ([`src/lib/files/pdf-document-parser.ts`](../src/lib/files/pdf-document-parser.ts)) ohne native Binaries oder externe Abhängigkeiten für vollständigen Offline-Betrieb.
   - _Single-Pass Ingestion:_ Direkte Extraktion in [`src/lib/ai/payload-assembler.ts`](../src/lib/ai/payload-assembler.ts) ohne redundante Doppel-Klassifikation.
   - _Word / Office-Dokumente (.docx):_ Direkte In-Memory-Konvertierung über `mammoth` ([`src/lib/files/docx-document-parser.ts`](../src/lib/files/docx-document-parser.ts)) in formatiertes Markdown (Tabellen, Absätze, Klauseln) samt Extraktion eingebetteter Grafiken/Siegel, die als Inline-Marker direkt an der exakten Stelle im Fließtext verankert werden – 100 % serverless-tauglich ohne LibreOffice-Systemabhängigkeiten.
+- **Supabase Object Storage & Direct Upload ([`src/lib/storage/storage-service.ts`](../src/lib/storage/storage-service.ts), [`src/lib/files/storage-uploader.ts`](../src/lib/files/storage-uploader.ts)):**
+  - _Zero-Base64-Postgres & Vercel-Body-Bypass:_ Dateiuploads werden nicht mehr als Base64-Strings über den Next.js-Serverless-Body übertragen (wodurch das 4,5-MB-Vercel-Limit überwunden und PostgreSQL TOAST-Bloat eliminiert wird).
+  - _Signierte Direct-Upload-URLs:_ Der Browser fordert über [`POST /api/storage/upload-url`](../src/app/api/storage/upload-url/route.ts) eine vorab-autorisierte, signierte URL für den privaten, RLS-gesicherten Bucket `dossier-files` an (`organization_id/...`) und streamt die Binärdaten direkt in den Object Storage.
+  - _Resiliente On-Demand-Auflösung:_ Der Worker bzw. `payload-assembler` lädt über `resolveFileBuffer` die Rohbytes bei Bedarf direkt aus dem Storage nach – mit nahtlosem Fallback auf Base64 für lokale Offline-CI-Tests.
 - **Triage & MIME-Validierung ([`src/lib/files/document-triage.ts`](../src/lib/files/document-triage.ts), [`src/lib/files/file-types.ts`](../src/lib/files/file-types.ts)):** Vorverarbeitung, Bereinigung und Typisierung vor dem eigentlichen Modellaufruf.
 
 ### 1.3 Multimodaler agentischer Analyse-Workflow ([`src/app/api/analyze/`](../src/app/api/analyze/), [`src/lib/ai/`](../src/lib/ai/))
@@ -73,7 +77,13 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 - **Database-First SSOT:** Materielle Rechtsnormen (BGB, BeurkG, GEG) und Kanzleistandards liegen in `knowledge_documents` und werden dynamisch über [`src/lib/knowledge/rules/rule-selector.ts`](../src/lib/knowledge/rules/rule-selector.ts) in Prompts injiziert – der Anwendungscode bleibt frei von statischen Gesetzes-Strings.
 - **RRF-Hybridsuche & Dynamisches `TEXT_WEIGHT` ([`src/lib/knowledge/`](../src/lib/knowledge/)):** Die PostgreSQL-RPC `match_knowledge_documents` implementiert skaleninvariantes Reciprocal Rank Fusion (RRF mit $k=60$) über CTEs. [`src/lib/knowledge/dynamic-weights.ts`](../src/lib/knowledge/dynamic-weights.ts) steuert die Gewichte dynamisch: Exakte Paragraphen (§), HRB-Nummern oder Flurstücke priorisieren die Volltext-Suche (0.85), während abstrakte Rechtsfragen die semantische Vektorsuche priorisieren (0.75).
 
-### 1.7 Authentische Real-World Testakten & Model-Evaluation ([`test-akten/`](../test-akten/), `promptfoo`)
+### 1.7 Schlanke Tabellen-Projektion & On-Demand Detailabruf ([`src/types/document.ts`](../src/types/document.ts), [`src/lib/supabase/repository.ts`](../src/lib/supabase/repository.ts))
+
+- **Metadaten-Only Projektion (`DocumentListItem`):** Die Kanzlei-Vorgangsübersicht lädt ausschließlich elementare Header- und Statusdaten (`id`, `title`, `status`, `caseType`, `created_at`, `updated_at`).
+- **Zero TOAST Bloat:** Das speicherintensive JSONB-Dossier (`content`) mit allen Belegen und Quellen wird in der Listenabfrage nicht aus PostgreSQL übertragen (> 95 % I/O- und Netzwerk-Reduktion).
+- **On-Demand Detailabruf ([`src/hooks/useDocuments.ts`](../src/hooks/useDocuments.ts)):** Das vollständige Dossier wird erst beim gezielten Öffnen eines Vorgangs über den Hook `useDocument(id)` aus der Datenbank geladen und für 60 Sekunden im TanStack-Query-Cache vorgehalten.
+
+### 1.8 Authentische Real-World Testakten & Model-Evaluation ([`test-akten/`](../test-akten/), `promptfoo`)
 
 - **Synthetische, datenschutzkonforme Referenzakten ([`test-akten/README.md`](../test-akten/README.md)):**
   - Eigene, realistisch generierte Testfälle ohne echte Mandantendaten (§ 203 StGB), die exakte Herausforderungen der notariellen Praxis nachbilden:

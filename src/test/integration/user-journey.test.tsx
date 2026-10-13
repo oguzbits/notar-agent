@@ -12,14 +12,17 @@ import { CASE_TYPES, UploadedFilePayload } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
 // Mock AuthProvider with full Sachbearbeiter/Notar permissions
+const mockAuthValue = {
+  currentUser: { id: 'user-notar-1', name: 'Dr. Justitia', email: 'notar@kanzlei.de' },
+  organization: { id: 'org-test-1', name: 'Kanzlei Notariat' },
+  hasActiveOrganization: true,
+  isLoadingSession: false,
+  hasRolePermission: () => true,
+};
+
 vi.mock('@/providers/AuthProvider', () => ({
-  useAuth: () => ({
-    currentUser: { id: 'user-notar-1', name: 'Dr. Justitia', email: 'notar@kanzlei.de' },
-    organization: { id: 'org-test-1', name: 'Kanzlei Notariat' },
-    hasActiveOrganization: true,
-    isLoadingSession: false,
-    hasRolePermission: () => true,
-  }),
+  useAuth: () => mockAuthValue,
+  useOptionalAuth: () => mockAuthValue,
 }));
 
 describe('User Journey Integration Suite: Vorgangslebenszyklus & Fehlerbehandlung', () => {

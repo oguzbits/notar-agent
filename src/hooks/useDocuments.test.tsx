@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from
 import { CASE_STATUS } from '@/lib/supabase/repository';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { Dossier } from '@/types/dossier';
-import { useDocuments } from './useDocuments';
+import { useDocuments, useDocument } from './useDocuments';
 
 describe('useDocuments with TanStack Query & MSW', () => {
   const mockDocs = [
@@ -18,7 +18,14 @@ describe('useDocuments with TanStack Query & MSW', () => {
   let currentDocs = [...mockDocs];
 
   const server = setupServer(
-    http.get('/api/documents', () => {
+    http.get('/api/documents', ({ request }) => {
+      const url = new URL(request.url);
+      const id = url.searchParams.get('id');
+      if (id) {
+        const found = currentDocs.find((d) => d.id === id);
+        if (!found) return new HttpResponse(null, { status: 404 });
+        return HttpResponse.json({ document: found });
+      }
       return HttpResponse.json({ documents: currentDocs });
     }),
     http.delete('/api/documents', ({ request }) => {
@@ -196,6 +203,38 @@ describe('useDocuments with TanStack Query & MSW', () => {
 
     await waitFor(() => {
       expect(fetchCalled).toBe(true);
+    });
+  });
+
+  describe('useDocument hook (on-demand detail loading)', () => {
+    it('returns null and does not fetch when documentId is null or undefined', async () => {
+      const { result } = renderHook(() => useDocument(null), { wrapper });
+
+      expect(result.current.document).toBeNull();
+      expect(result.current.isLoadingDocument).toBe(false);
+    });
+
+    it('loads a single document by ID with 200 OK', async () => {
+      const { result } = renderHook(() => useDocument('doc-1'), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingDocument).toBe(false);
+      });
+
+      expect(result.current.document).toBeDefined();
+      expect(result.current.document?.id).toBe('doc-1');
+      expect(result.current.document?.title).toBe('Vorgang 1');
+    });
+
+    it('returns null without throwing when document is not found (404)', async () => {
+      const { result } = renderHook(() => useDocument('non-existing-doc'), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingDocument).toBe(false);
+      });
+
+      expect(result.current.document).toBeNull();
+      expect(result.current.documentError).toBeNull();
     });
   });
 });

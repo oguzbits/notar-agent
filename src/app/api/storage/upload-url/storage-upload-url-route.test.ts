@@ -1,0 +1,88 @@
+import { NextRequest } from 'next/server';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const mockCreateSignedUploadUrl = vi.fn();
+vi.mock('@/lib/storage/storage-service', () => ({
+  createSignedUploadUrl: (...args: unknown[]) => mockCreateSignedUploadUrl(...args),
+}));
+
+const mockGetUser = vi.fn();
+const mockResolveSessionOrganizationId = vi.fn();
+
+vi.mock('@/lib/supabase/server-auth', () => ({
+  createServerAuthClient: vi.fn().mockImplementation(() =>
+    Promise.resolve({
+      auth: { getUser: mockGetUser },
+    })
+  ),
+  resolveSessionOrganizationId: (...args: unknown[]) => mockResolveSessionOrganizationId(...args),
+}));
+
+describe('API Route: POST /api/storage/upload-url', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects unauthenticated requests with 401', async () => {
+    mockResolveSessionOrganizationId.mockResolvedValue(undefined);
+
+    const { POST } = await import('./route');
+    const req = new NextRequest('http://localhost:3000/api/storage/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: 'kaufvertrag.pdf',
+        fileType: 'application/pdf',
+        fileSize: 1024,
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toContain('Nicht authentifiziert');
+  });
+
+  it('rejects invalid request payloads with 400', async () => {
+    mockResolveSessionOrganizationId.mockResolvedValue('550e8400-e29b-41d4-a716-446655440000');
+
+    const { POST } = await import('./route');
+    const req = new NextRequest('http://localhost:3000/api/storage/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: '', // empty
+        fileType: 'application/pdf',
+        fileSize: -10, // invalid size
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  it('creates signed upload URL and returns 201 for valid authenticated request', async () => {
+    const orgId = '550e8400-e29b-41d4-a716-446655440000';
+    mockResolveSessionOrganizationId.mockResolvedValue(orgId);
+    mockCreateSignedUploadUrl.mockResolvedValue({
+      uploadUrl: 'https://storage.example.com/signed-upload',
+      storagePath: `${orgId}/uuid-kaufvertrag.pdf`,
+      token: 'token-abc',
+    });
+
+    const { POST } = await import('./route');
+    const req = new NextRequest('http://localhost:3000/api/storage/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: 'kaufvertrag.pdf',
+        fileType: 'application/pdf',
+        fileSize: 2048500,
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.uploadUrl).toBe('https://storage.example.com/signed-upload');
+    expect(data.storagePath).toBe(`${orgId}/uuid-kaufvertrag.pdf`);
+    expect(mockCreateSignedUploadUrl).toHaveBeenCalled();
+  });
+});

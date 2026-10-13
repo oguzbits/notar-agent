@@ -12,13 +12,13 @@ import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
 import { OrganizationGatewayModal } from '@/components/views/OrganizationGatewayModal';
 import { TeamSettingsModal } from '@/components/views/TeamSettingsModal';
 import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
-import { useDocuments } from '@/hooks/useDocuments';
+import { useDocuments, useDocument } from '@/hooks/useDocuments';
 import { useJobs, useJob } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
 import { normalizeDossier, getDossierFieldsRecord, updateDossierFieldStatus } from '@/lib/dossier';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { useAuth } from '@/providers/AuthProvider';
-import { DocumentRecord } from '@/types/document';
+import { DocumentListItem } from '@/types/document';
 import { FieldStatus, STORAGE_TYPES } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 
@@ -47,7 +47,13 @@ function HomeContent() {
 
   const { currentUser, organization, hasActiveOrganization, isLoadingSession } = useAuth();
 
-  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments();
+  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments(
+    organization?.id
+  );
+  const { document: singleDocument, isLoadingDocument: isLoadingSingleDoc } = useDocument(
+    vorgangParam,
+    organization?.id
+  );
 
   const {
     jobs,
@@ -108,7 +114,7 @@ function HomeContent() {
     }
   }, [completedDossierId, vorgangParam, router]);
 
-  const activeRecord = vorgangParam ? documents.find((d) => d.id === vorgangParam) : null;
+  const activeRecord = singleDocument;
   const rawDisplayedDossier = activeRecord?.content || session.dossier;
   const displayedDossier = rawDisplayedDossier ? normalizeDossier(rawDisplayedDossier) : null;
 
@@ -121,13 +127,11 @@ function HomeContent() {
         : VIEW_MODE.TABLE;
 
   // Navigation Aktionen
-  const handleSelectDocument = (doc: DocumentRecord) => {
-    if (doc.content) {
-      setErrorMessage(null);
-      setEnqueuedJobId(null);
-      actions.selectDocument(doc.id, doc.content, doc.title);
-      router.push(`/?vorgang=${encodeURIComponent(doc.id)}`);
-    }
+  const handleSelectDocument = (doc: DocumentListItem) => {
+    setErrorMessage(null);
+    setEnqueuedJobId(null);
+    actions.resetNewVorgang();
+    router.push(`/?vorgang=${encodeURIComponent(doc.id)}`);
   };
 
   const handleSelectJob = (job: DossierJob) => {
@@ -279,7 +283,7 @@ function HomeContent() {
                 : effectiveView === VIEW_MODE.JOB
                   ? activeJob?.payload.notes?.slice(0, 40) || 'Vorgang in Prüfung'
                   : displayedDossier?.caseTitle ||
-                    (isLoadingDocs || isLoadingSession
+                    (isLoadingSingleDoc || isLoadingSession
                       ? 'Vorgang wird geladen...'
                       : 'Urkunden-Zuarbeit')}
             </span>
@@ -381,7 +385,7 @@ function HomeContent() {
               errorMessage={errorMessage}
               onClearError={() => setErrorMessage(null)}
             />
-          ) : isLoadingDocs || isLoadingSession ? (
+          ) : isLoadingSingleDoc || isLoadingSession ? (
             <div
               className="animate-pulse space-y-6"
               aria-busy="true"

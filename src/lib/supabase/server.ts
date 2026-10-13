@@ -13,6 +13,7 @@ import {
   IDossierRepository,
   SupabaseDossierRepository,
   DocumentRecord,
+  DocumentListItem,
   CaseStatus,
   PersistenceResult,
   UpdateResult,
@@ -23,6 +24,7 @@ import {
 
 export type {
   DocumentRecord,
+  DocumentListItem,
   CaseStatus,
   PersistenceResult,
   UpdateResult,
@@ -111,7 +113,7 @@ export function getWorkflowRepository(
 export async function fetchDossierRecords(
   organizationId?: string,
   client?: SupabaseClient<Database> | null
-): Promise<DocumentRecord[]> {
+): Promise<DocumentListItem[]> {
   return getDossierRepository(client).list(organizationId);
 }
 

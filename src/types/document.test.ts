@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CASE_STATUS,
   CaseStatusSchema,
+  DocumentListItemSchema,
   DocumentRecordSchema,
   DocumentParsedContentSchema,
 } from './document';
@@ -18,6 +19,37 @@ describe('Document Domain Contract & Schemas', () => {
     expect(CaseStatusSchema.safeParse(CASE_STATUS.IN_PROGRESS).success).toBe(true);
     expect(CaseStatusSchema.safeParse(CASE_STATUS.DRAFT_READY).success).toBe(true);
     expect(CaseStatusSchema.safeParse('Unbekannt').success).toBe(false);
+  });
+
+  it('validates DocumentListItemSchema structure for lightweight projections', () => {
+    const validListItem = {
+      id: 'doc-123',
+      title: 'Muster-Kaufvertrag',
+      status: CASE_STATUS.IN_PROGRESS,
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      organizationId: '550e8400-e29b-41d4-a716-446655440000',
+    };
+
+    const parsed = DocumentListItemSchema.safeParse(validListItem);
+    expect(parsed.success).toBe(true);
+
+    const withoutOptionalFields = {
+      id: 'doc-456',
+      title: 'Ohne CaseType',
+      status: CASE_STATUS.DRAFT_READY,
+      created_at: new Date().toISOString(),
+    };
+    expect(DocumentListItemSchema.safeParse(withoutOptionalFields).success).toBe(true);
+
+    const invalid = {
+      id: '',
+      title: 'Invalid',
+      status: CASE_STATUS.IN_PROGRESS,
+      created_at: new Date().toISOString(),
+    };
+    expect(DocumentListItemSchema.safeParse(invalid).success).toBe(false);
   });
 
   it('validates DocumentRecordSchema structure', () => {

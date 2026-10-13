@@ -10,9 +10,11 @@ import {
   Plus,
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
-import { validateFiles, prepareFiles } from '@/lib/files/file-preparer';
+import { validateFiles } from '@/lib/files/file-preparer';
 import { getSupportedUploadAcceptString } from '@/lib/files/file-types';
+import { uploadFilesDirectly } from '@/lib/files/storage-uploader';
 import { cn } from '@/lib/utils';
+import { useOptionalAuth } from '@/providers/AuthProvider';
 import { UploadedFilePayload } from '@/types/dossier';
 
 interface UploadZoneProps {
@@ -30,6 +32,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   onNotesChange,
   isAnalyzing,
 }) => {
+  const auth = useOptionalAuth();
   const [dragOver, setDragOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -74,7 +77,9 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
     setIsPreparing(true);
     try {
-      const prepared = await prepareFiles(files);
+      const prepared = await uploadFilesDirectly(files, {
+        organizationId: auth?.organization?.id,
+      });
       onFilesReady(prepared);
     } catch (err) {
       console.warn('Fehler beim Einlesen einzelner Dateien:', err);
