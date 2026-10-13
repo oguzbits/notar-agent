@@ -51,4 +51,35 @@ describe('NewVorgangUploadView Component', () => {
       expect(firstCall[0].length).toBeGreaterThan(0);
     }
   });
+
+  it('displays staged files when passed in files prop', () => {
+    const stagedFiles = [
+      {
+        name: 'Kaufvertragsentwurf_Muster.txt',
+        type: 'text/plain',
+        size: 2048,
+        content: 'Musterinhalt',
+        isBase64: false,
+      },
+    ];
+
+    render(
+      <NewVorgangUploadView
+        files={stagedFiles}
+        onFilesChange={vi.fn()}
+        notes="Notiz"
+        onNotesChange={vi.fn()}
+        errorMessage={null}
+        onClearError={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Kaufvertragsentwurf_Muster.txt')).toBeDefined();
+    expect(screen.getByText(/Ausgewählte Dokumente \(1\)/)).toBeDefined();
+    const submitButton = screen.getByRole('button', {
+      name: 'Unterlagen prüfen',
+    }) as HTMLButtonElement;
+    expect(submitButton.disabled).toBe(false);
+  });
 });

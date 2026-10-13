@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { UploadedFilePayload } from '@/types/dossier';
 
 interface UploadZoneProps {
+  files?: UploadedFilePayload[];
   onFilesReady: (files: UploadedFilePayload[]) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
@@ -23,6 +24,7 @@ interface UploadZoneProps {
 }
 
 export const UploadZone: React.FC<UploadZoneProps> = ({
+  files,
   onFilesReady,
   notes,
   onNotesChange,
@@ -33,6 +35,8 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   const [parseError, setParseError] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const displayedItems = files !== undefined ? files : selectedFiles;
 
   const handleFilesAdded = async (filesToAdd: FileList | File[]) => {
     setParseError(null);
@@ -50,6 +54,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   };
 
   const removeFile = async (index: number) => {
+    if (files !== undefined) {
+      const updated = files.filter((_, i) => i !== index);
+      onFilesReady(updated);
+      setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+      return;
+    }
+
     const updated = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(updated);
     await processAndDispatchFiles(updated);
@@ -161,13 +172,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       )}
 
       {/* Dateiliste */}
-      {selectedFiles.length > 0 && (
+      {displayedItems.length > 0 && (
         <div className="space-y-2">
           <div className="text-foreground flex items-center justify-between text-sm font-semibold">
-            <span>Ausgewählte Dokumente ({selectedFiles.length}):</span>
+            <span>Ausgewählte Dokumente ({displayedItems.length}):</span>
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3">
-            {selectedFiles.map((file, idx) => {
+            {displayedItems.map((file, idx) => {
               const isImg = file.type.startsWith('image/');
               return (
                 <div

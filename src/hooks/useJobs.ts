@@ -166,10 +166,15 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
   };
 }
 
-export const jobDetailQueryKey = (jobId: string) => ['jobs', jobId] as const;
+export const jobDetailQueryKey = (jobId: string, organizationId?: string) =>
+  organizationId ? (['jobs', jobId, organizationId] as const) : (['jobs', jobId] as const);
 
-async function fetchJobById(jobId: string): Promise<DossierJob | null> {
-  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`);
+async function fetchJobById(jobId: string, organizationId?: string): Promise<DossierJob | null> {
+  const headers: Record<string, string> = {};
+  if (organizationId) {
+    headers['x-organization-id'] = organizationId;
+  }
+  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { headers });
   if (!res.ok) {
     if (res.status === 404) return null;
     throw new Error(`Job '${jobId}' konnte nicht geladen werden`);
@@ -177,7 +182,7 @@ async function fetchJobById(jobId: string): Promise<DossierJob | null> {
   return (await res.json()) as DossierJob;
 }
 
-export function useJob(jobId: string | null | undefined) {
+export function useJob(jobId: string | null | undefined, organizationId?: string) {
   const queryClient = useQueryClient();
   const previousStatus = useRef<string | null>(null);
 
@@ -187,8 +192,8 @@ export function useJob(jobId: string | null | undefined) {
     error,
     refetch,
   } = useQuery({
-    queryKey: jobId ? jobDetailQueryKey(jobId) : ['jobs', 'disabled'],
-    queryFn: () => (jobId ? fetchJobById(jobId) : Promise.resolve(null)),
+    queryKey: jobId ? jobDetailQueryKey(jobId, organizationId) : ['jobs', 'disabled'],
+    queryFn: () => (jobId ? fetchJobById(jobId, organizationId) : Promise.resolve(null)),
     enabled: !!jobId,
     refetchInterval: (query) => {
       const currentJob = query.state.data;

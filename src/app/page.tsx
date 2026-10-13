@@ -40,6 +40,11 @@ function HomeContent() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
 
+  // Optimistischer Transitions-State für neu gestartete Jobs (verhindert Wartezeiten bis zum Router-Query-Param-Update)
+  const [enqueuedJobId, setEnqueuedJobId] = useState<string | null>(null);
+
+  const effectiveJobId = enqueuedJobId || jobParam;
+
   const { currentUser, organization, hasActiveOrganization, isLoadingSession } = useAuth();
 
   const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments(
@@ -61,7 +66,10 @@ function HomeContent() {
     isLoadingJobs,
   } = useJobs(organization?.id, { enabled: !isLoadingSession });
 
-  const { job: singleJob, isLoading: isLoadingSingleJob } = useJob(jobParam);
+  const { job: singleJob, isLoading: isLoadingSingleJob } = useJob(
+    effectiveJobId,
+    organization?.id
+  );
   const {
     isAnalyzing,
     activeStep,
@@ -74,12 +82,13 @@ function HomeContent() {
   const { state: session, actions } = useVorgangSession();
 
   // Selektierten Job bzw. Datensatz auflösen
-  const activeJobFromQuery = (jobParam ? jobs.find((j) => j.id === jobParam) : null) || singleJob;
+  const activeJobFromQuery =
+    (effectiveJobId ? jobs.find((j) => j.id === effectiveJobId) : null) || singleJob;
   const activeJob =
     activeJobFromQuery ||
-    (jobParam
+    (effectiveJobId
       ? {
-          id: jobParam,
+          id: effectiveJobId,
           status: JOB_STATUS.PENDING,
           stage: JOB_STAGES.QUEUED,
           progressDetails: {
@@ -95,7 +104,7 @@ function HomeContent() {
         }
       : null);
 
-  // Wenn der aufgerufene Job fertiggestellt wurde, direkt auf das erzeugte Vorgangs-Dossier weiterleiten (im Effect, nicht während des Render-Durchlaufs)
+  // Wenn der aufgerufene Job fertiggestellt wurde, direkt auf das erzeugte Vorgangs-Dossier weiterleiten
   const completedDossierId = activeJobFromQuery?.resultDossierId;
   useEffect(() => {
     if (completedDossierId && vorgangParam !== completedDossierId) {
@@ -109,7 +118,7 @@ function HomeContent() {
 
   const effectiveView: ViewMode = vorgangParam
     ? VIEW_MODE.DETAIL
-    : jobParam
+    : effectiveJobId
       ? VIEW_MODE.JOB
       : viewParam === VIEW_MODE.UPLOAD
         ? VIEW_MODE.UPLOAD
@@ -119,6 +128,7 @@ function HomeContent() {
   const handleSelectDocument = (doc: DocumentRecord) => {
     if (doc.content) {
       setErrorMessage(null);
+      setEnqueuedJobId(null);
       actions.selectDocument(doc.id, doc.content, doc.title);
       router.push(`/?vorgang=${encodeURIComponent(doc.id)}`);
     }
@@ -126,6 +136,7 @@ function HomeContent() {
 
   const handleSelectJob = (job: DossierJob) => {
     setErrorMessage(null);
+    setEnqueuedJobId(null);
     router.push(`/?job=${encodeURIComponent(job.id)}`);
   };
 
@@ -134,6 +145,7 @@ function HomeContent() {
       setIsGatewayModalOpen(true);
       return;
     }
+    setEnqueuedJobId(null);
     actions.resetNewVorgang();
     setErrorMessage(null);
     router.push('/?view=upload');
@@ -144,6 +156,7 @@ function HomeContent() {
   };
 
   const handleBackToTable = () => {
+    setEnqueuedJobId(null);
     actions.resetNewVorgang();
     setErrorMessage(null);
     router.push('/');
@@ -153,6 +166,7 @@ function HomeContent() {
   const handleStartAnalysis = async () => {
     try {
       await startAsyncAnalysis(session.files, session.caseType, session.notes, (jobId) => {
+        setEnqueuedJobId(jobId);
         loadJobs();
         router.push(`/?job=${encodeURIComponent(jobId)}`);
       });

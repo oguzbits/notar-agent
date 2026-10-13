@@ -172,6 +172,24 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
     expect(result.current.job?.resultDossierId).toBe('dossier-456');
   });
 
+  it('forwards x-organization-id header in useJob when organizationId is provided', async () => {
+    let capturedHeader: string | null = null;
+    server.use(
+      http.get('/api/jobs/job-org-1', ({ request }) => {
+        capturedHeader = request.headers.get('x-organization-id');
+        return HttpResponse.json({ ...sampleJob, id: 'job-org-1' });
+      })
+    );
+
+    const { result } = renderHook(() => useJob('job-org-1', 'org-uuid-999'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.job).not.toBeNull();
+    });
+
+    expect(capturedHeader).toBe('org-uuid-999');
+  });
+
   it('invalidates documents query when single job completes', async () => {
     let jobStatus: string = JOB_STATUS.PROCESSING;
     server.use(

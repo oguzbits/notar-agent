@@ -146,6 +146,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
           )}
 
           <UploadZone
+            files={appendFiles}
             onFilesReady={onAppendFilesChange}
             notes={appendNotes}
             onNotesChange={onAppendNotesChange}

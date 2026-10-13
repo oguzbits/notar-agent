@@ -57,6 +57,7 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
       )}
 
       <UploadZone
+        files={files}
         onFilesReady={onFilesChange}
         notes={notes}
         onNotesChange={onNotesChange}
