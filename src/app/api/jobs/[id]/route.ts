@@ -3,6 +3,8 @@ import { getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { JOB_STATUS } from '@/types/jobs';
 
+export const dynamic = 'force-dynamic';
+
 type TargetJobResult =
   | { success: false; errorResponse: NextResponse<{ error: string }> }
   | {

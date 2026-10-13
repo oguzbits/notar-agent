@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     inviteMember: apiInvite,
   } = useTeam();
 
-  // Reale Supabase SSR Session laden
+  // Reale Supabase SSR Session laden (30s staleTime für Deduping bei Klickfolgen ohne lange Rechte-Latenz)
   const { data: sessionData, isLoading: isLoadingSession } = useQuery({
     queryKey: AUTH_SESSION_QUERY_KEY,
     queryFn: fetchAuthSession,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     retry: false,
   });
 
