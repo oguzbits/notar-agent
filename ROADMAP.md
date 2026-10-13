@@ -64,7 +64,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
     - [ ] Reciprocal Rank Fusion (RRF) Scorer zur deterministischen Zusammenführung vor Modell-Injektion
 - [ ] **B.9 k6 API- & Supabase-Lasttest-Suite:**
   - _(Detaillierte Spezifikation und Aufgabenplan in [BACKLOG.md §18](./BACKLOG.md#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing) hinterlegt)_
-- [ ] **B.10 Enterprise Ingestion, Supabase Object Storage & System-Härtung:**
+- [x] **B.10 Enterprise Ingestion, Supabase Object Storage & System-Härtung:**
   - [x] **B.10.1 Supabase Object Storage (`dossier-files`) & Zero-Base64-Postgres:**
     - Privater, RLS-gesicherter Bucket `dossier-files` (Mandantentrennung nach `organization_id`)
     - Direkter Browser-to-Storage Upload (Überwindung des 4,5-MB-Vercel-Limits für Großakten > 50 Seiten)
@@ -77,9 +77,9 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
     - [x] Schlanke Tabellen-Projektion für Dokumente (Metadaten-Only für die Tabelle, Detail-Dossier on demand)
   - [x] **B.10.4 2-Stufen-Job-Chunking für Serverless-Resilienz (60s-Budget-Schutz):**
     - Sequentielle Abwicklung von Stufe 1 (Extraktion) und Stufe 2 (Auditor) über `dossier_jobs.stage` & `dossier_jobs.payload.stage1Output` mit jeweils eigenem 60s-Laufzeitbudget
-  - [ ] **B.10.5 Code-Komplexitäts-Entflechtung & Deep Modules:**
-    - [x] Zerlegung von `verifiable-fact-checker.ts` (Komplexität von 51 auf < 25 gesenkt via `number-verifier.ts` und `source-document-resolver.ts`)
-    - [ ] Verlagerung juristischer Prüfnormen aus `domain-guardrails.ts` in die deklarative `knowledge_documents`-Tabelle gem. `AGENTS.md`
+  - [x] **B.10.5 Code-Komplexitäts-Entflechtung & Deep Modules:**
+    - [x] Zerlegung von `verifiable-fact-checker.ts` (Komplexität von 51 auf < 20 gesenkt via `number-verifier.ts` und `source-document-resolver.ts`)
+    - [x] Modulare Entflechtung von `domain-guardrails.ts` (Komplexität von 36 auf < 10 gesenkt via `party-guardrails.ts` und `arithmetic-guardrails.ts`), Ausrichtung an deklarativen `knowledge_documents`-Prüfnormen gem. `AGENTS.md`
 
 ### Phase C: Enterprise Compliance & Ökosystem
 
