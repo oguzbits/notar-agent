@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: sessionData, isLoading: isLoadingSession } = useQuery({
     queryKey: AUTH_SESSION_QUERY_KEY,
     queryFn: fetchAuthSession,
-    staleTime: 0,
+    staleTime: 5 * 60 * 1000,
     retry: false,
   });
 

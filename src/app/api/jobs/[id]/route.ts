@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
+import { JOB_STATUS } from '@/types/jobs';
 
 type TargetJobResult =
   | { success: false; errorResponse: NextResponse<{ error: string }> }
@@ -31,7 +32,7 @@ async function resolveTargetJob(
     undefined;
   const orgId = await resolveSessionOrganizationId(authSupabase, tenantOrg);
   const repo = getJobRepository(authSupabase);
-  const job = await repo.getJobById(id, orgId);
+  let job = await repo.getJobById(id, orgId);
 
   if (!job) {
     return {
@@ -41,6 +42,25 @@ async function resolveTargetJob(
         { status: 404 }
       ),
     };
+  }
+
+  // Zombie-/Stale-Job Erkennung: Falls ein PROCESSING- oder PENDING-Job seit > 3 Minuten keine Aktivität zeigte
+  const leaseTimeoutMs = 3 * 60 * 1000;
+  if (job.status === JOB_STATUS.PROCESSING || job.status === JOB_STATUS.PENDING) {
+    const lastActiveIso = job.lockedAt || job.updatedAt || job.createdAt;
+    const lastActiveMs = lastActiveIso ? new Date(lastActiveIso).getTime() : 0;
+    const isStale = Date.now() - lastActiveMs > leaseTimeoutMs;
+
+    if (isStale) {
+      const updatedJob = await repo.updateJobStatus(id, {
+        status: JOB_STATUS.FAILED,
+        errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
+        lockedAt: undefined,
+      });
+      if (updatedJob) {
+        job = updatedJob;
+      }
+    }
   }
 
   return { success: true, id, job, repo, orgId };

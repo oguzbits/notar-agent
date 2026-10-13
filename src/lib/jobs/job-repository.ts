@@ -163,10 +163,27 @@ export class SupabaseJobRepository implements IJobRepository {
 
     const data = await executeList(query.order('created_at', { ascending: false }), 'listJobs');
 
-    return data.map((row) => this.mapRowToJob(row));
+    return data.map((row) => this.mapRowToJob(row, { lightweight: true }));
   }
 
-  private mapRowToJob(row: Record<string, unknown>): DossierJob {
+  private mapRowToJob(
+    row: Record<string, unknown>,
+    options?: { lightweight?: boolean }
+  ): DossierJob {
+    const rawPayload = row.payload as CreateJobPayload | undefined;
+    const sanitizedPayload: CreateJobPayload =
+      options?.lightweight && rawPayload
+        ? {
+            ...rawPayload,
+            files: (rawPayload.files || []).map(({ name, size, type, isBase64 }) => ({
+              name,
+              size,
+              type,
+              isBase64,
+            })),
+          }
+        : (rawPayload as CreateJobPayload);
+
     return {
       id: String(row.id),
       organizationId: row.organization_id ? String(row.organization_id) : undefined,
@@ -175,7 +192,7 @@ export class SupabaseJobRepository implements IJobRepository {
       progressDetails: row.progress_details
         ? (row.progress_details as JobProgressDetails)
         : undefined,
-      payload: row.payload as CreateJobPayload,
+      payload: sanitizedPayload,
       resultDossierId: row.result_dossier_id ? String(row.result_dossier_id) : undefined,
       errorMessage: row.error_message ? String(row.error_message) : undefined,
       retryCount: Number(row.retry_count ?? 0),
@@ -218,7 +235,7 @@ export class SupabaseJobRepository implements IJobRepository {
     return true;
   }
 
-  async recoverOrphanJobs(leaseTimeoutMs = 5 * 60 * 1000): Promise<DossierJob[]> {
+  async recoverOrphanJobs(leaseTimeoutMs = 3 * 60 * 1000): Promise<DossierJob[]> {
     const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
 
     // 1. Suche nach hängengebliebenen PROCESSING-Jobs (Lease abgelaufen)
@@ -247,17 +264,14 @@ export class SupabaseJobRepository implements IJobRepository {
 
     const recovered: DossierJob[] = [];
 
-    // Verwaiste PROCESSING-Jobs behandeln (Re-queue oder FAILED bei maxRetries)
+    // Verwaiste PROCESSING-Jobs behandeln (Automatischer Abbruch mit klarer Notar-Fehlermeldung)
     for (const row of stuckProcessingJobs ?? []) {
       const job = this.mapRowToJob(row);
       const nextRetry = job.retryCount + 1;
-      const isExhausted = nextRetry >= job.maxRetries;
 
       const updated = await this.updateJobStatus(job.id, {
-        status: isExhausted ? JOB_STATUS.FAILED : JOB_STATUS.PENDING,
-        errorMessage: isExhausted
-          ? 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.'
-          : undefined,
+        status: JOB_STATUS.FAILED,
+        errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
         retryCount: nextRetry,
         lockedAt: undefined,
       });

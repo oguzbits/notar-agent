@@ -48,8 +48,7 @@ function HomeContent() {
   const { currentUser, organization, hasActiveOrganization, isLoadingSession } = useAuth();
 
   const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments(
-    organization?.id,
-    { enabled: !isLoadingSession }
+    organization?.id
   );
 
   const {
@@ -64,7 +63,7 @@ function HomeContent() {
     isDeletingJob,
     loadJobs,
     isLoadingJobs,
-  } = useJobs(organization?.id, { enabled: !isLoadingSession });
+  } = useJobs(organization?.id);
 
   const { job: singleJob, isLoading: isLoadingSingleJob } = useJob(
     effectiveJobId,

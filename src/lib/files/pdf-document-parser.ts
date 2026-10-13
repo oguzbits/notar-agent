@@ -166,13 +166,22 @@ export async function parsePdfNativeStreamFallback(
 
 /**
  * Universeller PDF-Parser für notarielle Akten und Scans.
- * Nutzt primär Google Gemini Vision (gemini-3.1-flash-lite) für bit- und tabellengenaue Transkription
- * und fällt bei fehlenden Keys oder im Offline-Modus transparent auf den nativen Stream-Parser zurück.
+ * Prüft primär in wenigen Millisekunden den nativen digitalen Textlayer (100% Zeichengenauigkeit).
+ * Fällt ausschließlich bei reinen Bild-Scans ohne Textlayer transparent auf Google Gemini Vision (OCR) zurück.
  */
 export async function parsePdfDocument(
   buffer: Buffer | Uint8Array,
   _options: ParsePdfDocumentOptions = {}
 ): Promise<DocumentParsedContent> {
+  // 1. Zuerst ultraschneller nativer Textlayer-Check (< 5ms):
+  // Wenn digitaler Text mit echtem Inhalt vorliegt, sofort verwenden (verhindert 30s unnötige OCR-Latenz)
+  const nativeResult = await parsePdfNativeStreamFallback(buffer);
+  if (nativeResult.hasTextLayer && nativeResult.characterCount >= 30) {
+    return nativeResult;
+  }
+
+  // 2. Nur wenn kein digitaler Text vorliegt (reiner Scan) und ein API-Key konfiguriert ist:
+  // Führe visuelle OCR-Transkription via Gemini Vision durch
   const hasGeminiKey = Boolean(
     process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
   );
@@ -185,11 +194,11 @@ export async function parsePdfDocument(
       }
     } catch (err: unknown) {
       console.warn(
-        '[pdf-document-parser] Gemini-Vision Parsing fehlgeschlagen. Aktiviere nativen Stream-Fallback:',
+        '[pdf-document-parser] Gemini-Vision OCR für Scan fehlgeschlagen. Nutze nativen Fallback:',
         err
       );
     }
   }
 
-  return parsePdfNativeStreamFallback(buffer);
+  return nativeResult;
 }

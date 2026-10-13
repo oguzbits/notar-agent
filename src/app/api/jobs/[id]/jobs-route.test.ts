@@ -64,6 +64,29 @@ describe('API Route: GET /api/jobs/[id]', () => {
     expect(data.progressDetails?.currentActivity).toBe('Beteiligte extrahieren...');
   });
 
+  it('automatically transitions stale PROCESSING job to FAILED when lease expired', async () => {
+    const job = await repo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [],
+      notes: 'Hängengebliebener Job',
+    });
+
+    const fourMinutesAgoIso = new Date(Date.now() - 4 * 60 * 1000).toISOString();
+    await repo.updateJobStatus(job.id, {
+      status: JOB_STATUS.PROCESSING,
+      lockedAt: fourMinutesAgoIso,
+    });
+
+    const req = new NextRequest(`http://localhost:3000/api/jobs/${job.id}`);
+    const res = await GET(req, { params: Promise.resolve({ id: job.id }) });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.id).toBe(job.id);
+    expect(data.status).toBe(JOB_STATUS.FAILED);
+    expect(data.errorMessage).toBe('Verarbeitung unterbrochen. Bitte Vorgang erneut starten.');
+  });
+
   describe('DELETE /api/jobs/[id]', () => {
     it('returns 404 when job to delete is not found', async () => {
       const req = new NextRequest('http://localhost:3000/api/jobs/missing-id', {

@@ -46,7 +46,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     const orphanSpy = vi.spyOn(repo, 'recoverOrphanJobs');
     const res = await GET();
     expect(res.status).toBe(200);
-    expect(orphanSpy).toHaveBeenCalledWith(10 * 60 * 1000);
+    expect(orphanSpy).toHaveBeenCalledWith(3 * 60 * 1000);
   });
 
   it('POST /api/jobs retries a failed job', async () => {
