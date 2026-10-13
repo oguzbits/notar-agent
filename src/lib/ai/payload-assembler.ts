@@ -3,6 +3,7 @@ import {
   formatTriageManifestForPrompt,
   triageDocument,
 } from '@/lib/files/document-triage';
+import { routeAndWindowDocument } from '@/lib/files/document-windowing';
 import { parseDocxDocument, DocxExtractedImage } from '@/lib/files/docx-document-parser';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
@@ -19,6 +20,7 @@ import {
 export interface AssembledFilePayload extends UploadedFilePayload {
   streamType?: PdfStreamType;
   extractedText?: string;
+  pageCount?: number;
 }
 export type { UploadedFilePayload };
 
@@ -166,6 +168,7 @@ ${notesSection}${
       const assembledFile = file as Partial<AssembledFilePayload>;
       let streamType: PdfStreamType = assembledFile.streamType || PDF_STREAM_TYPES.SCANNED_IMAGE;
       let extractedText: string | undefined = assembledFile.extractedText;
+      let detectedPageCount: number | undefined = assembledFile.pageCount;
       let parsedImages: NonNullable<DocumentParsedContent['extractedImages']> = [];
       let parsedScreenshots: NonNullable<DocumentParsedContent['pageScreenshots']> = [];
 
@@ -176,6 +179,8 @@ ${notesSection}${
             extractImages: true,
             extractScreenshots: true,
           });
+
+          detectedPageCount = parsedDoc.totalPages;
 
           if (parsedDoc.hasTextLayer && parsedDoc.characterCount > 0) {
             extractedText = parsedDoc.markdown;
@@ -201,6 +206,12 @@ ${notesSection}${
           );
         }
       }
+
+      const triage = triageDocument({
+        fileName: file.name,
+        textContent: extractedText || '',
+      });
+      triageList.push(triage);
 
       // ADAPTIVE MULTIMODAL INGESTION:
       // 1. Unicode-Textlayer mit Layout-Strukturierung (Markdown-Tabellen, Klauseln) injizieren
@@ -229,10 +240,27 @@ ${notesSection}${
 
         const sanitized = sanitizeXmlDocumentContent(markdownContent);
 
-        filePromptParts.push({
-          type: 'text',
-          text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="unicode-textlayer"${layoutAttr}>\n<!-- DIREKTER UNICODE-TEXTLAYER AUS "${file.name}"${headerInfo} -->\n${sanitized}\n</document>`,
+        // B.8.4: Triage-gestütztes Routing & Windowing für Mega-Akten (> 150 Seiten)
+        const routed = routeAndWindowDocument({
+          fileName: file.name,
+          documentType: triage.documentType,
+          content: sanitized,
+          pageCount: detectedPageCount,
         });
+
+        if (routed.isWindowed) {
+          for (const win of routed.windows) {
+            filePromptParts.push({
+              type: 'text',
+              text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="unicode-textlayer" window="${win.windowIndex}/${win.totalWindows}"${layoutAttr}>\n<!-- DIREKTER UNICODE-TEXTLAYER AUS "${file.name}" (${win.label})${headerInfo} -->\n${win.content}\n</document>`,
+            });
+          }
+        } else {
+          filePromptParts.push({
+            type: 'text',
+            text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="unicode-textlayer"${layoutAttr}>\n<!-- DIREKTER UNICODE-TEXTLAYER AUS "${file.name}"${headerInfo} -->\n${sanitized}\n</document>`,
+          });
+        }
       }
 
       // 2. Multimodale Übergabe:
@@ -287,13 +315,6 @@ ${notesSection}${
           text: `<document-meta filename="${escapeXmlAttr(file.name)}" type="application/pdf" mode="${streamType}" embedded-graphics="${parsedImages.length}">\n[PDF-Dokument: "${file.name}" erfolgreich verarbeitet | Modus: ${streamType} | Eingebettete Grafiken: ${parsedImages.length}]\n</document-meta>`,
         });
       }
-
-      triageList.push(
-        triageDocument({
-          fileName: file.name,
-          textContent: extractedText || '',
-        })
-      );
     } else if (isDocx && hasSource) {
       let docxMarkdown = '';
       let docxImages: DocxExtractedImage[] = [];

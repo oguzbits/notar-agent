@@ -7,6 +7,8 @@ export const AUDIT_ACTIONS = {
   USER_STATUS_OVERRIDE: 'USER_STATUS_OVERRIDE',
   USER_NOTE_MODIFIED: 'USER_NOTE_MODIFIED',
   DOSSIER_APPENDED: 'DOSSIER_APPENDED',
+  DOSSIER_ARCHIVED: 'DOSSIER_ARCHIVED',
+  DOSSIER_RESTORED: 'DOSSIER_RESTORED',
   WORKFLOW_STEP_COMPLETED: 'WORKFLOW_STEP_COMPLETED',
   WORKFLOW_TRANSITION_TRIGGERED: 'WORKFLOW_TRANSITION_TRIGGERED',
 } as const;
@@ -17,6 +19,8 @@ export const AuditActionSchema = z.enum([
   AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
   AUDIT_ACTIONS.USER_NOTE_MODIFIED,
   AUDIT_ACTIONS.DOSSIER_APPENDED,
+  AUDIT_ACTIONS.DOSSIER_ARCHIVED,
+  AUDIT_ACTIONS.DOSSIER_RESTORED,
   AUDIT_ACTIONS.WORKFLOW_STEP_COMPLETED,
   AUDIT_ACTIONS.WORKFLOW_TRANSITION_TRIGGERED,
 ]);
@@ -41,10 +45,18 @@ export const AuditOverrideDetailsSchema = z.object({
 });
 export type AuditOverrideDetails = z.infer<typeof AuditOverrideDetailsSchema>;
 
+export const AuditArchiveDetailsSchema = z.object({
+  archiveStoragePath: z.string(),
+  checksum: z.string(),
+  vectorCount: z.number().int().nonnegative(),
+});
+export type AuditArchiveDetails = z.infer<typeof AuditArchiveDetailsSchema>;
+
 export const AuditLogDetailsSchema = z
   .object({
     override: AuditOverrideDetailsSchema.optional(),
     sourceFingerprints: z.array(AuditSourceFingerprintSchema).optional(),
+    archive: AuditArchiveDetailsSchema.optional(),
     note: z.string().optional(),
     caseTitle: z.string().optional(),
     actorRole: z.string().optional(),

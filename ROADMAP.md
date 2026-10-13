@@ -43,25 +43,25 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 
 ### Phase B: Serverless Ingestion & Lasttests
 
-- [ ] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, Dual-Stream):**
-  - [ ] **B.8.1 Robuste 2-Stufen-Architektur & Flache Sub-Schemas:**
-    - [ ] Bewahrung der erprobten 2-Stufen-Architektur (Stufe 1 Extraktion $\rightarrow$ deterministischer Fact-Checker $\rightarrow$ Stufe 2 Auditor & Reconciler)
-    - [ ] **Schutz vor Thinking Degradation & Datenverlust:** Keine künstlichen Tool-Loops; Beibehaltung des bewährten „Reasoning-First“-Ansatzes vor der Zod-Normalisierung
-    - [ ] Modulare, flache Validierungsschemas pro Dokumenttyp (z. B. Grundbuch, Energieausweis, Mietliste)
-  - [ ] **B.8.3 Native Dual-Stream Vision-Fusion (Serverless & Zero Cold Start):**
-    - [ ] 100 % Serverless-Kompatibilität auf Vercel + Supabase (Verzicht auf schwere Python/PyTorch-Container wie Docling)
-    - [ ] Verlustfreier nativer Node.js Stream-Layer für digitale Textseiten (0 ms Kaltstart, 0 € Serverkosten) kombiniert mit Gemini Vision (`gemini-3.1-flash-lite`) für komplexe Tabellen, Siegel und Handschriften
-  - [ ] **B.8.4 Triage-gestütztes Dokumenten-Routing bei Großakten:**
-    - [ ] Standardakten (bis 80 Seiten) verbleiben im vollen globalen Kontext, um alle Querverweise (z. B. Vollmachten in Anlagen) zu sichern
-    - [ ] Selektives Dokumenten-Windowing ausschließlich als Schutzmechanismus für extrem umfangreiche Archivbände (> 150 Seiten)
-  - [ ] **B.8.5 Akten- & Namespace-basierte Isolation (Archiv-Tiering & Cold-Data-Schutz):**
-    - [ ] _(Architektur-Baseline: Legora & turbopuffer – Vermeidung von RAM-Thrashing und monolithischen HNSW-Clustern)_
-    - [ ] Dossier-basierte Namespaces: Trennung aktiver Bearbeitungskontexte von ruhenden Mandantenarchiven (Zero Cache-Pollution in PostgreSQL pgvector)
-    - [ ] Lifecycle & Storage-Tiering: Automatischer Export ruhender Akten-Vektoren und Chunks in verschlüsselten Supabase Object Storage nach Beurkundungsvollzug (§ 17 BeurkG)
-  - [ ] **B.8.6 Deterministische Hybrid-Suche (BM25 + pgvector mit RRF):**
-    - [ ] Lexikalische Volltext- und Trigram-Suche (`tsvector` / `pg_trgm`) für exakte Ziffernfolgen (Flurstücke, Gemarkungen, Aktenzeichen, Kaufpreise)
-    - [ ] Semantische Vektorsuche (`pgvector`) für juristische Klauselbedeutungen
-    - [ ] Reciprocal Rank Fusion (RRF) Scorer zur deterministischen Zusammenführung vor Modell-Injektion
+- [x] **B.8 Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK, Dual-Stream):**
+  - [x] **B.8.1 Robuste 2-Stufen-Architektur & Flache Sub-Schemas:**
+    - [x] Bewahrung der erprobten 2-Stufen-Architektur (Stufe 1 Extraktion $\rightarrow$ deterministischer Fact-Checker $\rightarrow$ Stufe 2 Auditor & Reconciler)
+    - [x] **Schutz vor Thinking Degradation & Datenverlust:** Keine künstlichen Tool-Loops; Beibehaltung des bewährten „Reasoning-First“-Ansatzes vor der Zod-Normalisierung
+    - [x] Modulare, flache Validierungsschemas pro Dokumenttyp (z. B. Grundbuch, Energieausweis, Mietliste)
+  - [x] **B.8.3 Native Dual-Stream Vision-Fusion (Serverless & Zero Cold Start):**
+    - [x] 100 % Serverless-Kompatibilität auf Vercel + Supabase (Verzicht auf schwere Python/PyTorch-Container wie Docling)
+    - [x] Verlustfreier nativer Node.js Stream-Layer für digitale Textseiten (0 ms Kaltstart, 0 € Serverkosten) kombiniert mit Gemini Vision (`gemini-3.1-flash-lite`) für komplexe Tabellen, Siegel und Handschriften
+  - [x] **B.8.4 Triage-gestütztes Dokumenten-Routing bei Großakten:**
+    - [x] Standardakten (bis 80 Seiten) verbleiben im vollen globalen Kontext, um alle Querverweise (z. B. Vollmachten in Anlagen) zu sichern
+    - [x] Selektives Dokumenten-Windowing ausschließlich als Schutzmechanismus für extrem umfangreiche Archivbände (> 150 Seiten)
+  - [x] **B.8.5 Akten- & Namespace-basierte Isolation (Archiv-Tiering & Cold-Data-Schutz):**
+    - [x] _(Architektur-Baseline: Legora & turbopuffer – Vermeidung von RAM-Thrashing und monolithischen HNSW-Clustern)_
+    - [x] Dossier-basierte Namespaces: Trennung aktiver Bearbeitungskontexte von ruhenden Mandantenarchiven (Zero Cache-Pollution in PostgreSQL pgvector)
+    - [x] Lifecycle & Storage-Tiering: Automatischer Export ruhender Akten-Vektoren und Chunks in verschlüsselten Supabase Object Storage nach Beurkundungsvollzug (§ 17 BeurkG)
+  - [x] **B.8.6 Deterministische Hybrid-Suche (BM25 + pgvector mit RRF):**
+    - [x] Lexikalische Volltext- und Trigram-Suche (`tsvector` / `pg_trgm`) für exakte Ziffernfolgen (Flurstücke, Gemarkungen, Aktenzeichen, Kaufpreise)
+    - [x] Semantische Vektorsuche (`pgvector`) für juristische Klauselbedeutungen
+    - [x] Reciprocal Rank Fusion (RRF) Scorer zur deterministischen Zusammenführung vor Modell-Injektion
 - [ ] **B.9 k6 API- & Supabase-Lasttest-Suite:**
   - _(Detaillierte Spezifikation und Aufgabenplan in [BACKLOG.md §18](./BACKLOG.md#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing) hinterlegt)_
 - [x] **B.10 Enterprise Ingestion, Supabase Object Storage & System-Härtung:**
