@@ -34,7 +34,6 @@ describe('Dossier Archive & Namespace Contracts (src/types/archive.ts)', () => {
       reason: 'Beurkundung vollzogen gem. § 17 BeurkG',
     };
     const res = ArchiveDossierParamsSchema.safeParse(validParams);
-    if (!res.success) console.log('ArchiveDossierParamsSchema Error:', res.error);
     expect(res.success).toBe(true);
 
     const invalidUuid = { ...validParams, organizationId: 'not-a-uuid' };

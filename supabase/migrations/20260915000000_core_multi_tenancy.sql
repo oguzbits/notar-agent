@@ -168,10 +168,9 @@ CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE U
 DROP POLICY IF EXISTS rls_org_members_delete ON public.organization_members;
 CREATE POLICY rls_org_members_delete ON public.organization_members FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
 
--- Documents & Audit Logs & Jobs (Veraltete Prototyp-Policies bereinigen)
+-- Documents & Audit Logs (Veraltete Prototyp-Policies bereinigen)
 DROP POLICY IF EXISTS "Allow all access to documents for prototype" ON documents;
 DROP POLICY IF EXISTS "Allow select audit_logs" ON audit_logs;
-DROP POLICY IF EXISTS "Allow all access to dossier_jobs for prototype" ON dossier_jobs;
 
 DROP POLICY IF EXISTS rls_documents_all ON documents;
 CREATE POLICY rls_documents_all ON documents FOR ALL USING (is_org_member(organization_id)) WITH CHECK (is_org_member(organization_id));

@@ -61,6 +61,7 @@ WHERE status = 'PENDING';
 
 ALTER TABLE dossier_jobs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all access to dossier_jobs for prototype" ON dossier_jobs;
 DROP POLICY IF EXISTS rls_jobs_all ON dossier_jobs;
 CREATE POLICY rls_jobs_all ON dossier_jobs
     FOR ALL

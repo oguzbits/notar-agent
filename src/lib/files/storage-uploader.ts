@@ -57,7 +57,8 @@ export async function uploadFileDirectly(
     };
   } catch (err: unknown) {
     console.warn(
-      `[storage-uploader] Direct-Upload für "${file.name}" fehlgeschlagen. Nutze lokalen Fallback:`,
+      '[storage-uploader] Direct-Upload fehlgeschlagen. Nutze lokalen Fallback für Datei:',
+      file.name,
       err
     );
     const [fallbackPayload] = await prepareFiles([file]);
