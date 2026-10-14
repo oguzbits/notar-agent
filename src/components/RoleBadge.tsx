@@ -46,6 +46,10 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({
     );
   }
 
+  if (!currentUser) {
+    return null;
+  }
+
   const initials = currentUser.name
     .split(' ')
     .map((p) => p[0])

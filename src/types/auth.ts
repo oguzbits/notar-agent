@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { NotaryRoleSchema } from './organization';
+import { DbUuidSchema } from './primitives';
 
 /**
  * Kanonische sicherheits- und freigabekritische Aktionen im Kanzleisystem.
@@ -28,7 +29,7 @@ export type PermissionAction = (typeof PERMISSION_ACTIONS)[keyof typeof PERMISSI
  * Kanzlei-Benutzerprofil für die aktive Session.
  */
 export const KanzleiUserProfileSchema = z.object({
-  id: z.uuid(),
+  id: DbUuidSchema,
   name: z.string().min(1),
   email: z.email(),
   title: z.string().optional(),
@@ -42,9 +43,9 @@ export type KanzleiUserProfile = z.infer<typeof KanzleiUserProfileSchema>;
  * Team-Mitglied für API-Responses und Kanzlei-Listen.
  */
 export const TeamMemberSchema = z.object({
-  id: z.uuid(),
-  organizationId: z.uuid(),
-  userId: z.uuid().nullable().optional(),
+  id: DbUuidSchema,
+  organizationId: DbUuidSchema,
+  userId: DbUuidSchema.nullable().optional(),
   name: z.string().min(1),
   email: z.email(),
   title: z.string().optional(),
@@ -148,7 +149,7 @@ export const AuthSessionResponseSchema = z.object({
   user: KanzleiUserProfileSchema,
   organization: z
     .object({
-      id: z.uuid(),
+      id: DbUuidSchema,
       name: z.string(),
       officialSeat: z.string(),
       chamberDistrict: z.string(),

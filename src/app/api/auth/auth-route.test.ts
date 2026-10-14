@@ -165,6 +165,56 @@ describe('Auth API Routes', () => {
       expect(json.hasActiveOrganization).toBe(true);
     });
 
+    it('successfully validates demo organization ID d0000000-0000-0000-0000-000000000001', async () => {
+      const mockUser = { id: '0232afd4-59fa-49b2-8e59-c6c5d069a678', email: 'demo@notar-agent.de' };
+      const mockProfile = {
+        id: '0232afd4-59fa-49b2-8e59-c6c5d069a678',
+        full_name: 'Dr. Alexander Muster',
+        title: 'Notar',
+      };
+      const mockOrg = {
+        id: 'd0000000-0000-0000-0000-000000000001',
+        name: 'Notariat Dr. Muster & Partner',
+        official_seat: 'Köln',
+        chamber_district: 'Rheinische Notarkammer',
+      };
+
+      const mockSupabase = {
+        auth: {
+          getUser: vi.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
+        },
+        from: vi.fn((table: string) => {
+          if (table === DB_TABLES.PROFILES) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+            };
+          }
+          if (table === DB_TABLES.ORGANIZATION_MEMBERS) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: { role: NOTARY_ROLES.NOTAR, organization: mockOrg },
+                error: null,
+              }),
+            };
+          }
+          return { select: vi.fn().mockReturnThis() };
+        }),
+      };
+      mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
+
+      const req = new NextRequest('http://localhost:3000/api/auth/me');
+      const res = await meRoute(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.user.name).toBe('Dr. Alexander Muster');
+      expect(json.organization.id).toBe('d0000000-0000-0000-0000-000000000001');
+      expect(json.hasActiveOrganization).toBe(true);
+    });
+
     it('returns organization: null and hasActiveOrganization: false when user has no organization', async () => {
       const mockUser = { id: 'a0000000-0000-4000-8000-000000000002', email: 'sso-user@kanzlei.de' };
       const mockProfile = {

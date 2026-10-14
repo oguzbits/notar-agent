@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DbUuidSchema } from './primitives';
 
 /**
  * Berufsrechtliche Rollen im deutschen Notariat gem. BNotO & BRAO.
@@ -25,7 +26,7 @@ export type NotaryRole = z.infer<typeof NotaryRoleSchema>;
  * Kanzlei (Organization) als hermetische Mandanten-Einheit (§ 203 StGB).
  */
 export const OrganizationSchema = z.object({
-  id: z.uuid(),
+  id: DbUuidSchema,
   name: z.string().min(1),
   officialSeat: z.string().min(1),
   chamberDistrict: z.string().min(1),
@@ -40,9 +41,9 @@ export type Organization = z.infer<typeof OrganizationSchema>;
  * Kanzlei-Mitgliedschaften (Zuordnung von Benutzern zu Kanzleien & Rollen).
  */
 export const OrganizationMemberSchema = z.object({
-  id: z.uuid(),
-  organizationId: z.uuid(),
-  userId: z.uuid(),
+  id: DbUuidSchema,
+  organizationId: DbUuidSchema,
+  userId: DbUuidSchema,
   role: NotaryRoleSchema,
   joinedAt: z.iso.datetime(),
 });

@@ -6,15 +6,35 @@ Autonome LegalTech-Webapplikation zur Unterstützung von Notariaten bei der Aufb
 
 ---
 
-## 🚀 Schnellstart & Lokale Ausführung
+## 🚀 Schnellstart & Live-Demo
 
-### 1. Voraussetzungen
+### 🌐 Option A: Live-Demo direkt im Browser testen (Empfohlen)
+
+Die Anwendung ist produktiv bereitgestellt unter **[notar-agent.vercel.app](https://notar-agent.vercel.app)**:
+
+1. **1-Klick Demo-Login:**
+   - Öffne die Login-Seite und klicke auf den Button **„Demo-Kanzlei testen“**.
+   - Du wirst sofort als Notar **Dr. Johannes von Berg** (`Notariat Dr. Johannes von Berg & Partner`) mit vollen Notar-Rechten angemeldet.
+   - Es gibt keinen unauthentifizierten Gast-Modus oder verwirrende Notfall-Zustände mehr – die Authentifizierung erfolgt über eine vollwertige Supabase-Session.
+2. **Sauberer Startzustand (Clean Slate):**
+   - Das Dashboard startet bewusst mit einem leeren Vorgangspostfach (ohne verwirrende Altdaten oder feste Seed-Dateien).
+3. **Sofort-Test mit vorbereiteten Testakten:**
+   - Klicke auf **„Neuen Vorgang starten“** (oder **„Erste Akte anlegen“**).
+   - Nimm eine der synthetischen, datenschutzkonformen Testakten aus dem Ordner [`test-akten/`](test-akten/) (z. B. [`test-akten/fall-04-standard-urkunde/Kaufvertrag_Koeln_UR89.pdf`](test-akten/fall-04-standard-urkunde/Kaufvertrag_Koeln_UR89.pdf) für den fehlerfreien Standardfall oder [`test-akten/fall-03-vertragsaenderung-handschrift/Kaufvertrag_Scan.png`](test-akten/fall-03-vertragsaenderung-handschrift/Kaufvertrag_Scan.png) für handschriftliche Randkorrekturen).
+   - Ziehe die Datei per Drag-and-Drop in den Upload-Bereich und klicke auf **„Unterlagen prüfen“**.
+   - Die KI analysiert die Urkunde, validiert die 10 Pflichtfelder mit Belegzitaten und schlüsselt das Ergebnis im Notar-Cockpit auf.
+
+---
+
+### 💻 Option B: Lokale Entwicklung & Ausführung
+
+#### 1. Voraussetzungen
 
 - **Node.js:** `>= 22.x` (empfohlen: Node 22 LTS)
 - **Paketmanager:** `npm`
 - **Docker:** Docker Desktop (für die lokale Supabase PostgreSQL 17 Datenbank)
 
-### 2. Installation
+#### 2. Installation
 
 ```bash
 git clone <repository-url>
@@ -22,7 +42,7 @@ cd notar-agent
 npm install
 ```
 
-### 3. Umgebungsvariablen (`.env.local`)
+#### 3. Umgebungsvariablen (`.env.local`)
 
 Erstelle eine `.env.local`-Datei im Projektstamm:
 
@@ -45,7 +65,7 @@ NEXT_SUPABASE_URL="http://127.0.0.1:54321"
 NEXT_SUPABASE_PUBLISHABLE_KEY="<lokaler-anon-key>"
 ```
 
-### 4. Lokale Supabase-Entwicklung via Docker
+#### 4. Lokale Supabase-Entwicklung via Docker
 
 Das Projekt nutzt Supabase PostgreSQL als Single Source of Truth (SSOT):
 
@@ -61,7 +81,7 @@ npm run db:start
   - `npm run db:lint`: Validiert das DB-Schema auf Security- und RLS-Richtlinien.
   - `npm run db:stop`: Stoppt die lokalen Container.
 
-### 5. Anwendung starten
+#### 5. Anwendung starten
 
 ```bash
 npm run dev
@@ -104,7 +124,7 @@ Im Verzeichnis [`test-akten/`](test-akten/) stehen **10 synthetische, datenschut
 
 ### So führst du den Test in der App durch:
 
-1. Öffne die Web-Applikation unter [http://localhost:3000](http://localhost:3000) (oder [notar-agent.vercel.app](https://notar-agent.vercel.app)).
+1. Öffne die Web-Applikation unter [http://localhost:3000](http://localhost:3000) (oder [notar-agent.vercel.app](https://notar-agent.vercel.app)) und melde dich mit einem Klick auf **„Demo-Kanzlei testen“** an.
 2. Klicke auf **„Neuen Vorgang starten“** (oder **„Erste Akte anlegen“**).
 3. Ziehe die gewünschte Datei (z. B. `Kaufvertrag_Koeln_UR89.pdf`) per Drag-and-Drop in den Upload-Bereich.
 4. _(Optional)_ Informelle Notizen im Textfeld vermerken (z. B. _„Käufer reicht Ausweis nach“_).

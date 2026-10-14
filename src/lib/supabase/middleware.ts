@@ -57,16 +57,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If user is not logged in and not on an auth route, redirect to /login
-  // Only enforce redirect if Supabase is actually configured with users
   if (!user && !isAuthEntryRoute) {
-    // In local demo or offline mode without users, allow pass-through if MOCK_AI or demo mode is active
-    const allowPrototypePassThrough =
-      process.env.NODE_ENV === 'development' && !request.cookies.get('sb-access-token');
-    if (!allowPrototypePassThrough) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      return NextResponse.redirect(url);
-    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
   // If user is logged in and tries to access /login or /register, redirect to dashboard

@@ -285,9 +285,7 @@ BEGIN
     ON CONFLICT (organization_id, user_id) DO UPDATE SET
         role = 'NOTAR';
 
-    -- Bestehende Demo-Vorgänge der Demo-Kanzlei zuordnen (§ 17 BeurkG)
-    UPDATE public.documents
-    SET organization_id = v_demo_org_id
-    WHERE organization_id = '550e8400-e29b-41d4-a716-446655440000';
+    -- Seed-Dokumente rückstandslos bereinigen (Null-Zustand für unvoreingenommenen Test)
+    DELETE FROM public.documents WHERE id IN ('6522d86c-d506-4a7b-870e-74346202a4e4', 'feecce80-55ff-45ce-ae30-c618e1b6d8af');
 END $$;
 

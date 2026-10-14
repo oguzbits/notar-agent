@@ -74,17 +74,21 @@ describe('AuthProvider', () => {
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // While loading or unauthenticated: organization must be NULL, never 'Notariat Standard Kanzlei'
+    // While loading or unauthenticated: organization and currentUser must be NULL, never dummy/fallback
     expect(result.current.organization).toBeNull();
     expect(result.current.hasActiveOrganization).toBe(false);
+    expect(result.current.currentUser).toBeNull();
+    expect(result.current.isAuthenticated).toBe(false);
 
     await waitFor(() => {
       expect(result.current.isLoadingSession).toBe(false);
     });
 
-    // After loading finishes with 401: organization must remain NULL
+    // After loading finishes with 401: organization and currentUser must remain NULL
     expect(result.current.organization).toBeNull();
     expect(result.current.hasActiveOrganization).toBe(false);
+    expect(result.current.currentUser).toBeNull();
+    expect(result.current.isAuthenticated).toBe(false);
   });
 
   it('sets organization and user details when authenticated session is received', async () => {
@@ -123,7 +127,7 @@ describe('AuthProvider', () => {
       createdAt: '2026-01-01T08:00:00.000Z',
       updatedAt: '2026-01-01T08:00:00.000Z',
     });
-    expect(result.current.currentUser.name).toBe('Dr. Test Notar');
+    expect(result.current.currentUser?.name).toBe('Dr. Test Notar');
   });
 
   it('switches simulated user and clears simulation on logout', async () => {
@@ -148,14 +152,14 @@ describe('AuthProvider', () => {
       expect(result.current.isLoadingSession).toBe(false);
     });
 
-    expect(result.current.currentUser.id).toBe('member-1');
+    expect(result.current.currentUser?.id).toBe('member-1');
 
     act(() => {
       result.current.switchUser('member-2');
     });
 
-    expect(result.current.currentUser.id).toBe('member-2');
-    expect(result.current.currentUser.name).toBe('Sabine Assessorin');
+    expect(result.current.currentUser?.id).toBe('member-2');
+    expect(result.current.currentUser?.name).toBe('Sabine Assessorin');
 
     // Logout
     vi.mocked(global.fetch).mockResolvedValueOnce({

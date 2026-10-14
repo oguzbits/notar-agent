@@ -6,7 +6,7 @@ import React, { createContext, useContext, useState } from 'react';
 import { useTeam } from '@/hooks/useTeam';
 import { hasPermission } from '@/lib/auth/rbac';
 import { KanzleiUserProfile, PermissionAction, AuthSessionResponse } from '@/types/auth';
-import { Organization, NotaryRole, NOTARY_ROLES } from '@/types/organization';
+import { Organization, NotaryRole } from '@/types/organization';
 
 export interface KanzleiMemberItem extends KanzleiUserProfile {
   joinedAt: string;
@@ -15,7 +15,7 @@ export interface KanzleiMemberItem extends KanzleiUserProfile {
 interface AuthContextType {
   organization: Organization | null;
   hasActiveOrganization: boolean;
-  currentUser: KanzleiUserProfile;
+  currentUser: KanzleiUserProfile | null;
   teamMembers: KanzleiMemberItem[];
   isAuthenticated: boolean;
   switchRole: (newRole: NotaryRole) => void;
@@ -38,13 +38,6 @@ interface AuthContextType {
   isLoadingTeam: boolean;
   isLoadingSession: boolean;
 }
-
-const FALLBACK_DEFAULT_USER: KanzleiUserProfile = {
-  id: '00000000-0000-0000-0000-000000000001',
-  name: 'Nicht angemeldet',
-  email: 'gast@kanzlei.de',
-  role: NOTARY_ROLES.SACHBEARBEITER,
-};
 
 export const AUTH_SESSION_QUERY_KEY = ['auth-session'] as const;
 
@@ -167,21 +160,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const currentUserId =
     simulatedUserId && teamMembers.some((m) => m.id === simulatedUserId)
       ? simulatedUserId
-      : sessionUser?.id || teamMembers[0]?.id || '';
+      : sessionUser?.id || '';
 
-  const activeMember =
-    (sessionUser && sessionUser.id === currentUserId
-      ? { ...sessionUser, joinedAt: new Date().toISOString() }
-      : null) ||
-    teamMembers.find((m) => m.id === currentUserId) ||
-    (sessionUser ? { ...sessionUser, joinedAt: new Date().toISOString() } : teamMembers[0]);
+  const activeMember = sessionUser
+    ? (sessionUser.id === currentUserId
+        ? { ...sessionUser, joinedAt: new Date().toISOString() }
+        : null) ||
+      teamMembers.find((m) => m.id === currentUserId) || {
+        ...sessionUser,
+        joinedAt: new Date().toISOString(),
+      }
+    : null;
 
-  const currentUser: KanzleiUserProfile = activeMember
+  const currentUser: KanzleiUserProfile | null = activeMember
     ? {
         ...activeMember,
         role: simulatedRole || activeMember.role,
       }
-    : FALLBACK_DEFAULT_USER;
+    : null;
 
   // Wenn der Benutzer explizit angemeldet ist, aber keine Kanzlei hat, ist currentOrg null
   const hasActiveOrganization = sessionData?.hasActiveOrganization ?? false;
@@ -213,7 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeMember = async (userId: string) => {
-    if (userId === currentUser.id) return;
+    if (currentUser && userId === currentUser.id) return;
     await apiRemove(userId);
   };
 
@@ -242,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const hasRolePermission = (action: PermissionAction): boolean => {
+    if (!currentUser) return false;
     return hasPermission(currentUser.role, action);
   };
 

@@ -47,7 +47,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
 
   const canManageTeam = hasRolePermission(PERMISSION_ACTIONS.MANAGE_TEAM);
   const canEditOrg =
-    currentUser.role === NOTARY_ROLES.NOTAR || currentUser.role === NOTARY_ROLES.ADMIN;
+    currentUser?.role === NOTARY_ROLES.NOTAR || currentUser?.role === NOTARY_ROLES.ADMIN;
 
   const [activeTab, setActiveTab] = useState<'stammdaten' | 'team'>('stammdaten');
 
@@ -374,7 +374,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
               </div>
             ) : (
               teamMembers.map((member) => {
-                const isSelf = member.id === currentUser.id;
+                const isSelf = member.id === currentUser?.id;
                 const initials = member.name
                   .split(' ')
                   .map((p) => p[0])

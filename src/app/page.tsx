@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { DocumentTable } from '@/components/DocumentTable';
@@ -21,6 +21,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { DocumentListItem } from '@/types/document';
 import { FieldStatus, STORAGE_TYPES } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
+import { NOTARY_ROLES } from '@/types/organization';
 
 const VIEW_MODE = {
   TABLE: 'table',
@@ -237,8 +238,8 @@ function HomeContent() {
           documentId: docId,
           dossier: updatedDossier,
           auditOverride,
-          actor: currentUser.name,
-          actorRole: currentUser.role,
+          actor: currentUser?.name || 'Notariat',
+          actorRole: currentUser?.role || NOTARY_ROLES.SACHBEARBEITER,
         });
       }
       actions.setDossier(updatedDossier);
@@ -251,6 +252,23 @@ function HomeContent() {
       setUpdatingFieldKey(null);
     }
   };
+
+  useEffect(() => {
+    if (!isLoadingSession && !currentUser) {
+      router.replace('/login');
+    }
+  }, [isLoadingSession, currentUser, router]);
+
+  if (isLoadingSession || !currentUser) {
+    return (
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-muted-foreground flex items-center gap-3 text-base">
+          <Loader2 className="text-notar-800 h-6 w-6 animate-spin" />
+          <span>Sitzung wird geladen...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background text-foreground selection:bg-notar-300 selection:text-notar-950 flex min-h-screen flex-col font-sans antialiased">

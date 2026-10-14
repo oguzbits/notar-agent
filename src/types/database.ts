@@ -30,6 +30,8 @@ export const DbTableSchema = z.enum([
 ]);
 export type DbTable = (typeof DB_TABLES)[keyof typeof DB_TABLES];
 
+export { DbUuidSchema, PG_UUID_REGEX } from './primitives';
+
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
