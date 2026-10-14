@@ -27,7 +27,69 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 1. Zuerst direkten Login mit den Demo-Credentials versuchen
+    // 1. Zuerst versuchen, eine isolierte anonyme Session zu starten (wie bei notebooklm-klon)
+    let anonData = null;
+    let anonError = null;
+    if (typeof supabase.auth.signInAnonymously === 'function') {
+      const anonResult = await supabase.auth.signInAnonymously({
+        options: {
+          data: {
+            full_name: demoUserCredentials.FULL_NAME,
+            title: demoUserCredentials.TITLE,
+          },
+        },
+      });
+      anonData = anonResult.data;
+      anonError = anonResult.error;
+    }
+
+    if (!anonError && anonData?.user) {
+      const userId = anonData.user.id;
+
+      // Prüfen, ob der anonyme User bereits eine Organisation hat
+      const { data: existingMember } = await supabase
+        .from(DB_TABLES.ORGANIZATION_MEMBERS)
+        .select('organization_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!existingMember) {
+        // Frische, isolierte Demo-Kanzlei für diese Session anlegen
+        const { data: orgData, error: orgError } = await supabase
+          .from(DB_TABLES.ORGANIZATIONS)
+          .insert({
+            name: demoUserCredentials.ORGANIZATION_NAME,
+            official_seat: demoUserCredentials.OFFICIAL_SEAT,
+            chamber_district: demoUserCredentials.CHAMBER_DISTRICT,
+          })
+          .select('*')
+          .single();
+
+        if (orgData && !orgError) {
+          await supabase.from(DB_TABLES.ORGANIZATION_MEMBERS).insert({
+            organization_id: orgData.id,
+            user_id: userId,
+            role: NOTARY_ROLES.NOTAR,
+          });
+
+          await supabase.from(DB_TABLES.PROFILES).upsert({
+            id: userId,
+            email: anonData.user.email || `${userId.slice(0, 8)}@demo.notariat.de`,
+            full_name: demoUserCredentials.FULL_NAME,
+            title: demoUserCredentials.TITLE,
+          });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        user: anonData.user,
+        redirectTo,
+      });
+    }
+
+    // 2. Fallback: Falls Anonymous Auth im Supabase Dashboard noch deaktiviert ist,
+    // direkten Login mit den bestehenden Demo-Credentials versuchen
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: demoUserCredentials.EMAIL,
       password: demoUserCredentials.PASSWORD,

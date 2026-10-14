@@ -145,6 +145,9 @@ CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- Organizations
 DROP POLICY IF EXISTS rls_organizations_select ON organizations;
 CREATE POLICY rls_organizations_select ON organizations FOR SELECT USING (is_org_member(id));

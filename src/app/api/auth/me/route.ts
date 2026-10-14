@@ -58,7 +58,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
           user.user_metadata?.full_name ||
           user.email?.split('@')[0] ||
           'Benutzer',
-        email: user.email || '',
+        email: user.email || `${user.id.slice(0, 8)}@demo.notariat.de`,
         title: profile?.title || user.user_metadata?.title,
         role,
       },

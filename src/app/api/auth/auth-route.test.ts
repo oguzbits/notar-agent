@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { POST as demoRoute } from '@/app/api/auth/demo/route';
 import { POST as loginRoute } from '@/app/api/auth/login/route';
 import { POST as logoutRoute } from '@/app/api/auth/logout/route';
 import { GET as meRoute } from '@/app/api/auth/me/route';
@@ -317,6 +318,98 @@ describe('Auth API Routes', () => {
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(json.organization.id).toBe('o123');
+    });
+  });
+
+  describe('POST /api/auth/demo', () => {
+    it('creates an isolated anonymous session with new organization when anonymous auth is available', async () => {
+      const mockAnonUser = {
+        id: 'anon-user-123',
+        user_metadata: { full_name: 'Dr. Johannes von Berg', title: 'Notar' },
+      };
+      const mockNewOrg = {
+        id: 'd1111111-1111-1111-1111-111111111111',
+        name: 'Notariat Dr. Johannes von Berg & Partner',
+        official_seat: 'Köln',
+        chamber_district: 'Rheinische Notarkammer',
+      };
+
+      const mockSupabase = {
+        auth: {
+          signInAnonymously: vi.fn().mockResolvedValue({
+            data: { user: mockAnonUser },
+            error: null,
+          }),
+        },
+        from: vi.fn((table: string) => {
+          if (table === DB_TABLES.ORGANIZATION_MEMBERS) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              insert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+          if (table === DB_TABLES.ORGANIZATIONS) {
+            return {
+              insert: vi.fn().mockReturnThis(),
+              select: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({ data: mockNewOrg, error: null }),
+            };
+          }
+          if (table === DB_TABLES.PROFILES) {
+            return {
+              upsert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
+          return {};
+        }),
+      };
+      mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
+
+      const req = new NextRequest('http://localhost:3000/api/auth/demo', {
+        method: 'POST',
+      });
+      const res = await demoRoute(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.user.id).toBe('anon-user-123');
+      expect(mockSupabase.auth.signInAnonymously).toHaveBeenCalled();
+    });
+
+    it('falls back to static demo credentials when anonymous auth is disabled', async () => {
+      const mockSharedUser = {
+        id: '0232afd4-59fa-49b2-8e59-c6c5d069a678',
+        email: 'demo@notar-agent.de',
+      };
+
+      const mockSupabase = {
+        auth: {
+          signInAnonymously: vi.fn().mockResolvedValue({
+            data: null,
+            error: {
+              message: 'Anonymous sign-ins are disabled',
+              code: 'anonymous_provider_disabled',
+            },
+          }),
+          signInWithPassword: vi.fn().mockResolvedValue({
+            data: { user: mockSharedUser },
+            error: null,
+          }),
+        },
+      };
+      mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
+
+      const req = new NextRequest('http://localhost:3000/api/auth/demo', {
+        method: 'POST',
+      });
+      const res = await demoRoute(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.user.id).toBe('0232afd4-59fa-49b2-8e59-c6c5d069a678');
+      expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalled();
     });
   });
 });
