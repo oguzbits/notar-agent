@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DbUuidSchema } from './primitives';
 
 /**
  * Kategorien für notarielle Wissenseinträge gem. § 2.1 & C.3 Roadmap.
@@ -23,11 +24,10 @@ export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[keyof typeof KNOWL
  * Kanzlei-Wissensdokument / DNotI-Gutachten / Präzedenzfall.
  */
 export const KnowledgeDocumentSchema = z.object({
-  id: z.uuid(),
-  organizationId: z
-    .uuid()
-    .nullable()
-    .describe('Null bei globalen DNotI- und Bundesgerichts-Normen, sonst Kanzlei-isoliert'),
+  id: DbUuidSchema,
+  organizationId: DbUuidSchema.nullable().describe(
+    'Null bei globalen DNotI- und Bundesgerichts-Normen, sonst Kanzlei-isoliert'
+  ),
   category: KnowledgeCategorySchema,
   legalBasis: z.string().describe('Z.B. § 12 HGB, § 144 BauGB, DNotI-Report 2023/14'),
   courtOrAuthority: z.string().optional().describe('Z.B. AG Hamburg, OLG München, BGH'),
@@ -87,7 +87,7 @@ export const HybridSearchQuerySchema = z.object({
   queryText: z.string().min(1),
   queryEmbedding: z.array(z.number()).optional(),
   category: KnowledgeCategorySchema.optional(),
-  organizationId: z.uuid().optional(),
+  organizationId: DbUuidSchema.optional(),
   topK: z.number().int().positive().optional().default(5),
   vectorWeight: z.number().min(0).max(1).optional().default(0.5),
   textWeight: z.number().min(0).max(1).optional().default(0.5),

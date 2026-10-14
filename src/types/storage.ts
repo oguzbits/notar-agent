@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DbUuidSchema } from './primitives';
 
 export const STORAGE_BUCKET_NAMES = {
   DOSSIER_FILES: 'dossier-files',
@@ -10,7 +11,7 @@ export const CreateUploadUrlRequestSchema = z.object({
   fileName: z.string().min(1, 'Dateiname darf nicht leer sein'),
   fileType: z.string().min(1, 'Dateityp darf nicht leer sein'),
   fileSize: z.number().positive('Dateigröße muss positiv sein'),
-  organizationId: z.string().uuid().optional(),
+  organizationId: DbUuidSchema.optional(),
 });
 export type CreateUploadUrlRequest = z.infer<typeof CreateUploadUrlRequestSchema>;
 

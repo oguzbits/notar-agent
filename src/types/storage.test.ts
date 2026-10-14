@@ -22,6 +22,17 @@ describe('Storage Types & Schemas', () => {
     expect(parsed.success).toBe(true);
   });
 
+  it('validates demo organization ID d0000000-0000-0000-0000-000000000001 in CreateUploadUrlRequest', () => {
+    const valid = {
+      fileName: 'Kaufvertrag_Scan.png',
+      fileType: 'image/png',
+      fileSize: 500000,
+      organizationId: 'd0000000-0000-0000-0000-000000000001',
+    };
+    const parsed = CreateUploadUrlRequestSchema.safeParse(valid);
+    expect(parsed.success).toBe(true);
+  });
+
   it('rejects invalid CreateUploadUrlRequest with empty fileName or zero size', () => {
     const invalid = {
       fileName: '',

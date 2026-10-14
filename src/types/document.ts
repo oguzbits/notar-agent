@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DossierSchema } from './dossier';
+import { DbUuidSchema } from './primitives';
 
 export const CASE_STATUS = {
   IN_PROGRESS: 'In Prüfung',
@@ -12,10 +13,9 @@ export type CaseStatus = (typeof CASE_STATUS)[keyof typeof CASE_STATUS];
 
 export const DocumentListItemSchema = z.object({
   id: z.string().min(1, 'ID darf nicht leer sein'),
-  organizationId: z
-    .uuid()
-    .optional()
-    .describe('Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'),
+  organizationId: DbUuidSchema.optional().describe(
+    'Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'
+  ),
   title: z.string(),
   status: CaseStatusSchema,
   caseType: z

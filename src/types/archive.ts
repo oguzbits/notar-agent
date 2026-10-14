@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DossierSchema } from './dossier';
+import { DbUuidSchema } from './primitives';
 
 export const ARCHIVE_STATUS = {
   ACTIVE: 'Aktiv',
@@ -47,7 +48,7 @@ export type ArchivedFileEntry = z.infer<typeof ArchivedFileEntrySchema>;
 export const DossierArchiveSnapshotSchema = z.object({
   snapshotVersion: z.literal(1),
   dossierId: z.string().min(1, 'Dossier-ID darf nicht leer sein'),
-  organizationId: z.uuid('Ungültige Kanzlei-ID'),
+  organizationId: DbUuidSchema,
   caseTitle: z.string().min(1, 'Falltitel darf nicht leer sein'),
   caseType: z.string().min(1, 'Falltyp darf nicht leer sein'),
   archivedAt: z.iso.datetime({ message: 'archivedAt muss ein gültiger ISO-Timestamp sein' }),
@@ -65,7 +66,7 @@ export type DossierArchiveSnapshot = z.infer<typeof DossierArchiveSnapshotSchema
  */
 export const DossierArchiveResultSchema = z.object({
   dossierId: z.string(),
-  organizationId: z.uuid(),
+  organizationId: DbUuidSchema,
   archiveStoragePath: z.string(),
   archivedAt: z.iso.datetime(),
   checksum: z.string(),
@@ -79,7 +80,7 @@ export type DossierArchiveResult = z.infer<typeof DossierArchiveResultSchema>;
  */
 export const ArchiveDossierParamsSchema = z.object({
   dossierId: z.string().min(1),
-  organizationId: z.uuid(),
+  organizationId: DbUuidSchema,
   actor: z.string().min(1),
   reason: z.string().min(3),
 });

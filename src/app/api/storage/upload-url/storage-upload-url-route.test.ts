@@ -85,4 +85,31 @@ describe('API Route: POST /api/storage/upload-url', () => {
     expect(data.storagePath).toBe(`${orgId}/uuid-kaufvertrag.pdf`);
     expect(mockCreateSignedUploadUrl).toHaveBeenCalled();
   });
+
+  it('successfully creates signed upload URL for demo organization d0000000-0000-0000-0000-000000000001', async () => {
+    const demoOrgId = 'd0000000-0000-0000-0000-000000000001';
+    mockResolveSessionOrganizationId.mockResolvedValue(demoOrgId);
+    mockCreateSignedUploadUrl.mockResolvedValue({
+      uploadUrl: 'https://storage.example.com/signed-upload-demo',
+      storagePath: `${demoOrgId}/uuid-kaufvertrag.png`,
+      token: 'demo-token',
+    });
+
+    const { POST } = await import('./route');
+    const req = new NextRequest('http://localhost:3000/api/storage/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: 'Kaufvertrag_Scan.png',
+        fileType: 'image/png',
+        fileSize: 450000,
+        organizationId: demoOrgId,
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.uploadUrl).toBe('https://storage.example.com/signed-upload-demo');
+    expect(data.storagePath).toBe(`${demoOrgId}/uuid-kaufvertrag.png`);
+  });
 });

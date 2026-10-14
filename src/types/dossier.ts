@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DbUuidSchema } from './primitives';
 
 export const CASE_TYPES = {
   IMMOBILIENKAUF: 'IMMOBILIENKAUF',
@@ -604,7 +605,7 @@ export const AnalyzeRequestSchema = z
     caseType: CaseTypeSchema.default(CASE_TYPES.IMMOBILIENKAUF),
     notes: z.string().default(''),
     documentId: z.string().optional(),
-    organizationId: z.uuid().optional(),
+    organizationId: DbUuidSchema.optional(),
     existingDossier: DossierSchema.optional(),
     stage1Output: z
       .record(z.string(), z.unknown())
@@ -628,7 +629,7 @@ export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
 export const UpdateDossierRequestSchema = z.object({
   documentId: z.string().min(1, 'documentId ist erforderlich.'),
-  organizationId: z.uuid().optional(),
+  organizationId: DbUuidSchema.optional(),
   dossier: DossierSchema,
   auditOverride: z
     .object({

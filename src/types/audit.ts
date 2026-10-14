@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { FieldStatusSchema } from './dossier';
+import { DbUuidSchema } from './primitives';
 
 export const AUDIT_ACTIONS = {
   DOCUMENT_INGESTED: 'DOCUMENT_INGESTED',
@@ -66,10 +67,8 @@ export const AuditLogDetailsSchema = z
 export type AuditLogDetails = z.infer<typeof AuditLogDetailsSchema>;
 
 export const AuditLogEntrySchema = z.object({
-  id: z.uuid(),
-  organizationId: z
-    .uuid()
-    .nullable()
+  id: DbUuidSchema,
+  organizationId: DbUuidSchema.nullable()
     .optional()
     .describe('Kanzlei-ID für strikte Mandantentrennung gem. § 203 StGB'),
   documentId: z.string().min(1),

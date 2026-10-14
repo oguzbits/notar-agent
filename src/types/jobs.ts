@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AnalyzeRequestSchema } from './dossier';
+import { DbUuidSchema } from './primitives';
 
 export const JOB_STATUS = {
   PENDING: 'PENDING',
@@ -88,10 +89,9 @@ export type JobProgressDetails = z.infer<typeof JobProgressDetailsSchema>;
 
 export const DossierJobSchema = z.object({
   id: z.string().describe('Eindeutige Job-ID (UUID oder nanoid)'),
-  organizationId: z
-    .uuid()
-    .optional()
-    .describe('Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'),
+  organizationId: DbUuidSchema.optional().describe(
+    'Kanzlei-ID für RLS Mandantentrennung gem. § 203 StGB'
+  ),
   status: JobStatusSchema.describe('Aktueller Verarbeitungsstatus des Jobs'),
   stage: JobStageSchema.optional().describe('Detaillierter Teilschritt während PROCESSING'),
   progressDetails: JobProgressDetailsSchema.optional().describe(
