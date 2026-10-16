@@ -1,5 +1,7 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
+import { useEffect } from 'react';
 import './globals.css';
 
 export default function GlobalError({
@@ -9,6 +11,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <html lang="de" className="h-full">
       <body className="bg-background text-foreground flex min-h-full flex-col items-center justify-center p-6 font-sans">

@@ -33,6 +33,9 @@ export const ServerEnvSchema = z.object({
   // Hintergrundläufe (Cron): Service-Role-Key und Secret für den Cron-Aufruf
   SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString,
   CRON_SECRET: optionalTrimmedString,
+
+  // Fehler-Tracking (Sentry EU); ohne DSN bleibt Sentry aus
+  SENTRY_DSN: optionalTrimmedString,
 });
 
 export type Env = z.infer<typeof ServerEnvSchema>;
