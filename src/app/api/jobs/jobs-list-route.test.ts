@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, vi } from 'vitest';
 import { getJobRepository } from '@/lib/supabase/server';
+import { resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import {
   createMockJobRepository,
   createMockDossierRepository,
@@ -8,6 +9,20 @@ import {
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS } from '@/types/jobs';
 import { GET, POST } from './route';
+
+vi.mock('@/lib/supabase/server-auth', async () => {
+  const { NOTARY_ROLES } = await import('@/types/organization');
+  return {
+    createServerAuthClient: vi.fn().mockResolvedValue(null),
+    resolveSessionOrganizationId: vi.fn(
+      async (_client: unknown, requested?: string) =>
+        requested ?? 'a0000000-0000-4000-8000-000000000001'
+    ),
+    resolveSessionActor: vi
+      .fn()
+      .mockResolvedValue({ label: 'Test Notar', role: NOTARY_ROLES.NOTAR }),
+  };
+});
 
 const mockJobRepo = createMockJobRepository();
 const mockDossierRepo = createMockDossierRepository();
@@ -26,11 +41,14 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   const repo = getJobRepository();
 
   it('GET /api/jobs returns list of all jobs', async () => {
-    const job = await repo.createJob({
-      caseType: CASE_TYPES.IMMOBILIENKAUF,
-      files: [],
-      notes: 'Test List Job',
-    });
+    const job = await repo.createJob(
+      {
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: 'Test List Job',
+      },
+      'a0000000-0000-4000-8000-000000000001'
+    );
 
     const res = await GET();
 
@@ -40,6 +58,12 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     const found = data.jobs.find((j: { id: string }) => j.id === job.id);
     expect(found).toBeDefined();
     expect(found.payload.notes).toBe('Test List Job');
+  });
+
+  it('GET /api/jobs verweigert ohne Sitzung mit 401', async () => {
+    vi.mocked(resolveSessionOrganizationId).mockResolvedValueOnce(undefined);
+    const res = await GET();
+    expect(res.status).toBe(401);
   });
 
   it('GET /api/jobs triggers self-healing for orphan/stuck jobs', async () => {

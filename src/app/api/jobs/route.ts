@@ -16,6 +16,11 @@ export async function GET(req?: NextRequest): Promise<Response> {
         undefined
       : undefined;
     const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
+    if (!orgId)
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
     const repo = getJobRepository(authSupabase);
 
     // Asynchrones Self-Healing im Hintergrund (blockiert den schnellen Read-Pfad der Tabelle nicht mit 2 Extra-DB-Roundtrips)
@@ -44,8 +49,17 @@ export async function POST(req: NextRequest): Promise<Response> {
     const { jobId } = parseResult.data;
 
     const authSupabase = await createServerAuthClient();
+    const orgId = await resolveSessionOrganizationId(
+      authSupabase,
+      req.headers.get('x-organization-id') ?? undefined
+    );
+    if (!orgId)
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
     const repo = getJobRepository(authSupabase);
-    const job = await repo.getJobById(jobId);
+    const job = await repo.getJobById(jobId, orgId);
 
     if (!job) {
       return NextResponse.json({ error: `Job mit ID '${jobId}' nicht gefunden.` }, { status: 404 });

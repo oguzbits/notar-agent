@@ -233,6 +233,9 @@ END;
 $$;
 
 
+REVOKE EXECUTE ON FUNCTION match_knowledge_documents(TEXT, vector, UUID, knowledge_category, INT, FLOAT, FLOAT, INT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION match_knowledge_documents(TEXT, vector, UUID, knowledge_category, INT, FLOAT, FLOAT, INT) TO authenticated;
+
 -- 7. Juristischer Normen- und Richtlinienbestand (Konsolidierte Seeds)
 INSERT INTO knowledge_documents (
     id,

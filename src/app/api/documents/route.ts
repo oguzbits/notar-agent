@@ -21,6 +21,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const authSupabase = await createServerAuthClient();
     const { id, orgId: queryOrgId } = extractDocumentQueryParams(req);
     const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
+    if (!orgId)
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
 
     if (id) {
       const record = await fetchDossierRecordById(id, orgId, authSupabase);
@@ -43,6 +48,11 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
     const authSupabase = await createServerAuthClient();
     const { id, orgId: queryOrgId } = extractDocumentQueryParams(req);
     const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
+    if (!orgId)
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
 
     if (!id) {
       return NextResponse.json({ error: 'ID fehlt.' }, { status: 400 });

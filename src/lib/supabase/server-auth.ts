@@ -43,33 +43,73 @@ export async function createServerAuthClient() {
 }
 
 /**
- * Löst die Kanzlei-ID des aktuell authentifizierten Benutzers aus der Sitzung auf.
- * Beachtet einen expliziten Override (z.B. aus Header/Query), falls vorhanden.
+ * Löst die Kanzlei-ID des angemeldeten Benutzers ausschließlich aus der serverseitig
+ * validierten Sitzung und der Mitgliedschaft auf. Eine angeforderte Kanzlei (z.B. aus Header
+ * oder Query) gilt nur, wenn der Benutzer dort Mitglied ist; sie ist nie selbst eine Berechtigung.
+ * Rückgabe `undefined` bedeutet: nicht angemeldet, keine Mitgliedschaft oder fremde Kanzlei.
  */
 export async function resolveSessionOrganizationId(
   authSupabase: ReturnType<typeof createServerClient<Database>> | null,
-  overrideOrgId?: string
+  requestedOrgId?: string
 ): Promise<string | undefined> {
-  if (overrideOrgId) return overrideOrgId;
   if (!authSupabase) return undefined;
 
-  try {
-    const {
-      data: { user },
-      error: authError,
-    } = await authSupabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await authSupabase.auth.getUser();
+  if (authError || !user) return undefined;
 
-    if (authError || !user) return undefined;
-
-    const { data: member } = await authSupabase
-      .from(DB_TABLES.ORGANIZATION_MEMBERS)
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    return (member as { organization_id?: string } | null)?.organization_id ?? undefined;
-  } catch (err: unknown) {
-    console.debug('Fehler beim Auflösen der Kanzlei-ID aus der Sitzung:', err);
-    return undefined;
+  const { data: memberships, error: memberError } = await authSupabase
+    .from(DB_TABLES.ORGANIZATION_MEMBERS)
+    .select('organization_id')
+    .eq('user_id', user.id);
+  if (memberError) {
+    throw new Error(`Mitgliedschaft konnte nicht geladen werden: ${memberError.message}`);
   }
+
+  const organizationIds = (memberships ?? []).map((m) => m.organization_id);
+  if (requestedOrgId) {
+    return organizationIds.includes(requestedOrgId) ? requestedOrgId : undefined;
+  }
+  return organizationIds[0];
+}
+
+export interface SessionActor {
+  /** Anzeigename für den Audit-Trail, aus Profil bzw. E-Mail der Sitzung. */
+  label: string;
+  /** Berufsrechtliche Rolle in der angegebenen Kanzlei, aus der Mitgliedschaft. */
+  role: string;
+}
+
+/**
+ * Bestimmt Akteur und Rolle ausschließlich aus Sitzung und Mitgliedschaft (nie aus dem Request-Body).
+ */
+export async function resolveSessionActor(
+  authSupabase: ReturnType<typeof createServerClient<Database>>,
+  organizationId: string
+): Promise<SessionActor | undefined> {
+  const {
+    data: { user },
+  } = await authSupabase.auth.getUser();
+  if (!user) return undefined;
+
+  const { data: member, error: memberError } = await authSupabase
+    .from(DB_TABLES.ORGANIZATION_MEMBERS)
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  if (memberError) {
+    throw new Error(`Rolle konnte nicht geladen werden: ${memberError.message}`);
+  }
+  if (!member) return undefined;
+
+  const { data: profile } = await authSupabase
+    .from(DB_TABLES.PROFILES)
+    .select('full_name')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  return { label: profile?.full_name || user.email || user.id, role: member.role };
 }

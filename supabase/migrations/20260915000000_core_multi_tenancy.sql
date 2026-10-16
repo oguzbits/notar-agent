@@ -100,16 +100,20 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     document_id TEXT NOT NULL,
-    actor_id TEXT NOT NULL,
+    sequence_number BIGINT NOT NULL,
     action TEXT NOT NULL,
-    payload JSONB,
-    hash TEXT,
-    previous_hash TEXT,
-    sequence_number BIGINT NOT NULL DEFAULT 1,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    "timestamp" TIMESTAMPTZ NOT NULL,
+    actor TEXT NOT NULL,
+    previous_hash VARCHAR NOT NULL,
+    current_hash VARCHAR NOT NULL,
+    details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Hash-Kette je Akte: eine Sequenznummer darf nur einmal vergeben werden (verhindert Gabelungen)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_audit_logs_doc_seq ON audit_logs(document_id, sequence_number);
 
 -- 6. Helper-Funktionen zur Bestimmung von Mitgliedschaft und Rolle
 CREATE OR REPLACE FUNCTION get_user_role(org_id UUID)

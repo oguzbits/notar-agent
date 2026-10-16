@@ -33,6 +33,15 @@ async function resolveTargetJob(
     req.nextUrl.searchParams.get('organizationId') ??
     undefined;
   const orgId = await resolveSessionOrganizationId(authSupabase, tenantOrg);
+  if (!orgId) {
+    return {
+      success: false,
+      errorResponse: NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      ),
+    };
+  }
   const repo = getJobRepository(authSupabase);
   let job = await repo.getJobById(id, orgId);
 

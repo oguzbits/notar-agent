@@ -221,3 +221,32 @@ describe('Wissenssuche (SEC-03)', () => {
     ]);
   });
 });
+
+describe('Audit-Trail', () => {
+  const entry = (sequence: number) => ({
+    organization_id: orgId,
+    document_id: docId,
+    sequence_number: sequence,
+    action: 'TEST',
+    timestamp: new Date().toISOString(),
+    actor: 'tester',
+    previous_hash: 'a'.repeat(64),
+    current_hash: 'b'.repeat(64),
+    details: {},
+  });
+
+  it('Mitglied kann einen Eintrag im Schema des Anwendungscodes schreiben', async () => {
+    const res = await owner.client.from(DB_TABLES.AUDIT_LOGS).insert(entry(1));
+    expect(res.error).toBeNull();
+  });
+
+  it('Dieselbe Sequenznummer ist je Akte nicht ein zweites Mal vergebbar', async () => {
+    const res = await owner.client.from(DB_TABLES.AUDIT_LOGS).insert(entry(1));
+    expect(res.error).not.toBeNull();
+  });
+
+  it('Ohne Anmeldung ist kein Audit-Eintrag möglich', async () => {
+    const res = await anon.from(DB_TABLES.AUDIT_LOGS).insert(entry(2));
+    expect(res.error).not.toBeNull();
+  });
+});

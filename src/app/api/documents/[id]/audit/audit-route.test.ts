@@ -12,6 +12,20 @@ import {
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { FIELD_STATUS } from '@/types/dossier';
 
+vi.mock('@/lib/supabase/server-auth', async () => {
+  const { NOTARY_ROLES } = await import('@/types/organization');
+  return {
+    createServerAuthClient: vi.fn().mockResolvedValue({}),
+    resolveSessionOrganizationId: vi.fn(
+      async (_client: unknown, requested?: string) =>
+        requested ?? 'a0000000-0000-4000-8000-000000000001'
+    ),
+    resolveSessionActor: vi
+      .fn()
+      .mockResolvedValue({ label: 'Test Notar', role: NOTARY_ROLES.NOTAR }),
+  };
+});
+
 const mockDossierRepo = createMockDossierRepository();
 const mockAuditRepo = createMockAuditRepository();
 
@@ -25,18 +39,20 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
   };
 });
 
+const TEST_ORG_ID = 'a0000000-0000-4000-8000-000000000001';
+
 describe('Audit Trail API Route & PUT /api/analyze Integration', () => {
   const docId = 'test-audit-doc-123';
 
   beforeEach(async () => {
     const dossierRepo = getDossierRepository();
     const dummyDossier = createTestImmobilienDossier();
-    await dossierRepo.update(docId, dummyDossier);
+    await dossierRepo.update(docId, dummyDossier, TEST_ORG_ID);
   });
 
   it('records an audit event upon PUT /api/analyze when auditOverride is supplied', async () => {
     const dossierRepo = getDossierRepository();
-    const existing = await dossierRepo.findById(docId);
+    const existing = await dossierRepo.findById(docId, TEST_ORG_ID);
     expect(existing).not.toBeNull();
 
     const updatedDossier = updateDossierFieldStatus(
@@ -72,7 +88,7 @@ describe('Audit Trail API Route & PUT /api/analyze Integration', () => {
 
     const overrideEvent = history[history.length - 1];
     expect(overrideEvent?.action).toBe(AUDIT_ACTIONS.USER_STATUS_OVERRIDE);
-    expect(overrideEvent?.actor).toBe('Notar Dr. Mustermann');
+    expect(overrideEvent?.actor).toBe('Test Notar');
     expect(overrideEvent?.details?.override?.reason).toBe('Erbschein lag im Original vor');
 
     // GET /api/documents/[id]/audit abfragen

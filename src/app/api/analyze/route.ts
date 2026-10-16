@@ -11,10 +11,13 @@ import {
   getUniformCaseTitle,
   getWorkflowRepository,
 } from '@/lib/supabase/server';
-import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import {
+  createServerAuthClient,
+  resolveSessionActor,
+  resolveSessionOrganizationId,
+} from '@/lib/supabase/server-auth';
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
 import { AUDIT_ACTIONS } from '@/types/audit';
-import { DB_TABLES } from '@/types/database';
 import { AnalyzeRequestSchema, UpdateDossierRequestSchema, STORAGE_TYPES } from '@/types/dossier';
 import { WORKFLOW_STEP_STATUS, WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
@@ -40,27 +43,17 @@ export async function POST(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: msg }, { status: 500 });
     }
 
-    // Authentifizierten Server-Client & Sitzungskontext abrufen
+    // Anmeldung ist Pflicht; die Kanzlei stammt aus der Mitgliedschaft der Sitzung
     const authSupabase = await createServerAuthClient();
-    let resolvedOrgId =
-      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined;
-
-    if (authSupabase) {
-      const {
-        data: { user },
-      } = await authSupabase.auth.getUser();
-
-      if (user && !resolvedOrgId) {
-        const { data: member } = await authSupabase
-          .from(DB_TABLES.ORGANIZATION_MEMBERS)
-          .select('organization_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (member?.organization_id) {
-          resolvedOrgId = member.organization_id;
-        }
-      }
+    const resolvedOrgId = await resolveSessionOrganizationId(
+      authSupabase,
+      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined
+    );
+    if (!resolvedOrgId) {
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
     }
 
     // Prüfen, ob eine asynchrone Verarbeitung angefordert wurde (?async=true oder Header x-async: true)
@@ -223,11 +216,25 @@ export async function PUT(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: validationError.toString() }, { status: 400 });
     }
 
-    const { documentId, dossier, auditOverride, actor, actorRole } = parseResult.data;
-    const organizationId =
-      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined;
+    const { documentId, dossier, auditOverride } = parseResult.data;
 
-    const repo = getDossierRepository();
+    const authSupabase = await createServerAuthClient();
+    const organizationId = await resolveSessionOrganizationId(
+      authSupabase,
+      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined
+    );
+    const sessionActor =
+      authSupabase && organizationId
+        ? await resolveSessionActor(authSupabase, organizationId)
+        : undefined;
+    if (!authSupabase || !organizationId || !sessionActor) {
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
+    }
+
+    const repo = getDossierRepository(authSupabase);
     const updateRes = await repo.update(documentId, dossier, organizationId);
 
     if (!updateRes.success) {
@@ -239,16 +246,16 @@ export async function PUT(req: NextRequest): Promise<Response> {
 
     // Revisionssicherer Audit-Trail (§ 17 ff. BeurkG)
     if (auditOverride) {
-      const auditRepo = getAuditRepository();
+      const auditRepo = getAuditRepository(authSupabase);
       await auditRepo.appendEvent({
         documentId,
         organizationId,
         action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
-        actor: actor || 'Sachbearbeiter(in)',
+        actor: sessionActor.label,
         details: {
           override: auditOverride,
           caseTitle: dossier.caseTitle,
-          actorRole,
+          actorRole: sessionActor.role,
         },
       });
     }

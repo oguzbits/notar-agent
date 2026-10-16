@@ -640,8 +640,6 @@ export const UpdateDossierRequestSchema = z.object({
       reason: z.string().min(3),
     })
     .optional(),
-  actor: z.string().optional(),
-  actorRole: z.string().optional(),
 });
 export type UpdateDossierRequest = z.infer<typeof UpdateDossierRequestSchema>;
 

@@ -5,6 +5,20 @@ import { createMockTeamRepository } from '@/test/fixtures/mock-repositories';
 import { NOTARY_ROLES } from '@/types/organization';
 import { GET, POST } from './route';
 
+vi.mock('@/lib/supabase/server-auth', async () => {
+  const { NOTARY_ROLES } = await import('@/types/organization');
+  return {
+    createServerAuthClient: vi.fn().mockResolvedValue(null),
+    resolveSessionOrganizationId: vi.fn(
+      async (_client: unknown, requested?: string) =>
+        requested ?? 'a0000000-0000-4000-8000-000000000001'
+    ),
+    resolveSessionActor: vi
+      .fn()
+      .mockResolvedValue({ label: 'Test Notar', role: NOTARY_ROLES.NOTAR }),
+  };
+});
+
 const mockTeamRepo = createMockTeamRepository();
 
 vi.mock('@/lib/supabase/server', async (importOriginal) => {

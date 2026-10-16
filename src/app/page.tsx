@@ -21,7 +21,6 @@ import { useAuth } from '@/providers/AuthProvider';
 import { DocumentListItem } from '@/types/document';
 import { FieldStatus, STORAGE_TYPES } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
-import { NOTARY_ROLES } from '@/types/organization';
 
 const VIEW_MODE = {
   TABLE: 'table',
@@ -238,8 +237,6 @@ function HomeContent() {
           documentId: docId,
           dossier: updatedDossier,
           auditOverride,
-          actor: currentUser?.name || 'Notariat',
-          actorRole: currentUser?.role || NOTARY_ROLES.SACHBEARBEITER,
         });
       }
       actions.setDossier(updatedDossier);

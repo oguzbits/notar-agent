@@ -14,7 +14,9 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/supabase/server-auth', () => ({
   createServerAuthClient: vi.fn().mockResolvedValue(null),
-  resolveSessionOrganizationId: vi.fn(async (_client, override) => override),
+  resolveSessionOrganizationId: vi.fn(
+    async (_client, override) => override ?? 'a0000000-0000-4000-8000-000000000001'
+  ),
 }));
 
 describe('Documents API Route (/api/documents)', () => {

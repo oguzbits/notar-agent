@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cancelDossierJob } from '@/lib/jobs/job-worker';
 import { getJobRepository } from '@/lib/supabase/server';
-import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { JOB_STATUS } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
@@ -17,12 +17,18 @@ export async function POST(
       return NextResponse.json({ error: 'Job-ID erforderlich' }, { status: 400 });
     }
 
-    const orgId =
-      req.headers.get('x-organization-id') ||
-      req.nextUrl.searchParams.get('organizationId') ||
-      undefined;
-
     const authSupabase = await createServerAuthClient();
+    const orgId = await resolveSessionOrganizationId(
+      authSupabase,
+      req.headers.get('x-organization-id') ||
+        req.nextUrl.searchParams.get('organizationId') ||
+        undefined
+    );
+    if (!orgId)
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
     const repo = getJobRepository(authSupabase);
     const job = await repo.getJobById(id, orgId);
 
