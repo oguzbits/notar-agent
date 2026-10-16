@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { FIELD_STATUS, OVERALL_STATUS, isImmobilienDossier } from '@/types/dossier';
-import { getDossierFieldsRecord, updateDossierFieldStatus } from './state';
+import { getDossierFieldsRecord, hasFieldStatusChange, updateDossierFieldStatus } from './state';
 
 describe('Dossier State & Mutations (state.ts)', () => {
   it('liefert das typisierte fields-Dictionary zurück', () => {
@@ -57,5 +57,24 @@ describe('Dossier State & Mutations (state.ts)', () => {
     const ready = updateDossierFieldStatus(almostReady, 'uebergabe', FIELD_STATUS.VERIFIED);
 
     expect(ready.overallStatus).toBe(OVERALL_STATUS.READY);
+  });
+
+  describe('hasFieldStatusChange', () => {
+    it('erkennt die Änderung eines Feldstatus', () => {
+      const before = createTestImmobilienDossier({
+        fieldStatusMap: { verkaeufer: FIELD_STATUS.NEEDS_REVIEW },
+      });
+      const after = updateDossierFieldStatus(before, 'verkaeufer', FIELD_STATUS.VERIFIED);
+
+      expect(hasFieldStatusChange(before, after)).toBe(true);
+    });
+
+    it('ignoriert Änderungen ohne Statuswechsel (z. B. nur Notiz)', () => {
+      const before = createTestImmobilienDossier();
+      const status = getDossierFieldsRecord(before).verkaeufer?.status ?? FIELD_STATUS.NEEDS_REVIEW;
+      const after = updateDossierFieldStatus(before, 'verkaeufer', status, 'Nur eine Notiz');
+
+      expect(hasFieldStatusChange(before, after)).toBe(false);
+    });
   });
 });

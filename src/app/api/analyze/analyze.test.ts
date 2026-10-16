@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
+import { updateDossierFieldStatus } from '@/lib/dossier/state';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import {
   createMockJobRepository,
@@ -186,6 +187,28 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
       PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS,
       expect.objectContaining({ route: 'PUT /api/analyze' })
     );
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('PUT mit geändertem Feldstatus verlangt OVERRIDE_FIELD_STATUS auch ohne auditOverride', async () => {
+    const orgId = 'a0000000-0000-4000-8000-000000000001';
+    const before = createTestImmobilienDossier({
+      fieldStatusMap: { verkaeufer: FIELD_STATUS.NEEDS_REVIEW },
+    });
+    await mockDossierRepo.update('doc-status-guard', before, orgId);
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission(NOTARY_ROLES.ADMIN));
+    const updateSpy = vi.spyOn(mockDossierRepo, 'update');
+    updateSpy.mockClear();
+    const changed = updateDossierFieldStatus(before, 'verkaeufer', FIELD_STATUS.VERIFIED);
+
+    const res = await PUT(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'PUT',
+        body: JSON.stringify({ documentId: 'doc-status-guard', dossier: changed }),
+      })
+    );
+
+    expect(res.status).toBe(403);
     expect(updateSpy).not.toHaveBeenCalled();
   });
 

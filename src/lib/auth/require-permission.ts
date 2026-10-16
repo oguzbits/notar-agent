@@ -33,7 +33,9 @@ export async function requirePermission(
   action: PermissionAction,
   options: RequirePermissionOptions = {}
 ): Promise<SessionContext> {
-  const organizationId = await resolveSessionOrganizationId(supabase, options.requestedOrgId);
+  const organizationId = await resolveSessionOrganizationId(supabase, options.requestedOrgId, {
+    requireExplicit: true,
+  });
   const actor =
     supabase && organizationId ? await resolveSessionActor(supabase, organizationId) : undefined;
   if (!supabase || !organizationId || !actor) {

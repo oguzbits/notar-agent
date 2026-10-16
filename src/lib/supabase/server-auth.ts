@@ -50,7 +50,8 @@ export async function createServerAuthClient() {
  */
 export async function resolveSessionOrganizationId(
   authSupabase: ReturnType<typeof createServerClient<Database>> | null,
-  requestedOrgId?: string
+  requestedOrgId?: string,
+  options: { requireExplicit?: boolean } = {}
 ): Promise<string | undefined> {
   if (!authSupabase) return undefined;
 
@@ -69,9 +70,19 @@ export async function resolveSessionOrganizationId(
   }
 
   const organizationIds = (memberships ?? []).map((m) => m.organization_id);
+  return pickOrganization(organizationIds, requestedOrgId, options.requireExplicit);
+}
+
+function pickOrganization(
+  organizationIds: string[],
+  requestedOrgId: string | undefined,
+  requireExplicit = false
+): string | undefined {
   if (requestedOrgId) {
     return organizationIds.includes(requestedOrgId) ? requestedOrgId : undefined;
   }
+  // Bei mehreren Mitgliedschaften darf eine schreibende Aktion nicht an eine geratene Kanzlei gehen.
+  if (requireExplicit && organizationIds.length > 1) return undefined;
   return organizationIds[0];
 }
 

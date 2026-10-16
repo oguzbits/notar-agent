@@ -4,6 +4,7 @@ import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { hasFieldStatusChange } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
 import {
@@ -238,21 +239,25 @@ export async function PUT(req: NextRequest): Promise<Response> {
     const { documentId, dossier, auditOverride } = parseResult.data;
 
     const authSupabase = await createServerAuthClient();
+    const guardOptions = {
+      requestedOrgId:
+        parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined,
+      route: 'PUT /api/analyze',
+    };
     const sessionActor = await requirePermission(
       authSupabase,
-      auditOverride
-        ? PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS
-        : PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
-      {
-        requestedOrgId:
-          parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined,
-        route: 'PUT /api/analyze',
-      }
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      guardOptions
     );
     const { organizationId } = sessionActor;
     if (!authSupabase) throw new Error('Authentifizierungsclient nicht verfügbar.');
 
     const repo = getDossierRepository(authSupabase);
+    // Ein Statuswechsel am Feld gilt als Override, auch wenn der Client `auditOverride` weglässt.
+    const stored = await repo.findById(documentId, organizationId);
+    if (auditOverride || (stored && hasFieldStatusChange(stored.content, dossier))) {
+      await requirePermission(authSupabase, PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS, guardOptions);
+    }
     const updateRes = await repo.update(documentId, dossier, organizationId);
 
     if (!updateRes.success) {

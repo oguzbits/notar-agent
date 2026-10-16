@@ -40,3 +40,13 @@ export function updateDossierFieldStatus(
 
   return cloned;
 }
+
+/**
+ * Erkennt, ob sich der Status mindestens eines Feldes gegenüber dem gespeicherten Stand geändert hat.
+ */
+export function hasFieldStatusChange(previous: Dossier, next: Dossier): boolean {
+  const before = getDossierFieldsRecord(previous);
+  return Object.entries(getDossierFieldsRecord(next)).some(
+    ([key, field]) => field?.status !== before[key]?.status
+  );
+}

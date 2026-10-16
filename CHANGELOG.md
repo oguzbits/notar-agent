@@ -169,5 +169,6 @@
 
 - **Berechtigungs-Guard:** `requirePermission()` in `src/lib/auth/require-permission.ts` prüft Rolle und Aktion serverseitig (401 ohne Sitzung oder Mitgliedschaft, 403 ohne Berechtigung). Verweigerungen erzeugen ein append-only `ACCESS_DENIED`-Ereignis in der Hash-Kette.
 - **Routen:** Löschen (`documents`, `jobs/[id]`), Team, Kanzlei-Update, Upload, Analyse, Job-Wiederholung und -Abbruch sind angebunden; der Statuswechsel in `PUT /api/analyze` verlangt `OVERRIDE_FIELD_STATUS`. Akteur und Rolle kommen nur aus der Sitzung.
-- **Datenbank:** `rls_documents_all` ist nach Operation getrennt; Löschen nur für NOTAR, NOTARASSESSOR und ADMIN. Paritätstest gegen die Matrix und DB-Test `src/test/db/rbac.db.test.ts`.
+- **Datenbank:** `rls_documents_all` und `rls_jobs_all` sind nach Operation getrennt; Löschen von Dossiers, Jobs und Originaldateien nur für NOTAR, NOTARASSESSOR und ADMIN. Verweigerungs-Ereignisse nur in die Kette der eigenen Kanzlei. Paritätstest gegen die Matrix und DB-Test `src/test/db/rbac.db.test.ts`.
+- **Härtung nach Gesamtprüfung:** Feldstatus-Änderungen verlangen `OVERRIDE_FIELD_STATUS` serverseitig (`hasFieldStatusChange`); bei Mehrfachmitgliedschaft ohne Kanzlei-Angabe lehnt der Guard ab.
 - **Offen:** Die Migration ist lokal angewendet, auf dem Live-Projekt noch nicht (`DECLARATION_STAGED`).

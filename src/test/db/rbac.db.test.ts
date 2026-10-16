@@ -4,7 +4,9 @@ import { hasPermission } from '@/lib/auth/rbac';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
+import { JOB_STATUS } from '@/types/jobs';
 import { NOTARY_ROLES } from '@/types/organization';
+import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 import { createDbHarness, type DbHarness, type TestUser } from './db-harness';
 
 describe('Rollenprüfung in der Datenbank', () => {
@@ -83,5 +85,59 @@ describe('Rollenprüfung in der Datenbank', () => {
 
     expect([first?.error, second?.error]).toEqual([null, null]);
     expect(chain?.data).toMatchObject({ valid: true, totalEntries: 2 });
+  });
+
+  it.each(Object.values(NOTARY_ROLES))(
+    'Job löschen als %s folgt der Berechtigung DELETE_DOSSIER',
+    async (role) => {
+      const jobId = randomUUID();
+      const inserted = await harness.admin
+        .from(DB_TABLES.DOSSIER_JOBS)
+        .insert({ id: jobId, organization_id: orgId, status: JOB_STATUS.PENDING, payload: {} });
+      expect(inserted.error).toBeNull();
+
+      await users.get(role)?.client.from(DB_TABLES.DOSSIER_JOBS).delete().eq('id', jobId);
+
+      const left = await harness.admin.from(DB_TABLES.DOSSIER_JOBS).select('id').eq('id', jobId);
+      expect((left.data ?? []).length === 1).toBe(
+        !hasPermission(role, PERMISSION_ACTIONS.DELETE_DOSSIER)
+      );
+    }
+  );
+
+  it.each([NOTARY_ROLES.SACHBEARBEITER, NOTARY_ROLES.NOTAR])(
+    'Originaldatei im Speicher löschen als %s folgt der Berechtigung DELETE_DOSSIER',
+    async (role) => {
+      const path = `${orgId}/${randomUUID()}/vertrag.pdf`;
+      const bucket = harness.admin.storage.from(STORAGE_BUCKET_NAMES.DOSSIER_FILES);
+      const uploaded = await bucket.upload(path, new Blob(['x']), {
+        contentType: 'application/pdf',
+      });
+      expect(uploaded.error).toBeNull();
+
+      await users.get(role)?.client.storage.from(STORAGE_BUCKET_NAMES.DOSSIER_FILES).remove([path]);
+
+      const folder = path.split('/').slice(0, 2).join('/');
+      const listed = await bucket.list(folder);
+      expect((listed.data ?? []).length === 1).toBe(
+        !hasPermission(role, PERMISSION_ACTIONS.DELETE_DOSSIER)
+      );
+    }
+  );
+
+  it('Verweigerungs-Ereignis darf nicht in die Kette einer fremden Kanzlei geschrieben werden', async () => {
+    const stranger = await harness.createUser();
+    const otherOrg = await harness.createOrganizationWithMember(stranger.id, NOTARY_ROLES.NOTAR);
+    const clerk = users.get(NOTARY_ROLES.SACHBEARBEITER);
+
+    const forged = await clerk?.client.from(DB_TABLES.AUDIT_LOGS).insert({
+      organization_id: orgId,
+      document_id: `access-denied:${otherOrg}`,
+      action: AUDIT_ACTIONS.ACCESS_DENIED,
+      actor: 'Fremd',
+      details: {},
+    });
+
+    expect(forged?.error).not.toBeNull();
   });
 });

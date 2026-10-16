@@ -88,6 +88,24 @@ describe('resolveSessionOrganizationId', () => {
   });
 });
 
+describe('resolveSessionOrganizationId (strikte Auswahl)', () => {
+  it('liefert bei Mehrfachmitgliedschaft ohne angeforderte Kanzlei undefined', async () => {
+    const client = fakeClient({
+      memberships: [{ organization_id: ORG_A }, { organization_id: ORG_B }],
+    });
+    expect(await resolveSessionOrganizationId(client, undefined, { requireExplicit: true })).toBe(
+      undefined
+    );
+  });
+
+  it('liefert bei genau einer Mitgliedschaft ohne Angabe diese Kanzlei', async () => {
+    const client = fakeClient({ memberships: [{ organization_id: ORG_A }] });
+    expect(await resolveSessionOrganizationId(client, undefined, { requireExplicit: true })).toBe(
+      ORG_A
+    );
+  });
+});
+
 describe('resolveSessionActor', () => {
   it('liefert undefined ohne Sitzung', async () => {
     const client = fakeClient({ user: null });

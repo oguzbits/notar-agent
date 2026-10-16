@@ -324,4 +324,8 @@ DROP POLICY IF EXISTS rls_audit_logs_select ON audit_logs;
 CREATE POLICY rls_audit_logs_select ON audit_logs FOR SELECT USING (is_org_member(organization_id));
 
 DROP POLICY IF EXISTS rls_audit_logs_insert ON audit_logs;
-CREATE POLICY rls_audit_logs_insert ON audit_logs FOR INSERT WITH CHECK (is_org_member(organization_id));
+-- Verweigerungs-Ereignisse (access-denied:<Kanzlei>) dürfen nur in die Kette der eigenen Kanzlei geschrieben werden.
+CREATE POLICY rls_audit_logs_insert ON audit_logs FOR INSERT WITH CHECK (
+    is_org_member(organization_id)
+    AND (document_id NOT LIKE 'access-denied:%' OR document_id = 'access-denied:' || organization_id::text)
+);

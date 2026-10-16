@@ -112,6 +112,17 @@ describe('requirePermission', () => {
     expect(appendEvent).not.toHaveBeenCalled();
   });
 
+  it('wirft 401 bei Mehrfachmitgliedschaft ohne Kanzlei-Angabe und schreibt kein Audit', async () => {
+    const client = fakeClient({
+      memberships: [
+        { organization_id: ORG_A, role: NOTARY_ROLES.NOTAR },
+        { organization_id: ORG_B, role: NOTARY_ROLES.SACHBEARBEITER },
+      ],
+    });
+    expect(await statusOf(requirePermission(client, PERMISSION_ACTIONS.DELETE_DOSSIER))).toBe(401);
+    expect(appendEvent).not.toHaveBeenCalled();
+  });
+
   it('wirft 403 und schreibt genau ein ACCESS_DENIED für eine nicht berechtigte Rolle', async () => {
     const client = fakeClient({
       memberships: [{ organization_id: ORG_A, role: NOTARY_ROLES.SACHBEARBEITER }],

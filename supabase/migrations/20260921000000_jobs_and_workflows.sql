@@ -31,10 +31,18 @@ ALTER TABLE dossier_jobs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all access to dossier_jobs for prototype" ON dossier_jobs;
 DROP POLICY IF EXISTS rls_jobs_all ON dossier_jobs;
-CREATE POLICY rls_jobs_all ON dossier_jobs
-    FOR ALL
-    USING (is_org_member(organization_id))
-    WITH CHECK (is_org_member(organization_id));
+-- Löschen nur für Rollen mit DELETE_DOSSIER (Spiegel von src/lib/auth/rbac.ts, abgesichert durch rbac-sql-parity.test.ts).
+DROP POLICY IF EXISTS rls_jobs_select ON dossier_jobs;
+CREATE POLICY rls_jobs_select ON dossier_jobs FOR SELECT USING (is_org_member(organization_id));
+
+DROP POLICY IF EXISTS rls_jobs_insert ON dossier_jobs;
+CREATE POLICY rls_jobs_insert ON dossier_jobs FOR INSERT WITH CHECK (is_org_member(organization_id));
+
+DROP POLICY IF EXISTS rls_jobs_update ON dossier_jobs;
+CREATE POLICY rls_jobs_update ON dossier_jobs FOR UPDATE USING (is_org_member(organization_id)) WITH CHECK (is_org_member(organization_id));
+
+DROP POLICY IF EXISTS rls_jobs_delete ON dossier_jobs;
+CREATE POLICY rls_jobs_delete ON dossier_jobs FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'NOTARASSESSOR', 'ADMIN'));
 
 -- 2. Supabase Object Storage (dossier-files Bucket & RLS gem. § 203 StGB)
 INSERT INTO storage.buckets (id, name, public, file_size_limit)
@@ -65,7 +73,7 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'dossier-files'
-  AND is_org_member((storage.foldername(name))[1]::uuid)
+  AND get_user_role((storage.foldername(name))[1]::uuid) IN ('NOTAR', 'NOTARASSESSOR', 'ADMIN')
 );
 
 -- Trigger für Realtime / Webhook-Events bei neuen Jobs
