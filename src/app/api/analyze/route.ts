@@ -8,6 +8,7 @@ import {
   getAuditRepository,
   getDossierRepository,
   getJobRepository,
+  getKnowledgeRepository,
   getUniformCaseTitle,
   getWorkflowRepository,
 } from '@/lib/supabase/server';
@@ -77,7 +78,11 @@ export async function POST(req: NextRequest): Promise<Response> {
         );
       }
       const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
-      const workerDeps = { jobRepo, dossierRepo };
+      const workerDeps = {
+        jobRepo,
+        dossierRepo,
+        knowledgeRepo: getKnowledgeRepository(authSupabase),
+      };
 
       // Starte Hintergrund-Worker entkoppelt und serverless-sicher via Next.js after()
       try {
@@ -110,6 +115,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         caseType,
         notes,
         existingDossier,
+        organizationId: resolvedOrgId,
+        knowledgeRepo: getKnowledgeRepository(authSupabase),
         model: aiConfig.model,
         extractionInstructions: aiConfig.extractionInstructions,
         auditorInstructions: aiConfig.auditorInstructions,

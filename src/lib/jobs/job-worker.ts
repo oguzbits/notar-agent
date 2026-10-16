@@ -7,6 +7,7 @@ import type {
 } from '@/lib/ai/pipeline';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { IJobRepository } from '@/lib/jobs/job-repository';
+import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import { IDossierRepository } from '@/lib/supabase/repository';
 import { getJobRepository, getDossierRepository } from '@/lib/supabase/server';
 import { Dossier } from '@/types/dossier';
@@ -15,6 +16,8 @@ import { DossierJob, JOB_STATUS, JOB_STAGES, PROGRESS_UNIT_LABELS } from '@/type
 export interface WorkerDependencies {
   jobRepo?: IJobRepository;
   dossierRepo?: IDossierRepository;
+  /** Wissensspeicher mit Sitzungskontext, damit RLS die Regeln der Kanzlei freigibt */
+  knowledgeRepo?: IKnowledgeRepository;
   pipelineFn?: (params: PipelineParams) => Promise<Dossier>;
   extractionFn?: (params: ExtractionStageParams) => Promise<ExtractionStageResult>;
   auditorFn?: (params: AuditorStageParams) => Promise<Dossier>;
@@ -274,6 +277,7 @@ async function runJobExecution(
         notesSection,
         existingDossier,
         organizationId: orgId,
+        knowledgeRepo: deps.knowledgeRepo,
         model: aiConfig.model,
         auditorInstructions: aiConfig.auditorInstructions,
         onStep: handleStepUpdate,

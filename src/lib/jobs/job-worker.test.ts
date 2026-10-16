@@ -4,6 +4,7 @@ import { executeDossierJob, WorkerDependencies } from '@/lib/jobs/job-worker';
 import { computeJobProgressPercent } from '@/lib/jobs/progress';
 import type { IDossierRepository } from '@/lib/supabase/repository';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import { createMockKnowledgeRepository } from '@/test/fixtures/mock-repositories';
 import { CASE_TYPES, STORAGE_TYPES } from '@/types/dossier';
 import { JOB_STATUS, JOB_STAGES, type DossierJob, type CreateJobPayload } from '@/types/jobs';
 
@@ -176,6 +177,7 @@ describe('job-worker (executeDossierJob)', () => {
     }));
 
     const auditorMock = vi.fn(async () => mockResultDossier);
+    const sessionKnowledgeRepo = createMockKnowledgeRepository();
 
     const job = await jobRepo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
@@ -188,6 +190,7 @@ describe('job-worker (executeDossierJob)', () => {
       dossierRepo,
       extractionFn: extractionMock,
       auditorFn: auditorMock,
+      knowledgeRepo: sessionKnowledgeRepo,
     });
 
     expect(extractionMock).toHaveBeenCalledTimes(1);
@@ -196,6 +199,7 @@ describe('job-worker (executeDossierJob)', () => {
       expect.objectContaining({
         stage1Output: stage1OutputMock,
         caseType: CASE_TYPES.IMMOBILIENKAUF,
+        knowledgeRepo: sessionKnowledgeRepo,
       })
     );
 
