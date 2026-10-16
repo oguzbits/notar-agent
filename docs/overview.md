@@ -207,7 +207,7 @@ Automatisierte Pre-Tool- und Post-Tool-Lifecycle-Hooks sichern das System gegen 
   - **`context7` MCP:** Semantische Dokumentationsrecherche für Bibliotheken und SDKs.
   - **`chrome-devtools` MCP:** Headless-Browser-Inspektion zur Überprüfung barrierefreier Hierarchien (A11y) und CLS-Vermeidung.
 
-### 1.5 Multi-Stage Agentic Evaluation & Visueller Artefakt-Report ([`src/test/eval/`](../src/test/eval/), [`reports/`](../reports/))
+### 1.5 Multi-Stage Agentic Evaluation & Visueller Artefakt-Report ([`src/test/eval/`](../src/test/eval/), `reports/` (lokal erzeugt, nicht versioniert))
 
 Um die Qualität und Verlässlichkeit des KI-Systems ohne Blindflug zu garantieren, verfügt Notar Agent über ein mehrstufiges, schichtenbasiertes Evaluations- und Visualisierungs-Framework:
 
@@ -221,7 +221,7 @@ Um die Qualität und Verlässlichkeit des KI-Systems ohne Blindflug zu garantier
   Prüft, ob die JIT-Rule-Selector-Engine die für den Vorgangstyp und Sachverhalt exakt einschlägigen Normen (§ 80 GEG, § 21 BeurkG, MoPeG) selektiert.
 - **Layer 3: Outcome Accuracy & Provenance:**
   Vergleicht das resultierende Dossier mit der juristischen Ground Truth (Accuracy $\ge 95\%$, Provenance Coverage $\ge 95\%$, Guardrail Hit Rate $100\%$).
-- **Minimalistischer, Barrierefreier HTML-Report (`npm run eval:report`, [`reports/eval-report.html`](../reports/eval-report.html)):**
+- **Minimalistischer, Barrierefreier HTML-Report (`npm run eval:report`, `reports/eval-report.html`):**
   Autarke, browserfähige Standalone-Visualisierung mit maximaler Übersichtlichkeit und vollständiger WCAG 2.1 AA Konformität:
   - _Kompakte 1-Zeilen-Kopfleiste:_ Integriert Titel, Lauf-ID, Erfolgs-Badge und die Fallauswahl (`FALL 01`, `FALL 02`, etc.) nahtlos ohne vertikalen Platzverlust.
   - _Originaldokument-Overlay (708 × 1002 px):_ Rendert die Original-PDF-Seite mit kalibrierten, transparenten Markern (`box-marker`) für erkannte Formularfelder und Skalen-Zeiger (`[ZEIGER ▼]`).
