@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/auth/rbac';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
+import { DELETION_REASONS } from '@/types/deletion';
 import { JOB_STATUS } from '@/types/jobs';
 import { NOTARY_ROLES } from '@/types/organization';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
@@ -43,7 +44,10 @@ describe('Rollenprüfung in der Datenbank', () => {
         .from(DB_TABLES.DOCUMENTS)
         .insert({ id: docId, organization_id: orgId, title: 'Rollen-Test' });
 
-      await users.get(role)?.client.from(DB_TABLES.DOCUMENTS).delete().eq('id', docId);
+      await users.get(role)?.client.rpc('delete_dossier', {
+        p_document_id: docId,
+        p_reason: DELETION_REASONS.SONSTIGES,
+      });
 
       expect(await documentExists(docId)).toBe(
         !hasPermission(role, PERMISSION_ACTIONS.DELETE_DOSSIER)

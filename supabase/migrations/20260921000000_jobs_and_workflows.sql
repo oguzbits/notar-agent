@@ -255,7 +255,7 @@ CREATE OR REPLACE FUNCTION _purge_dossier(p_document_id TEXT, p_reason TEXT, p_a
 DECLARE
     v_org UUID;
     v_prefix TEXT;
-    n_docs INT; n_jobs INT; n_wf INT; n_map INT; n_tasks INT;
+    n_docs INT; n_jobs INT; n_wf INT; n_map INT; n_tasks INT; n_kn INT;
     v_rows JSONB;
 BEGIN
     IF p_reason NOT IN ('ENTWURF_VERWORFEN', 'FEHLERHAFT_ANGELEGT', 'AUFBEWAHRUNG_ABGELAUFEN', 'SONSTIGES') THEN
@@ -266,8 +266,10 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Vorgang nicht gefunden' USING ERRCODE = 'P0002';
     END IF;
+    -- Auch Analysen eines bestehenden Dossiers (payload.documentId) zählen; result_dossier_id ist erst bei COMPLETED gesetzt
     IF EXISTS (SELECT 1 FROM dossier_jobs
-               WHERE result_dossier_id = p_document_id AND organization_id = v_org AND status = 'PROCESSING') THEN
+               WHERE (result_dossier_id = p_document_id OR payload->>'documentId' = p_document_id)
+                 AND organization_id = v_org AND status IN ('PENDING', 'PROCESSING') FOR UPDATE) THEN
         RAISE EXCEPTION 'Für den Vorgang läuft noch eine Verarbeitung' USING ERRCODE = '55006';
     END IF;
 
@@ -280,25 +282,32 @@ BEGIN
         FROM dossier_jobs j,
              jsonb_array_elements(CASE WHEN jsonb_typeof(j.payload->'files') = 'array'
                                        THEN j.payload->'files' ELSE '[]'::jsonb END) f
-        WHERE j.result_dossier_id = p_document_id AND j.organization_id = v_org
+        WHERE (j.result_dossier_id = p_document_id OR j.payload->>'documentId' = p_document_id)
+          AND j.organization_id = v_org
         UNION
         SELECT o.name FROM storage.objects o
         WHERE o.bucket_id = 'dossier-files'
           AND left(o.name, length(v_prefix || 'archive/' || p_document_id || '/')) = v_prefix || 'archive/' || p_document_id || '/'
     ) src
+    -- Upload-Pfade genau <Kanzlei>/<Datei>; Archivpfade nur aus dem Listing (Pfade aus Job-Payloads sind Client-Eingaben)
     WHERE path IS NOT NULL AND left(path, length(v_prefix)) = v_prefix AND position('..' IN path) = 0
+      AND (position('/' IN substr(path, length(v_prefix) + 1)) = 0
+           OR left(path, length(v_prefix || 'archive/' || p_document_id || '/')) = v_prefix || 'archive/' || p_document_id || '/')
     ON CONFLICT (document_id, storage_path) DO NOTHING;
     GET DIAGNOSTICS n_tasks = ROW_COUNT;
 
     DELETE FROM workflow_instances WHERE case_id = p_document_id AND organization_id = v_org;
     GET DIAGNOSTICS n_wf = ROW_COUNT;
-    DELETE FROM dossier_jobs WHERE result_dossier_id = p_document_id AND organization_id = v_org;
+    DELETE FROM dossier_jobs
+    WHERE (result_dossier_id = p_document_id OR payload->>'documentId' = p_document_id) AND organization_id = v_org;
     GET DIAGNOSTICS n_jobs = ROW_COUNT;
+    DELETE FROM knowledge_documents WHERE organization_id = v_org AND legal_basis = 'dossier:' || p_document_id;
+    GET DIAGNOSTICS n_kn = ROW_COUNT;
     DELETE FROM documents WHERE id = p_document_id AND organization_id = v_org;
     GET DIAGNOSTICS n_docs = ROW_COUNT;
 
     -- Nachweis zuerst, Zuordnung der Pseudonyme zuletzt: Auch dieser Eintrag ist danach nicht mehr personenbeziehbar
-    v_rows := jsonb_build_object('documents', n_docs, 'dossier_jobs', n_jobs, 'workflow_instances', n_wf);
+    v_rows := jsonb_build_object('documents', n_docs, 'dossier_jobs', n_jobs, 'workflow_instances', n_wf, 'knowledge_documents', n_kn);
     INSERT INTO audit_logs (organization_id, document_id, action, actor, details)
     VALUES (v_org, p_document_id, 'DOSSIER_DELETED', p_actor, jsonb_build_object('deletion',
         jsonb_build_object('reason', p_reason, 'deletedRows', v_rows, 'storageTasks', n_tasks)));
@@ -347,10 +356,9 @@ DECLARE
     v_org UUID;
 BEGIN
     PERFORM pg_advisory_xact_lock(hashtextextended(p_document_id, 1));
-    SELECT organization_id INTO v_org FROM audit_logs
-    WHERE document_id = p_document_id AND action = 'DOSSIER_DELETED' LIMIT 1;
+    SELECT organization_id INTO v_org FROM deletion_tasks WHERE document_id = p_document_id LIMIT 1;
     IF v_org IS NULL THEN RETURN false; END IF;
-    IF EXISTS (SELECT 1 FROM audit_logs WHERE document_id = p_document_id AND action = 'DOSSIER_PURGE_COMPLETED') THEN
+    IF EXISTS (SELECT 1 FROM audit_logs WHERE document_id = p_document_id AND organization_id = v_org AND action = 'DOSSIER_PURGE_COMPLETED') THEN
         RETURN false;
     END IF;
     IF EXISTS (SELECT 1 FROM deletion_tasks WHERE document_id = p_document_id AND status <> 'DONE') THEN
@@ -358,6 +366,8 @@ BEGIN
     END IF;
     INSERT INTO audit_logs (organization_id, document_id, action, actor, details)
     VALUES (v_org, p_document_id, 'DOSSIER_PURGE_COMPLETED', 'SYSTEM', '{}'::jsonb);
+    -- Dateinamen können Mandantendaten enthalten: nach dem Nachweis nicht mehr aufbewahren
+    DELETE FROM deletion_tasks WHERE document_id = p_document_id AND organization_id = v_org;
     RETURN true;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;

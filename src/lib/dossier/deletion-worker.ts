@@ -39,7 +39,8 @@ export async function processDeletionTasks(
     const { error: updateError } = await admin
       .from(DB_TABLES.DELETION_TASKS)
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', task.id);
+      .eq('id', task.id)
+      .eq('status', DELETION_TASK_STATUS.PENDING);
     if (updateError) throw new Error(`Löschaufgabe nicht aktualisierbar: ${updateError.message}`);
     if (patch.status === DELETION_TASK_STATUS.DONE) result.done += 1;
     if (patch.status === DELETION_TASK_STATUS.FAILED) result.failed += 1;

@@ -6,6 +6,7 @@ import { PERMISSION_ACTIONS } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
 import { DELETION_REASONS, DELETION_TASK_STATUS, DeletionReceiptSchema } from '@/types/deletion';
 import { JOB_STATUS } from '@/types/jobs';
+import { KNOWLEDGE_CATEGORIES } from '@/types/knowledge';
 import { NOTARY_ROLES } from '@/types/organization';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 import { createDbHarness, type DbHarness, type TestUser } from './db-harness';
@@ -233,5 +234,132 @@ describe('Löschfunktionen und Outbox', () => {
     expect(res.error).toBeNull();
     expect(await exists(DB_TABLES.AUDIT_ACTOR_MAP, 'document_id', a)).toBe(false);
     expect(await exists(DB_TABLES.AUDIT_ACTOR_MAP, 'document_id', b)).toBe(true);
+  });
+  it('sperrt das Löschen bei wartender oder laufender Analyse eines bestehenden Dossiers (result_dossier_id leer)', async () => {
+    for (const status of [JOB_STATUS.PENDING, JOB_STATUS.PROCESSING]) {
+      const id = await createDossier();
+      await harness.admin.from(DB_TABLES.DOSSIER_JOBS).delete().eq('result_dossier_id', id);
+      const job = await harness.admin.from(DB_TABLES.DOSSIER_JOBS).insert({
+        id: randomUUID(),
+        organization_id: orgId,
+        status,
+        payload: { documentId: id, files: [] },
+      });
+      expect(job.error).toBeNull();
+      const res = await owner.client.rpc('delete_dossier', {
+        p_document_id: id,
+        p_reason: DELETION_REASONS.SONSTIGES,
+      });
+      expect(res.error?.code).toBe('55006');
+      expect(await exists(DB_TABLES.DOCUMENTS, 'id', id)).toBe(true);
+    }
+  });
+
+  it('löscht abgeschlossene Jobs über payload.documentId und Wissens-Chunks des Dossiers mit', async () => {
+    const id = await createDossier();
+    await harness.admin.from(DB_TABLES.DOSSIER_JOBS).insert({
+      id: randomUUID(),
+      organization_id: orgId,
+      status: JOB_STATUS.COMPLETED,
+      payload: { documentId: id, files: [] },
+    });
+    const chunk = await harness.admin.from(DB_TABLES.KNOWLEDGE_DOCUMENTS).insert({
+      organization_id: orgId,
+      category: KNOWLEDGE_CATEGORIES.KANZLEI_RICHTLINIE,
+      legal_basis: `dossier:${id}`,
+      title: 'Chunk',
+      content: 'x',
+    });
+    expect(chunk.error).toBeNull();
+    const res = await owner.client.rpc('delete_dossier', {
+      p_document_id: id,
+      p_reason: DELETION_REASONS.SONSTIGES,
+    });
+    expect(res.error).toBeNull();
+    expect(await exists(DB_TABLES.DOSSIER_JOBS, 'organization_id', orgId)).toBe(true);
+    const left = await harness.admin
+      .from(DB_TABLES.DOSSIER_JOBS)
+      .select('id')
+      .filter('payload->>documentId', 'eq', id);
+    expect(left.data).toHaveLength(0);
+    expect(await exists(DB_TABLES.KNOWLEDGE_DOCUMENTS, 'legal_basis', `dossier:${id}`)).toBe(false);
+  });
+
+  it('übernimmt aus Job-Payloads nur Upload-Pfade, keine Pfade fremder Dossiers', async () => {
+    const own = `${orgId}/${randomUUID()}-a.pdf`;
+    const foreign = `${orgId}/archive/${randomUUID()}/chunks.json`;
+    const id = await createDossier({ files: [own, foreign] });
+    const res = await owner.client.rpc('delete_dossier', {
+      p_document_id: id,
+      p_reason: DELETION_REASONS.SONSTIGES,
+    });
+    expect(res.error).toBeNull();
+    expect((await tasks(id)).map((t) => t.storage_path)).toEqual([own]);
+  });
+
+  it('entfernt erledigte Aufgaben nach dem Abschluss (Dateinamen enthalten Mandantendaten)', async () => {
+    const id = await createDossier({ files: [`${orgId}/${randomUUID()}-mandant.pdf`] });
+    await owner.client.rpc('delete_dossier', {
+      p_document_id: id,
+      p_reason: DELETION_REASONS.SONSTIGES,
+    });
+    await harness.admin
+      .from(DB_TABLES.DELETION_TASKS)
+      .update({ status: DELETION_TASK_STATUS.DONE })
+      .eq('document_id', id);
+    expect((await harness.admin.rpc('complete_dossier_purge', { p_document_id: id })).data).toBe(
+      true
+    );
+    expect(await tasks(id)).toHaveLength(0);
+  });
+
+  it('erlaubt kein direktes Löschen über die Tabelle und keine gefälschten Löschnachweise', async () => {
+    const id = await createDossier();
+    await owner.client.from(DB_TABLES.DOCUMENTS).delete().eq('id', id);
+    expect(await exists(DB_TABLES.DOCUMENTS, 'id', id)).toBe(true);
+    const forged = await owner.client.from(DB_TABLES.AUDIT_LOGS).insert({
+      organization_id: orgId,
+      document_id: id,
+      action: AUDIT_ACTIONS.DOSSIER_DELETED,
+      actor: 'x',
+    });
+    expect(forged.error).not.toBeNull();
+  });
+
+  it('lässt eine fremde Kanzlei nicht in die Kette eines Dossiers schreiben', async () => {
+    const id = await createDossier();
+    await owner.client.from(DB_TABLES.AUDIT_LOGS).insert({
+      organization_id: orgId,
+      document_id: id,
+      action: AUDIT_ACTIONS.USER_NOTE_MODIFIED,
+      actor: 'Anna',
+    });
+    const stranger = await harness.createUser();
+    const otherOrg = await harness.createOrganizationWithMember(stranger.id, NOTARY_ROLES.NOTAR);
+    const res = await stranger.client.from(DB_TABLES.AUDIT_LOGS).insert({
+      organization_id: otherOrg,
+      document_id: id,
+      action: AUDIT_ACTIONS.USER_NOTE_MODIFIED,
+      actor: 'Mallory',
+    });
+    expect(res.error).not.toBeNull();
+    expect(await harness.admin.rpc('verify_audit_chain', { p_document_id: id })).toMatchObject({
+      data: { valid: true },
+    });
+  });
+
+  it('erlaubt den Fristanker nur Rollen mit Löschrecht', async () => {
+    const id = await createDossier();
+    const clerk = users.get(NOTARY_ROLES.SACHBEARBEITER);
+    const denied = await clerk?.client
+      .from(DB_TABLES.DOCUMENTS)
+      .update({ retention_anchor_at: '1900-01-01T00:00:00Z' })
+      .eq('id', id);
+    expect(denied?.error).not.toBeNull();
+    const allowed = await owner.client
+      .from(DB_TABLES.DOCUMENTS)
+      .update({ retention_anchor_at: '1900-01-01T00:00:00Z' })
+      .eq('id', id);
+    expect(allowed.error).toBeNull();
   });
 });

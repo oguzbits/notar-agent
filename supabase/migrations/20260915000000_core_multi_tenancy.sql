@@ -167,6 +167,10 @@ BEGIN
     IF NOT FOUND THEN
         v_sequence := 0;
         v_previous := repeat('0', 64);
+    ELSIF EXISTS (SELECT 1 FROM audit_logs WHERE document_id = NEW.document_id
+                  AND organization_id IS DISTINCT FROM NEW.organization_id) THEN
+        -- Der Trigger liest als Eigentümer ohne RLS: Fremde Kanzleien dürfen nicht in diese Kette schreiben
+        RAISE EXCEPTION 'Akte gehört zu einer anderen Kanzlei' USING ERRCODE = '42501';
     END IF;
 
     NEW.sequence_number := v_sequence;
@@ -340,8 +344,23 @@ CREATE POLICY rls_documents_insert ON documents FOR INSERT WITH CHECK (is_org_me
 DROP POLICY IF EXISTS rls_documents_update ON documents;
 CREATE POLICY rls_documents_update ON documents FOR UPDATE USING (is_org_member(organization_id)) WITH CHECK (is_org_member(organization_id));
 
+-- Kein Löschrecht über die REST-Schnittstelle: Gelöscht wird nur über delete_dossier (Nachweis, Outbox, abhängige Daten).
 DROP POLICY IF EXISTS rls_documents_delete ON documents;
-CREATE POLICY rls_documents_delete ON documents FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'NOTARASSESSOR', 'ADMIN'));
+
+-- Der Fristanker darf nur von Rollen mit Löschrecht gesetzt werden (löst die automatische Löschung aus).
+CREATE OR REPLACE FUNCTION documents_guard_retention_anchor() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.retention_anchor_at IS DISTINCT FROM OLD.retention_anchor_at
+       AND auth.uid() IS NOT NULL
+       AND COALESCE(get_user_role(NEW.organization_id)::text, '') NOT IN ('NOTAR', 'NOTARASSESSOR', 'ADMIN') THEN
+        RAISE EXCEPTION 'Keine Berechtigung für den Fristanker' USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+DROP TRIGGER IF EXISTS trg_documents_guard_retention_anchor ON documents;
+CREATE TRIGGER trg_documents_guard_retention_anchor BEFORE UPDATE ON documents
+    FOR EACH ROW EXECUTE FUNCTION documents_guard_retention_anchor();
 
 DROP POLICY IF EXISTS rls_audit_logs_select ON audit_logs;
 CREATE POLICY rls_audit_logs_select ON audit_logs FOR SELECT USING (is_org_member(organization_id));
@@ -353,5 +372,6 @@ DROP POLICY IF EXISTS rls_audit_logs_insert ON audit_logs;
 -- Verweigerungs-Ereignisse (access-denied:<Kanzlei>) dürfen nur in die Kette der eigenen Kanzlei geschrieben werden.
 CREATE POLICY rls_audit_logs_insert ON audit_logs FOR INSERT WITH CHECK (
     is_org_member(organization_id)
+    AND action NOT IN ('DOSSIER_DELETED', 'DOSSIER_PURGE_COMPLETED')
     AND (document_id NOT LIKE 'access-denied:%' OR document_id = 'access-denied:' || organization_id::text)
 );

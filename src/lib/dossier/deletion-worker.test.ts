@@ -40,10 +40,12 @@ function createAdmin(
         eq: () => ({ order: () => ({ limit: async () => ({ data: tasks, error: null }) }) }),
       }),
       update: (patch: Record<string, unknown>) => ({
-        eq: async (_col: string, id: string) => {
-          updates.push({ id, patch });
-          return { error: null };
-        },
+        eq: (_col: string, id: string) => ({
+          eq: async () => {
+            updates.push({ id, patch });
+            return { error: null };
+          },
+        }),
       }),
     })),
   };

@@ -4,7 +4,6 @@ import { PERMISSION_ACTIONS } from '@/types/auth';
 import { NOTARY_ROLES } from '@/types/organization';
 import { hasPermission } from './rbac';
 
-const CORE = 'supabase/migrations/20260915000000_core_multi_tenancy.sql';
 const JOBS = 'supabase/migrations/20260921000000_jobs_and_workflows.sql';
 
 function rolesOfPolicy(sql: string, policy: string): string[] {
@@ -20,7 +19,6 @@ describe('RLS-Spiegel der Berechtigungsmatrix', () => {
     .sort();
 
   it.each([
-    [CORE, 'rls_documents_delete'],
     [JOBS, 'rls_jobs_delete'],
     [JOBS, '"RLS dossier_files delete"'],
   ])('%s: %s erlaubt genau die Rollen mit DELETE_DOSSIER', (file, policy) => {

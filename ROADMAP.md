@@ -90,6 +90,9 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] Aktion „Beurkundung abgeschlossen“ setzt `documents.retention_anchor_at`
   - [ ] Fristeinträge (`knowledge_documents.retention_years`) nach rechtlicher Klärung anlegen
   - [ ] Anzeige „Löschung läuft“ für offene `deletion_tasks`
+  - [ ] Live-Sync braucht zusätzlich `ALTER TABLE … ADD COLUMN IF NOT EXISTS` für `documents.retention_anchor_at` und `knowledge_documents.retention_years`; bestehende `audit_logs`-Zeilen behalten Klarnamen (nicht pseudonymisierbar)
+  - [ ] Zurechenbarkeit des Löschenden im Nachweis `DOSSIER_DELETED` (Pseudonym wird mit dem Dossier gelöscht) fachlich entscheiden
+  - [ ] Dauerhaft fehlgeschlagene `deletion_tasks` (FAILED) zurücksetzen und anzeigen; Fehlercodes 42501/55006 der Löschroute als 403/409 melden
   - [ ] Live-Migration der Löschfunktionen und Pseudonym-Tabelle; `SUPABASE_SERVICE_ROLE_KEY` und `CRON_SECRET` in Vercel setzen
 - [ ] **C.5 XJustiz / XNP Schnittstellen:**
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
