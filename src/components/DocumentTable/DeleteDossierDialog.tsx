@@ -12,6 +12,36 @@ interface DeleteDossierDialogProps {
   onClose: () => void;
 }
 
+interface ReasonChooserProps {
+  value: DeletionReason | null;
+  disabled: boolean;
+  onChange: (reason: DeletionReason) => void;
+}
+
+function ReasonChooser({ value, disabled, onChange }: ReasonChooserProps) {
+  return (
+    <span
+      role="group"
+      aria-label={DELETION_UI_TEXTS_DE.REASON_LABEL}
+      className="flex flex-wrap gap-2"
+    >
+      {DeletionReasonSchema.options.map((option) => (
+        <Button
+          key={option}
+          type="button"
+          size="md"
+          variant={value === option ? 'primary' : 'outline'}
+          aria-pressed={value === option}
+          disabled={disabled}
+          onClick={() => onChange(option)}
+        >
+          {DELETION_REASON_LABELS_DE[option]}
+        </Button>
+      ))}
+    </span>
+  );
+}
+
 /** Wird nur bei Bedarf eingehängt, damit Grund und Fehlerzustand bei jedem Öffnen neu beginnen. */
 export function DeleteDossierDialog({
   dossierTitle,
@@ -52,25 +82,7 @@ export function DeleteDossierDialog({
             <span className="text-foreground block font-semibold">
               {DELETION_UI_TEXTS_DE.REASON_LABEL}
             </span>
-            <span
-              role="group"
-              aria-label={DELETION_UI_TEXTS_DE.REASON_LABEL}
-              className="flex flex-wrap gap-2"
-            >
-              {DeletionReasonSchema.options.map((option) => (
-                <Button
-                  key={option}
-                  type="button"
-                  size="md"
-                  variant={reason === option ? 'primary' : 'outline'}
-                  aria-pressed={reason === option}
-                  disabled={isPending}
-                  onClick={() => setReason(option)}
-                >
-                  {DELETION_REASON_LABELS_DE[option]}
-                </Button>
-              ))}
-            </span>
+            <ReasonChooser value={reason} disabled={isPending} onChange={setReason} />
           </span>
           {hasError && (
             <span role="alert" className="text-destructive block font-semibold">
