@@ -18,6 +18,22 @@ export const KnowledgeCategorySchema = z.enum([
   KNOWLEDGE_CATEGORIES.KANZLEI_RICHTLINIE,
 ]);
 
+/** Prüfstatus eines Wissenseintrags; zurückgezogene Einträge werden nie ausgeliefert. */
+export const KNOWLEDGE_REVIEW_STATUS = {
+  UNGEPRUEFT: 'UNGEPRUEFT',
+  GEPRUEFT: 'GEPRUEFT',
+  ZURUECKGEZOGEN: 'ZURUECKGEZOGEN',
+} as const;
+
+export const KnowledgeReviewStatusSchema = z.enum([
+  KNOWLEDGE_REVIEW_STATUS.UNGEPRUEFT,
+  KNOWLEDGE_REVIEW_STATUS.GEPRUEFT,
+  KNOWLEDGE_REVIEW_STATUS.ZURUECKGEZOGEN,
+]);
+
+export type KnowledgeReviewStatus =
+  (typeof KNOWLEDGE_REVIEW_STATUS)[keyof typeof KNOWLEDGE_REVIEW_STATUS];
+
 export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[keyof typeof KNOWLEDGE_CATEGORIES];
 
 /**
@@ -47,6 +63,11 @@ export const KnowledgeDocumentSchema = z.object({
     .array(z.number())
     .optional()
     .describe('Vektor-Repräsentation (1536 oder 768 Dimensionen)'),
+  sourceReference: z.string().optional().describe('Fundstelle bzw. Quelle des Eintrags'),
+  validFrom: z.iso.date().optional().describe('Gültig ab (einschließlich)'),
+  validUntil: z.iso.date().optional().describe('Gültig bis (einschließlich)'),
+  version: z.number().int().min(1).optional().describe('Fehlt = Version 1'),
+  reviewStatus: KnowledgeReviewStatusSchema.optional().describe('Fehlt = ungeprüft'),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

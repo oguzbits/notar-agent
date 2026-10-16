@@ -1,15 +1,17 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
-import { DB_TABLES, Database, TableInsert } from '@/types/database';
+import { DB_TABLES, Database } from '@/types/database';
 import {
   HybridSearchQuery,
   HybridSearchResult,
   KNOWLEDGE_CATEGORIES,
+  KNOWLEDGE_REVIEW_STATUS,
   KnowledgeDocument,
   MATCH_SOURCES,
 } from '@/types/knowledge';
 
 import { calculateDynamicWeights } from './dynamic-weights';
+import { documentToRow, rowToDocument } from './knowledge-row-mapper';
 
 export type { IKnowledgeRepository };
 
@@ -31,17 +33,7 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
   }
 
   async save(doc: KnowledgeDocument): Promise<KnowledgeDocument> {
-    const payload: TableInsert<typeof DB_TABLES.KNOWLEDGE_DOCUMENTS> = {
-      id: doc.id,
-      organization_id: doc.organizationId ?? null,
-      category: doc.category,
-      legal_basis: doc.legalBasis,
-      court_or_authority: doc.courtOrAuthority ?? null,
-      title: doc.title,
-      content: doc.content,
-      trigger_keywords: doc.triggerKeywords,
-      embedding: doc.embedding ?? null,
-    };
+    const payload = documentToRow(doc);
 
     const { data, error } = await this.supabase
       .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
@@ -87,7 +79,7 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
     const rows = data as Record<string, unknown>[];
 
     return rows.map((row) => ({
-      document: this.mapRowToDocument(row),
+      document: rowToDocument(row),
       bm25Score: Number(row.bm25_score ?? 0),
       vectorScore: Number(row.vector_score ?? 0),
       combinedScore: Number(row.combined_score ?? 0),
@@ -104,11 +96,16 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
       ? `organization_id.is.null,organization_id.eq.${organizationId}`
       : 'organization_id.is.null';
 
+    const today = new Date().toISOString().slice(0, 10);
+
     const { data, error } = await this.supabase
       .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
       .select('*')
       .eq('category', KNOWLEDGE_CATEGORIES.GESETZLICHE_NORM)
-      .or(filter);
+      .neq('review_status', KNOWLEDGE_REVIEW_STATUS.ZURUECKGEZOGEN)
+      .or(filter)
+      .or(`valid_from.is.null,valid_from.lte.${today}`)
+      .or(`valid_until.is.null,valid_until.gte.${today}`);
     if (error || !data) {
       throw new Error(
         `Supabase getStatutoryRules fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
@@ -116,26 +113,6 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
     }
 
     const rows = data as Record<string, unknown>[];
-    return rows.map((row) => this.mapRowToDocument(row));
-  }
-
-  private mapRowToDocument(row: Record<string, unknown>): KnowledgeDocument {
-    const nowIso = new Date().toISOString();
-    return {
-      id: String(row.id),
-      organizationId: row.organization_id ? String(row.organization_id) : null,
-      category: row.category as KnowledgeDocument['category'],
-      legalBasis: String(row.legal_basis),
-      courtOrAuthority: row.court_or_authority ? String(row.court_or_authority) : undefined,
-      title: String(row.title),
-      content: String(row.content),
-      triggerKeywords: Array.isArray(row.trigger_keywords)
-        ? (row.trigger_keywords as string[])
-        : [],
-      isGlobal: Boolean(row.is_global ?? false),
-      suggestedAction: row.suggested_action ? String(row.suggested_action) : undefined,
-      createdAt: String(row.created_at ?? nowIso),
-      updatedAt: String(row.updated_at ?? nowIso),
-    };
+    return rows.map((row) => rowToDocument(row));
   }
 }

@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { KNOWLEDGE_CATEGORIES, KnowledgeDocument, MATCH_SOURCES } from '@/types/knowledge';
+import {
+  KNOWLEDGE_CATEGORIES,
+  KNOWLEDGE_REVIEW_STATUS,
+  KnowledgeDocument,
+  MATCH_SOURCES,
+} from '@/types/knowledge';
 import { SupabaseKnowledgeRepository } from './supabase-knowledge-repository';
 
 describe('SupabaseKnowledgeRepository', () => {
@@ -142,21 +147,66 @@ describe('SupabaseKnowledgeRepository', () => {
       },
     ];
 
-    const mockSupabase = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            or: vi.fn().mockResolvedValue({ data: mockData, error: null }),
-            is: vi.fn().mockResolvedValue({ data: mockData, error: null }),
-          }),
-        }),
-      }),
-    };
+    const builder: Record<string, unknown> = {};
+    for (const name of ['select', 'eq', 'neq', 'or']) builder[name] = vi.fn(() => builder);
+    builder.then = (resolve: (v: unknown) => void) => resolve({ data: mockData, error: null });
+    const mockSupabase = { from: vi.fn().mockReturnValue(builder) };
 
     const repo = new SupabaseKnowledgeRepository(mockSupabase as never);
     const rules = await repo.getStatutoryRules('org-123');
     expect(rules).toHaveLength(1);
     expect(rules[0]?.title).toBe('Grundbuchstand');
     expect(rules[0]?.isGlobal).toBe(true);
+  });
+
+  it('übernimmt Prüfstatus, Gültigkeit, Version und Quelle aus dem Suchtreffer', async () => {
+    const row = {
+      id: doc.id,
+      organization_id: null,
+      category: doc.category,
+      legal_basis: doc.legalBasis,
+      title: doc.title,
+      content: doc.content,
+      trigger_keywords: [],
+      source_reference: 'DNotI-Report 2023/15, S. 4',
+      valid_from: '2024-01-01',
+      valid_until: null,
+      version: 3,
+      review_status: KNOWLEDGE_REVIEW_STATUS.GEPRUEFT,
+      bm25_score: 1,
+      vector_score: 0,
+      combined_score: 1,
+      match_source: MATCH_SOURCES.BM25_EXACT,
+    };
+    const repo = new SupabaseKnowledgeRepository({
+      rpc: vi.fn().mockResolvedValue({ data: [row], error: null }),
+    } as never);
+
+    const [hit] = await repo.search({ queryText: 'gbr' });
+
+    expect(hit?.document).toMatchObject({
+      sourceReference: 'DNotI-Report 2023/15, S. 4',
+      validFrom: '2024-01-01',
+      version: 3,
+      reviewStatus: KNOWLEDGE_REVIEW_STATUS.GEPRUEFT,
+    });
+  });
+
+  it('filtert Gesetzesregeln auf gültige, nicht zurückgezogene Einträge', async () => {
+    const calls: string[] = [];
+    const builder: Record<string, unknown> = {};
+    const chain = (name: string) =>
+      vi.fn((...args: unknown[]) => {
+        calls.push(`${name}:${args.join(',')}`);
+        return builder;
+      });
+    for (const name of ['select', 'eq', 'neq', 'or']) builder[name] = chain(name);
+    builder.then = (resolve: (v: unknown) => void) => resolve({ data: [], error: null });
+    const repo = new SupabaseKnowledgeRepository({ from: () => builder } as never);
+
+    await repo.getStatutoryRules('a0000000-0000-4000-8000-000000000001');
+
+    expect(calls).toContain('neq:review_status,ZURUECKGEZOGEN');
+    expect(calls.filter((c) => c.startsWith('or:valid_'))).toHaveLength(2);
   });
 });

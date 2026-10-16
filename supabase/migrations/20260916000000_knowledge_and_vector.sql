@@ -21,6 +21,14 @@ BEGIN
     END IF;
 END$$;
 
+-- 2b. Prüfstatus der Wissenseinträge (Governance)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'knowledge_review_status') THEN
+        CREATE TYPE knowledge_review_status AS ENUM ('UNGEPRUEFT', 'GEPRUEFT', 'ZURUECKGEZOGEN');
+    END IF;
+END$$;
+
 -- 3. Kanzlei- & DNotI-Wissenstabelle
 CREATE TABLE IF NOT EXISTS knowledge_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -33,8 +41,15 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
     trigger_keywords TEXT[] NOT NULL DEFAULT '{}',
     embedding vector(1536),
     tsv tsvector,
+    source_reference TEXT,
+    valid_from DATE,
+    valid_until DATE,
+    version INT NOT NULL DEFAULT 1 CHECK (version >= 1),
+    review_status knowledge_review_status NOT NULL DEFAULT 'UNGEPRUEFT',
+    reviewed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_knowledge_validity_order CHECK (valid_until IS NULL OR valid_from IS NULL OR valid_until >= valid_from)
 );
 
 -- Trigger-Funktion zur Aktualisierung des tsvectors (deterministisch & immutable-sicher)
@@ -117,6 +132,11 @@ RETURNS TABLE (
     title TEXT,
     content TEXT,
     trigger_keywords TEXT[],
+    source_reference TEXT,
+    valid_from DATE,
+    valid_until DATE,
+    version INT,
+    review_status knowledge_review_status,
     bm25_score FLOAT,
     vector_score FLOAT,
     combined_score FLOAT,
@@ -155,6 +175,12 @@ BEGIN
             p_query_embedding IS NOT NULL
             AND
             kd.embedding IS NOT NULL
+            AND
+            kd.review_status <> 'ZURUECKGEZOGEN'
+            AND
+            (kd.valid_from IS NULL OR kd.valid_from <= current_date)
+            AND
+            (kd.valid_until IS NULL OR kd.valid_until >= current_date)
         ORDER BY (kd.embedding <=> p_query_embedding), kd.id
         LIMIT 20
     ),
@@ -172,6 +198,12 @@ BEGIN
             v_parsed_query IS NOT NULL
             AND
             kd.tsv @@ v_parsed_query
+            AND
+            kd.review_status <> 'ZURUECKGEZOGEN'
+            AND
+            (kd.valid_from IS NULL OR kd.valid_from <= current_date)
+            AND
+            (kd.valid_until IS NULL OR kd.valid_until >= current_date)
         ORDER BY ts_rank_cd(kd.tsv, v_parsed_query) DESC, kd.id
         LIMIT 20
     ),
@@ -213,6 +245,11 @@ BEGIN
         kd.title,
         kd.content,
         kd.trigger_keywords,
+        kd.source_reference,
+        kd.valid_from,
+        kd.valid_until,
+        kd.version,
+        kd.review_status,
         f.bm25_score,
         f.vector_score,
         f.rrf_score AS combined_score,

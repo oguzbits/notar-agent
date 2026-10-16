@@ -247,6 +247,12 @@ export interface Database {
           trigger_keywords: string[];
           embedding: number[] | null;
           tsv: string | null;
+          source_reference: string | null;
+          valid_from: string | null;
+          valid_until: string | null;
+          version: number;
+          review_status: string;
+          reviewed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -261,6 +267,12 @@ export interface Database {
           trigger_keywords?: string[];
           embedding?: number[] | null;
           tsv?: string | null;
+          source_reference?: string | null;
+          valid_from?: string | null;
+          valid_until?: string | null;
+          version?: number;
+          review_status?: string;
+          reviewed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -275,6 +287,12 @@ export interface Database {
           trigger_keywords?: string[];
           embedding?: number[] | null;
           tsv?: string | null;
+          source_reference?: string | null;
+          valid_from?: string | null;
+          valid_until?: string | null;
+          version?: number;
+          review_status?: string;
+          reviewed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
