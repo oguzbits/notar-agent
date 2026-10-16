@@ -94,6 +94,8 @@ CREATE TABLE IF NOT EXISTS documents (
     title TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'DRAFT',
     content JSONB,
+    -- Beginn der Aufbewahrungsfrist; NULL = Frist läuft nicht (kein automatisches Löschen)
+    retention_anchor_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

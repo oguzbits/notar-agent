@@ -226,3 +226,146 @@ ON CONFLICT (id) DO UPDATE SET
     title = EXCLUDED.title,
     version = EXCLUDED.version;
 
+
+
+-- ============================================================================
+-- Löschpipeline: Outbox für Storage-Objekte und transaktionale Löschfunktionen
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS deletion_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    document_id TEXT NOT NULL,
+    storage_path TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'DONE', 'FAILED')),
+    attempts INT NOT NULL DEFAULT 0,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (document_id, storage_path)
+);
+CREATE INDEX IF NOT EXISTS idx_deletion_tasks_queue ON deletion_tasks(status, created_at);
+ALTER TABLE deletion_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS rls_deletion_tasks_select ON deletion_tasks;
+CREATE POLICY rls_deletion_tasks_select ON deletion_tasks FOR SELECT USING (is_org_member(organization_id));
+
+-- Interne Routine: löscht ein Dossier samt abhängiger Daten, legt Storage-Aufgaben an und schreibt den Nachweis.
+-- Keine Prüfung der Berechtigung hier; die öffentlichen Funktionen davor erzwingen sie.
+CREATE OR REPLACE FUNCTION _purge_dossier(p_document_id TEXT, p_reason TEXT, p_actor TEXT) RETURNS JSONB AS $$
+DECLARE
+    v_org UUID;
+    v_prefix TEXT;
+    n_docs INT; n_jobs INT; n_wf INT; n_map INT; n_tasks INT;
+    v_rows JSONB;
+BEGIN
+    IF p_reason NOT IN ('ENTWURF_VERWORFEN', 'FEHLERHAFT_ANGELEGT', 'AUFBEWAHRUNG_ABGELAUFEN', 'SONSTIGES') THEN
+        RAISE EXCEPTION 'Unbekannter Löschgrund' USING ERRCODE = '22023';
+    END IF;
+
+    SELECT organization_id INTO v_org FROM documents WHERE id = p_document_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Vorgang nicht gefunden' USING ERRCODE = 'P0002';
+    END IF;
+    IF EXISTS (SELECT 1 FROM dossier_jobs
+               WHERE result_dossier_id = p_document_id AND organization_id = v_org AND status = 'PROCESSING') THEN
+        RAISE EXCEPTION 'Für den Vorgang läuft noch eine Verarbeitung' USING ERRCODE = '55006';
+    END IF;
+
+    v_prefix := v_org::text || '/';
+
+    -- Storage-Objekte vormerken, bevor die Jobs verschwinden; nur Pfade der eigenen Kanzlei
+    INSERT INTO deletion_tasks (organization_id, document_id, storage_path)
+    SELECT v_org, p_document_id, path FROM (
+        SELECT f->>'storagePath' AS path
+        FROM dossier_jobs j,
+             jsonb_array_elements(CASE WHEN jsonb_typeof(j.payload->'files') = 'array'
+                                       THEN j.payload->'files' ELSE '[]'::jsonb END) f
+        WHERE j.result_dossier_id = p_document_id AND j.organization_id = v_org
+        UNION
+        SELECT o.name FROM storage.objects o
+        WHERE o.bucket_id = 'dossier-files'
+          AND left(o.name, length(v_prefix || 'archive/' || p_document_id || '/')) = v_prefix || 'archive/' || p_document_id || '/'
+    ) src
+    WHERE path IS NOT NULL AND left(path, length(v_prefix)) = v_prefix AND position('..' IN path) = 0
+    ON CONFLICT (document_id, storage_path) DO NOTHING;
+    GET DIAGNOSTICS n_tasks = ROW_COUNT;
+
+    DELETE FROM workflow_instances WHERE case_id = p_document_id AND organization_id = v_org;
+    GET DIAGNOSTICS n_wf = ROW_COUNT;
+    DELETE FROM dossier_jobs WHERE result_dossier_id = p_document_id AND organization_id = v_org;
+    GET DIAGNOSTICS n_jobs = ROW_COUNT;
+    DELETE FROM documents WHERE id = p_document_id AND organization_id = v_org;
+    GET DIAGNOSTICS n_docs = ROW_COUNT;
+
+    -- Nachweis zuerst, Zuordnung der Pseudonyme zuletzt: Auch dieser Eintrag ist danach nicht mehr personenbeziehbar
+    v_rows := jsonb_build_object('documents', n_docs, 'dossier_jobs', n_jobs, 'workflow_instances', n_wf);
+    INSERT INTO audit_logs (organization_id, document_id, action, actor, details)
+    VALUES (v_org, p_document_id, 'DOSSIER_DELETED', p_actor, jsonb_build_object('deletion',
+        jsonb_build_object('reason', p_reason, 'deletedRows', v_rows, 'storageTasks', n_tasks)));
+
+    -- Ohne Storage-Objekte ist die Löschung sofort vollständig (vor dem Entfernen der Zuordnung, sonst legt der Trigger sie neu an)
+    IF n_tasks = 0 THEN
+        INSERT INTO audit_logs (organization_id, document_id, action, actor, details)
+        VALUES (v_org, p_document_id, 'DOSSIER_PURGE_COMPLETED', 'SYSTEM', '{}'::jsonb);
+    END IF;
+
+    DELETE FROM audit_actor_map WHERE document_id = p_document_id AND organization_id = v_org;
+    GET DIAGNOSTICS n_map = ROW_COUNT;
+    v_rows := v_rows || jsonb_build_object('audit_actor_map', n_map);
+
+    RETURN jsonb_build_object('documentId', p_document_id, 'deletedRows', v_rows, 'storageTasks', n_tasks);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+CREATE OR REPLACE FUNCTION delete_dossier(p_document_id TEXT, p_reason TEXT) RETURNS JSONB AS $$
+DECLARE
+    v_org UUID;
+    v_role notary_role;
+BEGIN
+    SELECT organization_id INTO v_org FROM documents WHERE id = p_document_id;
+    v_role := CASE WHEN v_org IS NULL THEN NULL ELSE get_user_role(v_org) END;
+    -- Nichtmitglieder erfahren nicht, ob die ID existiert
+    IF v_role IS NULL THEN
+        RAISE EXCEPTION 'Vorgang nicht gefunden' USING ERRCODE = 'P0002';
+    END IF;
+    IF v_role::text NOT IN ('NOTAR', 'NOTARASSESSOR', 'ADMIN') THEN
+        RAISE EXCEPTION 'Keine Berechtigung zum Löschen' USING ERRCODE = '42501';
+    END IF;
+    RETURN _purge_dossier(p_document_id, p_reason, COALESCE(
+        (SELECT display_name FROM audit_actor_map WHERE document_id = p_document_id AND user_id = auth.uid()),
+        (SELECT NULLIF(full_name, '') FROM public.profiles WHERE id = auth.uid()),
+        'Nutzer'));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+CREATE OR REPLACE FUNCTION delete_dossier_system(p_document_id TEXT) RETURNS JSONB AS $$
+    SELECT _purge_dossier(p_document_id, 'AUFBEWAHRUNG_ABGELAUFEN', 'SYSTEM');
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public, pg_temp;
+
+CREATE OR REPLACE FUNCTION complete_dossier_purge(p_document_id TEXT) RETURNS BOOLEAN AS $$
+DECLARE
+    v_org UUID;
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtextextended(p_document_id, 1));
+    SELECT organization_id INTO v_org FROM audit_logs
+    WHERE document_id = p_document_id AND action = 'DOSSIER_DELETED' LIMIT 1;
+    IF v_org IS NULL THEN RETURN false; END IF;
+    IF EXISTS (SELECT 1 FROM audit_logs WHERE document_id = p_document_id AND action = 'DOSSIER_PURGE_COMPLETED') THEN
+        RETURN false;
+    END IF;
+    IF EXISTS (SELECT 1 FROM deletion_tasks WHERE document_id = p_document_id AND status <> 'DONE') THEN
+        RETURN false;
+    END IF;
+    INSERT INTO audit_logs (organization_id, document_id, action, actor, details)
+    VALUES (v_org, p_document_id, 'DOSSIER_PURGE_COMPLETED', 'SYSTEM', '{}'::jsonb);
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+REVOKE ALL ON FUNCTION _purge_dossier(TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION delete_dossier(TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION delete_dossier(TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION delete_dossier_system(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION delete_dossier_system(TEXT) TO service_role;
+REVOKE ALL ON FUNCTION complete_dossier_purge(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION complete_dossier_purge(TEXT) TO service_role;

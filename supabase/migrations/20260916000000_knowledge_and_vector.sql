@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
     valid_until DATE,
     version INT NOT NULL DEFAULT 1 CHECK (version >= 1),
     review_status knowledge_review_status NOT NULL DEFAULT 'UNGEPRUEFT',
+    -- Aufbewahrungsfrist in Jahren (nur für Fristeinträge); NULL = kein Fristeintrag
+    retention_years INT CHECK (retention_years IS NULL OR retention_years > 0),
     reviewed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
