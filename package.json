@@ -28,6 +28,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:db": "vitest run --config vitest.db.config.mts",
+    "test:quality": "playwright test -c playwright.quality.config.ts",
     "test:e2e": "playwright test --last-failed-file=/dev/null; rm -rf test-results",
     "eval": "promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache",
     "eval:parser": "vitest run src/test/eval/parser-eval.test.ts",
@@ -76,6 +77,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@next/bundle-analyzer": "^16.3.5",
     "@playwright/test": "^1.63.0",
     "@shadcn/lint": "^0.1.5",
