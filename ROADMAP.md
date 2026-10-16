@@ -89,6 +89,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 - [ ] **C.7 Löschpipeline: Restpunkte:**
   - [ ] Aktion „Beurkundung abgeschlossen“ setzt `documents.retention_anchor_at`
   - [ ] Fristeinträge (`knowledge_documents.retention_years`) nach rechtlicher Klärung anlegen
+  - [ ] Cron `/api/cron/deletion` läuft auf dem Vercel-Hobby-Tarif nur einmal täglich (03:00 UTC, Vercel startet innerhalb der Stunde); offene Storage-Löschungen warten bis zu 24 Stunden. Stündlich erst mit Pro-Tarif oder externem Auslöser
   - [ ] Anzeige „Löschung läuft“ für offene `deletion_tasks`
   - [ ] Zurechenbarkeit des Löschenden im Nachweis `DOSSIER_DELETED` (Pseudonym wird mit dem Dossier gelöscht) fachlich entscheiden
   - [ ] Dauerhaft fehlgeschlagene `deletion_tasks` (FAILED) zurücksetzen und anzeigen; Fehlercodes 42501/55006 der Löschroute als 403/409 melden
