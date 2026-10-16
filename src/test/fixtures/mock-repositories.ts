@@ -16,7 +16,7 @@ import type { TeamMember, InviteMemberRequest } from '@/types/auth';
 import { CASE_STATUS } from '@/types/document';
 import type { Dossier } from '@/types/dossier';
 import { STORAGE_TYPES } from '@/types/dossier';
-import { JOB_STATUS, type DossierJob, type CreateJobPayload } from '@/types/jobs';
+import { JOB_STATUS, type DossierJob, type CreateJobPayload, type JobStatus } from '@/types/jobs';
 import type { KnowledgeDocument } from '@/types/knowledge';
 import { KNOWLEDGE_CATEGORIES, MATCH_SOURCES } from '@/types/knowledge';
 import type { NotaryRole } from '@/types/organization';
@@ -54,16 +54,14 @@ export function createMockJobRepository(): IJobRepository {
       return job;
     }),
     getJobById: vi.fn(async (id: string) => jobs.get(id) ?? null),
-    claimNextPendingJob: vi.fn(async () => {
-      for (const job of jobs.values()) {
-        if (job.status === JOB_STATUS.PENDING) {
-          job.status = JOB_STATUS.PROCESSING;
-          job.lockedAt = new Date().toISOString();
-          return job;
-        }
+    transitionJob: vi.fn(
+      async (id: string, fromStatuses: JobStatus[], update: Partial<DossierJob>) => {
+        const job = jobs.get(id);
+        if (!job || !fromStatuses.includes(job.status)) return null;
+        Object.assign(job, update, { updatedAt: new Date().toISOString() });
+        return job;
       }
-      return null;
-    }),
+    ),
     updateJobStatus: vi.fn(async (id: string, update: Partial<DossierJob>) => {
       const job = jobs.get(id);
       if (!job) return null;

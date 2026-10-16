@@ -130,7 +130,7 @@ async function runJobExecution(
 
   // Job auf PROCESSING setzen mit aktuellem Lease-Lock.
   // Falls stage1Output bereits vorliegt, direkt in Stufe 2 (AUDITING) einsteigen!
-  await jobRepo.updateJobStatus(jobId, {
+  const claimed = await jobRepo.transitionJob(jobId, [JOB_STATUS.PENDING], {
     status: JOB_STATUS.PROCESSING,
     stage: stage1Output ? JOB_STAGES.AUDITING : JOB_STAGES.PAGE_SPLITTING,
     lockedAt: new Date().toISOString(),
@@ -147,6 +147,8 @@ async function runJobExecution(
           : 'Sachverhaltsnotizen strukturieren...',
     },
   });
+  // Ein anderer Lauf hat den Job bereits übernommen oder er ist nicht mehr wartend
+  if (!claimed) return jobRepo.getJobById(jobId);
 
   try {
     const { files, caseType, notes, documentId, existingDossier } = job.payload;

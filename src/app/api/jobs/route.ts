@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { fromError } from 'zod-validation-error';
-import { executeDossierJob } from '@/lib/jobs/job-worker';
+import type { IJobRepository } from '@/lib/jobs/job-repository';
+import { executeDossierJob, type WorkerDependencies } from '@/lib/jobs/job-worker';
 import { getDossierRepository, getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
-import { JOB_STATUS, RetryJobRequestSchema } from '@/types/jobs';
+import { JOB_STATUS, RetryJobRequestSchema, type DossierJob } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,42 @@ export async function GET(req?: NextRequest): Promise<Response> {
   }
 }
 
+async function requeueFailedJob(
+  repo: IJobRepository,
+  job: DossierJob,
+  orgId: string
+): Promise<Response | null> {
+  if (job.status !== JOB_STATUS.FAILED || job.retryCount >= job.maxRetries) {
+    return NextResponse.json(
+      { error: 'Dieser Vorgang kann nicht erneut gestartet werden.' },
+      { status: 409 }
+    );
+  }
+  // Atomar nur aus FAILED einreihen: parallele Wiederholungen starten den Job nicht doppelt
+  const requeued = await repo.transitionJob(
+    job.id,
+    [JOB_STATUS.FAILED],
+    { status: JOB_STATUS.PENDING, retryCount: job.retryCount + 1, errorMessage: undefined },
+    orgId
+  );
+  if (requeued) return null;
+  return NextResponse.json(
+    { error: 'Dieser Vorgang wurde bereits erneut gestartet.' },
+    { status: 409 }
+  );
+}
+
+function startRetryInBackground(jobId: string, deps: WorkerDependencies): void {
+  try {
+    after(async () => {
+      await executeDossierJob(jobId, deps);
+    });
+  } catch (afterErr: unknown) {
+    console.debug('[jobs] after() nicht verfügbar, nutze direkten Aufruf:', afterErr);
+    void executeDossierJob(jobId, deps);
+  }
+}
+
 export async function POST(req: NextRequest): Promise<Response> {
   try {
     const rawBody: unknown = await req.json().catch(() => ({}));
@@ -65,14 +102,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: `Job mit ID '${jobId}' nicht gefunden.` }, { status: 404 });
     }
 
-    // Reset job status to PENDING and clear previous error
-    await repo.updateJobStatus(jobId, {
-      status: JOB_STATUS.PENDING,
-      errorMessage: undefined,
-    });
+    const rejection = await requeueFailedJob(repo, job, orgId);
+    if (rejection) return rejection;
 
-    // Worker asynchron anstoßen mit authentifizierten Repositories
-    void executeDossierJob(jobId, {
+    startRetryInBackground(jobId, {
       jobRepo: repo,
       dossierRepo: getDossierRepository(authSupabase),
     });

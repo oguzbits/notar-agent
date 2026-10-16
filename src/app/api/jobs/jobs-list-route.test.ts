@@ -101,6 +101,61 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     expect(updatedJob?.status).toBe(JOB_STATUS.PROCESSING);
   });
 
+  it.each([JOB_STATUS.PROCESSING, JOB_STATUS.COMPLETED, JOB_STATUS.PENDING])(
+    'POST /api/jobs verweigert Wiederholung eines Jobs im Status %s mit 409',
+    async (status) => {
+      const job = await repo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: 'x',
+      });
+      await repo.updateJobStatus(job.id, { status });
+
+      const res = await POST(
+        new NextRequest('http://localhost:3000/api/jobs', {
+          method: 'POST',
+          body: JSON.stringify({ jobId: job.id }),
+        })
+      );
+      expect(res.status).toBe(409);
+      expect((await repo.getJobById(job.id))?.status).toBe(status);
+    }
+  );
+
+  it('POST /api/jobs verweigert Wiederholung nach Ausschöpfen der Versuche mit 409', async () => {
+    const job = await repo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [],
+      notes: 'x',
+    });
+    await repo.updateJobStatus(job.id, { status: JOB_STATUS.FAILED, retryCount: job.maxRetries });
+
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ jobId: job.id }),
+      })
+    );
+    expect(res.status).toBe(409);
+  });
+
+  it('POST /api/jobs zählt jede Wiederholung', async () => {
+    const job = await repo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [],
+      notes: 'x',
+    });
+    await repo.updateJobStatus(job.id, { status: JOB_STATUS.FAILED, retryCount: 1 });
+
+    await POST(
+      new NextRequest('http://localhost:3000/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ jobId: job.id }),
+      })
+    );
+    expect((await repo.getJobById(job.id))?.retryCount).toBe(2);
+  });
+
   it('POST /api/jobs returns 400 when jobId is missing', async () => {
     const req = new NextRequest('http://localhost:3000/api/jobs', {
       method: 'POST',

@@ -10,7 +10,6 @@ import {
   DossierJob,
   JobProgressDetails,
   JOB_STATUS,
-  JOB_STAGES,
   JobStatus,
   JobStage,
 } from '@/types/jobs';
@@ -31,7 +30,16 @@ export interface IJobRepository {
   createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob>;
   getJobById(id: string, organizationId?: string): Promise<DossierJob | null>;
   updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null>;
-  claimNextPendingJob(organizationId?: string): Promise<DossierJob | null>;
+  /**
+   * Atomarer Compare-and-set: ändert den Job nur, wenn er sich noch in einem der Ausgangsstatus
+   * befindet (eine einzige SQL-Anweisung). `null`, wenn ein anderer Aufrufer zuvor gewonnen hat.
+   */
+  transitionJob(
+    id: string,
+    fromStatuses: JobStatus[],
+    update: UpdateJobParams,
+    organizationId?: string
+  ): Promise<DossierJob | null>;
   listJobs(organizationId?: string): Promise<DossierJob[]>;
   countJobsSince(organizationId: string, sinceIso: string): Promise<number>;
   deleteJob(id: string, organizationId?: string): Promise<boolean>;
@@ -86,6 +94,47 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   async updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null> {
+    const updateData = this.buildUpdateData(update);
+    const { data, error } = await this.supabase
+      .from(DB_TABLES.DOSSIER_JOBS)
+      .update(updateData)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw new Error(
+        `Supabase updateJobStatus fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
+    }
+
+    return this.mapRowToJob(data);
+  }
+
+  async transitionJob(
+    id: string,
+    fromStatuses: JobStatus[],
+    update: UpdateJobParams,
+    organizationId?: string
+  ): Promise<DossierJob | null> {
+    let query = this.supabase
+      .from(DB_TABLES.DOSSIER_JOBS)
+      .update(this.buildUpdateData(update))
+      .eq('id', id)
+      .in('status', fromStatuses);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data, error } = await query.select('*');
+    if (error) {
+      throw new Error(`Supabase transitionJob fehlgeschlagen: ${error.message}`);
+    }
+    const row = data?.[0];
+    return row ? this.mapRowToJob(row) : null;
+  }
+
+  private buildUpdateData(update: UpdateJobParams): TableUpdate<typeof DB_TABLES.DOSSIER_JOBS> {
     const updateData: TableUpdate<typeof DB_TABLES.DOSSIER_JOBS> = {
       updated_at: new Date().toISOString(),
     };
@@ -113,50 +162,7 @@ export class SupabaseJobRepository implements IJobRepository {
       }
     }
 
-    const { data, error } = await this.supabase
-      .from(DB_TABLES.DOSSIER_JOBS)
-      .update(updateData)
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error || !data) {
-      throw new Error(
-        `Supabase updateJobStatus fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
-      );
-    }
-
-    return this.mapRowToJob(data);
-  }
-
-  async claimNextPendingJob(organizationId?: string): Promise<DossierJob | null> {
-    let query = this.supabase
-      .from(DB_TABLES.DOSSIER_JOBS)
-      .select('*')
-      .eq('status', JOB_STATUS.PENDING);
-
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
-    }
-
-    const { data, error } = await query
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Supabase claimNextPendingJob fehlgeschlagen: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return this.updateJobStatus(data.id, {
-      status: JOB_STATUS.PROCESSING,
-      stage: JOB_STAGES.QUEUED,
-      lockedAt: new Date().toISOString(),
-    });
+    return updateData;
   }
 
   async listJobs(organizationId?: string): Promise<DossierJob[]> {

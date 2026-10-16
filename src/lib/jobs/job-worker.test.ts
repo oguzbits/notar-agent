@@ -6,7 +6,13 @@ import type { IDossierRepository } from '@/lib/supabase/repository';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { createMockKnowledgeRepository } from '@/test/fixtures/mock-repositories';
 import { CASE_TYPES, STORAGE_TYPES } from '@/types/dossier';
-import { JOB_STATUS, JOB_STAGES, type DossierJob, type CreateJobPayload } from '@/types/jobs';
+import {
+  JOB_STATUS,
+  JOB_STAGES,
+  type DossierJob,
+  type CreateJobPayload,
+  type JobStatus,
+} from '@/types/jobs';
 
 /**
  * Erzeugt ein Mock-JobRepository basierend auf vi.fn(), das Jobs in einer Map verwaltet.
@@ -32,16 +38,14 @@ function createMockJobRepo(): IJobRepository {
       return job;
     }),
     getJobById: vi.fn(async (id: string) => jobs.get(id) ?? null),
-    claimNextPendingJob: vi.fn(async () => {
-      for (const job of jobs.values()) {
-        if (job.status === JOB_STATUS.PENDING) {
-          job.status = JOB_STATUS.PROCESSING;
-          job.lockedAt = new Date().toISOString();
-          return job;
-        }
+    transitionJob: vi.fn(
+      async (id: string, fromStatuses: JobStatus[], update: Partial<DossierJob>) => {
+        const job = jobs.get(id);
+        if (!job || !fromStatuses.includes(job.status)) return null;
+        Object.assign(job, update, { updatedAt: new Date().toISOString() });
+        return job;
       }
-      return null;
-    }),
+    ),
     updateJobStatus: vi.fn(async (id: string, update: Partial<DossierJob>) => {
       const job = jobs.get(id);
       if (!job) return null;
@@ -238,5 +242,20 @@ describe('job-worker (executeDossierJob)', () => {
     );
 
     expect(finishedJob?.status).toBe(JOB_STATUS.COMPLETED);
+  });
+
+  it('führt einen nicht wartenden Job nicht aus (kein Doppellauf)', async () => {
+    const pipeline = vi.fn(async () => mockResultDossier);
+    const job = await jobRepo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [],
+      notes: '',
+    });
+    await jobRepo.updateJobStatus(job.id, { status: JOB_STATUS.PROCESSING });
+
+    const result = await executeDossierJob(job.id, { jobRepo, dossierRepo, pipelineFn: pipeline });
+
+    expect(pipeline).not.toHaveBeenCalled();
+    expect(result?.status).toBe(JOB_STATUS.PROCESSING);
   });
 });
