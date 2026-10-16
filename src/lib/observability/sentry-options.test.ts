@@ -28,6 +28,8 @@ describe('buildSentryOptions', () => {
   it('sendet keine Transaktionen: kein Tracing und beforeSendTransaction verwirft alles', () => {
     const o = buildSentryOptions(EU_DSN);
     expect(o).not.toHaveProperty('tracesSampleRate');
+    // Im Standard-Modus 'stream' wird beforeSendTransaction ignoriert.
+    expect(o?.traceLifecycle).toBe('static');
     expect(o?.beforeSendTransaction?.({ type: 'transaction' }, {})).toBeNull();
   });
 

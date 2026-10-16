@@ -35,6 +35,7 @@ export function buildSentryOptions(dsn: string | undefined): NodeOptions | null 
     beforeSend: scrubEvent,
     // Transaktionen umgehen beforeSend und enthalten URLs mit Dateinamen: nie senden.
     beforeSendTransaction: () => null,
+    traceLifecycle: 'static',
     beforeBreadcrumb: scrubBreadcrumb,
   };
 }
