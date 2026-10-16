@@ -6,10 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality-gate:
     name: Code Standards, Architecture & Production Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,6 +37,7 @@ jobs:
   unit-and-integration-tests:
     name: Vitest Unit- & Integration Tests (100% Isolated)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -48,6 +57,7 @@ jobs:
   build-validation:
     name: Next.js Production Build Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -66,9 +76,30 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
 
+  dependency-audit:
+    name: Abhängigkeiten auf bekannte Schwachstellen prüfen
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: npm audit (Produktionsabhängigkeiten, ab Stufe high)
+        run: npm audit --omit=dev --audit-level=high
+
   semgrep-sast:
     name: Semgrep Static Application Security Testing (SAST)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -92,6 +123,7 @@ jobs:
   supabase-migration-and-rls-check:
     name: Supabase Docker Migration & Determinism Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
