@@ -6,12 +6,24 @@ import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 export interface DeletionWorkerOptions {
   batchSize: number;
   maxAttempts: number;
+  /** Begrenzt den Lauf auf die Aufgaben einer Akte (Nachlauf nach dem Löschen im Nutzer-Request). */
+  documentId?: string;
 }
+
+export const DELETION_WORKER_DEFAULTS = { batchSize: 50, maxAttempts: 5 } as const;
 
 export interface DeletionWorkerResult {
   done: number;
   failed: number;
   purged: number;
+}
+
+function pendingTasksQuery(admin: SupabaseClient<Database>, documentId?: string) {
+  const pending = admin
+    .from(DB_TABLES.DELETION_TASKS)
+    .select('*')
+    .eq('status', DELETION_TASK_STATUS.PENDING);
+  return documentId ? pending.eq('document_id', documentId) : pending;
 }
 
 /**
@@ -20,12 +32,9 @@ export interface DeletionWorkerResult {
  */
 export async function processDeletionTasks(
   admin: SupabaseClient<Database>,
-  { batchSize, maxAttempts }: DeletionWorkerOptions
+  { batchSize, maxAttempts, documentId }: DeletionWorkerOptions
 ): Promise<DeletionWorkerResult> {
-  const { data: tasks, error } = await admin
-    .from(DB_TABLES.DELETION_TASKS)
-    .select('*')
-    .eq('status', DELETION_TASK_STATUS.PENDING)
+  const { data: tasks, error } = await pendingTasksQuery(admin, documentId)
     .order('created_at')
     .limit(batchSize);
   if (error) throw new Error(`Löschaufgaben konnten nicht geladen werden: ${error.message}`);

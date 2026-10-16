@@ -1,13 +1,14 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnv } from '@/env';
-import { processDeletionTasks, runRetentionSweep } from '@/lib/dossier/deletion-worker';
+import {
+  DELETION_WORKER_DEFAULTS,
+  processDeletionTasks,
+  runRetentionSweep,
+} from '@/lib/dossier/deletion-worker';
 import { createServiceRoleClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
-
-const BATCH_SIZE = 50;
-const MAX_ATTEMPTS = 5;
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = getEnv().CRON_SECRET;
@@ -24,11 +25,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
   try {
     const admin = createServiceRoleClient();
-    const retention = await runRetentionSweep(admin, { limit: BATCH_SIZE });
-    const tasks = await processDeletionTasks(admin, {
-      batchSize: BATCH_SIZE,
-      maxAttempts: MAX_ATTEMPTS,
-    });
+    const retention = await runRetentionSweep(admin, { limit: DELETION_WORKER_DEFAULTS.batchSize });
+    const tasks = await processDeletionTasks(admin, DELETION_WORKER_DEFAULTS);
     return NextResponse.json({ tasks, retention });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Löschlauf fehlgeschlagen.';

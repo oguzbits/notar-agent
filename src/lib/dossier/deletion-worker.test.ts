@@ -18,6 +18,7 @@ function createAdmin(
   opts: { removeError?: string; purge?: boolean } = {}
 ) {
   const updates: { id: string; patch: Record<string, unknown> }[] = [];
+  const filters: [string, unknown][] = [];
   const remove = vi.fn(async () =>
     opts.removeError
       ? { data: null, error: { message: opts.removeError } }
@@ -36,9 +37,16 @@ function createAdmin(
     storage: { from: vi.fn(() => ({ remove })) },
     rpc,
     from: vi.fn(() => ({
-      select: () => ({
-        eq: () => ({ order: () => ({ limit: async () => ({ data: tasks, error: null }) }) }),
-      }),
+      select: () => {
+        const query = {
+          eq: (column: string, value: unknown) => {
+            filters.push([column, value]);
+            return query;
+          },
+          order: () => ({ limit: async () => ({ data: tasks, error: null }) }),
+        };
+        return query;
+      },
       update: (patch: Record<string, unknown>) => ({
         eq: (_col: string, id: string) => ({
           eq: async () => {
@@ -49,7 +57,7 @@ function createAdmin(
       }),
     })),
   };
-  return { admin: admin as never, updates, remove, rpc };
+  return { admin: admin as never, updates, remove, rpc, filters };
 }
 
 const opts = { batchSize: 10, maxAttempts: 3 };
@@ -62,6 +70,16 @@ describe('processDeletionTasks', () => {
     expect(updates[0]?.patch).toMatchObject({ status: DELETION_TASK_STATUS.DONE });
     expect(rpc).toHaveBeenCalledWith('complete_dossier_purge', { p_document_id: 'doc-1' });
     expect(result).toEqual({ done: 1, failed: 0, purged: 1 });
+  });
+
+  it('verarbeitet mit documentId nur Aufgaben dieser Akte', async () => {
+    const scoped = createAdmin([task()]);
+    await processDeletionTasks(scoped.admin, { ...opts, documentId: 'doc-1' });
+    expect(scoped.filters).toContainEqual(['document_id', 'doc-1']);
+
+    const all = createAdmin([task()]);
+    await processDeletionTasks(all.admin, opts);
+    expect(all.filters.map(([column]) => column)).not.toContain('document_id');
   });
 
   it('löscht nie einen Pfad außerhalb der eigenen Kanzlei', async () => {

@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { DELETION_WORKER_DEFAULTS, processDeletionTasks } from '@/lib/dossier/deletion-worker';
+import { logFailure } from '@/lib/observability/logger';
+import { createServiceRoleClient } from '@/lib/supabase/admin';
 import { DossierNotFoundError } from '@/lib/supabase/repository';
 import {
   fetchDossierRecords,
@@ -48,6 +51,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
+/** Räumt die Storage-Dateien nur dieser Akte sofort ab; Fehler fängt später der tägliche Cron auf. */
+async function purgeStorageFor(documentId: string): Promise<void> {
+  try {
+    await processDeletionTasks(createServiceRoleClient(), {
+      ...DELETION_WORKER_DEFAULTS,
+      documentId,
+    });
+  } catch (err: unknown) {
+    logFailure('warn', 'loeschung_nachlauf_fehlgeschlagen', err);
+  }
+}
+
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   try {
     const authSupabase = await createServerAuthClient();
@@ -68,6 +83,15 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
     }
 
     const receipt = await deleteDossierRecord(id, parsed.data.reason, authSupabase);
+    if (receipt.storageTasks > 0) {
+      try {
+        after(() => purgeStorageFor(id));
+      } catch (afterErr: unknown) {
+        // after() ist außerhalb eines Request-Kontexts (Tests) nicht verfügbar
+        logFailure('info', 'after_nicht_verfuegbar', afterErr);
+        void purgeStorageFor(id);
+      }
+    }
     return NextResponse.json({ receipt });
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);

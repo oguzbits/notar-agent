@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { processDeletionTasks } from '@/lib/dossier/deletion-worker';
 import { createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
 import { DocumentRecord, CASE_STATUS, DossierNotFoundError } from '@/lib/supabase/repository';
 import * as serverDb from '@/lib/supabase/server';
@@ -15,6 +16,12 @@ vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
   requirePermission: vi.fn(),
 }));
+
+vi.mock('@/lib/dossier/deletion-worker', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/dossier/deletion-worker')>()),
+  processDeletionTasks: vi.fn(),
+}));
+vi.mock('@/lib/supabase/admin', () => ({ createServiceRoleClient: () => ({}) }));
 
 vi.mock('@/lib/supabase/server', () => ({
   fetchDossierRecords: vi.fn(),
@@ -132,6 +139,44 @@ describe('Documents API Route (/api/documents)', () => {
       );
     });
 
+    it('arbeitet nach dem Löschen die Storage-Aufgaben genau dieser Akte ab', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockResolvedValueOnce({
+        ...receipt,
+        storageTasks: 2,
+      });
+
+      const res = await DELETE(deleteRequest());
+
+      expect(res.status).toBe(200);
+      await vi.waitFor(() =>
+        expect(processDeletionTasks).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ documentId: 'doc-1' })
+        )
+      );
+    });
+
+    it('startet den Worker nicht, wenn keine Storage-Aufgaben vorgemerkt sind', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockResolvedValueOnce(receipt);
+      await DELETE(deleteRequest());
+      await Promise.resolve();
+      expect(processDeletionTasks).not.toHaveBeenCalled();
+    });
+
+    it('antwortet 200, auch wenn der Nachlauf fehlschlägt', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockResolvedValueOnce({
+        ...receipt,
+        storageTasks: 1,
+      });
+      vi.mocked(processDeletionTasks).mockRejectedValueOnce(new Error('Storage down'));
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const res = await DELETE(deleteRequest());
+
+      expect(res.status).toBe(200);
+      await vi.waitFor(() => expect(processDeletionTasks).toHaveBeenCalled());
+    });
+
     it('verlangt DELETE_DOSSIER und löscht für SACHBEARBEITER nichts', async () => {
       vi.mocked(requirePermission).mockImplementation(
         fakeRequirePermission(NOTARY_ROLES.SACHBEARBEITER)
@@ -146,6 +191,7 @@ describe('Documents API Route (/api/documents)', () => {
         expect.objectContaining({ route: 'DELETE /api/documents' })
       );
       expect(serverDb.deleteDossierRecord).not.toHaveBeenCalled();
+      expect(processDeletionTasks).not.toHaveBeenCalled();
     });
 
     it('returns 400 when id is missing', async () => {

@@ -5,7 +5,8 @@ import { GET } from './route';
 
 vi.mock('@/env', () => ({ getEnv: () => ({ CRON_SECRET: process.env.TEST_CRON_SECRET }) }));
 vi.mock('@/lib/supabase/admin', () => ({ createServiceRoleClient: vi.fn(() => ({})) }));
-vi.mock('@/lib/dossier/deletion-worker', () => ({
+vi.mock('@/lib/dossier/deletion-worker', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/dossier/deletion-worker')>()),
   processDeletionTasks: vi.fn(async () => ({ done: 1, failed: 0, purged: 1 })),
   runRetentionSweep: vi.fn(async () => ({ deleted: 0, failed: [] })),
 }));
