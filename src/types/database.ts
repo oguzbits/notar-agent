@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AuditAction, AuditLogDetails } from './audit';
+import { DeletionTaskStatus } from './deletion';
 import { Dossier } from './dossier';
 import { CreateJobPayload, JobProgressDetails } from './jobs';
 import { NotaryRole } from './organization';
@@ -15,6 +16,8 @@ export const DB_TABLES = {
   KNOWLEDGE_DOCUMENTS: 'knowledge_documents',
   WORKFLOW_DEFINITIONS: 'workflow_definitions',
   WORKFLOW_INSTANCES: 'workflow_instances',
+  DELETION_TASKS: 'deletion_tasks',
+  AUDIT_ACTOR_MAP: 'audit_actor_map',
 } as const;
 
 export const DbTableSchema = z.enum([
@@ -27,6 +30,8 @@ export const DbTableSchema = z.enum([
   DB_TABLES.KNOWLEDGE_DOCUMENTS,
   DB_TABLES.WORKFLOW_DEFINITIONS,
   DB_TABLES.WORKFLOW_INSTANCES,
+  DB_TABLES.DELETION_TASKS,
+  DB_TABLES.AUDIT_ACTOR_MAP,
 ]);
 export type DbTable = (typeof DB_TABLES)[keyof typeof DB_TABLES];
 
@@ -125,6 +130,7 @@ export interface Database {
           title: string;
           status: string;
           content: Dossier;
+          retention_anchor_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -134,6 +140,7 @@ export interface Database {
           title: string;
           status: string;
           content: Dossier;
+          retention_anchor_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -143,6 +150,7 @@ export interface Database {
           title?: string;
           status?: string;
           content?: Dossier;
+          retention_anchor_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -253,6 +261,7 @@ export interface Database {
           valid_until: string | null;
           version: number;
           review_status: string;
+          retention_years: number | null;
           reviewed_at: string | null;
           created_at: string;
           updated_at: string;
@@ -273,6 +282,7 @@ export interface Database {
           valid_until?: string | null;
           version?: number;
           review_status?: string;
+          retention_years?: number | null;
           reviewed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -293,6 +303,7 @@ export interface Database {
           valid_until?: string | null;
           version?: number;
           review_status?: string;
+          retention_years?: number | null;
           reviewed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -368,6 +379,57 @@ export interface Database {
         };
         Relationships: [];
       };
+      deletion_tasks: {
+        Row: {
+          id: string;
+          organization_id: string;
+          document_id: string;
+          storage_path: string;
+          status: DeletionTaskStatus;
+          attempts: number;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          document_id: string;
+          storage_path: string;
+          status?: DeletionTaskStatus;
+          attempts?: number;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          status?: DeletionTaskStatus;
+          attempts?: number;
+          last_error?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      audit_actor_map: {
+        Row: {
+          document_id: string;
+          user_id: string;
+          organization_id: string;
+          actor_ref: string;
+          display_name: string;
+        };
+        Insert: {
+          document_id: string;
+          user_id: string;
+          organization_id: string;
+          actor_ref?: string;
+          display_name: string;
+        };
+        Update: {
+          display_name?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -388,6 +450,18 @@ export interface Database {
           p_chamber_district: string;
         };
         Returns: Database['public']['Tables']['organizations']['Row'];
+      };
+      delete_dossier: {
+        Args: { p_document_id: string; p_reason: string };
+        Returns: Json;
+      };
+      delete_dossier_system: {
+        Args: { p_document_id: string };
+        Returns: Json;
+      };
+      complete_dossier_purge: {
+        Args: { p_document_id: string };
+        Returns: boolean;
       };
       verify_audit_chain: {
         Args: { p_document_id: string };

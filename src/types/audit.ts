@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PermissionActionSchema } from './auth';
+import { DeletionReasonSchema } from './deletion';
 import { FieldStatusSchema } from './dossier';
 import { DbUuidSchema } from './primitives';
 
@@ -14,6 +15,8 @@ export const AUDIT_ACTIONS = {
   WORKFLOW_STEP_COMPLETED: 'WORKFLOW_STEP_COMPLETED',
   WORKFLOW_TRANSITION_TRIGGERED: 'WORKFLOW_TRANSITION_TRIGGERED',
   ACCESS_DENIED: 'ACCESS_DENIED',
+  DOSSIER_DELETED: 'DOSSIER_DELETED',
+  DOSSIER_PURGE_COMPLETED: 'DOSSIER_PURGE_COMPLETED',
 } as const;
 
 export const AuditActionSchema = z.enum([
@@ -27,6 +30,8 @@ export const AuditActionSchema = z.enum([
   AUDIT_ACTIONS.WORKFLOW_STEP_COMPLETED,
   AUDIT_ACTIONS.WORKFLOW_TRANSITION_TRIGGERED,
   AUDIT_ACTIONS.ACCESS_DENIED,
+  AUDIT_ACTIONS.DOSSIER_DELETED,
+  AUDIT_ACTIONS.DOSSIER_PURGE_COMPLETED,
 ]);
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -66,6 +71,13 @@ export const AuditLogDetailsSchema = z
     actorRole: z.string().optional(),
     deniedAction: PermissionActionSchema.optional(),
     route: z.string().optional(),
+    deletion: z
+      .object({
+        reason: DeletionReasonSchema,
+        deletedRows: z.record(z.string(), z.number().int().nonnegative()),
+        storageTasks: z.number().int().nonnegative(),
+      })
+      .optional(),
   })
   .default({});
 

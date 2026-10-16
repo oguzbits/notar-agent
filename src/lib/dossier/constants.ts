@@ -1,3 +1,4 @@
+import { DeletionReason } from '@/types/deletion';
 import { CaseType, FieldStatus, CASE_TYPES, FIELD_STATUS } from '@/types/dossier';
 import { CaseTypeCoreConfig } from './types';
 
@@ -64,4 +65,26 @@ export const STAGE_ACTIVITY_LABELS_DE = {
   EXTRACTION: 'Stammdaten, Flurstücke und Beteiligte erfassen...',
   AUDITING: 'Notarielle Vorprüfung, Fristen & Plausibilisierung...',
   PERSISTING: 'Prüfbericht erstellen & Vorgang aufbereiten...',
+} as const;
+
+export const DELETION_REASON_LABELS_DE: Record<DeletionReason, string> = {
+  ENTWURF_VERWORFEN: 'Entwurf verworfen',
+  FEHLERHAFT_ANGELEGT: 'Fehlerhaft angelegt',
+  AUFBEWAHRUNG_ABGELAUFEN: 'Aufbewahrungsfrist abgelaufen',
+  SONSTIGES: 'Sonstiger Grund',
+};
+
+export const DELETION_UI_TEXTS_DE = {
+  FORMER_USER: 'Gelöschter Nutzer',
+  DIALOG_TITLE: 'Vorgang endgültig löschen',
+  DIALOG_DESCRIPTION:
+    'Alle Dokumente und Daten dieses Vorgangs werden unwiderruflich entfernt. Die Löschung wird im Prüfprotokoll vermerkt.',
+  REASON_LABEL: 'Grund der Löschung',
+  REASON_PLACEHOLDER: 'Grund auswählen',
+  CONFIRM: 'Endgültig löschen',
+  PENDING: 'Wird gelöscht…',
+  IN_PROGRESS: 'Löschung läuft',
+  DONE: 'Gelöscht',
+  ERROR: 'Der Vorgang konnte nicht gelöscht werden.',
+  RETRY: 'Erneut versuchen',
 } as const;
