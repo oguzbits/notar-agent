@@ -1,11 +1,21 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { NextResponse } from 'next/server';
+import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<NextResponse> {
   try {
+    const authSupabase = await createServerAuthClient();
+    const orgId = await resolveSessionOrganizationId(authSupabase);
+    if (!orgId) {
+      return NextResponse.json(
+        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+        { status: 401 }
+      );
+    }
+
     const jsonPath = path.resolve(process.cwd(), 'reports', 'eval-report.json');
     if (!fs.existsSync(jsonPath)) {
       return NextResponse.json(

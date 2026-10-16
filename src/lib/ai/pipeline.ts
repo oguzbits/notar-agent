@@ -1,4 +1,5 @@
 import { generateText, LanguageModel, SystemModelMessage } from 'ai';
+import { parseAuditorOutput } from '@/lib/ai/auditor-output';
 import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
@@ -19,7 +20,7 @@ import {
   OverallStatus,
   UploadedFilePayload,
 } from '@/types/dossier';
-import { AuditorStageOutputSchema, ExtractionStageOutputSchema } from '@/types/pipeline';
+import { ExtractionStageOutputSchema } from '@/types/pipeline';
 import { WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
 export interface PipelineTokenUsage {
@@ -419,19 +420,7 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     });
   }
 
-  let rawAuditorJson: Record<string, unknown> = {};
-  try {
-    rawAuditorJson = cleanAndParseJson<Record<string, unknown>>(auditorResult.text);
-  } catch (err: unknown) {
-    console.warn(
-      '[pipeline] Auditor Stufe 2 JSON Parse-Fehler, verwende leere Modifikationen:',
-      err
-    );
-  }
-  const validatedAuditor = AuditorStageOutputSchema.safeParse(rawAuditorJson);
-  const parsedAuditorRaw = (
-    validatedAuditor.success ? validatedAuditor.data : rawAuditorJson || {}
-  ) as Record<string, unknown>;
+  const { parsedAuditorRaw, failClosedStatus } = parseAuditorOutput(auditorResult.text);
 
   const auditorExtraction = extractAuditorModifications(parsedAuditorRaw);
 
@@ -440,7 +429,8 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
     existingDossier,
     parsedExtractionRaw,
     parsedAuditorModifications: auditorExtraction.modifications,
-    auditorOverallStatus: auditorExtraction.overallStatus,
+    // Fail-closed: Ohne gültiges Auditor-Ergebnis gilt der Vorgang nie als freigegeben
+    auditorOverallStatus: failClosedStatus ?? auditorExtraction.overallStatus,
     auditorExecutiveSummary: auditorExtraction.executiveSummary,
     auditorCaseTitle: auditorExtraction.caseTitle,
     auditorInquiries: auditorExtraction.inquiries,

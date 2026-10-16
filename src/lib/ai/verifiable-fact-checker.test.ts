@@ -376,4 +376,58 @@ describe('findUnsupportedNumbers', () => {
     expect(findUnsupportedNumbers('Beurkundung am 10.02.2023', 'Datum: 10.02.2023')).toEqual([]);
     expect(findUnsupportedNumbers('Datum 2023-02-10', 'Urkunde vom 10.02.2023')).toEqual([]);
   });
+
+  describe('fail-closed bei nicht prüfbarem Beleg', () => {
+    const dummyFileSources = [
+      {
+        fileName: 'Kaufvertrag_Entwurf.pdf',
+        textContent: 'Der Gesamtkaufpreis beträgt 450.000 Euro.',
+      },
+    ];
+    const baseOutput = (source: { fileName?: string; snippet?: string } | undefined) => {
+      const stageOutput: ExtractionStageOutput = {
+        caseTitle: 'Test',
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+        analysisTimestamp: new Date().toISOString(),
+        executiveSummary: '',
+        detectedDocuments: [],
+        inquiries: [],
+        fields: {
+          kaufpreis: {
+            data: { value: '450.000 €' },
+            status: FIELD_STATUS.VERIFIED,
+            source,
+          },
+        },
+      };
+      return stageOutput;
+    };
+
+    it('stuft verifiziertes Feld ohne Quellenangabe auf Prüfbedarf herab', () => {
+      const result = verifyExtractionFacts({
+        stageOutput: baseOutput(undefined),
+        sourceDocuments: dummyFileSources,
+      });
+      expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+      expect(result.verificationIssues).toHaveLength(1);
+    });
+
+    it('stuft Feld ab, dessen Quelldokument keinen Text hat (Scan)', () => {
+      const result = verifyExtractionFacts({
+        stageOutput: baseOutput({ fileName: 'Scan.pdf', snippet: 'Kaufpreis 450.000 Euro' }),
+        sourceDocuments: [{ fileName: 'Scan.pdf', textContent: '' }],
+      });
+      expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+      expect(result.verificationIssues).toHaveLength(1);
+    });
+
+    it('stuft Feld ab, dessen Quelldokument nicht auffindbar ist', () => {
+      const result = verifyExtractionFacts({
+        stageOutput: baseOutput({ fileName: 'Fehlt.pdf', snippet: 'Kaufpreis 450.000 Euro' }),
+        sourceDocuments: dummyFileSources,
+      });
+      expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+    });
+  });
 });

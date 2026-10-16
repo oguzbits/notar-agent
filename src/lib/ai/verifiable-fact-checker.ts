@@ -31,23 +31,54 @@ export interface VerifyExtractionFactsResult extends ExtractionStageOutput {
   verificationIssues: VerificationIssue[];
 }
 
+function downgradeUnverifiable(
+  key: string,
+  field: NonNullable<ExtractionFieldsRecord[string]>,
+  reason: string,
+  verificationIssues: VerificationIssue[]
+): NonNullable<ExtractionFieldsRecord[string]> {
+  verificationIssues.push({
+    fieldKey: key,
+    fileName: field.source?.fileName,
+    expectedSnippet: field.source?.snippet,
+    reason,
+  });
+  const appendNote = `Automatische Verifikation: ${reason}`;
+  return {
+    ...field,
+    status: FIELD_STATUS.NEEDS_REVIEW,
+    note: field.note ? `${field.note} (${appendNote})` : appendNote,
+  };
+}
+
 function verifyCitationField(
   key: string,
   field: NonNullable<ExtractionFieldsRecord[string]>,
   sourceDocuments: SourceDocumentText[],
   verificationIssues: VerificationIssue[]
 ): NonNullable<ExtractionFieldsRecord[string]> {
-  if (
-    field.status !== FIELD_STATUS.VERIFIED ||
-    (!field.source?.fileName && !field.source?.docIndex) ||
-    !field.source?.snippet
-  ) {
+  if (field.status !== FIELD_STATUS.VERIFIED) {
     return { ...field };
+  }
+
+  // Fail-closed: Eine „verifiziert“-Angabe ohne prüfbaren Beleg wird nie stillschweigend übernommen
+  if ((!field.source?.fileName && !field.source?.docIndex) || !field.source?.snippet) {
+    return downgradeUnverifiable(
+      key,
+      field,
+      'Keine prüfbare Quellenangabe vorhanden',
+      verificationIssues
+    );
   }
 
   const resolved = resolveSourceDocument(field.source, sourceDocuments);
   if (!resolved || !resolved.textContent?.trim()) {
-    return { ...field };
+    return downgradeUnverifiable(
+      key,
+      field,
+      'Quelldokument nicht auffindbar oder ohne maschinenlesbaren Text (z. B. Scan)',
+      verificationIssues
+    );
   }
 
   const rawDocText = resolved.textContent;

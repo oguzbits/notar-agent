@@ -589,11 +589,19 @@ export function isGmbhDossier(dossier: Dossier): dossier is GmbhDossier {
 // 4. API REQUEST SCHEMATA
 // ==========================================
 
+// Obergrenzen schützen die KI-Aufrufe vor überdimensionierten Anfragen
+export const ANALYZE_LIMITS = {
+  MAX_FILES: 20,
+  MAX_FILE_BYTES: 50 * 1024 * 1024,
+  MAX_INLINE_CONTENT_CHARS: 6_000_000,
+  MAX_NOTES_CHARS: 20_000,
+} as const;
+
 export const UploadedFilePayloadSchema = z.object({
-  name: z.string().min(1, 'Dateiname darf nicht leer sein'),
-  type: z.string(),
-  size: z.number().nonnegative(),
-  content: z.string().optional(),
+  name: z.string().min(1, 'Dateiname darf nicht leer sein').max(255),
+  type: z.string().max(255),
+  size: z.number().nonnegative().max(ANALYZE_LIMITS.MAX_FILE_BYTES),
+  content: z.string().max(ANALYZE_LIMITS.MAX_INLINE_CONTENT_CHARS).optional(),
   isBase64: z.boolean().optional(),
   storagePath: z.string().optional(),
 });
@@ -601,9 +609,9 @@ export type UploadedFilePayload = z.infer<typeof UploadedFilePayloadSchema>;
 
 export const AnalyzeRequestSchema = z
   .object({
-    files: z.array(UploadedFilePayloadSchema).default([]),
+    files: z.array(UploadedFilePayloadSchema).max(ANALYZE_LIMITS.MAX_FILES).default([]),
     caseType: CaseTypeSchema.default(CASE_TYPES.IMMOBILIENKAUF),
-    notes: z.string().default(''),
+    notes: z.string().max(ANALYZE_LIMITS.MAX_NOTES_CHARS).default(''),
     documentId: z.string().optional(),
     organizationId: DbUuidSchema.optional(),
     existingDossier: DossierSchema.optional(),
