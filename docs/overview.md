@@ -201,6 +201,7 @@ Um die Qualität und Verlässlichkeit des KI-Systems ohne Blindflug zu garantier
   - _Token Recall Rate (100%):_ Vollständige Erfassung aller juristisch kritischen Pflichtangaben (z.B. Energiebedarfswerte, Gültigkeitsfristen, Flurstücke).
   - _Bounding-Box Alignment (100%):_ Geometrische Nearest-Neighbor-Zuordnung von Werten zu Labels auf derselben Zeile ($\Delta y \le 16$ pt) oder direkt darüber liegenden Spaltenköpfen ohne jegliche statische Wörterbuchabfragen.
   - _Native Latenz (< 50 ms):_ Deterministisches PDFium-Parsing im Speicher.
+- **Live-Messung ([`src/lib/evals/live-run-stats.ts`](../src/lib/evals/live-run-stats.ts), `npm run eval:live:runs`):** Einzelne Modellläufe sind Stichproben. Der Runner sammelt Läufe je Fall über mehrere Tage in `reports/live-eval/runs.jsonl`, wertet Fehlerrate und Belegquote je Feld aus und markiert wechselhafte Felder. Das Gate verlangt mindestens 3 Läufe je Fall und höchstens 10 % Fehlerrate je Feld; ohne Messung besteht es nicht. Ein harter Aufrufdeckel und der sofortige Stopp bei Kontingentfehlern (429) schonen kostenlose Kontingente. `npm run eval:live:report` wertet ohne Modellaufruf aus.
 - **Layer 2: Trajectory & Knowledge Selection:**
   Prüft, ob die JIT-Rule-Selector-Engine die für den Vorgangstyp und Sachverhalt exakt einschlägigen Normen (§ 80 GEG, § 21 BeurkG, MoPeG) selektiert.
 - **Layer 3: Outcome Accuracy & Provenance:**

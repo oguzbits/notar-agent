@@ -245,3 +245,41 @@ export const RetrievalBenchmarkReportSchema = z.object({
   results: z.array(RetrievalScoreSchema),
 });
 export type RetrievalBenchmarkReport = z.infer<typeof RetrievalBenchmarkReportSchema>;
+
+/** Schwellen für ehrliche Live-Evals: mehrere Läufe je Fall, begrenzte Fehlerrate je Feld. */
+export const LIVE_EVAL_GATE = {
+  MIN_RUNS_PER_CASE: 3,
+  MAX_FIELD_ERROR_RATE: 0.1,
+} as const;
+
+export const FieldRunOutcomeSchema = z.object({
+  caseId: z.string().min(1),
+  fieldKey: z.string().min(1),
+  matched: z.boolean(),
+  hasProvenance: z.boolean(),
+});
+export type FieldRunOutcome = z.infer<typeof FieldRunOutcomeSchema>;
+
+/** Ergebnis eines einzelnen Pipeline-Laufs über alle geprüften Felder eines Falls. */
+export const EvalRunSchema = z.object({
+  caseId: z.string().min(1),
+  outcomes: z.array(FieldRunOutcomeSchema),
+});
+export type EvalRun = z.infer<typeof EvalRunSchema>;
+
+export const FieldErrorRateSchema = z.object({
+  caseId: z.string().min(1),
+  fieldKey: z.string().min(1),
+  runs: z.number().int().min(1),
+  errors: z.number().int().min(0),
+  errorRate: z.number().min(0).max(1),
+  provenanceMisses: z.number().int().min(0),
+  isFlaky: z.boolean().describe('Mindestens ein Treffer und ein Fehler über die Läufe'),
+});
+export type FieldErrorRate = z.infer<typeof FieldErrorRateSchema>;
+
+export const LiveEvalGateResultSchema = z.object({
+  passed: z.boolean(),
+  failures: z.array(z.string()),
+});
+export type LiveEvalGateResult = z.infer<typeof LiveEvalGateResultSchema>;

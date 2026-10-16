@@ -43,6 +43,8 @@
     "eval:case:live": "node scripts/eval/run-eval-case.mjs --live",
     "eval:smoke": "node scripts/eval/run-eval-case.mjs 4",
     "eval:live": "PROMPTFOO_MODE=live promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache -j 3",
+    "eval:live:runs": "tsx --env-file=.env.local scripts/eval/run-live-eval.ts",
+    "eval:live:report": "tsx scripts/eval/run-live-eval.ts --report",
     "eval:view": "promptfoo view -p 15500",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
