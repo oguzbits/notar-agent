@@ -1,4 +1,5 @@
 import { prepareFiles } from '@/lib/files/file-preparer';
+import { logFailure } from '@/lib/observability/logger';
 import { UploadedFilePayload } from '@/types/dossier';
 import { CreateUploadUrlResponse } from '@/types/storage';
 
@@ -56,11 +57,7 @@ export async function uploadFileDirectly(
       storagePath,
     };
   } catch (err: unknown) {
-    console.warn(
-      '[storage-uploader] Direct-Upload fehlgeschlagen. Nutze lokalen Fallback für Datei:',
-      file.name,
-      err
-    );
+    logFailure('warn', 'direct_upload_fehlgeschlagen', err);
     const [fallbackPayload] = await prepareFiles([file]);
     if (!fallbackPayload) {
       throw new Error(`Fallback-Verarbeitung für Datei "${file.name}" fehlgeschlagen.`);

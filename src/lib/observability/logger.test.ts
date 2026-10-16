@@ -41,6 +41,7 @@ describe('timed', () => {
     const raw = String(spy.mock.calls[0]?.[0]);
     expect(raw).not.toContain('Müller');
     expect(JSON.parse(raw)).toMatchObject({ outcome: 'fehler', errorClass: 'TypeError' });
+    expect(JSON.parse(raw).durationMs).toBeGreaterThanOrEqual(0);
   });
 });
 

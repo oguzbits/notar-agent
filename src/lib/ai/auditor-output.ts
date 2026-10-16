@@ -1,4 +1,5 @@
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
+import { logFailure } from '@/lib/observability/logger';
 import { OVERALL_STATUS, OverallStatus } from '@/types/dossier';
 import { AuditorStageOutputSchema } from '@/types/pipeline';
 
@@ -15,10 +16,7 @@ export function parseAuditorOutput(text: string): {
   try {
     raw = cleanAndParseJson<Record<string, unknown>>(text);
   } catch (err: unknown) {
-    console.warn(
-      '[pipeline] Auditor Stufe 2 JSON Parse-Fehler, verwende leere Modifikationen:',
-      err
-    );
+    logFailure('warn', 'auditor_json_parse_fehler', err);
     auditorFailed = true;
   }
   const validated = AuditorStageOutputSchema.safeParse(raw);

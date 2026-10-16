@@ -25,6 +25,12 @@ describe('buildSentryOptions', () => {
     expect(o?.beforeBreadcrumb).toBe(scrubBreadcrumb);
   });
 
+  it('sendet keine Transaktionen: kein Tracing und beforeSendTransaction verwirft alles', () => {
+    const o = buildSentryOptions(EU_DSN);
+    expect(o).not.toHaveProperty('tracesSampleRate');
+    expect(o?.beforeSendTransaction?.({ type: 'transaction' }, {})).toBeNull();
+  });
+
   it('lehnt DSNs außerhalb der EU-Region ab', () => {
     expect(() => buildSentryOptions('https://key@o1.ingest.sentry.io/2')).toThrow();
     expect(() => buildSentryOptions('https://key@o1.ingest.de.sentry.io.evil.com/2')).toThrow();

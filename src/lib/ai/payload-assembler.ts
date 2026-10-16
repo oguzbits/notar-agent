@@ -8,6 +8,7 @@ import { parseDocxDocument, DocxExtractedImage } from '@/lib/files/docx-document
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
 import { PdfStreamType, PDF_STREAM_TYPES } from '@/lib/files/pdf-stream-classifier';
+import { logFailure } from '@/lib/observability/logger';
 import { resolveFileBuffer } from '@/lib/storage/storage-service';
 import { DocumentParsedContent } from '@/types/document';
 import {
@@ -199,11 +200,7 @@ ${notesSection}${
             parsedScreenshots = parsedDoc.pageScreenshots;
           }
         } catch (err: unknown) {
-          console.warn(
-            '[payload-assembler] Serverseitige PDF-Introspektion fehlgeschlagen für Datei:',
-            file.name,
-            err
-          );
+          logFailure('warn', 'pdf_introspektion_fehlgeschlagen', err);
         }
       }
 
@@ -324,7 +321,7 @@ ${notesSection}${
         docxMarkdown = parsed.markdown;
         docxImages = parsed.extractedImages;
       } catch (err: unknown) {
-        console.warn('[payload-assembler] DOCX-Extraktion fehlgeschlagen:', file.name, err);
+        logFailure('warn', 'docx_extraktion_fehlgeschlagen', err);
       }
 
       if (docxMarkdown.trim()) {
@@ -372,11 +369,7 @@ ${notesSection}${
           const buffer = await resolveFileBuffer(file);
           textContent = buffer.toString('utf-8');
         } catch (err: unknown) {
-          console.warn(
-            '[payload-assembler] Text-Extraktion aus Storage fehlgeschlagen:',
-            file.name,
-            err
-          );
+          logFailure('warn', 'storage_textextraktion_fehlgeschlagen', err);
         }
       }
       const sanitized = sanitizeXmlDocumentContent(textContent || '');

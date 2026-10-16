@@ -14,5 +14,6 @@ const bundleAnalyzer = withBundleAnalyzer({
 // Kein Source-Map-Upload und keine Build-Telemetrie: nichts verlässt den Build ohne ausdrückliche Konfiguration.
 export default withSentryConfig(bundleAnalyzer(nextConfig), {
   silent: true,
+  telemetry: false,
   sourcemaps: { disable: true },
 });

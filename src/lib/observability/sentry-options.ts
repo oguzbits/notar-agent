@@ -22,7 +22,6 @@ export function buildSentryOptions(dsn: string | undefined): NodeOptions | null 
   assertEuDsn(dsn);
   return {
     dsn,
-    tracesSampleRate: 0,
     dataCollection: {
       userInfo: false,
       cookies: false,
@@ -34,6 +33,8 @@ export function buildSentryOptions(dsn: string | undefined): NodeOptions | null 
       stackFrameVariables: false,
     },
     beforeSend: scrubEvent,
+    // Transaktionen umgehen beforeSend und enthalten URLs mit Dateinamen: nie senden.
+    beforeSendTransaction: () => null,
     beforeBreadcrumb: scrubBreadcrumb,
   };
 }
