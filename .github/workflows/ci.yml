@@ -69,14 +69,25 @@ jobs:
   semgrep-sast:
     name: Semgrep Static Application Security Testing (SAST)
     runs-on: ubuntu-latest
-    container:
-      image: semgrep/semgrep
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Semgrep (festgelegte Version)
+        run: pip install semgrep==1.170.0
+
       - name: Run Semgrep Security Rules
-        run: semgrep scan --config auto --error --exclude-rule "yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag" src scripts
+        run: npm run audit:sast
 
   supabase-migration-and-rls-check:
     name: Supabase Docker Migration & Determinism Audit
