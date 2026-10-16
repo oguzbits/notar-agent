@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PUT } from '@/app/api/analyze/route';
 import { GET as getAuditRoute } from '@/app/api/documents/[id]/audit/route';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { updateDossierFieldStatus } from '@/lib/dossier/state';
 import { getAuditRepository, getDossierRepository } from '@/lib/supabase/server';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
@@ -9,8 +10,14 @@ import {
   createMockDossierRepository,
   createMockAuditRepository,
 } from '@/test/fixtures/mock-repositories';
+import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { FIELD_STATUS } from '@/types/dossier';
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server-auth', async () => {
   const { NOTARY_ROLES } = await import('@/types/organization');
@@ -45,6 +52,7 @@ describe('Audit Trail API Route & PUT /api/analyze Integration', () => {
   const docId = 'test-audit-doc-123';
 
   beforeEach(async () => {
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
     const dossierRepo = getDossierRepository();
     const dummyDossier = createTestImmobilienDossier();
     await dossierRepo.update(docId, dummyDossier, TEST_ORG_ID);

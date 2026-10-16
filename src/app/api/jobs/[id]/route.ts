@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS, PermissionAction } from '@/types/auth';
@@ -48,12 +49,9 @@ async function resolveJobAuth(
     }
     return { authSupabase, orgId };
   } catch (error: unknown) {
-    if (error instanceof AuthzError) {
-      return {
-        errorResponse: NextResponse.json({ error: error.message }, { status: error.status }),
-      };
-    }
-    throw error;
+    const denied = authzErrorResponse(error);
+    if (!denied) throw error;
+    return { errorResponse: denied };
   }
 }
 

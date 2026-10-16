@@ -1,14 +1,22 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { getJobRepository } from '@/lib/supabase/server';
 import { resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import {
   createMockJobRepository,
   createMockDossierRepository,
 } from '@/test/fixtures/mock-repositories';
+import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS } from '@/types/jobs';
 import { GET, POST } from './route';
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server-auth', async () => {
   const { NOTARY_ROLES } = await import('@/types/organization');
@@ -39,6 +47,29 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
 
 describe('API Route: /api/jobs (List & Retry)', () => {
   const repo = getJobRepository();
+
+  beforeEach(() => {
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
+  });
+
+  it('POST /api/jobs verlangt UPLOAD_DOCUMENTS und fasst ohne Sitzung nichts an (401)', async () => {
+    vi.mocked(requirePermission).mockRejectedValueOnce(
+      new AuthzError(401, 'Nicht authentifiziert oder keine Kanzlei zugeordnet.')
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/jobs', {
+      method: 'POST',
+      body: JSON.stringify({ jobId: 'irgendein-job' }),
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(401);
+    expect(requirePermission).toHaveBeenCalledWith(
+      null,
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      expect.objectContaining({ route: 'POST /api/jobs' })
+    );
+  });
 
   it('GET /api/jobs returns list of all jobs', async () => {
     const job = await repo.createJob(

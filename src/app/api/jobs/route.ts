@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { fromError } from 'zod-validation-error';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import type { IJobRepository } from '@/lib/jobs/job-repository';
 import { executeDossierJob, type WorkerDependencies } from '@/lib/jobs/job-worker';
 import { getDossierRepository, getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { JOB_STATUS, RetryJobRequestSchema, type DossierJob } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
@@ -86,15 +89,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     const { jobId } = parseResult.data;
 
     const authSupabase = await createServerAuthClient();
-    const orgId = await resolveSessionOrganizationId(
+    const { organizationId: orgId } = await requirePermission(
       authSupabase,
-      req.headers.get('x-organization-id') ?? undefined
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      {
+        requestedOrgId: req.headers.get('x-organization-id') ?? undefined,
+        route: 'POST /api/jobs',
+      }
     );
-    if (!orgId)
-      return NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      );
     const repo = getJobRepository(authSupabase);
     const job = await repo.getJobById(jobId, orgId);
 
@@ -119,6 +121,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       { status: 200 }
     );
   } catch (error: unknown) {
+    const denied = authzErrorResponse(error);
+    if (denied) return denied;
     const msg = error instanceof Error ? error.message : 'Fehler bei der Job-Wiederholung.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

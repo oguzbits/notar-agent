@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS, UpdateMemberRoleRequestSchema } from '@/types/auth';
@@ -58,9 +59,8 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
 
     return NextResponse.json({ member: updated });
   } catch (err: unknown) {
-    if (err instanceof AuthzError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
-    }
+    const denied = authzErrorResponse(err);
+    if (denied) return denied;
     const msg = err instanceof Error ? err.message : 'Fehler beim Ändern der Rolle.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -78,9 +78,8 @@ export async function DELETE(req: NextRequest, context: RouteContext): Promise<N
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
-    if (err instanceof AuthzError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
-    }
+    const denied = authzErrorResponse(err);
+    if (denied) return denied;
     const msg = err instanceof Error ? err.message : 'Fehler beim Entfernen des Mitglieds.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

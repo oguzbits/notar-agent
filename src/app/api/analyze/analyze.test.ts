@@ -1,14 +1,23 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import {
   createMockJobRepository,
   createMockDossierRepository,
   createMockWorkflowRepository,
 } from '@/test/fixtures/mock-repositories';
-import { CASE_TYPES } from '@/types/dossier';
+import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { PERMISSION_ACTIONS } from '@/types/auth';
+import { CASE_TYPES, FIELD_STATUS } from '@/types/dossier';
 import { JOB_RATE_LIMIT, JOB_STATUS } from '@/types/jobs';
+import { NOTARY_ROLES } from '@/types/organization';
 import { POST, PUT } from './route';
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server-auth', async () => {
   const { NOTARY_ROLES } = await import('@/types/organization');
@@ -37,6 +46,10 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
     getWorkflowRepository: () => mockWorkflowRepo,
     getServerSupabase: vi.fn(),
   };
+});
+
+beforeEach(() => {
+  vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
 });
 
 describe('API Route: POST /api/analyze Guardrails & Validation', () => {
@@ -146,6 +159,75 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
 
     const res = await PUT(req);
     expect(res.status).toBe(400);
+  });
+
+  it('PUT mit auditOverride verlangt OVERRIDE_FIELD_STATUS: ADMIN darf nicht, nichts wird gespeichert', async () => {
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission(NOTARY_ROLES.ADMIN));
+    const updateSpy = vi.spyOn(mockDossierRepo, 'update');
+    const req = new NextRequest('http://localhost:3000/api/analyze', {
+      method: 'PUT',
+      body: JSON.stringify({
+        documentId: 'doc-test-123',
+        dossier: createTestImmobilienDossier(),
+        auditOverride: {
+          fieldKey: 'verkaeufer',
+          previousStatus: FIELD_STATUS.NEEDS_REVIEW,
+          newStatus: FIELD_STATUS.VERIFIED,
+          reason: 'Original lag vor',
+        },
+      }),
+    });
+
+    const res = await PUT(req);
+
+    expect(res.status).toBe(403);
+    expect(requirePermission).toHaveBeenCalledWith(
+      {},
+      PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS,
+      expect.objectContaining({ route: 'PUT /api/analyze' })
+    );
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('PUT ohne auditOverride verlangt UPLOAD_DOCUMENTS', async () => {
+    const req = new NextRequest('http://localhost:3000/api/analyze', {
+      method: 'PUT',
+      body: JSON.stringify({ documentId: 'doc-test-123', dossier: createTestImmobilienDossier() }),
+    });
+
+    const res = await PUT(req);
+
+    expect(res.status).toBe(200);
+    expect(requirePermission).toHaveBeenCalledWith(
+      {},
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      expect.objectContaining({ route: 'PUT /api/analyze' })
+    );
+  });
+
+  it('POST verlangt UPLOAD_DOCUMENTS und startet ohne Sitzung keinen Job (401)', async () => {
+    const prevKey = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test-key';
+    vi.mocked(requirePermission).mockRejectedValueOnce(
+      new AuthzError(401, 'Nicht authentifiziert oder keine Kanzlei zugeordnet.')
+    );
+
+    try {
+      const req = new NextRequest('http://localhost:3000/api/analyze?async=true', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(401);
+      expect(requirePermission).toHaveBeenCalledWith(
+        {},
+        PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+        expect.objectContaining({ route: 'POST /api/analyze' })
+      );
+    } finally {
+      if (prevKey) process.env.GEMINI_API_KEY = prevKey;
+      else delete process.env.GEMINI_API_KEY;
+    }
   });
 
   it('sollte Status 200 liefern, wenn documentId und valides Dossier gesendet werden', async () => {

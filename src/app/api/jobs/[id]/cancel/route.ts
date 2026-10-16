@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { cancelDossierJob } from '@/lib/jobs/job-worker';
 import { getJobRepository } from '@/lib/supabase/server';
-import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
+import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { JOB_STATUS } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
@@ -18,17 +21,17 @@ export async function POST(
     }
 
     const authSupabase = await createServerAuthClient();
-    const orgId = await resolveSessionOrganizationId(
+    const { organizationId: orgId } = await requirePermission(
       authSupabase,
-      req.headers.get('x-organization-id') ||
-        req.nextUrl.searchParams.get('organizationId') ||
-        undefined
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      {
+        requestedOrgId:
+          req.headers.get('x-organization-id') ||
+          req.nextUrl.searchParams.get('organizationId') ||
+          undefined,
+        route: 'POST /api/jobs/[id]/cancel',
+      }
     );
-    if (!orgId)
-      return NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      );
     const repo = getJobRepository(authSupabase);
     const job = await repo.getJobById(id, orgId);
 
@@ -59,6 +62,8 @@ export async function POST(
       { status: 200 }
     );
   } catch (error: unknown) {
+    const denied = authzErrorResponse(error);
+    if (denied) return denied;
     const msg = error instanceof Error ? error.message : 'Fehler beim Abbrechen des Vorgangs.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

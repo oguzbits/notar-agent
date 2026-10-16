@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requirePermission, AuthzError } from '@/lib/auth/require-permission';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { InviteMemberRequestSchema, PERMISSION_ACTIONS, PermissionAction } from '@/types/auth';
@@ -75,9 +76,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const member = await session.repo.inviteMember(parsed.data, session.orgId);
     return NextResponse.json({ member }, { status: 201 });
   } catch (err: unknown) {
-    if (err instanceof AuthzError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
-    }
+    const denied = authzErrorResponse(err);
+    if (denied) return denied;
     const msg = err instanceof Error ? err.message : 'Fehler beim Einladen des Kanzleimitglieds.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

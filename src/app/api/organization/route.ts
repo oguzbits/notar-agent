@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import {
   CreateOrganizationRequestSchema,
@@ -123,9 +124,8 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       organization: updatedOrg,
     });
   } catch (err: unknown) {
-    if (err instanceof AuthzError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
-    }
+    const denied = authzErrorResponse(err);
+    if (denied) return denied;
     const msg = err instanceof Error ? err.message : 'Fehler beim Aktualisieren der Kanzlei.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

@@ -1,10 +1,18 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { getJobRepository } from '@/lib/supabase/server';
 import { createMockJobRepository } from '@/test/fixtures/mock-repositories';
+import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS } from '@/types/jobs';
 import { POST } from './route';
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server-auth', async () => {
   const { NOTARY_ROLES } = await import('@/types/organization');
@@ -33,6 +41,34 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
 
 describe('API Route: POST /api/jobs/[id]/cancel', () => {
   const repo = getJobRepository();
+
+  beforeEach(() => {
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
+  });
+
+  it('verlangt UPLOAD_DOCUMENTS und bricht ohne Sitzung nichts ab (401)', async () => {
+    const job = await repo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [],
+      notes: 'Läuft weiter',
+    });
+    vi.mocked(requirePermission).mockRejectedValueOnce(
+      new AuthzError(401, 'Nicht authentifiziert oder keine Kanzlei zugeordnet.')
+    );
+
+    const req = new NextRequest(`http://localhost:3000/api/jobs/${job.id}/cancel`, {
+      method: 'POST',
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: job.id }) });
+
+    expect(res.status).toBe(401);
+    expect(requirePermission).toHaveBeenCalledWith(
+      null,
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      expect.objectContaining({ route: 'POST /api/jobs/[id]/cancel' })
+    );
+    expect((await repo.getJobById(job.id))?.status).not.toBe(JOB_STATUS.CANCELLED);
+  });
 
   it('returns 404 when job does not exist', async () => {
     const req = new NextRequest('http://localhost:3000/api/jobs/non-existing-id/cancel', {

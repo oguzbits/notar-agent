@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { AuthzError } from '@/lib/auth/require-permission';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 
 const mockCreateSignedUploadUrl = vi.fn();
 vi.mock('@/lib/storage/storage-service', () => ({
@@ -7,7 +9,12 @@ vi.mock('@/lib/storage/storage-service', () => ({
 }));
 
 const mockGetUser = vi.fn();
-const mockResolveSessionOrganizationId = vi.fn();
+const mockRequirePermission = vi.fn();
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: (...args: unknown[]) => mockRequirePermission(...args),
+}));
 
 vi.mock('@/lib/supabase/server-auth', () => ({
   createServerAuthClient: vi.fn().mockImplementation(() =>
@@ -15,7 +22,6 @@ vi.mock('@/lib/supabase/server-auth', () => ({
       auth: { getUser: mockGetUser },
     })
   ),
-  resolveSessionOrganizationId: (...args: unknown[]) => mockResolveSessionOrganizationId(...args),
 }));
 
 describe('API Route: POST /api/storage/upload-url', () => {
@@ -24,7 +30,9 @@ describe('API Route: POST /api/storage/upload-url', () => {
   });
 
   it('rejects unauthenticated requests with 401', async () => {
-    mockResolveSessionOrganizationId.mockResolvedValue(undefined);
+    mockRequirePermission.mockRejectedValue(
+      new AuthzError(401, 'Nicht authentifiziert oder keine Kanzlei zugeordnet.')
+    );
 
     const { POST } = await import('./route');
     const req = new NextRequest('http://localhost:3000/api/storage/upload-url', {
@@ -38,12 +46,20 @@ describe('API Route: POST /api/storage/upload-url', () => {
 
     const res = await POST(req);
     expect(res.status).toBe(401);
+    expect(mockRequirePermission).toHaveBeenCalledWith(
+      expect.anything(),
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      expect.objectContaining({ route: 'POST /api/storage/upload-url' })
+    );
+    expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
     const data = await res.json();
     expect(data.error).toContain('Nicht authentifiziert');
   });
 
   it('rejects invalid request payloads with 400', async () => {
-    mockResolveSessionOrganizationId.mockResolvedValue('550e8400-e29b-41d4-a716-446655440000');
+    mockRequirePermission.mockResolvedValue({
+      organizationId: '550e8400-e29b-41d4-a716-446655440000',
+    });
 
     const { POST } = await import('./route');
     const req = new NextRequest('http://localhost:3000/api/storage/upload-url', {
@@ -61,7 +77,7 @@ describe('API Route: POST /api/storage/upload-url', () => {
 
   it('creates signed upload URL and returns 201 for valid authenticated request', async () => {
     const orgId = '550e8400-e29b-41d4-a716-446655440000';
-    mockResolveSessionOrganizationId.mockResolvedValue(orgId);
+    mockRequirePermission.mockResolvedValue({ organizationId: orgId });
     mockCreateSignedUploadUrl.mockResolvedValue({
       uploadUrl: 'https://storage.example.com/signed-upload',
       storagePath: `${orgId}/uuid-kaufvertrag.pdf`,
@@ -88,7 +104,7 @@ describe('API Route: POST /api/storage/upload-url', () => {
 
   it('successfully creates signed upload URL for demo organization d0000000-0000-0000-0000-000000000001', async () => {
     const demoOrgId = 'd0000000-0000-0000-0000-000000000001';
-    mockResolveSessionOrganizationId.mockResolvedValue(demoOrgId);
+    mockRequirePermission.mockResolvedValue({ organizationId: demoOrgId });
     mockCreateSignedUploadUrl.mockResolvedValue({
       uploadUrl: 'https://storage.example.com/signed-upload-demo',
       storagePath: `${demoOrgId}/uuid-kaufvertrag.png`,

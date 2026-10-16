@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { fromError } from 'zod-validation-error';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
 import {
@@ -12,13 +14,10 @@ import {
   getUniformCaseTitle,
   getWorkflowRepository,
 } from '@/lib/supabase/server';
-import {
-  createServerAuthClient,
-  resolveSessionActor,
-  resolveSessionOrganizationId,
-} from '@/lib/supabase/server-auth';
+import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
 import { AUDIT_ACTIONS } from '@/types/audit';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { AnalyzeRequestSchema, UpdateDossierRequestSchema, STORAGE_TYPES } from '@/types/dossier';
 import { JOB_RATE_LIMIT } from '@/types/jobs';
 import { WORKFLOW_STEP_STATUS, WORKFLOW_STEP_TYPES } from '@/types/workflow';
@@ -47,16 +46,15 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     // Anmeldung ist Pflicht; die Kanzlei stammt aus der Mitgliedschaft der Sitzung
     const authSupabase = await createServerAuthClient();
-    const resolvedOrgId = await resolveSessionOrganizationId(
+    const { organizationId: resolvedOrgId } = await requirePermission(
       authSupabase,
-      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      {
+        requestedOrgId:
+          parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined,
+        route: 'POST /api/analyze',
+      }
     );
-    if (!resolvedOrgId) {
-      return NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      );
-    }
 
     // Prüfen, ob eine asynchrone Verarbeitung angefordert wurde (?async=true oder Header x-async: true)
     const isAsync =
@@ -218,6 +216,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       emitter.close();
     });
   } catch (error: unknown) {
+    const denied = authzErrorResponse(error);
+    if (denied) return denied;
     console.error('Analyse-Fehler:', error);
     const message =
       error instanceof Error ? error.message : 'Ein unerwarteter Fehler ist aufgetreten.';
@@ -238,20 +238,19 @@ export async function PUT(req: NextRequest): Promise<Response> {
     const { documentId, dossier, auditOverride } = parseResult.data;
 
     const authSupabase = await createServerAuthClient();
-    const organizationId = await resolveSessionOrganizationId(
+    const sessionActor = await requirePermission(
       authSupabase,
-      parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined
+      auditOverride
+        ? PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS
+        : PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      {
+        requestedOrgId:
+          parseResult.data.organizationId || req.headers.get('x-organization-id') || undefined,
+        route: 'PUT /api/analyze',
+      }
     );
-    const sessionActor =
-      authSupabase && organizationId
-        ? await resolveSessionActor(authSupabase, organizationId)
-        : undefined;
-    if (!authSupabase || !organizationId || !sessionActor) {
-      return NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      );
-    }
+    const { organizationId } = sessionActor;
+    if (!authSupabase) throw new Error('Authentifizierungsclient nicht verfügbar.');
 
     const repo = getDossierRepository(authSupabase);
     const updateRes = await repo.update(documentId, dossier, organizationId);
@@ -270,7 +269,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
         documentId,
         organizationId,
         action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
-        actor: sessionActor.label,
+        actor: sessionActor.actorLabel,
         details: {
           override: auditOverride,
           caseTitle: dossier.caseTitle,
@@ -284,6 +283,8 @@ export async function PUT(req: NextRequest): Promise<Response> {
       storageType: STORAGE_TYPES.SUPABASE,
     });
   } catch (error: unknown) {
+    const denied = authzErrorResponse(error);
+    if (denied) return denied;
     console.error('PUT Analyse Error:', error);
     const message = error instanceof Error ? error.message : 'Fehler beim Aktualisieren.';
     return NextResponse.json({ error: message }, { status: 500 });

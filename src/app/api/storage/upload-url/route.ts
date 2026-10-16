@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { createSignedUploadUrl } from '@/lib/storage/storage-service';
-import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
+import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CreateUploadUrlRequestSchema } from '@/types/storage';
 
 export const dynamic = 'force-dynamic';
@@ -32,14 +35,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const queryOrgId = req.headers.get('x-organization-id') || requestedOrgId || undefined;
 
-    const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
-
-    if (!orgId) {
-      return NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      );
-    }
+    const { organizationId: orgId } = await requirePermission(
+      authSupabase,
+      PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
+      { requestedOrgId: queryOrgId, route: 'POST /api/storage/upload-url' }
+    );
 
     // 50 MB Hardlimit für Object Storage (gem. Bucket-Konfiguration)
     const MAX_STORAGE_FILE_SIZE = 50 * 1024 * 1024;
@@ -59,6 +59,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(uploadData, { status: 201 });
   } catch (err: unknown) {
+    const denied = authzErrorResponse(err);
+    if (denied) return denied;
     const msg =
       err instanceof Error ? err.message : 'Fehler bei der Generierung der signierten Upload-URL.';
     return NextResponse.json({ error: msg }, { status: 500 });

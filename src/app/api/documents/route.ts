@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
+import { authzErrorResponse } from '@/app/api/authz-error-response';
+import { requirePermission } from '@/lib/auth/require-permission';
 import {
   fetchDossierRecords,
   fetchDossierRecordById,
@@ -66,9 +67,8 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    if (error instanceof AuthzError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
+    const denied = authzErrorResponse(error);
+    if (denied) return denied;
     const msg = error instanceof Error ? error.message : 'Fehler beim Löschen des Vorgangs.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
