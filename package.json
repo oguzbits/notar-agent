@@ -140,6 +140,7 @@
     ]
   },
   "knip": {
+    "playwright": false,
     "entry": [
       "src/app/**/*.{ts,tsx}",
       "src/lib/dossier/index.ts",
@@ -153,7 +154,8 @@
     "ignoreDependencies": [
       "eslint-plugin-import",
       "tailwindcss",
-      "pdf-lib"
+      "pdf-lib",
+      "@axe-core/playwright"
     ],
     "ignoreBinaries": [
       "supabase",
