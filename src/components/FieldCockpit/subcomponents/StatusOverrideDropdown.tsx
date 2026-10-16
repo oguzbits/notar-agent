@@ -16,7 +16,11 @@ export const StatusOverrideDropdown: React.FC<StatusOverrideDropdownProps> = ({
   isUpdating = false,
 }) => {
   return (
-    <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+    <div
+      role="presentation"
+      className="relative inline-flex items-center"
+      onClick={(e) => e.stopPropagation()}
+    >
       <select
         value={status}
         disabled={isUpdating}

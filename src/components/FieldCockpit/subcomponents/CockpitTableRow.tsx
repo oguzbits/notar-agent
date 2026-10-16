@@ -205,12 +205,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
 
       {/* Ausklappbare Detail-Fachdaten */}
       {isExpanded && (
-        <tr
-          id={`field-detail-${row.fieldKey}`}
-          role="region"
-          aria-label={`Details zu ${row.fieldTitle}`}
-          className="border-border/70 bg-muted/30 border-b"
-        >
+        <tr id={`field-detail-${row.fieldKey}`} className="border-border/70 bg-muted/30 border-b">
           <td colSpan={6} className="px-3 py-3 sm:px-4">
             <div className="border-border bg-card space-y-3 rounded-lg border p-3.5 shadow-xs">
               <div className="border-border/80 flex items-center justify-between border-b pb-2 text-base">

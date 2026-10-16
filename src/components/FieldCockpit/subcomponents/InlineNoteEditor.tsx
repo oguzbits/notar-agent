@@ -1,5 +1,5 @@
 import { Check, X } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface InlineNoteEditorProps {
   fieldKey: string;
@@ -14,6 +14,12 @@ export const InlineNoteEditor: React.FC<InlineNoteEditorProps> = ({
   onCancel,
 }) => {
   const [noteValue, setNoteValue] = useState(initialNote);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Der Editor öffnet sich auf Nutzeraktion; der Fokus folgt bewusst dorthin
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
@@ -26,15 +32,15 @@ export const InlineNoteEditor: React.FC<InlineNoteEditorProps> = ({
   };
 
   return (
-    <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+    <div role="presentation" className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
       <textarea
+        ref={textareaRef}
         rows={3}
         value={noteValue}
         onChange={(e) => setNoteValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Befund / Prüfungshinweis anpassen... (Strg+Enter zum Speichern, Esc zum Abbrechen)"
         className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-notar-900 w-full rounded-md border p-2.5 text-sm focus:ring-2 focus:outline-none"
-        autoFocus
       />
       <div className="flex items-center gap-2">
         <button

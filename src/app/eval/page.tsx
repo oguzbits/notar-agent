@@ -430,6 +430,7 @@ export default function EvalDashboardPage() {
                               return (
                                 <div
                                   key={bIdx}
+                                  role="presentation"
                                   className={cn(
                                     'group pointer-events-auto absolute cursor-pointer rounded-xs transition-all',
                                     block.isRelevant

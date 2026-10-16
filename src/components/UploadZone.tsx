@@ -1,15 +1,8 @@
 'use client';
 
-import {
-  UploadCloud,
-  Trash2,
-  AlertCircle,
-  FileText,
-  Image as ImageIcon,
-  MessageSquareText,
-  Plus,
-} from 'lucide-react';
+import { UploadCloud, Trash2, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react';
 import React, { useRef, useState } from 'react';
+import { UploadNotes } from '@/components/UploadNotes';
 import { validateFiles } from '@/lib/files/file-preparer';
 import { getSupportedUploadAcceptString } from '@/lib/files/file-types';
 import { uploadFilesDirectly } from '@/lib/files/storage-uploader';
@@ -89,6 +82,8 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     }
   };
 
+  const isBusy = isAnalyzing || isPreparing;
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -100,26 +95,37 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
       {/* Drag and Drop Zone */}
       <div
+        role="button"
+        tabIndex={isBusy ? -1 : 0}
+        aria-disabled={isBusy}
+        aria-label="Dokumente auswählen oder hierher ziehen"
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !isBusy) {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault();
-          if (!isAnalyzing && !isPreparing) setDragOver(true);
+          if (!isBusy) setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
-          if (!isAnalyzing && !isPreparing && e.dataTransfer.files) {
+          if (!isBusy && e.dataTransfer.files) {
             handleFilesAdded(e.dataTransfer.files);
           }
         }}
-        onClick={() => {
-          if (!isAnalyzing && !isPreparing) {
+        onClick={(e) => {
+          // Das vom Eingabefeld selbst aufsteigende Klick-Ereignis nicht erneut verarbeiten
+          if (!isBusy && e.target !== fileInputRef.current) {
             fileInputRef.current?.click();
           }
         }}
         className={cn(
-          'rounded-xl border-2 border-dashed p-8 text-center transition-colors',
-          isAnalyzing || isPreparing
+          'focus-visible:ring-ring rounded-xl border-2 border-dashed p-8 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none',
+          isBusy
             ? 'border-border/60 bg-muted/10 cursor-not-allowed opacity-60'
             : dragOver
               ? 'border-notar-700 bg-notar-200/20 cursor-pointer'
@@ -131,7 +137,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           type="file"
           multiple
           accept={getSupportedUploadAcceptString()}
-          disabled={isAnalyzing || isPreparing}
+          disabled={isBusy}
           className="hidden"
           onChange={(e) => {
             if (e.target.files) {
@@ -229,91 +235,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         </div>
       )}
 
-      {/* Feste Notiz-Sektion für Sachverhalt & Telefonate (nicht einklappbar) */}
-      <div className="border-border space-y-3 border-t pt-4">
-        <div className="flex items-center gap-2">
-          <MessageSquareText className="text-notar-900 h-4 w-4" />
-          <h2 className="text-foreground text-base font-semibold">
-            Ergänzende Hinweise &amp; interne Notizen zur Akte (optional)
-          </h2>
-          {notes.trim().length > 0 && <span className="bg-notar-500 h-2 w-2 rounded-full" />}
-        </div>
-
-        <div className="space-y-3">
-          {(() => {
-            const noteList = notes ? notes.split('\n\n') : [''];
-            const updateNoteAt = (idx: number, val: string) => {
-              const updated = [...noteList];
-              updated[idx] = val;
-              onNotesChange(updated.join('\n\n'));
-            };
-            const addNoteField = () => {
-              const updated = [...noteList, ''];
-              onNotesChange(updated.join('\n\n'));
-            };
-            const removeNoteAt = (idx: number) => {
-              if (noteList.length <= 1) {
-                onNotesChange('');
-                return;
-              }
-              const updated = noteList.filter((_, i) => i !== idx);
-              onNotesChange(updated.join('\n\n'));
-            };
-
-            return (
-              <div className="space-y-2.5">
-                {noteList.map((noteText, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-muted-foreground text-sm font-medium">
-                        {`Notiz #${idx + 1}`}
-                      </label>
-                      {noteList.length > 1 && !isAnalyzing && (
-                        <button
-                          type="button"
-                          onClick={() => removeNoteAt(idx)}
-                          className="text-muted-foreground hover:text-destructive cursor-pointer text-sm transition-colors"
-                        >
-                          Entfernen
-                        </button>
-                      )}
-                    </div>
-                    <textarea
-                      value={noteText}
-                      disabled={isAnalyzing}
-                      onChange={(e) => updateNoteAt(idx, e.target.value)}
-                      placeholder="Ergänzende Sachverhaltsangaben, aktuelle Absprachen oder interne Bearbeitungshinweise für die Zuarbeit..."
-                      rows={3}
-                      className={cn(
-                        'border-border bg-muted/30 focus:bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full resize-y rounded-lg border p-3 text-base focus:ring-1 focus:outline-none',
-                        isAnalyzing && 'cursor-not-allowed opacity-60'
-                      )}
-                    />
-                  </div>
-                ))}
-
-                {!isAnalyzing && (
-                  <div className="flex items-center justify-between pt-1">
-                    <button
-                      type="button"
-                      onClick={addNoteField}
-                      className="border-border hover:bg-muted text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-base font-medium transition-colors"
-                    >
-                      <Plus className="text-notar-900 h-4 w-4" />
-                      <span>Weiteres Notizfeld hinzufügen</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          <p className="text-muted-foreground text-base leading-relaxed">
-            Diese Notizen fließen direkt in die Prüfung ein und ergänzen bzw. aktualisieren die
-            Angaben aus den hochgeladenen Dokumenten.
-          </p>
-        </div>
-      </div>
+      <UploadNotes notes={notes} onNotesChange={onNotesChange} disabled={isAnalyzing} />
     </div>
   );
 };

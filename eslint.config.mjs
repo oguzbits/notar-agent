@@ -4,6 +4,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 import importPlugin from 'eslint-plugin-import';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import unusedImports from 'eslint-plugin-unused-imports';
 
 // Gemeinsame Syntaxverbote; Modell-IDs sind nur in der Konfiguration (src/env.ts) und in Tests erlaubt
@@ -186,6 +187,13 @@ const eslintConfig = defineConfig([
       'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
       'max-depth': ['error', 3],
       'max-params': ['error', 4],
+    },
+  },
+  {
+    // Barrierefreiheit (BFSG/WCAG): vollständiges jsx-a11y-Regelset als Fehler
+    files: ['src/**/*.tsx'],
+    rules: {
+      ...jsxA11y.flatConfigs.strict.rules,
     },
   },
   // Override default ignores of eslint-config-next.
