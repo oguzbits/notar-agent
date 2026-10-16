@@ -50,7 +50,9 @@ const isLive = args.includes('--live') || args.includes('-l');
 const caseFilter = args.find((a) => !a.startsWith('-'));
 
 async function main() {
-  console.log(`\n📊 Starte Evaluierung und erstelle visuellen Artefakt-Report (${isLive ? 'LIVE' : 'MOCK'})...\n`);
+  console.log(
+    `\n📊 Starte Evaluierung und erstelle visuellen Artefakt-Report (${isLive ? 'LIVE' : 'MOCK'})...\n`
+  );
 
   let targetCases = GOLDEN_DATASET;
   if (caseFilter) {
@@ -85,9 +87,7 @@ async function main() {
     );
     const imageFile = !pdfFile
       ? tc.files.find(
-          (f) =>
-            f.type.startsWith('image/') ||
-            (f.name && /\.(png|jpe?g|webp)$/i.test(f.name))
+          (f) => f.type.startsWith('image/') || (f.name && /\.(png|jpe?g|webp)$/i.test(f.name))
         )
       : undefined;
 
@@ -391,7 +391,10 @@ async function main() {
     layer2TrajectoryScore: 1.0,
     layer3OutcomeAccuracy: Number(avgAccuracy.toFixed(1)),
     layer4Telemetry: {
-      totalPromptTokens: caseTraces.reduce((sum, c) => sum + (c.telemetry?.totalPromptTokens || 0), 0),
+      totalPromptTokens: caseTraces.reduce(
+        (sum, c) => sum + (c.telemetry?.totalPromptTokens || 0),
+        0
+      ),
       totalCompletionTokens: caseTraces.reduce(
         (sum, c) => sum + (c.telemetry?.totalCompletionTokens || 0),
         0

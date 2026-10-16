@@ -50,12 +50,7 @@ const TEST_CASES = [
     subfolder: 'fall-05-energieausweis-wohngebaeude',
     filename: 'Energieausweis_Beethovenstr.pdf',
     type: 'Digitales Formular-PDF',
-    requiredTokens: [
-      'Beethovenstraße 18',
-      'Wohngebäude',
-      '94,0',
-      'Bedarfsausweis',
-    ],
+    requiredTokens: ['Beethovenstraße 18', 'Wohngebäude', '94,0', 'Bedarfsausweis'],
     expectsTable: false,
   },
   {
@@ -115,7 +110,9 @@ function calculateRecall(text, requiredTokens) {
 
 async function runBenchmark() {
   console.log('======================================================================');
-  console.log('🚀 STARTE VERGLEICHENDEN PARSER-BENCHMARK (Nativer Stream-Parser vs. Gemini Vision)');
+  console.log(
+    '🚀 STARTE VERGLEICHENDEN PARSER-BENCHMARK (Nativer Stream-Parser vs. Gemini Vision)'
+  );
   console.log('======================================================================\n');
 
   const results = [];
@@ -138,7 +135,12 @@ async function runBenchmark() {
     let liteDuration = 0;
     let liteText = '';
     let liteTableLines = 0;
-    let liteRecall = { matched: 0, total: tc.requiredTokens.length, rate: 0, missing: tc.requiredTokens };
+    let liteRecall = {
+      matched: 0,
+      total: tc.requiredTokens.length,
+      rate: 0,
+      missing: tc.requiredTokens,
+    };
     let liteError = null;
 
     if (isImage) {
@@ -166,7 +168,12 @@ async function runBenchmark() {
     let geminiDuration = 0;
     let geminiText = '';
     let geminiTableLines = 0;
-    let geminiRecall = { matched: 0, total: tc.requiredTokens.length, rate: 0, missing: tc.requiredTokens };
+    let geminiRecall = {
+      matched: 0,
+      total: tc.requiredTokens.length,
+      rate: 0,
+      missing: tc.requiredTokens,
+    };
     let geminiError = null;
 
     const t1 = performance.now();

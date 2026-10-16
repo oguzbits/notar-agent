@@ -58,7 +58,6 @@ const results = {
   },
 };
 
-
 // -------------------------------------------------------------
 // 1. AST Duplication Check (jscpd)
 // -------------------------------------------------------------
@@ -110,10 +109,10 @@ try {
   process.stdout.write('⏳ [2/5] Checking Architecture Invariants (depcruise)... ');
   let depOutput = '';
   try {
-    depOutput = execSync(
-      'npx depcruise --config config/dependency-cruiser.js -T json src',
-      { stdio: 'pipe', encoding: 'utf8' }
-    );
+    depOutput = execSync('npx depcruise --config config/dependency-cruiser.js -T json src', {
+      stdio: 'pipe',
+      encoding: 'utf8',
+    });
   } catch (err) {
     depOutput = err.stdout?.toString() || '';
   }
@@ -230,7 +229,8 @@ try {
 
   // Regex patterns for forbidden antipatterns:
   // a) Raw Tailwind colors in components (e.g. bg-blue-500, text-red-600)
-  const rawColorRegex = /\b(bg|text|border)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3}\b/;
+  const rawColorRegex =
+    /\b(bg|text|border)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3}\b/;
 
   let totalLines = 0;
   for (const file of srcFiles) {
@@ -275,7 +275,8 @@ try {
     // c) Performance Guard: Disallow inline Supabase queries inside loops (N+1 queries antipattern)
     if (relPath.startsWith('src/lib/') || relPath.startsWith('src/app/api/')) {
       // Find loop blocks (for, while, for...of, for await) and verify if supabase.from is called inside
-      const loopBlockRegex = /(?:for\s*\([^)]+\)|while\s*\([^)]+\)|for\s+await\s*\([^)]+\))\s*\{([^}]+)\}/g;
+      const loopBlockRegex =
+        /(?:for\s*\([^)]+\)|while\s*\([^)]+\)|for\s+await\s*\([^)]+\))\s*\{([^}]+)\}/g;
       let loopMatch;
       while ((loopMatch = loopBlockRegex.exec(content)) !== null) {
         const loopBody = loopMatch[1];
@@ -344,7 +345,8 @@ try {
     const loops = (cleanCode.match(/\b(for|while)\s*\(/g) || []).length;
     const totalComplexity = ifs + switches * 2 + ternaries + loops * 1.5 + catches;
 
-    const exportsCount = (code.match(/\bexport\s+(const|function|class|interface|type)\b/g) || []).length;
+    const exportsCount = (code.match(/\bexport\s+(const|function|class|interface|type)\b/g) || [])
+      .length;
     const loc = lines.length;
     const ratio = exportsCount > 0 ? Number((loc / exportsCount).toFixed(1)) : loc;
 
@@ -358,7 +360,9 @@ try {
   }
 
   // Top complex imperative hotspots (threshold: complexity >= 25)
-  const complex = [...moduleStats].filter((m) => m.complexity >= 25).sort((a, b) => b.complexity - a.complexity);
+  const complex = [...moduleStats]
+    .filter((m) => m.complexity >= 25)
+    .sort((a, b) => b.complexity - a.complexity);
   results.findings.complexModules = complex;
 
   // Shallow modules: High export count vs. lines of implementation (ratio <= 12, loc < 100)
@@ -379,9 +383,7 @@ try {
       !m.file.includes('.d.ts')
     ) {
       const code = fs.readFileSync(path.join(ROOT_DIR, m.file), 'utf8');
-      const cleanCode = code
-        .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
-        .trim();
+      const cleanCode = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '').trim();
       // Check if function body consists solely of calling another imported function (return ... or await ...)
       const isForwarder =
         /(?:return\s+(?:await\s+)?|[=]\s*(?:await\s+)?)[a-zA-Z0-9_]+\s*\([^)]*\)\s*;?\s*(?:return\s+[^;]+;)?\s*\}\s*$/.test(
@@ -403,11 +405,16 @@ try {
   const passThroughPenalty = passThroughs.length * 10;
   results.scores.codeComplexity = Math.max(0, 100 - highComplexityPenalty - passThroughPenalty);
 
-  const passThroughNotice = passThroughs.length > 0 ? `, ⚠️ ${passThroughs.length} trivial pass-throughs` : '';
-  console.log(`✅ (${complex.length} imperative hotspots, ${shallow.length} shallow modules${passThroughNotice})`);
+  const passThroughNotice =
+    passThroughs.length > 0 ? `, ⚠️ ${passThroughs.length} trivial pass-throughs` : '';
+  console.log(
+    `✅ (${complex.length} imperative hotspots, ${shallow.length} shallow modules${passThroughNotice})`
+  );
 
   if (passThroughs.length > 0) {
-    console.warn(`\n⚠️  WARNUNG: Trivial Pass-Through Modules erkannt (bitte inline konsolidieren):`);
+    console.warn(
+      `\n⚠️  WARNUNG: Trivial Pass-Through Modules erkannt (bitte inline konsolidieren):`
+    );
     for (const p of passThroughs) {
       console.warn(`   - ${p.file} (${p.loc} Zeilen, delegiert Aufruf nur weiter)`);
     }
@@ -416,17 +423,16 @@ try {
   console.log(`⚠️ (Error analyzing AST complexity: ${e.message})`);
 }
 
-
 // -------------------------------------------------------------
 // Overall Score Calculation (Weighted)
 // -------------------------------------------------------------
 results.scores.overall = Math.round(
-  results.scores.duplication * 0.20 +
-  results.scores.architecture * 0.25 +
-  results.scores.deadCode * 0.15 +
-  results.scores.magicStrings * 0.15 +
-  results.scores.domainInvariants * 0.10 +
-  results.scores.codeComplexity * 0.15
+  results.scores.duplication * 0.2 +
+    results.scores.architecture * 0.25 +
+    results.scores.deadCode * 0.15 +
+    results.scores.magicStrings * 0.15 +
+    results.scores.domainInvariants * 0.1 +
+    results.scores.codeComplexity * 0.15
 );
 
 // -------------------------------------------------------------
@@ -539,7 +545,10 @@ Verwende diese Daten für zielgerichtete Refactorings ohne den gesamten Code ein
 #### 1. Imperative Komplexitäts-Hotspots zum Refaktorieren:
 ${results.findings.complexModules
   .slice(0, 5)
-  .map((m) => `- ${m.file} (Komplexität: ${m.complexity}) -> if/else Kaskaden in deklarative Regeln/Tabellen überführen`)
+  .map(
+    (m) =>
+      `- ${m.file} (Komplexität: ${m.complexity}) -> if/else Kaskaden in deklarative Regeln/Tabellen überführen`
+  )
   .join('\n')}
 
 #### 2. Priorisierte Code-Klone zum Zusammenführen:
@@ -557,7 +566,10 @@ ${c.fragment}`
 
 #### 3. Domain Token Abweichungen:
 ${results.findings.domainViolations
-  .map((d) => `- ${d.file}:L${d.line} -> ersetze '${d.token}' durch semantisches Token (z.B. 'bg-muted', 'text-destructive', etc.)`)
+  .map(
+    (d) =>
+      `- ${d.file}:L${d.line} -> ersetze '${d.token}' durch semantisches Token (z.B. 'bg-muted', 'text-destructive', etc.)`
+  )
   .join('\n')}
 `;
 
@@ -590,6 +602,8 @@ if (IS_JSON_OUTPUT) {
 const MIN_REQUIRED_HEALTH_SCORE = 90;
 
 if (results.scores.overall < MIN_REQUIRED_HEALTH_SCORE) {
-  console.error(`❌ REPO HEALTH AUDIT FAILED: Health Score ${results.scores.overall}/100 liegt unter dem Schwellenwert von ${MIN_REQUIRED_HEALTH_SCORE}!\n`);
+  console.error(
+    `❌ REPO HEALTH AUDIT FAILED: Health Score ${results.scores.overall}/100 liegt unter dem Schwellenwert von ${MIN_REQUIRED_HEALTH_SCORE}!\n`
+  );
   process.exit(1);
 }

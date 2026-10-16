@@ -22,10 +22,7 @@ const SCAN_DIRS = ['src', 'e2e'];
 const FILE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
 
 // Explicit exemptions (e.g. system prompts or audit tools themselves)
-const BASE_EXEMPT_FILES = [
-  'src/lib/ai/prompts.ts',
-  'scripts/audit/audit-magic-strings.mjs',
-];
+const BASE_EXEMPT_FILES = ['src/lib/ai/prompts.ts', 'scripts/audit/audit-magic-strings.mjs'];
 
 function collectFiles(dir) {
   const results = [];
@@ -87,11 +84,7 @@ for (const file of allSourceFiles) {
 }
 
 const ENUM_LITERALS = Array.from(allCanonicalLiterals);
-const EXEMPT_FILES = [
-  ...Array.from(discoveredCanonicalFiles),
-  ...BASE_EXEMPT_FILES,
-];
-
+const EXEMPT_FILES = [...Array.from(discoveredCanonicalFiles), ...BASE_EXEMPT_FILES];
 
 const violations = [];
 
@@ -143,6 +136,8 @@ if (violations.length > 0) {
   console.error(`\nTotal violations: ${violations.length}\n`);
   process.exit(1);
 } else {
-  console.log(`✅ Audit passed: Introspected ${ENUM_LITERALS.length} canonical enum values across codebase. Zero raw magic enum strings found.`);
+  console.log(
+    `✅ Audit passed: Introspected ${ENUM_LITERALS.length} canonical enum values across codebase. Zero raw magic enum strings found.`
+  );
   process.exit(0);
 }
