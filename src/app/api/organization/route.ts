@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
-import { CreateOrganizationRequestSchema, UpdateOrganizationRequestSchema } from '@/types/auth';
+import {
+  CreateOrganizationRequestSchema,
+  PERMISSION_ACTIONS,
+  UpdateOrganizationRequestSchema,
+} from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES } from '@/types/organization';
 
@@ -77,14 +82,10 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Nicht authentifiziert.' }, { status: 401 });
-    }
+    const { organizationId } = await requirePermission(supabase, PERMISSION_ACTIONS.MANAGE_TEAM, {
+      requestedOrgId: req.headers.get('x-organization-id') ?? undefined,
+      route: 'PUT /api/organization',
+    });
 
     const body = await req.json().catch(() => ({}));
     const parsed = UpdateOrganizationRequestSchema.safeParse(body);
@@ -93,24 +94,6 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json(
         { error: 'Ungültige Kanzleidaten.', details: parsed.error.format() },
         { status: 400 }
-      );
-    }
-
-    // Prüfe Kanzlei-Mitgliedschaft und Notar/Admin-Rolle des Benutzers
-    const { data: member, error: memberError } = await supabase
-      .from(DB_TABLES.ORGANIZATION_MEMBERS)
-      .select('organization_id, role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (memberError || !member) {
-      return NextResponse.json({ error: 'Sie sind keiner Kanzlei zugeordnet.' }, { status: 403 });
-    }
-
-    if (member.role !== NOTARY_ROLES.NOTAR && member.role !== NOTARY_ROLES.ADMIN) {
-      return NextResponse.json(
-        { error: 'Nur Notare oder Administratoren dürfen Kanzleidaten ändern.' },
-        { status: 403 }
       );
     }
 
@@ -124,7 +107,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
         chamber_district: chamberDistrict,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', member.organization_id)
+      .eq('id', organizationId)
       .select('*')
       .single();
 
@@ -140,6 +123,9 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       organization: updatedOrg,
     });
   } catch (err: unknown) {
+    if (err instanceof AuthzError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const msg = err instanceof Error ? err.message : 'Fehler beim Aktualisieren der Kanzlei.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

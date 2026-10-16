@@ -1,10 +1,19 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
 import { DocumentRecord, CASE_STATUS } from '@/lib/supabase/repository';
 import * as serverDb from '@/lib/supabase/server';
 import * as serverAuth from '@/lib/supabase/server-auth';
+import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { PERMISSION_ACTIONS } from '@/types/auth';
+import { NOTARY_ROLES } from '@/types/organization';
 import { GET, DELETE } from './route';
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server', () => ({
   fetchDossierRecords: vi.fn(),
@@ -22,6 +31,7 @@ vi.mock('@/lib/supabase/server-auth', () => ({
 describe('Documents API Route (/api/documents)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
   });
 
   const sampleRecord: DocumentRecord = {
@@ -108,6 +118,23 @@ describe('Documents API Route (/api/documents)', () => {
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(serverDb.deleteDossierRecord).toHaveBeenCalledWith('doc-1', 'org-123', null);
+    });
+
+    it('verlangt DELETE_DOSSIER und löscht für SACHBEARBEITER nichts', async () => {
+      vi.mocked(requirePermission).mockImplementation(
+        fakeRequirePermission(NOTARY_ROLES.SACHBEARBEITER)
+      );
+
+      const req = new NextRequest('http://localhost:3000/api/documents?id=doc-1');
+      const res = await DELETE(req);
+
+      expect(res.status).toBe(403);
+      expect(requirePermission).toHaveBeenCalledWith(
+        null,
+        PERMISSION_ACTIONS.DELETE_DOSSIER,
+        expect.objectContaining({ route: 'DELETE /api/documents' })
+      );
+      expect(serverDb.deleteDossierRecord).not.toHaveBeenCalled();
     });
 
     it('returns 400 when id is missing', async () => {

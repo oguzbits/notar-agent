@@ -1,9 +1,16 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
 import { createMockTeamRepository } from '@/test/fixtures/mock-repositories';
+import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { NOTARY_ROLES } from '@/types/organization';
 import { PATCH, DELETE } from './route';
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server-auth', async () => {
   const { NOTARY_ROLES } = await import('@/types/organization');
@@ -36,6 +43,7 @@ describe('API Route: /api/team/[id]', () => {
   let memberId: string;
 
   beforeEach(async () => {
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
     // Clear & seed a member
     const existing = await repo.listMembers(testOrgId);
     for (const m of existing) {
@@ -70,6 +78,31 @@ describe('API Route: /api/team/[id]', () => {
 
     const check = await repo.getMemberById(memberId, testOrgId);
     expect(check?.role).toBe(NOTARY_ROLES.NOTARASSESSOR);
+  });
+
+  it('PATCH und DELETE verlangen MANAGE_TEAM: SACHBEARBEITER ändert und entfernt nichts', async () => {
+    vi.mocked(requirePermission).mockImplementation(
+      fakeRequirePermission(NOTARY_ROLES.SACHBEARBEITER)
+    );
+    const headers = { 'x-organization-id': testOrgId, 'content-type': 'application/json' };
+    const params = { params: Promise.resolve({ id: memberId }) };
+
+    const patched = await PATCH(
+      new NextRequest(`http://localhost:3000/api/team/${memberId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ role: NOTARY_ROLES.NOTARASSESSOR }),
+      }),
+      params
+    );
+    const deleted = await DELETE(
+      new NextRequest(`http://localhost:3000/api/team/${memberId}`, { method: 'DELETE', headers }),
+      params
+    );
+
+    expect([patched.status, deleted.status]).toEqual([403, 403]);
+    const check = await repo.getMemberById(memberId, testOrgId);
+    expect(check?.role).toBe(NOTARY_ROLES.SACHBEARBEITER);
   });
 
   it('PATCH /api/team/[id] returns 404 for non-existent member', async () => {

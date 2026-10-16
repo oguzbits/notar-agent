@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
+import { PERMISSION_ACTIONS, PermissionAction } from '@/types/auth';
 import { JOB_STATUS } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
@@ -15,9 +17,50 @@ type TargetJobResult =
       orgId?: string;
     };
 
+async function resolveJobAuth(
+  req: NextRequest,
+  requiredAction?: PermissionAction
+): Promise<
+  | { errorResponse: NextResponse<{ error: string }> }
+  | { authSupabase: Awaited<ReturnType<typeof createServerAuthClient>>; orgId: string }
+> {
+  const authSupabase = await createServerAuthClient();
+  const tenantOrg =
+    req.headers.get('x-organization-id') ??
+    req.nextUrl.searchParams.get('organizationId') ??
+    undefined;
+  try {
+    const orgId = requiredAction
+      ? (
+          await requirePermission(authSupabase, requiredAction, {
+            requestedOrgId: tenantOrg,
+            route: `${req.method} /api/jobs/[id]`,
+          })
+        ).organizationId
+      : await resolveSessionOrganizationId(authSupabase, tenantOrg);
+    if (!orgId) {
+      return {
+        errorResponse: NextResponse.json(
+          { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
+          { status: 401 }
+        ),
+      };
+    }
+    return { authSupabase, orgId };
+  } catch (error: unknown) {
+    if (error instanceof AuthzError) {
+      return {
+        errorResponse: NextResponse.json({ error: error.message }, { status: error.status }),
+      };
+    }
+    throw error;
+  }
+}
+
 async function resolveTargetJob(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
+  requiredAction?: PermissionAction
 ): Promise<TargetJobResult> {
   const { id } = await context.params;
   if (!id) {
@@ -27,21 +70,9 @@ async function resolveTargetJob(
     };
   }
 
-  const authSupabase = await createServerAuthClient();
-  const tenantOrg =
-    req.headers.get('x-organization-id') ??
-    req.nextUrl.searchParams.get('organizationId') ??
-    undefined;
-  const orgId = await resolveSessionOrganizationId(authSupabase, tenantOrg);
-  if (!orgId) {
-    return {
-      success: false,
-      errorResponse: NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      ),
-    };
-  }
+  const auth = await resolveJobAuth(req, requiredAction);
+  if ('errorResponse' in auth) return { success: false, errorResponse: auth.errorResponse };
+  const { authSupabase, orgId } = auth;
   const repo = getJobRepository(authSupabase);
   let job = await repo.getJobById(id, orgId);
 
@@ -91,7 +122,7 @@ export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const target = await resolveTargetJob(req, context);
+  const target = await resolveTargetJob(req, context, PERMISSION_ACTIONS.DELETE_DOSSIER);
   if (!target.success) return target.errorResponse;
 
   await target.repo.deleteJob(target.id, target.orgId);

@@ -1,10 +1,19 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { requirePermission } from '@/lib/auth/require-permission';
 import { getJobRepository } from '@/lib/supabase/server';
 import { createMockJobRepository } from '@/test/fixtures/mock-repositories';
+import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS, JOB_STAGES } from '@/types/jobs';
+import { NOTARY_ROLES } from '@/types/organization';
 import { GET, DELETE } from './route';
+
+vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
+  requirePermission: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server-auth', async () => {
   const { NOTARY_ROLES } = await import('@/types/organization');
@@ -35,7 +44,7 @@ describe('API Route: GET /api/jobs/[id]', () => {
   const repo = getJobRepository();
 
   beforeEach(async () => {
-    //
+    vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
   });
 
   it('returns 404 when job is not found', async () => {
@@ -109,6 +118,28 @@ describe('API Route: GET /api/jobs/[id]', () => {
       const res = await DELETE(req, { params: Promise.resolve({ id: 'missing-id' }) });
 
       expect(res.status).toBe(404);
+    });
+
+    it('verlangt DELETE_DOSSIER und löscht für SACHBEARBEITER nichts', async () => {
+      vi.mocked(requirePermission).mockImplementation(
+        fakeRequirePermission(NOTARY_ROLES.SACHBEARBEITER)
+      );
+      const job = await repo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: 'Geschützter Job',
+      });
+
+      const req = new NextRequest(`http://localhost:3000/api/jobs/${job.id}`, { method: 'DELETE' });
+      const res = await DELETE(req, { params: Promise.resolve({ id: job.id }) });
+
+      expect(res.status).toBe(403);
+      expect(requirePermission).toHaveBeenCalledWith(
+        null,
+        PERMISSION_ACTIONS.DELETE_DOSSIER,
+        expect.objectContaining({ route: 'DELETE /api/jobs/[id]' })
+      );
+      expect(await repo.getJobById(job.id)).not.toBeNull();
     });
 
     it('deletes job and returns 200 success', async () => {

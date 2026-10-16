@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
-import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
-import { UpdateMemberRoleRequestSchema } from '@/types/auth';
+import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { PERMISSION_ACTIONS, UpdateMemberRoleRequestSchema } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,13 +10,11 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-type ResolvedTeamRequest =
-  | { errorResponse: NextResponse }
-  | {
-      id: string;
-      orgId: string;
-      repo: ReturnType<typeof getTeamRepository>;
-    };
+interface ResolvedTeamRequest {
+  id: string;
+  orgId: string;
+  repo: ReturnType<typeof getTeamRepository>;
+}
 
 async function resolveTeamRequest(
   req: NextRequest,
@@ -27,16 +26,11 @@ async function resolveTeamRequest(
     req.headers.get('x-organization-id') ||
     req.nextUrl.searchParams.get('organizationId') ||
     undefined;
-  const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
-
-  if (!orgId) {
-    return {
-      errorResponse: NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      ),
-    };
-  }
+  const { organizationId: orgId } = await requirePermission(
+    authSupabase,
+    PERMISSION_ACTIONS.MANAGE_TEAM,
+    { requestedOrgId: queryOrgId, route: `${req.method} /api/team/[id]` }
+  );
 
   return { id, orgId, repo: getTeamRepository(authSupabase) };
 }
@@ -44,7 +38,6 @@ async function resolveTeamRequest(
 export async function PATCH(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const resolved = await resolveTeamRequest(req, context);
-    if ('errorResponse' in resolved) return resolved.errorResponse;
     const { id, orgId, repo } = resolved;
 
     const body = await req.json();
@@ -65,6 +58,9 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
 
     return NextResponse.json({ member: updated });
   } catch (err: unknown) {
+    if (err instanceof AuthzError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const msg = err instanceof Error ? err.message : 'Fehler beim Ändern der Rolle.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -73,7 +69,6 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
 export async function DELETE(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const resolved = await resolveTeamRequest(req, context);
-    if ('errorResponse' in resolved) return resolved.errorResponse;
     const { id, orgId, repo } = resolved;
 
     const success = await repo.removeMember(id, orgId);
@@ -83,6 +78,9 @@ export async function DELETE(req: NextRequest, context: RouteContext): Promise<N
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
+    if (err instanceof AuthzError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const msg = err instanceof Error ? err.message : 'Fehler beim Entfernen des Mitglieds.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

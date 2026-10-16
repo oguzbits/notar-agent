@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePermission, AuthzError } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
-import { InviteMemberRequestSchema } from '@/types/auth';
+import { InviteMemberRequestSchema, PERMISSION_ACTIONS, PermissionAction } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +14,23 @@ type ValidatedTeamSession =
       repo: ReturnType<typeof getTeamRepository>;
     };
 
-async function getValidatedTeamSession(req: NextRequest): Promise<ValidatedTeamSession> {
+async function getValidatedTeamSession(
+  req: NextRequest,
+  requiredAction?: PermissionAction
+): Promise<ValidatedTeamSession> {
   const authSupabase = await createServerAuthClient();
   const queryOrgId =
     req.headers.get('x-organization-id') ||
     req.nextUrl.searchParams.get('organizationId') ||
     undefined;
-  const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
+  const orgId = requiredAction
+    ? (
+        await requirePermission(authSupabase, requiredAction, {
+          requestedOrgId: queryOrgId,
+          route: `${req.method} /api/team`,
+        })
+      ).organizationId
+    : await resolveSessionOrganizationId(authSupabase, queryOrgId);
 
   if (!orgId) {
     return {
@@ -48,7 +59,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const session = await getValidatedTeamSession(req);
+    const session = await getValidatedTeamSession(req, PERMISSION_ACTIONS.MANAGE_TEAM);
     if ('errorResponse' in session) return session.errorResponse;
 
     const body = await req.json();
@@ -64,6 +75,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const member = await session.repo.inviteMember(parsed.data, session.orgId);
     return NextResponse.json({ member }, { status: 201 });
   } catch (err: unknown) {
+    if (err instanceof AuthzError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const msg = err instanceof Error ? err.message : 'Fehler beim Einladen des Kanzleimitglieds.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

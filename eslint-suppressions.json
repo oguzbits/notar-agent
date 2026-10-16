@@ -49,9 +49,6 @@
   "src/app/api/organization/route.ts": {
     "complexity": {
       "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "src/app/eval/page.tsx": {

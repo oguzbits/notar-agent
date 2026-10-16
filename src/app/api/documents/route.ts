@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import {
   fetchDossierRecords,
   fetchDossierRecordById,
   deleteDossierRecord,
 } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,12 +49,11 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
   try {
     const authSupabase = await createServerAuthClient();
     const { id, orgId: queryOrgId } = extractDocumentQueryParams(req);
-    const orgId = await resolveSessionOrganizationId(authSupabase, queryOrgId);
-    if (!orgId)
-      return NextResponse.json(
-        { error: 'Nicht authentifiziert oder keine Kanzlei zugeordnet.' },
-        { status: 401 }
-      );
+    const { organizationId: orgId } = await requirePermission(
+      authSupabase,
+      PERMISSION_ACTIONS.DELETE_DOSSIER,
+      { requestedOrgId: queryOrgId, route: 'DELETE /api/documents' }
+    );
 
     if (!id) {
       return NextResponse.json({ error: 'ID fehlt.' }, { status: 400 });
@@ -65,6 +66,9 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
+    if (error instanceof AuthzError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     const msg = error instanceof Error ? error.message : 'Fehler beim Löschen des Vorgangs.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
