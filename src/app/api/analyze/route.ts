@@ -19,6 +19,7 @@ import {
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { AnalyzeRequestSchema, UpdateDossierRequestSchema, STORAGE_TYPES } from '@/types/dossier';
+import { JOB_RATE_LIMIT } from '@/types/jobs';
 import { WORKFLOW_STEP_STATUS, WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
@@ -64,6 +65,17 @@ export async function POST(req: NextRequest): Promise<Response> {
     if (isAsync) {
       const jobRepo = getJobRepository(authSupabase);
       const dossierRepo = getDossierRepository(authSupabase);
+      const windowStart = new Date(Date.now() - JOB_RATE_LIMIT.WINDOW_MS).toISOString();
+      const recentJobs = await jobRepo.countJobsSince(resolvedOrgId, windowStart);
+      if (recentJobs >= JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW) {
+        return NextResponse.json(
+          {
+            error:
+              'Das Kontingent an Analysen pro Stunde ist erreicht. Bitte später erneut versuchen.',
+          },
+          { status: 429, headers: { 'Retry-After': '3600' } }
+        );
+      }
       const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
       const workerDeps = { jobRepo, dossierRepo };
 

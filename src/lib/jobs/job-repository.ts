@@ -33,6 +33,7 @@ export interface IJobRepository {
   updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null>;
   claimNextPendingJob(organizationId?: string): Promise<DossierJob | null>;
   listJobs(organizationId?: string): Promise<DossierJob[]>;
+  countJobsSince(organizationId: string, sinceIso: string): Promise<number>;
   deleteJob(id: string, organizationId?: string): Promise<boolean>;
   pruneCompletedJobs(maxAgeMs?: number): Promise<number>;
   recoverOrphanJobs(leaseTimeoutMs?: number, organizationId?: string): Promise<DossierJob[]>;
@@ -167,6 +168,18 @@ export class SupabaseJobRepository implements IJobRepository {
     const data = await executeList(query.order('created_at', { ascending: false }), 'listJobs');
 
     return data.map((row) => this.mapRowToJob(row, { lightweight: true }));
+  }
+
+  async countJobsSince(organizationId: string, sinceIso: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from(DB_TABLES.DOSSIER_JOBS)
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .gte('created_at', sinceIso);
+    if (error) {
+      throw new Error(`Supabase countJobsSince fehlgeschlagen: ${error.message}`);
+    }
+    return count ?? 0;
   }
 
   private mapRowToJob(

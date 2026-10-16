@@ -7,7 +7,7 @@ import {
   createMockWorkflowRepository,
 } from '@/test/fixtures/mock-repositories';
 import { CASE_TYPES } from '@/types/dossier';
-import { JOB_STATUS } from '@/types/jobs';
+import { JOB_RATE_LIMIT, JOB_STATUS } from '@/types/jobs';
 import { POST, PUT } from './route';
 
 vi.mock('@/lib/supabase/server-auth', async () => {
@@ -162,5 +162,23 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(true);
+  });
+
+  it('sollte Status 429 liefern, wenn das Stundenkontingent der Kanzlei erreicht ist', async () => {
+    const prevKey = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test-key';
+    vi.mocked(mockJobRepo.countJobsSince).mockResolvedValueOnce(JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW);
+    try {
+      const req = new NextRequest('http://localhost:3000/api/analyze?async=true', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(429);
+      expect(res.headers.get('Retry-After')).toBeDefined();
+    } finally {
+      if (prevKey) process.env.GEMINI_API_KEY = prevKey;
+      else delete process.env.GEMINI_API_KEY;
+    }
   });
 });

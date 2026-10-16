@@ -117,3 +117,9 @@ export const RetryJobRequestSchema = z.object({
 export type RetryJobRequest = z.infer<typeof RetryJobRequestSchema>;
 
 export type DossierJob = z.infer<typeof DossierJobSchema>;
+
+// Begrenzung der Analyse-Aufträge je Kanzlei (schützt KI-Kosten und Verfügbarkeit)
+export const JOB_RATE_LIMIT = {
+  MAX_JOBS_PER_WINDOW: 30,
+  WINDOW_MS: 60 * 60 * 1000,
+} as const;

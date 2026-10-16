@@ -77,6 +77,12 @@ export function createMockJobRepository(): IJobRepository {
       }
       return all;
     }),
+    countJobsSince: vi.fn(
+      async (organizationId: string, sinceIso: string) =>
+        [...jobs.values()].filter(
+          (j) => j.organizationId === organizationId && j.createdAt >= sinceIso
+        ).length
+    ),
     deleteJob: vi.fn(async (id: string) => jobs.delete(id)),
     recoverOrphanJobs: vi.fn(async () => []),
     pruneCompletedJobs: vi.fn(async () => 0),

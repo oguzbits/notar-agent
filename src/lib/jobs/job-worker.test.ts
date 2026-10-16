@@ -51,6 +51,7 @@ function createMockJobRepo(): IJobRepository {
     deleteJob: vi.fn(async (id: string) => jobs.delete(id)),
     recoverOrphanJobs: vi.fn(async () => []),
     pruneCompletedJobs: vi.fn(async () => 0),
+    countJobsSince: vi.fn(async () => 0),
   };
 }
 
