@@ -154,7 +154,12 @@ DECLARE
     v_parsed_query tsquery;
 BEGIN
     IF p_query_text IS NOT NULL AND trim(p_query_text) <> '' THEN
-        v_parsed_query := plainto_tsquery('german', p_query_text);
+        -- ODER-Verknüpfung: Lange Anfragen (Vorgangstyp, Notizen, Dateinamen) dürfen Treffer liefern,
+        -- auch wenn nicht jedes Wort vorkommt; die Rangfolge übernimmt ts_rank_cd.
+        v_parsed_query := NULLIF(
+            replace(plainto_tsquery('german', p_query_text)::text, ' & ', ' | '),
+            ''
+        )::tsquery;
     ELSE
         v_parsed_query := NULL;
     END IF;
