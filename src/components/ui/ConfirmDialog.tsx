@@ -15,6 +15,7 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   variant?: 'danger' | 'primary';
   isLoading?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -27,6 +28,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelLabel = 'Abbrechen',
   variant = 'danger',
   isLoading = false,
+  confirmDisabled = false,
 }) => {
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()}>
@@ -72,6 +74,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 variant={variant === 'danger' ? 'danger' : 'primary'}
                 size="md"
                 isLoading={isLoading}
+                disabled={confirmDisabled}
                 onClick={onConfirm}
               >
                 {confirmLabel}

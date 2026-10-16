@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { DB_TABLES } from '@/types/database';
+import { DeletionReason } from '@/types/deletion';
 import { DocumentRecord, DocumentListItem } from '@/types/document';
 import { Dossier } from '@/types/dossier';
 
@@ -46,11 +47,19 @@ async function fetchDocumentById(
   return (data.document || null) as DocumentRecord | null;
 }
 
-async function apiDeleteDocument(id: string, organizationId?: string): Promise<boolean> {
+async function apiDeleteDocument(
+  id: string,
+  reason: DeletionReason,
+  organizationId?: string
+): Promise<boolean> {
   const url = organizationId
     ? `/api/documents?id=${encodeURIComponent(id)}&organizationId=${encodeURIComponent(organizationId)}`
     : `/api/documents?id=${encodeURIComponent(id)}`;
-  const res = await fetch(url, { method: 'DELETE' });
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  });
   if (!res.ok) {
     throw new Error('Fehler beim Löschen des Dokuments');
   }
@@ -103,8 +112,9 @@ export function useDocuments(organizationId?: string, options?: UseDocumentsOpti
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiDeleteDocument(id, organizationId),
-    onMutate: async (deletedId: string) => {
+    mutationFn: ({ id, reason }: { id: string; reason: DeletionReason }) =>
+      apiDeleteDocument(id, reason, organizationId),
+    onMutate: async ({ id: deletedId }) => {
       await queryClient.cancelQueries({ queryKey });
       const previousDocuments = queryClient.getQueryData<DocumentListItem[]>(queryKey);
 
@@ -119,7 +129,7 @@ export function useDocuments(organizationId?: string, options?: UseDocumentsOpti
         queryClient.setQueryData(queryKey, context.previousDocuments);
       }
     },
-    onSettled: (_data, _error, deletedId) => {
+    onSettled: (_data, _error, { id: deletedId }) => {
       if (deletedId) {
         queryClient.removeQueries({
           queryKey: getDocumentDetailQueryKey(deletedId, organizationId),
@@ -143,9 +153,9 @@ export function useDocuments(organizationId?: string, options?: UseDocumentsOpti
     },
   });
 
-  const deleteDocument = async (id: string) => {
+  const deleteDocument = async (id: string, reason: DeletionReason) => {
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteMutation.mutateAsync({ id, reason });
       return true;
     } catch (err) {
       console.error('Fehler beim Löschen:', err);

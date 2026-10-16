@@ -322,9 +322,7 @@ function HomeContent() {
                 onSelectDocument={handleSelectDocument}
                 onSelectJob={handleSelectJob}
                 onCreateNew={handleCreateNew}
-                onDeleteDocument={async (id) => {
-                  await deleteDocument(id);
-                }}
+                onDeleteDocument={deleteDocument}
                 activeJobs={[...activeJobs, ...failedJobs]}
                 onRetryJob={retryJob}
                 onCancelJob={cancelJob}

@@ -6,6 +6,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 import { CASE_STATUS } from '@/lib/supabase/repository';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
+import { DELETION_REASONS } from '@/types/deletion';
 import { Dossier } from '@/types/dossier';
 import { useDocuments, useDocument } from './useDocuments';
 
@@ -83,7 +84,7 @@ describe('useDocuments with TanStack Query & MSW', () => {
 
     let success = false;
     await act(async () => {
-      success = await result.current.deleteDocument('doc-1');
+      success = await result.current.deleteDocument('doc-1', DELETION_REASONS.SONSTIGES);
     });
 
     expect(success).toBe(true);
@@ -109,7 +110,7 @@ describe('useDocuments with TanStack Query & MSW', () => {
 
     let success = true;
     await act(async () => {
-      success = await result.current.deleteDocument('doc-1');
+      success = await result.current.deleteDocument('doc-1', DELETION_REASONS.SONSTIGES);
     });
 
     expect(success).toBe(false);

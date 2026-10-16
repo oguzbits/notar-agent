@@ -7,8 +7,10 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
 import { PERMISSION_ACTIONS } from '@/types/auth';
+import { DeletionReason } from '@/types/deletion';
 import { DocumentListItem, CaseStatus, CASE_STATUS } from '@/types/document';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
+import { DeleteDossierDialog } from './DeleteDossierDialog';
 
 export interface DocumentTableProps {
   documents: DocumentListItem[];
@@ -16,7 +18,7 @@ export interface DocumentTableProps {
   onSelectDocument: (doc: DocumentListItem) => void;
   onSelectJob?: (job: DossierJob) => void;
   onCreateNew: () => void;
-  onDeleteDocument: (id: string) => Promise<void>;
+  onDeleteDocument: (id: string, reason: DeletionReason) => Promise<boolean>;
   activeJobs?: DossierJob[];
   onRetryJob?: (jobId: string) => Promise<boolean | void>;
   onCancelJob?: (jobId: string) => Promise<boolean | void>;
@@ -111,20 +113,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       }).format(new Date(dateStr));
     } catch (_err) {
       return dateStr;
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!pendingDeleteDoc) return;
-    const docToDelete = pendingDeleteDoc;
-    setPendingDeleteDoc(null);
-    setIsDeleting(true);
-    try {
-      await onDeleteDocument(docToDelete.id);
-    } catch (err) {
-      console.error('Fehler beim Löschen des Dokuments:', err);
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -537,27 +525,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         )}
       </div>
 
-      {/* Barrierefreier Bestätigungsdialog für das Löschen von Vorgängen (§ 17 BeurkG) */}
-      <ConfirmDialog
-        isOpen={Boolean(pendingDeleteDoc)}
-        isLoading={isDeleting}
-        onClose={() => setPendingDeleteDoc(null)}
-        onConfirm={handleConfirmDelete}
-        title="Urkundenvorgang löschen?"
-        description={
-          <span>
-            Möchten Sie den Vorgang{' '}
-            <strong className="text-foreground font-semibold">
-              {pendingDeleteDoc?.title || 'diese Akte'}
-            </strong>{' '}
-            wirklich unwiderruflich aus der Kanzleidatenbank löschen? Alle zugehörigen Dokumente und
-            notariellen Prüfmerkmale werden dauerhaft entfernt.
-          </span>
-        }
-        confirmLabel="Unwiderruflich löschen"
-        cancelLabel="Abbrechen"
-        variant="danger"
-      />
+      {pendingDeleteDoc && (
+        <DeleteDossierDialog
+          dossierTitle={pendingDeleteDoc.title || 'diese Akte'}
+          onConfirm={(reason) => onDeleteDocument(pendingDeleteDoc.id, reason)}
+          onClose={() => setPendingDeleteDoc(null)}
+        />
+      )}
 
       {/* Bestätigungsdialog für das Verwerfen/Löschen fehlgeschlagener Hintergrund-Jobs */}
       <ConfirmDialog

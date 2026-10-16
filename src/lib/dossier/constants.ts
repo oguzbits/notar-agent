@@ -80,11 +80,7 @@ export const DELETION_UI_TEXTS_DE = {
   DIALOG_DESCRIPTION:
     'Alle Dokumente und Daten dieses Vorgangs werden unwiderruflich entfernt. Die Löschung wird im Prüfprotokoll vermerkt.',
   REASON_LABEL: 'Grund der Löschung',
-  REASON_PLACEHOLDER: 'Grund auswählen',
   CONFIRM: 'Endgültig löschen',
-  PENDING: 'Wird gelöscht…',
-  IN_PROGRESS: 'Löschung läuft',
-  DONE: 'Gelöscht',
   ERROR: 'Der Vorgang konnte nicht gelöscht werden.',
   RETRY: 'Erneut versuchen',
 } as const;
