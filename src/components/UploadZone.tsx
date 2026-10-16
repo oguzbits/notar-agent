@@ -98,7 +98,6 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         role="button"
         tabIndex={isBusy ? -1 : 0}
         aria-disabled={isBusy}
-        aria-label="Dokumente auswählen oder hierher ziehen"
         onKeyDown={(e) => {
           if ((e.key === 'Enter' || e.key === ' ') && !isBusy) {
             e.preventDefault();

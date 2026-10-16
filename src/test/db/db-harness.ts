@@ -38,6 +38,7 @@ export interface DbHarness {
   admin: SupabaseClient;
   anon: SupabaseClient;
   createUser: () => Promise<TestUser>;
+  createAnonymousClient: () => SupabaseClient;
   createOrganizationWithMember: (userId: string, role?: string) => Promise<string>;
 }
 
@@ -51,6 +52,9 @@ export function createDbHarness(): DbHarness {
   return {
     admin,
     anon,
+    createAnonymousClient() {
+      return createClient(env.apiUrl, env.anonKey, clientOptions);
+    },
     async createUser() {
       const email = `${randomUUID()}@db-test.invalid`;
       const password = randomUUID();

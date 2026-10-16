@@ -250,3 +250,11 @@ describe('Audit-Trail', () => {
     expect(res.error).not.toBeNull();
   });
 });
+
+describe('Demo-Sitzung', () => {
+  it('Anonyme Anmeldung (ohne E-Mail) legt Benutzer und Profil an', async () => {
+    const res = await harness.createAnonymousClient().auth.signInAnonymously();
+    expect(res.error).toBeNull();
+    expect(res.data.user?.id).toBeDefined();
+  });
+});

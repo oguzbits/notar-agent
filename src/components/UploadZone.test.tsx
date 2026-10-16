@@ -9,7 +9,7 @@ function renderZone(isAnalyzing = false) {
   const input = container.querySelector('input[type="file"]');
   if (!(input instanceof HTMLInputElement)) throw new Error('Datei-Eingabe fehlt');
   const clickSpy = vi.spyOn(input, 'click');
-  return { zone: screen.getByRole('button', { name: /Dokumente auswählen/ }), clickSpy };
+  return { zone: screen.getByRole('button', { name: /Dateien per Drag/ }), clickSpy };
 }
 
 describe('UploadZone Tastaturbedienung', () => {

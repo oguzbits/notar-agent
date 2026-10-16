@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import { localSupabaseEnv } from './e2e/support/local-supabase';
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: 'quality/**',
   timeout: 30 * 1000,
   expect: {
     timeout: 5000,
@@ -26,5 +28,6 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: localSupabaseEnv(),
   },
 });

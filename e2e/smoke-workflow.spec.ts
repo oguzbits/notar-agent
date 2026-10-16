@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
 import { SYNTHETIC_KAUFVERTRAG_RAW, SYNTHETIC_BEARBEITER_NOTIZ } from './fixtures/test-files';
+import { test, expect } from './support/demo-session';
 import { IMMOBILIEN_FIELD_METADATA } from '../src/lib/dossier/constants';
 import { CASE_STATUS } from '../src/lib/supabase/repository';
 import {

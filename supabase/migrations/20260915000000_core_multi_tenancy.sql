@@ -70,7 +70,7 @@ BEGIN
     INSERT INTO public.profiles (id, email, full_name, title)
     VALUES (
         new.id,
-        new.email,
+        COALESCE(new.email, ''),  -- anonyme Demo-Sitzungen haben keine E-Mail
         COALESCE(new.raw_user_meta_data->>'full_name', ''),
         COALESCE(new.raw_user_meta_data->>'title', '')
     )

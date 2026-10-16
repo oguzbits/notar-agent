@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { localSupabaseEnv } from './e2e/support/local-supabase';
 
 // Qualitäts-Gates gegen den Produktionsbuild (Layoutstabilität, Barrierefreiheit).
 // Eigene Konfiguration und eigener Port, damit ein laufender Dev-Server nicht stört.
@@ -22,5 +23,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/login`,
     reuseExistingServer: !process.env.CI,
     timeout: 300 * 1000,
+    env: localSupabaseEnv(),
   },
 });

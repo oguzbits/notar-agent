@@ -93,6 +93,15 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start Supabase Local Containers (Docker)
+        run: supabase start
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
