@@ -114,6 +114,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- Pseudonyme der Akteure je (Akte, Nutzer): Die Hash-Kette enthält nur actor_ref, nie Klarname oder Nutzer-ID.
+-- Mit dem Löschen der Zuordnung entfällt der Personenbezug, ohne die Kette zu verändern.
+CREATE TABLE IF NOT EXISTS audit_actor_map (
+    document_id TEXT NOT NULL,
+    user_id UUID NOT NULL,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    actor_ref UUID NOT NULL DEFAULT gen_random_uuid(),
+    display_name TEXT NOT NULL,
+    PRIMARY KEY (document_id, user_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_audit_actor_map_ref ON audit_actor_map(actor_ref);
+ALTER TABLE audit_actor_map ENABLE ROW LEVEL SECURITY;
+
 -- Hash-Kette je Akte: eine Sequenznummer darf nur einmal vergeben werden (verhindert Gabelungen)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_audit_logs_doc_seq ON audit_logs(document_id, sequence_number);
 
@@ -135,7 +148,8 @@ CREATE OR REPLACE FUNCTION audit_record_hash(
     )::text, 'UTF8')), 'hex');
 $$ LANGUAGE sql IMMUTABLE SET search_path = public, pg_temp;
 
--- Verkettung serverseitig: Sequenz, Vorgänger-Hash, Zeitstempel, Akteur-ID und Hash kommen aus der Datenbank.
+-- Verkettung serverseitig: Sequenz, Vorgänger-Hash, Zeitstempel, Akteur-Pseudonym und Hash kommen aus der Datenbank.
+-- SECURITY DEFINER, damit der Trigger die Zuordnung schreiben darf, die Clients nicht schreiben können.
 -- Der Advisory-Lock je Akte serialisiert parallele Einträge (keine Lücken, keine Gabelungen).
 CREATE OR REPLACE FUNCTION audit_logs_chain() RETURNS TRIGGER AS $$
 DECLARE
@@ -156,14 +170,21 @@ BEGIN
     NEW.sequence_number := v_sequence;
     NEW.previous_hash := v_previous;
     NEW."timestamp" := now();
-    NEW.actor_id := auth.uid();
+    IF auth.uid() IS NOT NULL THEN
+        INSERT INTO audit_actor_map (document_id, user_id, organization_id, display_name)
+        VALUES (NEW.document_id, auth.uid(), NEW.organization_id, NEW.actor)
+        ON CONFLICT (document_id, user_id) DO NOTHING;
+        SELECT actor_ref::text INTO NEW.actor
+        FROM audit_actor_map WHERE document_id = NEW.document_id AND user_id = auth.uid();
+    END IF;
+    NEW.actor_id := NULL;
     NEW.current_hash := audit_record_hash(
         NEW.document_id, NEW.sequence_number, NEW.action, NEW."timestamp",
         NEW.actor, NEW.actor_id, NEW.previous_hash, NEW.details
     );
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS trg_audit_logs_chain ON audit_logs;
 CREATE TRIGGER trg_audit_logs_chain BEFORE INSERT ON audit_logs
@@ -322,6 +343,9 @@ CREATE POLICY rls_documents_delete ON documents FOR DELETE USING (get_user_role(
 
 DROP POLICY IF EXISTS rls_audit_logs_select ON audit_logs;
 CREATE POLICY rls_audit_logs_select ON audit_logs FOR SELECT USING (is_org_member(organization_id));
+
+DROP POLICY IF EXISTS rls_audit_actor_map_select ON audit_actor_map;
+CREATE POLICY rls_audit_actor_map_select ON audit_actor_map FOR SELECT USING (is_org_member(organization_id));
 
 DROP POLICY IF EXISTS rls_audit_logs_insert ON audit_logs;
 -- Verweigerungs-Ereignisse (access-denied:<Kanzlei>) dürfen nur in die Kette der eigenen Kanzlei geschrieben werden.

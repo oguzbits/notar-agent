@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { DELETION_UI_TEXTS_DE } from '@/lib/dossier/constants';
 import {
   AuditAction,
   AuditIntegrityResult,
@@ -6,7 +7,7 @@ import {
   AuditLogDetails,
   AuditLogEntry,
 } from '@/types/audit';
-import { DB_TABLES, Database, TableRow } from '@/types/database';
+import { DB_TABLES, Database, PG_UUID_REGEX, TableRow } from '@/types/database';
 
 type Row = TableRow<typeof DB_TABLES.AUDIT_LOGS>;
 
@@ -70,7 +71,21 @@ export class SupabaseAuditRepository implements IAuditRepository {
       return [];
     }
 
-    return data.map(toEntry);
+    // Die Kette enthält nur Pseudonyme; Klarnamen kommen aus der löschbaren Zuordnung.
+    const { data: actors, error: actorError } = await this.supabase
+      .from(DB_TABLES.AUDIT_ACTOR_MAP)
+      .select('actor_ref, display_name')
+      .eq('document_id', documentId);
+    if (actorError) {
+      throw new Error(`Supabase getHistory actor error: ${actorError.message}`);
+    }
+    const names = new Map((actors ?? []).map((a) => [a.actor_ref, a.display_name]));
+
+    return data.map((row) => {
+      const entry = toEntry(row);
+      if (!PG_UUID_REGEX.test(entry.actor)) return entry;
+      return { ...entry, actor: names.get(entry.actor) ?? DELETION_UI_TEXTS_DE.FORMER_USER };
+    });
   }
 
   async verifyIntegrity(documentId: string): Promise<AuditIntegrityResult> {

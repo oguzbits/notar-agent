@@ -45,7 +45,8 @@ describe('Audit-Kette in der Datenbank', () => {
     expect(res.error).toBeNull();
 
     const [first] = await rows(docId);
-    expect(first).toMatchObject({ sequence_number: 0, previous_hash: GENESIS, actor_id: owner.id });
+    expect(first).toMatchObject({ sequence_number: 0, previous_hash: GENESIS, actor_id: null });
+    expect(first?.actor).toMatch(/^[0-9a-f-]{36}$/);
     expect(first?.current_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(first?.current_hash).not.toBe('b'.repeat(64));
   });
@@ -78,7 +79,7 @@ describe('Audit-Kette in der Datenbank', () => {
     const remove = await harness.admin.from(DB_TABLES.AUDIT_LOGS).delete().eq('document_id', docId);
     expect(update.error).not.toBeNull();
     expect(remove.error).not.toBeNull();
-    expect((await rows(docId)).every((r) => r.actor === 'tester')).toBe(true);
+    expect((await rows(docId)).some((r) => r.actor === 'manipuliert')).toBe(false);
   });
 
   it('bestätigt eine unversehrte Kette', async () => {
