@@ -76,6 +76,7 @@ export async function resolveSessionOrganizationId(
 }
 
 export interface SessionActor {
+  userId: string;
   /** Anzeigename für den Audit-Trail, aus Profil bzw. E-Mail der Sitzung. */
   label: string;
   /** Berufsrechtliche Rolle in der angegebenen Kanzlei, aus der Mitgliedschaft. */
@@ -111,5 +112,5 @@ export async function resolveSessionActor(
     .eq('id', user.id)
     .maybeSingle();
 
-  return { label: profile?.full_name || user.email || user.id, role: member.role };
+  return { userId: user.id, label: profile?.full_name || user.email || user.id, role: member.role };
 }

@@ -107,6 +107,7 @@ describe('resolveSessionActor', () => {
       profileName: 'Dr. Muster',
     });
     expect(await resolveSessionActor(client, ORG_A)).toEqual({
+      userId: 'u1',
       label: 'Dr. Muster',
       role: NOTARY_ROLES.NOTARASSESSOR,
     });

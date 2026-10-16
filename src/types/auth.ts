@@ -23,6 +23,18 @@ export const PermissionActionSchema = z.enum([
   PERMISSION_ACTIONS.UPLOAD_DOCUMENTS,
 ]);
 
+/**
+ * Serverseitig aufgelöster Sitzungskontext: Rolle und Kanzlei stammen nur aus Sitzung und Mitgliedschaft.
+ */
+export const SessionContextSchema = z.object({
+  userId: DbUuidSchema,
+  organizationId: DbUuidSchema,
+  role: NotaryRoleSchema,
+  actorLabel: z.string().min(1),
+});
+
+export type SessionContext = z.infer<typeof SessionContextSchema>;
+
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[keyof typeof PERMISSION_ACTIONS];
 
 /**

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PermissionActionSchema } from './auth';
 import { FieldStatusSchema } from './dossier';
 import { DbUuidSchema } from './primitives';
 
@@ -12,6 +13,7 @@ export const AUDIT_ACTIONS = {
   DOSSIER_RESTORED: 'DOSSIER_RESTORED',
   WORKFLOW_STEP_COMPLETED: 'WORKFLOW_STEP_COMPLETED',
   WORKFLOW_TRANSITION_TRIGGERED: 'WORKFLOW_TRANSITION_TRIGGERED',
+  ACCESS_DENIED: 'ACCESS_DENIED',
 } as const;
 
 export const AuditActionSchema = z.enum([
@@ -24,6 +26,7 @@ export const AuditActionSchema = z.enum([
   AUDIT_ACTIONS.DOSSIER_RESTORED,
   AUDIT_ACTIONS.WORKFLOW_STEP_COMPLETED,
   AUDIT_ACTIONS.WORKFLOW_TRANSITION_TRIGGERED,
+  AUDIT_ACTIONS.ACCESS_DENIED,
 ]);
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -61,6 +64,8 @@ export const AuditLogDetailsSchema = z
     note: z.string().optional(),
     caseTitle: z.string().optional(),
     actorRole: z.string().optional(),
+    deniedAction: PermissionActionSchema.optional(),
+    route: z.string().optional(),
   })
   .default({});
 
