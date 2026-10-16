@@ -38,51 +38,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const { name, officialSeat, chamberDistrict } = parsed.data;
 
-    // 1. Versuche die atomare RPC-Funktion (SECURITY DEFINER)
-    const { data: rpcOrg, error: rpcError } = await supabase.rpc('create_new_organization', {
+    const { data: orgData, error: orgError } = await supabase.rpc('create_new_organization', {
       org_name: name,
       org_seat: officialSeat,
       org_chamber: chamberDistrict,
     });
 
-    if (!rpcError && rpcOrg) {
-      return NextResponse.json(
-        {
-          success: true,
-          organization: rpcOrg,
-          role: NOTARY_ROLES.NOTAR,
-        },
-        { status: 201 }
-      );
-    }
-
-    // 2. Fallback auf direkte Inserts (für Unit-Tests / lokales Mocking)
-    const { data: orgData, error: orgError } = await supabase
-      .from(DB_TABLES.ORGANIZATIONS)
-      .insert({
-        name,
-        official_seat: officialSeat,
-        chamber_district: chamberDistrict,
-      })
-      .select('*')
-      .single();
-
     if (orgError || !orgData) {
-      const errorMsg =
-        rpcError?.message || orgError?.message || 'Kanzlei konnte nicht erstellt werden.';
-      return NextResponse.json({ error: errorMsg }, { status: 500 });
-    }
-
-    // Ersteller als Inhaber/Notar zuweisen
-    const { error: memberError } = await supabase.from(DB_TABLES.ORGANIZATION_MEMBERS).insert({
-      organization_id: orgData.id,
-      user_id: user.id,
-      role: NOTARY_ROLES.NOTAR,
-    });
-
-    if (memberError) {
       return NextResponse.json(
-        { error: memberError.message || 'Zuweisung zur Kanzlei fehlgeschlagen.' },
+        { error: orgError?.message || 'Kanzlei konnte nicht erstellt werden.' },
         { status: 500 }
       );
     }

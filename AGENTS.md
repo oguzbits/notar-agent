@@ -120,7 +120,7 @@ _(Fast Path Exception: Pure CSS styling, copy changes in leaf components, or mar
 - **Deterministic Refactoring Triggers:** Refactoring is event-driven, not speculative: (1) Rule of Three (extract only on 3rd identical use case), (2) Feature additions modifying an existing imperative hotspot, (3) Codebase Health Score dropping below 90/100, or (4) High cognitive load during debugging. Speculative abstractions remain strictly prohibited.
 - **Visual Self-Verification:** UI changes must be inspected via headless browser / Playwright to confirm zero CLS and responsive hierarchy before completion.
 - **Supabase MCP Database Sync:** When a task introduces or modifies database migrations (`supabase/migrations/*.sql`), always inspect the project via the Supabase MCP tools (`apply_migration` / `execute_sql`). Either apply and verify the migration live using Supabase MCP, OR explicitly flag it as an open item in the DoD receipt under `Explicitly Out-of-Scope`. Never leave a database sync implicit or unaddressed.
-- **Authoritative Git Execution:** Bereitet alle verifizierten Änderungen im Git-Index vor (`git add`). Da die Antigravity-IDE-Plattform autonome `git commit`- und `git push`-Befehle per System-Guardrail hardwarenah blockiert, wird nach Bestätigung des Nutzers der exakte Terminal-Befehl zur Ausführung bereitgestellt.
+- **Git-Ausführung:** Verifizierte Änderungen werden in kleinen, grünen Einheiten committet (ein Commit je abgeschlossener Einheit). Hooks werden nie mit `--no-verify` umgangen. Force-Push, Deploys und Änderungen an Live-Systemen erfolgen nur nach ausdrücklicher Zustimmung des Nutzers.
 
 ### C. Definition of Done (DoD) Receipt
 

@@ -25,6 +25,7 @@
     "knip": "knip --include dependencies,unlisted,binaries,unresolved,files,cycles",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "vitest run --config vitest.db.config.mts",
     "test:e2e": "playwright test --last-failed-file=/dev/null; rm -rf test-results",
     "eval": "promptfoo eval -c config/promptfoo.yaml --env-file .env.local --no-cache",
     "eval:parser": "vitest run src/test/eval/parser-eval.test.ts",

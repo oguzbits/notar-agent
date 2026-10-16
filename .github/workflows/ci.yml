@@ -99,3 +99,15 @@ jobs:
 
       - name: Lint Database Schema & Security
         run: supabase db lint
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Tenant Isolation Tests (RLS gegen echtes Postgres)
+        run: npm run test:db

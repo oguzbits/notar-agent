@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { demoUserCredentials } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
-import { NOTARY_ROLES } from '@/types/organization';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,86 +26,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 1. Zuerst versuchen, eine isolierte anonyme Session zu starten (wie bei notebooklm-klon)
-    let anonData = null;
-    let anonError = null;
-    if (typeof supabase.auth.signInAnonymously === 'function') {
-      const anonResult = await supabase.auth.signInAnonymously({
-        options: {
-          data: {
-            full_name: demoUserCredentials.FULL_NAME,
-            title: demoUserCredentials.TITLE,
-          },
-        },
-      });
-      anonData = anonResult.data;
-      anonError = anonResult.error;
-    }
-
-    if (!anonError && anonData?.user) {
-      const userId = anonData.user.id;
-
-      // Prüfen, ob der anonyme User bereits eine Organisation hat
-      const { data: existingMember } = await supabase
-        .from(DB_TABLES.ORGANIZATION_MEMBERS)
-        .select('organization_id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!existingMember) {
-        // Frische, isolierte Demo-Kanzlei für diese Session anlegen
-        const { data: orgData, error: orgError } = await supabase
-          .from(DB_TABLES.ORGANIZATIONS)
-          .insert({
-            name: demoUserCredentials.ORGANIZATION_NAME,
-            official_seat: demoUserCredentials.OFFICIAL_SEAT,
-            chamber_district: demoUserCredentials.CHAMBER_DISTRICT,
-          })
-          .select('*')
-          .single();
-
-        if (orgData && !orgError) {
-          await supabase.from(DB_TABLES.ORGANIZATION_MEMBERS).insert({
-            organization_id: orgData.id,
-            user_id: userId,
-            role: NOTARY_ROLES.NOTAR,
-          });
-
-          await supabase.from(DB_TABLES.PROFILES).upsert({
-            id: userId,
-            email: anonData.user.email || `${userId.slice(0, 8)}@demo.notariat.de`,
-            full_name: demoUserCredentials.FULL_NAME,
-            title: demoUserCredentials.TITLE,
-          });
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        user: anonData.user,
-        redirectTo,
-      });
-    }
-
-    // 2. Fallback: Falls Anonymous Auth im Supabase Dashboard noch deaktiviert ist,
-    // direkten Login mit den bestehenden Demo-Credentials versuchen
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: demoUserCredentials.EMAIL,
-      password: demoUserCredentials.PASSWORD,
-    });
-
-    if (!signInError && signInData.user) {
-      return NextResponse.json({
-        success: true,
-        user: signInData.user,
-        redirectTo,
-      });
-    }
-
-    // 2. Falls der Demo-Account noch nicht existiert: Automatisch anlegen (Auto-Provisioning)
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: demoUserCredentials.EMAIL,
-      password: demoUserCredentials.PASSWORD,
+    // Isolierte anonyme Sitzung mit eigener Demo-Kanzlei je Browser
+    const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously({
       options: {
         data: {
           full_name: demoUserCredentials.FULL_NAME,
@@ -115,65 +36,43 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     });
 
-    if (signUpError || !signUpData.user) {
+    if (anonError || !anonData?.user) {
       return NextResponse.json(
-        { error: signUpError?.message || 'Demo-Zugang konnte nicht angelegt werden.' },
-        { status: 400 }
+        { error: anonError?.message || 'Demo-Zugang nicht verfügbar.' },
+        { status: 503 }
       );
     }
 
-    const userId = signUpData.user.id;
+    const userId = anonData.user.id;
+    const { data: existingMember } = await supabase
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .select('organization_id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    // 3. Demo-Kanzlei anlegen
-    const { data: orgData, error: orgError } = await supabase
-      .from(DB_TABLES.ORGANIZATIONS)
-      .insert({
-        name: demoUserCredentials.ORGANIZATION_NAME,
-        official_seat: demoUserCredentials.OFFICIAL_SEAT,
-        chamber_district: demoUserCredentials.CHAMBER_DISTRICT,
-      })
-      .select('*')
-      .single();
+    if (!existingMember) {
+      const { data: orgData, error: orgError } = await supabase.rpc('create_new_organization', {
+        org_name: demoUserCredentials.ORGANIZATION_NAME,
+        org_seat: demoUserCredentials.OFFICIAL_SEAT,
+        org_chamber: demoUserCredentials.CHAMBER_DISTRICT,
+      });
 
-    if (orgError || !orgData) {
-      return NextResponse.json(
-        { error: orgError?.message || 'Demo-Kanzlei konnte nicht initialisiert werden.' },
-        { status: 500 }
-      );
+      if (orgError || !orgData) {
+        return NextResponse.json(
+          { error: orgError?.message || 'Demo-Kanzlei konnte nicht initialisiert werden.' },
+          { status: 500 }
+        );
+      }
+
+      await supabase.from(DB_TABLES.PROFILES).upsert({
+        id: userId,
+        email: anonData.user.email || `${userId.slice(0, 8)}@demo.notariat.de`,
+        full_name: demoUserCredentials.FULL_NAME,
+        title: demoUserCredentials.TITLE,
+      });
     }
 
-    // 4. Demo-Benutzer als Notar zuweisen
-    const { error: memberError } = await supabase.from(DB_TABLES.ORGANIZATION_MEMBERS).insert({
-      organization_id: orgData.id,
-      user_id: userId,
-      role: NOTARY_ROLES.NOTAR,
-    });
-
-    if (memberError) {
-      return NextResponse.json(
-        { error: memberError.message || 'Zuweisung zur Demo-Kanzlei fehlgeschlagen.' },
-        { status: 500 }
-      );
-    }
-
-    // 5. Nach erfolgreicher Registrierung final einloggen (Session & Cookie etablieren)
-    const { data: finalSignIn, error: finalError } = await supabase.auth.signInWithPassword({
-      email: demoUserCredentials.EMAIL,
-      password: demoUserCredentials.PASSWORD,
-    });
-
-    if (finalError || !finalSignIn.user) {
-      return NextResponse.json(
-        { error: finalError?.message || 'Anmeldung nach Demo-Initialisierung fehlgeschlagen.' },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      user: finalSignIn.user,
-      redirectTo,
-    });
+    return NextResponse.json({ success: true, user: anonData.user, redirectTo });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unerwarteter Fehler beim Demo-Login.';
     return NextResponse.json({ error: msg }, { status: 500 });

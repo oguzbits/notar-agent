@@ -36,16 +36,6 @@ CREATE POLICY rls_jobs_all ON dossier_jobs
     USING (is_org_member(organization_id))
     WITH CHECK (is_org_member(organization_id));
 
--- Helper-Funktion für sicheren Serverless Worker Storage-Zugriff auf Job-Dateien
-CREATE OR REPLACE FUNCTION is_dossier_job_file(object_name text)
-RETURNS boolean AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM dossier_jobs,
-        LATERAL jsonb_array_elements(payload->'files') AS f
-        WHERE f->>'storagePath' = object_name
-    );
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
-
 -- 2. Supabase Object Storage (dossier-files Bucket & RLS gem. § 203 StGB)
 INSERT INTO storage.buckets (id, name, public, file_size_limit)
 VALUES ('dossier-files', 'dossier-files', false, 52428800)
@@ -54,13 +44,10 @@ ON CONFLICT (id) DO NOTHING;
 DROP POLICY IF EXISTS "RLS dossier_files select" ON storage.objects;
 CREATE POLICY "RLS dossier_files select"
 ON storage.objects FOR SELECT
-TO public
+TO authenticated
 USING (
   bucket_id = 'dossier-files'
-  AND (
-    (auth.role() = 'authenticated' AND is_org_member((storage.foldername(name))[1]::uuid))
-    OR is_dossier_job_file(name)
-  )
+  AND is_org_member((storage.foldername(name))[1]::uuid)
 );
 
 DROP POLICY IF EXISTS "RLS dossier_files insert" ON storage.objects;
@@ -99,7 +86,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS trigger_dossier_job_pending ON dossier_jobs;
 CREATE TRIGGER trigger_dossier_job_pending

@@ -67,7 +67,7 @@ CREATE POLICY p_select_knowledge_documents ON knowledge_documents
     USING (
         organization_id IS NULL
         OR
-        organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::UUID
+        is_org_member(organization_id)
     );
 
 DROP POLICY IF EXISTS p_insert_knowledge_documents ON knowledge_documents;
@@ -76,7 +76,7 @@ CREATE POLICY p_insert_knowledge_documents ON knowledge_documents
     WITH CHECK (
         organization_id IS NOT NULL
         AND
-        organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::UUID
+        get_user_role(organization_id) IN ('NOTAR', 'ADMIN')
     );
 
 DROP POLICY IF EXISTS p_update_knowledge_documents ON knowledge_documents;
@@ -85,7 +85,7 @@ CREATE POLICY p_update_knowledge_documents ON knowledge_documents
     USING (
         organization_id IS NOT NULL
         AND
-        organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::UUID
+        get_user_role(organization_id) IN ('NOTAR', 'ADMIN')
     );
 
 DROP POLICY IF EXISTS p_delete_knowledge_documents ON knowledge_documents;
@@ -94,7 +94,7 @@ CREATE POLICY p_delete_knowledge_documents ON knowledge_documents
     USING (
         organization_id IS NOT NULL
         AND
-        organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::UUID
+        get_user_role(organization_id) IN ('NOTAR', 'ADMIN')
     );
 
 -- 6. Native Hybrid RPC-Funktion mit Reciprocal Rank Fusion (RRF gem. Cormack et al. / notebooklm-klon)
@@ -127,7 +127,8 @@ RETURNS TABLE (
     updated_at TIMESTAMPTZ
 )
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     v_parsed_query tsquery;

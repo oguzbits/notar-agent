@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { RegisterRequestSchema } from '@/types/auth';
-import { DB_TABLES } from '@/types/database';
-import { NOTARY_ROLES } from '@/types/organization';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,34 +48,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const userId = authData.user.id;
 
-    // 2. Kanzlei-Organisation erstellen
-    const { data: orgData, error: orgError } = await supabase
-      .from(DB_TABLES.ORGANIZATIONS)
-      .insert({
-        name: organizationName,
-        official_seat: officialSeat,
-        chamber_district: chamberDistrict,
-      })
-      .select('*')
-      .single();
+    // 2. Kanzlei und NOTAR-Mitgliedschaft atomar anlegen (kontrollierter Onboarding-Pfad)
+    const { data: orgData, error: orgError } = await supabase.rpc('create_new_organization', {
+      org_name: organizationName,
+      org_seat: officialSeat,
+      org_chamber: chamberDistrict,
+    });
 
     if (orgError || !orgData) {
       return NextResponse.json(
         { error: orgError?.message || 'Kanzlei konnte nicht angelegt werden.' },
-        { status: 500 }
-      );
-    }
-
-    // 3. Benutzer als Notar/Inhaber zuweisen
-    const { error: memberError } = await supabase.from(DB_TABLES.ORGANIZATION_MEMBERS).insert({
-      organization_id: orgData.id,
-      user_id: userId,
-      role: NOTARY_ROLES.NOTAR,
-    });
-
-    if (memberError) {
-      return NextResponse.json(
-        { error: memberError.message || 'Zuweisung zur Kanzlei fehlgeschlagen.' },
         { status: 500 }
       );
     }

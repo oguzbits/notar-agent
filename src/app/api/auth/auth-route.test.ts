@@ -283,21 +283,7 @@ describe('Auth API Routes', () => {
             error: null,
           }),
         },
-        from: vi.fn((table: string) => {
-          if (table === DB_TABLES.ORGANIZATIONS) {
-            return {
-              insert: vi.fn().mockReturnThis(),
-              select: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: mockOrg, error: null }),
-            };
-          }
-          if (table === DB_TABLES.ORGANIZATION_MEMBERS) {
-            return {
-              insert: vi.fn().mockResolvedValue({ error: null }),
-            };
-          }
-          return {};
-        }),
+        rpc: vi.fn().mockResolvedValue({ data: mockOrg, error: null }),
       };
       mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
 
@@ -318,6 +304,11 @@ describe('Auth API Routes', () => {
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(json.organization.id).toBe('o123');
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('create_new_organization', {
+        org_name: 'Notariat Neu',
+        org_seat: 'Köln',
+        org_chamber: 'Rheinische Notarkammer',
+      });
     });
   });
 
@@ -350,13 +341,6 @@ describe('Auth API Routes', () => {
               insert: vi.fn().mockResolvedValue({ error: null }),
             };
           }
-          if (table === DB_TABLES.ORGANIZATIONS) {
-            return {
-              insert: vi.fn().mockReturnThis(),
-              select: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: mockNewOrg, error: null }),
-            };
-          }
           if (table === DB_TABLES.PROFILES) {
             return {
               upsert: vi.fn().mockResolvedValue({ error: null }),
@@ -364,6 +348,7 @@ describe('Auth API Routes', () => {
           }
           return {};
         }),
+        rpc: vi.fn().mockResolvedValue({ data: mockNewOrg, error: null }),
       };
       mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
 
@@ -375,41 +360,26 @@ describe('Auth API Routes', () => {
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(json.user.id).toBe('anon-user-123');
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('create_new_organization', expect.any(Object));
       expect(mockSupabase.auth.signInAnonymously).toHaveBeenCalled();
     });
 
-    it('falls back to static demo credentials when anonymous auth is disabled', async () => {
-      const mockSharedUser = {
-        id: '0232afd4-59fa-49b2-8e59-c6c5d069a678',
-        email: 'demo@notar-agent.de',
-      };
-
+    it('returns 503 and never falls back to a shared password login when anonymous auth is disabled', async () => {
       const mockSupabase = {
         auth: {
           signInAnonymously: vi.fn().mockResolvedValue({
             data: null,
-            error: {
-              message: 'Anonymous sign-ins are disabled',
-              code: 'anonymous_provider_disabled',
-            },
+            error: { message: 'Anonymous sign-ins are disabled' },
           }),
-          signInWithPassword: vi.fn().mockResolvedValue({
-            data: { user: mockSharedUser },
-            error: null,
-          }),
+          signInWithPassword: vi.fn(),
         },
       };
       mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
 
-      const req = new NextRequest('http://localhost:3000/api/auth/demo', {
-        method: 'POST',
-      });
+      const req = new NextRequest('http://localhost:3000/api/auth/demo', { method: 'POST' });
       const res = await demoRoute(req);
-      expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(json.user.id).toBe('0232afd4-59fa-49b2-8e59-c6c5d069a678');
-      expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalled();
+      expect(res.status).toBe(503);
+      expect(mockSupabase.auth.signInWithPassword).not.toHaveBeenCalled();
     });
   });
 });

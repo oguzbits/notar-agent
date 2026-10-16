@@ -80,7 +80,7 @@ BEGIN
         updated_at = now();
     RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -116,7 +116,7 @@ CREATE OR REPLACE FUNCTION get_user_role(org_id UUID)
 RETURNS notary_role AS $$
     SELECT role FROM organization_members
     WHERE user_id = auth.uid() AND organization_id = org_id;
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp;
 
 CREATE OR REPLACE FUNCTION is_org_member(org_id UUID)
 RETURNS BOOLEAN AS $$
@@ -124,7 +124,34 @@ RETURNS BOOLEAN AS $$
         SELECT 1 FROM organization_members
         WHERE user_id = auth.uid() AND organization_id = org_id
     );
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp;
+
+-- Kontrollierter Onboarding-Pfad: Kanzlei und erste NOTAR-Mitgliedschaft entstehen atomar
+-- für den angemeldeten Aufrufer. Direktes INSERT auf organizations ist per RLS nicht erlaubt.
+CREATE OR REPLACE FUNCTION create_new_organization(
+    org_name TEXT,
+    org_seat TEXT,
+    org_chamber TEXT
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_org organizations;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Anmeldung erforderlich' USING ERRCODE = '42501';
+    END IF;
+    INSERT INTO organizations (name, official_seat, chamber_district)
+    VALUES (org_name, org_seat, org_chamber)
+    RETURNING * INTO v_org;
+    INSERT INTO organization_members (organization_id, user_id, role)
+    VALUES (v_org.id, v_user_id, 'NOTAR');
+    RETURN to_jsonb(v_org);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+REVOKE EXECUTE ON FUNCTION create_new_organization(TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION create_new_organization(TEXT, TEXT, TEXT) TO authenticated;
 
 -- 7. Performance-Indizes
 CREATE INDEX IF NOT EXISTS idx_documents_org ON documents(organization_id, updated_at DESC);
@@ -153,7 +180,7 @@ DROP POLICY IF EXISTS rls_organizations_select ON organizations;
 CREATE POLICY rls_organizations_select ON organizations FOR SELECT USING (is_org_member(id));
 
 DROP POLICY IF EXISTS rls_organizations_insert ON public.organizations;
-CREATE POLICY rls_organizations_insert ON public.organizations FOR INSERT TO authenticated WITH CHECK (true);
+-- Kein INSERT-Policy: Kanzleien entstehen ausschließlich über create_new_organization().
 
 DROP POLICY IF EXISTS rls_organizations_update ON public.organizations;
 CREATE POLICY rls_organizations_update ON public.organizations FOR UPDATE TO authenticated USING (get_user_role(id) IN ('NOTAR', 'ADMIN')) WITH CHECK (get_user_role(id) IN ('NOTAR', 'ADMIN'));
@@ -163,10 +190,10 @@ DROP POLICY IF EXISTS rls_org_members_select ON public.organization_members;
 CREATE POLICY rls_org_members_select ON public.organization_members FOR SELECT USING (is_org_member(organization_id) OR user_id = auth.uid());
 
 DROP POLICY IF EXISTS rls_org_members_insert ON public.organization_members;
-CREATE POLICY rls_org_members_insert ON public.organization_members FOR INSERT WITH CHECK (get_user_role(organization_id) IN ('NOTAR', 'ADMIN') OR NOT EXISTS (SELECT 1 FROM public.organization_members WHERE organization_id = organization_members.organization_id));
+CREATE POLICY rls_org_members_insert ON public.organization_members FOR INSERT TO authenticated WITH CHECK (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
 
 DROP POLICY IF EXISTS rls_org_members_update ON public.organization_members;
-CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
+CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE TO authenticated USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN')) WITH CHECK (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
 
 DROP POLICY IF EXISTS rls_org_members_delete ON public.organization_members;
 CREATE POLICY rls_org_members_delete ON public.organization_members FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
@@ -183,112 +210,3 @@ CREATE POLICY rls_audit_logs_select ON audit_logs FOR SELECT USING (is_org_membe
 
 DROP POLICY IF EXISTS rls_audit_logs_insert ON audit_logs;
 CREATE POLICY rls_audit_logs_insert ON audit_logs FOR INSERT WITH CHECK (is_org_member(organization_id));
-
--- 10. Kanonischer 1-Klick Demo-Benutzer & Kanzlei Seed (§ 17 BeurkG Demo-Betrieb)
-
-DO $$
-DECLARE
-    v_demo_user_id UUID := '0232afd4-59fa-49b2-8e59-c6c5d069a678';
-    v_demo_org_id UUID := 'd0000000-0000-0000-0000-000000000001';
-BEGIN
-    -- Demo-User in auth.users anlegen falls noch nicht vorhanden
-    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'demo@notar-agent.de') THEN
-        INSERT INTO auth.users (
-            instance_id,
-            id,
-            aud,
-            role,
-            email,
-            encrypted_password,
-            email_confirmed_at,
-            raw_app_meta_data,
-            raw_user_meta_data,
-            created_at,
-            updated_at,
-            confirmation_token,
-            recovery_token,
-            email_change_token_new,
-            email_change,
-            phone_change,
-            phone_change_token,
-            reauthentication_token,
-            is_sso_user,
-            is_anonymous
-        ) VALUES (
-            '00000000-0000-0000-0000-000000000000',
-            v_demo_user_id,
-            'authenticated',
-            'authenticated',
-            'demo@notar-agent.de',
-            crypt('DemoNotariat2026!Secured', gen_salt('bf')),
-            now(),
-            '{"provider":"email","providers":["email"]}'::jsonb,
-            '{"full_name":"Dr. Alexander Muster","title":"Notar"}'::jsonb,
-            now(),
-            now(),
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            false,
-            false
-        );
-
-        INSERT INTO auth.identities (
-            id,
-            user_id,
-            identity_data,
-            provider,
-            provider_id,
-            last_sign_in_at,
-            created_at,
-            updated_at
-        ) VALUES (
-            gen_random_uuid(),
-            v_demo_user_id,
-            jsonb_build_object('sub', v_demo_user_id::text, 'email', 'demo@notar-agent.de'),
-            'email',
-            v_demo_user_id::text,
-            now(),
-            now(),
-            now()
-        );
-    END IF;
-
-    -- Demo-Kanzlei anlegen
-    INSERT INTO public.organizations (
-        id,
-        name,
-        official_seat,
-        chamber_district
-    ) VALUES (
-        v_demo_org_id,
-        'Notariat Dr. Muster & Partner',
-        'Köln',
-        'Rheinische Notarkammer'
-    )
-    ON CONFLICT (id) DO UPDATE SET
-        name = EXCLUDED.name,
-        official_seat = EXCLUDED.official_seat,
-        chamber_district = EXCLUDED.chamber_district;
-
-    -- Notar-Rolle zuweisen
-    INSERT INTO public.organization_members (
-        organization_id,
-        user_id,
-        role
-    ) VALUES (
-        v_demo_org_id,
-        v_demo_user_id,
-        'NOTAR'
-    )
-    ON CONFLICT (organization_id, user_id) DO UPDATE SET
-        role = 'NOTAR';
-
-    -- Seed-Dokumente rückstandslos bereinigen (Null-Zustand für unvoreingenommenen Test)
-    DELETE FROM public.documents WHERE id IN ('6522d86c-d506-4a7b-870e-74346202a4e4', 'feecce80-55ff-45ce-ae30-c618e1b6d8af');
-END $$;
-
