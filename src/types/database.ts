@@ -18,6 +18,7 @@ export const DB_TABLES = {
   WORKFLOW_INSTANCES: 'workflow_instances',
   DELETION_TASKS: 'deletion_tasks',
   AUDIT_ACTOR_MAP: 'audit_actor_map',
+  LLM_USAGE: 'llm_usage',
 } as const;
 
 export const DbTableSchema = z.enum([
@@ -32,6 +33,7 @@ export const DbTableSchema = z.enum([
   DB_TABLES.WORKFLOW_INSTANCES,
   DB_TABLES.DELETION_TASKS,
   DB_TABLES.AUDIT_ACTOR_MAP,
+  DB_TABLES.LLM_USAGE,
 ]);
 export type DbTable = (typeof DB_TABLES)[keyof typeof DB_TABLES];
 
@@ -408,6 +410,30 @@ export interface Database {
           last_error?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      llm_usage: {
+        Row: {
+          id: string;
+          organization_id: string;
+          job_id: string | null;
+          stage: string;
+          model: string;
+          input_tokens: number;
+          output_tokens: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          job_id?: string | null;
+          stage: string;
+          model: string;
+          input_tokens: number;
+          output_tokens: number;
+          created_at?: string;
+        };
+        Update: never;
         Relationships: [];
       };
       audit_actor_map: {

@@ -5,6 +5,7 @@ import type {
   ExtractionStageResult,
   AuditorStageParams,
 } from '@/lib/ai/pipeline';
+import { createUsageRecorder, ILlmUsageRepository } from '@/lib/ai/usage-repository';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { IJobRepository } from '@/lib/jobs/job-repository';
 import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
@@ -18,6 +19,8 @@ export interface WorkerDependencies {
   dossierRepo?: IDossierRepository;
   /** Wissensspeicher mit Sitzungskontext, damit RLS die Regeln der Kanzlei freigibt */
   knowledgeRepo?: IKnowledgeRepository;
+  /** Verbrauchserfassung; ohne Repository wird nichts erfasst */
+  usageRepo?: ILlmUsageRepository;
   pipelineFn?: (params: PipelineParams) => Promise<Dossier>;
   extractionFn?: (params: ExtractionStageParams) => Promise<ExtractionStageResult>;
   auditorFn?: (params: AuditorStageParams) => Promise<Dossier>;
@@ -126,6 +129,14 @@ async function runJobExecution(
 
   const totalFiles = job.payload.files.length;
   let stage1Output = job.payload.stage1Output;
+  const onStageUsage =
+    deps.usageRepo && (job.organizationId || job.payload.organizationId)
+      ? createUsageRecorder(
+          deps.usageRepo,
+          (job.organizationId || job.payload.organizationId) as string,
+          jobId
+        )
+      : undefined;
   const orgId = job.organizationId || job.payload.organizationId;
 
   // Job auf PROCESSING setzen mit aktuellem Lease-Lock.
@@ -247,6 +258,7 @@ async function runJobExecution(
           model: aiConfig.model,
           extractionInstructions: aiConfig.extractionInstructions,
           onStep: handleStepUpdate,
+          onStageUsage,
         });
 
         stage1Output = extractionResult.parsedExtractionRaw;
@@ -283,6 +295,7 @@ async function runJobExecution(
         model: aiConfig.model,
         auditorInstructions: aiConfig.auditorInstructions,
         onStep: handleStepUpdate,
+        onStageUsage,
       });
     }
 

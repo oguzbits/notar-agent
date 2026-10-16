@@ -21,6 +21,7 @@ import {
   OverallStatus,
   UploadedFilePayload,
 } from '@/types/dossier';
+import { LLM_USAGE_STAGES, StageUsageHandler } from '@/types/llm-usage';
 import { ExtractionStageOutputSchema } from '@/types/pipeline';
 import { WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
@@ -45,6 +46,7 @@ export interface PipelineParams {
   auditorInstructions: SystemModelMessage;
   onStep: (step: number, stepDetail: string) => void;
   onUsage?: (usage: PipelineTokenUsage) => void;
+  onStageUsage?: StageUsageHandler;
   onTrace?: (trace: import('@/types/pipeline').PipelineTraceArtifacts) => void;
   knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
 }
@@ -114,6 +116,7 @@ export interface ExtractionStageParams {
   extractionInstructions: SystemModelMessage;
   onStep: (step: number, stepDetail: string) => void;
   onUsage?: (usage: PipelineTokenUsage) => void;
+  onStageUsage?: StageUsageHandler;
 }
 
 export interface ExtractionStageResult {
@@ -127,7 +130,14 @@ export interface ExtractionStageResult {
 
 export interface AuditorStageParams extends Pick<
   PipelineParams,
-  'caseType' | 'model' | 'auditorInstructions' | 'onStep' | 'onUsage' | 'onTrace' | 'knowledgeRepo'
+  | 'caseType'
+  | 'model'
+  | 'auditorInstructions'
+  | 'onStep'
+  | 'onUsage'
+  | 'onStageUsage'
+  | 'onTrace'
+  | 'knowledgeRepo'
 > {
   stage1Output: Record<string, unknown>;
   notes?: string;
@@ -156,6 +166,7 @@ export async function runExtractionStage(
     extractionInstructions,
     onStep,
     onUsage,
+    onStageUsage,
   } = params;
 
   let totalPromptTokens = 0;
@@ -181,7 +192,7 @@ export async function runExtractionStage(
   });
 
   const extractionResult = await timed(
-    { event: 'pipeline_stage', stage: 'extraktion', model: modelIdOf(model) },
+    { event: 'pipeline_stage', stage: LLM_USAGE_STAGES.EXTRACTION, model: modelIdOf(model) },
     () =>
       generateText({
         model,
@@ -199,6 +210,12 @@ export async function runExtractionStage(
   if (extractionResult.usage) {
     totalPromptTokens += extractionResult.usage.inputTokens || 0;
     totalCompletionTokens += extractionResult.usage.outputTokens || 0;
+    onStageUsage?.({
+      stage: LLM_USAGE_STAGES.EXTRACTION,
+      model: modelIdOf(model),
+      inputTokens: extractionResult.usage.inputTokens || 0,
+      outputTokens: extractionResult.usage.outputTokens || 0,
+    });
   }
 
   const extractionTextResult = extractionResult.text;
@@ -248,6 +265,12 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
       if (repairedResult.usage) {
         totalPromptTokens += repairedResult.usage.inputTokens || 0;
         totalCompletionTokens += repairedResult.usage.outputTokens || 0;
+        onStageUsage?.({
+          stage: LLM_USAGE_STAGES.EXTRACTION,
+          model: modelIdOf(model),
+          inputTokens: repairedResult.usage.inputTokens || 0,
+          outputTokens: repairedResult.usage.outputTokens || 0,
+        });
       }
 
       const repairedJson = cleanAndParseJson<Record<string, unknown>>(repairedResult.text);
@@ -260,7 +283,7 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
       logEvent({
         level: 'warn',
         event: 'reflexion_fehlgeschlagen',
-        stage: 'extraktion',
+        stage: LLM_USAGE_STAGES.EXTRACTION,
         errorClass: errorClassOf(reflectionErr),
       });
     }
@@ -332,6 +355,7 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
     auditorInstructions,
     onStep,
     onUsage,
+    onStageUsage,
     onTrace,
     knowledgeRepo: passedKnowledgeRepo,
     initialUsage,
@@ -412,7 +436,12 @@ Führe nun die notarielle Endkontrolle, Plausibilisierung und rechtliche Prüfun
 Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconciled Full Dossier oder im Delta-Format unter 'modifications').`;
 
   const auditorResult = await timed(
-    { event: 'pipeline_stage', stage: 'pruefung', model: modelIdOf(model), organizationId },
+    {
+      event: 'pipeline_stage',
+      stage: LLM_USAGE_STAGES.AUDIT,
+      model: modelIdOf(model),
+      organizationId,
+    },
     () =>
       generateText({
         model,
@@ -425,6 +454,12 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
   if (auditorResult.usage) {
     totalPromptTokens += auditorResult.usage.inputTokens || 0;
     totalCompletionTokens += auditorResult.usage.outputTokens || 0;
+    onStageUsage?.({
+      stage: LLM_USAGE_STAGES.AUDIT,
+      model: modelIdOf(model),
+      inputTokens: auditorResult.usage.inputTokens || 0,
+      outputTokens: auditorResult.usage.outputTokens || 0,
+    });
   }
 
   if (onUsage) {

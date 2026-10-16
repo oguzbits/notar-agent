@@ -403,3 +403,43 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
 
 REVOKE ALL ON FUNCTION list_retention_expired_dossiers(INT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION list_retention_expired_dossiers(INT) TO service_role;
+
+
+-- ============================================================================
+-- Verbrauchserfassung: Tokens je Modellaufruf, Preise als Daten, Kosten per View
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS llm_usage (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    job_id TEXT,
+    stage TEXT NOT NULL CHECK (stage IN ('extraktion', 'pruefung')),
+    model TEXT NOT NULL,
+    input_tokens INT NOT NULL CHECK (input_tokens >= 0),
+    output_tokens INT NOT NULL CHECK (output_tokens >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_llm_usage_org_created ON llm_usage(organization_id, created_at);
+ALTER TABLE llm_usage ENABLE ROW LEVEL SECURITY;
+-- Append-only: nur Lesen und Einfügen für Mitglieder der Kanzlei, kein UPDATE/DELETE
+DROP POLICY IF EXISTS rls_llm_usage_select ON llm_usage;
+CREATE POLICY rls_llm_usage_select ON llm_usage FOR SELECT USING (is_org_member(organization_id));
+DROP POLICY IF EXISTS rls_llm_usage_insert ON llm_usage;
+CREATE POLICY rls_llm_usage_insert ON llm_usage FOR INSERT WITH CHECK (is_org_member(organization_id));
+
+-- Preise je Million Token in USD; gepflegt als Daten (ohne Eintrag bleibt der Betrag NULL).
+CREATE TABLE IF NOT EXISTS model_prices (
+    model TEXT PRIMARY KEY,
+    input_usd_per_mtok NUMERIC NOT NULL CHECK (input_usd_per_mtok >= 0),
+    output_usd_per_mtok NUMERIC NOT NULL CHECK (output_usd_per_mtok >= 0),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE model_prices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS rls_model_prices_select ON model_prices;
+CREATE POLICY rls_model_prices_select ON model_prices FOR SELECT TO authenticated USING (true);
+
+CREATE OR REPLACE VIEW llm_usage_costs WITH (security_invoker = true) AS
+SELECT u.*,
+       (u.input_tokens * p.input_usd_per_mtok + u.output_tokens * p.output_usd_per_mtok) / 1000000 AS cost_usd
+FROM llm_usage u
+LEFT JOIN model_prices p ON p.model = u.model;

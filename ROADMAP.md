@@ -97,7 +97,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] Sentry-Konto in der EU-Region anlegen, `SENTRY_DSN` und `NEXT_PUBLIC_SENTRY_DSN` setzen; Auftragsverarbeitungsvertrag mit Sentry klären
   - [ ] Log-Ausgabe der Hosting-Plattform prüfen und `/api/health` an einen Uptime-Dienst anbinden
   - [ ] Übrige `console.*`-Aufrufe in `src/lib/ai/` und `src/lib/files/` (Parser, Merger, Dateityp-Erkennung) auf `logFailure` umstellen; sie können Fehlertexte mit Fallinhalt enthalten
-  - [ ] Zyklus 2: Token-Verbrauch und Kosten je Kanzlei aus `result.usage` erfassen und in PostgreSQL ablegen
+  - [ ] Preise für `model_prices` aus der offiziellen Anthropic-Preisliste eintragen (Haiku 5.5 hat eine Stufe ab 100k Prompt-Token, die die View noch nicht abbildet); Migration live einspielen
 - [ ] **C.5 XJustiz / XNP Schnittstellen:**
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
 - [ ] **C.6 Enterprise Styling Grundattribute & Design Tokens:**

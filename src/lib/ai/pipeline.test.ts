@@ -1,5 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
+import { LLM_USAGE_STAGES } from '@/types/llm-usage';
 import { runAnalysisPipeline } from './pipeline';
 
 // Mock Supabase Server Knowledge Repository
@@ -115,7 +116,10 @@ describe('runAnalysisPipeline', () => {
       });
       await runAnalysisPipeline(baseParams);
       const lines = stageLines(info);
-      expect(lines.map((l) => l.stage)).toEqual(['extraktion', 'pruefung']);
+      expect(lines.map((l) => l.stage)).toEqual([
+        LLM_USAGE_STAGES.EXTRACTION,
+        LLM_USAGE_STAGES.AUDIT,
+      ]);
       expect(lines.every((l) => l.outcome === 'ok' && l.durationMs >= 0)).toBe(true);
     });
 
@@ -126,11 +130,53 @@ describe('runAnalysisPipeline', () => {
       const lines = stageLines(error);
       expect(lines).toHaveLength(1);
       expect(lines[0]).toMatchObject({
-        stage: 'extraktion',
+        stage: LLM_USAGE_STAGES.EXTRACTION,
         outcome: 'fehler',
         errorClass: 'TypeError',
       });
       expect(JSON.stringify(error.mock.calls)).not.toContain('Müller');
     });
+  });
+
+  it('meldet den Verbrauch je Modellaufruf (Extraktion und Prüfung)', async () => {
+    const valid = {
+      caseTitle: 'T',
+      overallStatus: OVERALL_STATUS.READY,
+      fields: {},
+      detectedDocuments: [],
+    };
+    mockGenerateText
+      .mockResolvedValueOnce({
+        text: JSON.stringify(valid),
+        usage: { inputTokens: 100, outputTokens: 20 },
+      })
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          overallStatus: OVERALL_STATUS.READY,
+          fields: {},
+          reconciliationAuditTrail: [],
+        }),
+        usage: { inputTokens: 300, outputTokens: 40 },
+      });
+    const calls: unknown[] = [];
+    await runAnalysisPipeline({
+      files: [],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notes: '',
+      model: 'test-modell',
+      extractionInstructions: { role: 'system', content: 'Extract' },
+      auditorInstructions: { role: 'system', content: 'Audit' },
+      onStep: () => {},
+      onStageUsage: (u) => calls.push(u),
+    });
+    expect(calls).toEqual([
+      {
+        stage: LLM_USAGE_STAGES.EXTRACTION,
+        model: 'test-modell',
+        inputTokens: 100,
+        outputTokens: 20,
+      },
+      { stage: LLM_USAGE_STAGES.AUDIT, model: 'test-modell', inputTokens: 300, outputTokens: 40 },
+    ]);
   });
 });

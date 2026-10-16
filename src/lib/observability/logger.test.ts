@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LLM_USAGE_STAGES } from '@/types/llm-usage';
 import { LogEventSchema } from '@/types/observability';
 import { errorClassOf, logEvent, logFailure, timed } from './logger';
 
@@ -24,10 +25,10 @@ describe('timed', () => {
   it('loggt Dauer und ok bei Erfolg', async () => {
     const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
     await expect(
-      timed({ event: 'pipeline_stage', stage: 'extraktion' }, async () => 7)
+      timed({ event: 'pipeline_stage', stage: LLM_USAGE_STAGES.EXTRACTION }, async () => 7)
     ).resolves.toBe(7);
     const line = JSON.parse(String(spy.mock.calls[0]?.[0]));
-    expect(line).toMatchObject({ outcome: 'ok', stage: 'extraktion' });
+    expect(line).toMatchObject({ outcome: 'ok', stage: LLM_USAGE_STAGES.EXTRACTION });
     expect(line.durationMs).toBeGreaterThanOrEqual(0);
   });
 

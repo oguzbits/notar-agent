@@ -3,6 +3,7 @@ import { fromError } from 'zod-validation-error';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
+import { createUsageRecorder } from '@/lib/ai/usage-repository';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { hasFieldStatusChange } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
@@ -13,6 +14,7 @@ import {
   getDossierRepository,
   getJobRepository,
   getKnowledgeRepository,
+  getLlmUsageRepository,
   getUniformCaseTitle,
   getWorkflowRepository,
 } from '@/lib/supabase/server';
@@ -82,6 +84,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         jobRepo,
         dossierRepo,
         knowledgeRepo: getKnowledgeRepository(authSupabase),
+        usageRepo: getLlmUsageRepository(authSupabase),
       };
 
       // Starte Hintergrund-Worker entkoppelt und serverless-sicher via Next.js after()
@@ -114,6 +117,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         existingDossier,
         organizationId: resolvedOrgId,
         knowledgeRepo: getKnowledgeRepository(authSupabase),
+        onStageUsage: createUsageRecorder(getLlmUsageRepository(authSupabase), resolvedOrgId),
         model: aiConfig.model,
         extractionInstructions: aiConfig.extractionInstructions,
         auditorInstructions: aiConfig.auditorInstructions,

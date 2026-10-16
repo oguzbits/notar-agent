@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateEnv } from '@/env';
+import { ILlmUsageRepository, SupabaseLlmUsageRepository } from '@/lib/ai/usage-repository';
 import { IAuditRepository, SupabaseAuditRepository } from '@/lib/audit/audit-repository';
 import { IJobRepository, SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import {
@@ -72,6 +73,12 @@ export function getDossierRepository(client?: SupabaseClient<Database> | null): 
 export function getJobRepository(client?: SupabaseClient<Database> | null): IJobRepository {
   const supabase = client ?? getServerSupabase();
   return new SupabaseJobRepository(supabase);
+}
+
+export function getLlmUsageRepository(
+  client?: SupabaseClient<Database> | null
+): ILlmUsageRepository {
+  return new SupabaseLlmUsageRepository(client ?? getServerSupabase());
 }
 
 /**
