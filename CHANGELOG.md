@@ -32,6 +32,7 @@
 | **Additions** | Modul 16 Hybrid Gemini Ingestion & Parser  | [x] Abgeschlossen | Gemini Vision Parser (`gemini-3.1-flash-lite`) für bit- und tabellengenaue Transkription mit nativem Stream-Fallback                   |
 | **Additions** | Modul 17 LiteParse-Sunset & Single-Pass    | [x] Abgeschlossen | Vollständige Deinstallation von `@llamaindex/liteparse` (-33 MB), Bereinigung der doppelten PDF-Ingestion in `payload-assembler`       |
 | **Additions** | Modul 18 Mandantenisolation & RLS Cleanup  | [x] Abgeschlossen | Session-basierte Kanzleiauflösung in Vorgangs-API & React Query, Bereinigung von Prototyp-RLS-Policies, strikte Isolation Demo vs. SSO |
+| **Additions** | Modul 19 Observability (Zyklus 1)          | [x] Abgeschlossen | Strukturierte Pipeline-Logs (`logEvent`/`timed`), Sentry EU mit Allowlist-Scrubber (nur mit DSN), öffentlicher `GET /api/health`       |
 
 ---
 

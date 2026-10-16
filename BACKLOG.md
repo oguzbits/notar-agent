@@ -94,18 +94,12 @@ graph LR
    - Offizielles `@sentry/nextjs` SDK für Backend-API-Routen und Client-Fehler.
    - **Strikte § 203 StGB / Zero-PII Konfiguration:** Client- und Server-Filter (`beforeSend`), die Dateiinhalte, Klarnamen und sensible Parameter restlos unkenntlich machen, bevor Exceptions übertragen werden.
    - Sofortige Alerts bei echten Runtime-Crashes oder API-Timeouts.
-2. **LLM-Telemetrie via Vercel AI SDK Standard:**
-   - Nutzung der integrierten OpenTelemetry-Hooks des Vercel AI SDK (`experimental_telemetry`).
-   - Strukturierte JSON-Logs für jeden Pipeline-Lauf (Dauer, Token-Verbrauch, Modelltyp, Stage) direkt im Plattform-Logstream – ganz ohne zusätzlichen Serverbetrieb.
-3. **Health-Check & Uptime-Monitoring:**
-   - Schlanke Route `/api/health` zur Prüfung der Verfügbarkeit von Supabase (DB-Ping) und API-Konfiguration für externe Uptime-Checks (z. B. Better Uptime / Uptime Kuma).
+2. **LLM-Telemetrie:** Strukturierte JSON-Logs je Pipeline-Stufe sind umgesetzt (siehe [CHANGELOG.md](./CHANGELOG.md)). Der OpenTelemetry-Export des AI SDK entfällt; Token-Verbrauch und Kosten folgen in Zyklus 2 (siehe [ROADMAP.md](./ROADMAP.md), C.8).
+3. **Health-Check:** `GET /api/health` ist umgesetzt.
 
 ### Geplante Aufgaben
 
-- [ ] `@sentry/nextjs` Integration mit EU-Endpunkt
-- [ ] PII-Scrubber in `sentry.server.config.ts` zur Absicherung des Berufsgeheimnisses
-- [ ] Aktivierung der Vercel AI SDK Telemetrie in `pipeline.ts`
-- [ ] Health-Check Endpunkt `/api/health` mit DB-Ping
+- Offene Inbetriebnahme-Schritte (Sentry-Konto, DSN, AVV, Uptime-Dienst) stehen in [ROADMAP.md](./ROADMAP.md) unter C.8.
 
 ---
 

@@ -126,6 +126,17 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 
 ---
 
+### 1.9 Observability: Fehler, Laufzeiten, Erreichbarkeit ([`src/lib/observability/`](../src/lib/observability/), [`src/app/api/health/`](../src/app/api/health/))
+
+Grundsatz: Es verlässt nie ein Fallinhalt den Server (Berufsgeheimnis). Deshalb gilt überall eine Allowlist statt einer Denylist.
+
+- **Strukturierte Logs:** `logEvent`, `timed` und `logFailure` schreiben eine JSON-Zeile je Ereignis. Das Format ist durch `LogEventSchema` ([`src/types/observability.ts`](../src/types/observability.ts)) festgelegt: Ereignis, Stufe, Dauer, Modell, Job- und Kanzlei-ID, Ergebnis und Fehlerklasse. Freitext und Fehlertexte sind nicht vorgesehen. Die Analyse-Pipeline misst jede Stufe (`extraktion`, `pruefung`) mit `timed`.
+- **Fehler-Tracking:** Sentry in der EU-Region (Frankfurt) wird nur initialisiert, wenn `SENTRY_DSN` (Server) bzw. `NEXT_PUBLIC_SENTRY_DSN` (Browser) gesetzt ist. `buildSentryOptions` verlangt einen DSN auf `*.ingest.de.sentry.io`, schaltet über `dataCollection` alle Inhaltsfelder ab und setzt `scrubEvent` als `beforeSend`. Das Ereignis behält nur Fehlertyp, Stacktrace ohne Variablen, Route ohne Query sowie `job_id` und `organization_id`. Breadcrumbs werden verworfen.
+- **Health:** `GET /api/health` ist öffentlich und fragt mit dem anonymen Schlüssel eine RLS-geschützte Tabelle ab. Die Antwort ist nur `ok` (200) oder `fehler` (503).
+- **Bewusst nicht enthalten:** Der OpenTelemetry-Export des AI SDK (`@ai-sdk/otel`) entfällt, weil er mit der Sentry-Integration doppelte Spans erzeugt. Token- und Kostenerfassung entstehen in einem eigenen Zyklus aus `result.usage`.
+
+---
+
 ## 2. Das Agentic Software Engineering Setup
 
 Notar Agent wird konsequent nach dem Prinzip des **Agentic Software Engineering** entwickelt: Autonome KI-Entwicklungsagenten operieren innerhalb eines rigiden Leitplankensystems aus Systemregeln, Safety-Hooks, Skills und deterministischen Quality Gates.
