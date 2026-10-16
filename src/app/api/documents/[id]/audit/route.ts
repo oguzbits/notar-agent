@@ -28,7 +28,7 @@ export async function GET(
 
     const auditRepo = getAuditRepository(authSupabase);
     const history = await auditRepo.getHistory(id, orgId);
-    const integrity = await auditRepo.verifyIntegrity(id, orgId);
+    const integrity = await auditRepo.verifyIntegrity(id);
 
     return NextResponse.json({
       documentId: id,

@@ -221,7 +221,7 @@ export function createMockAuditRepository(): IAuditRepository {
       const sequenceNumber = history.length;
       const lastEntry = sequenceNumber > 0 ? history[sequenceNumber - 1] : undefined;
       const previousHash = lastEntry ? lastEntry.currentHash : GENESIS_HASH;
-      const timestamp = params.timestamp || new Date().toISOString();
+      const timestamp = new Date().toISOString();
       const details = params.details || {};
 
       const currentHash = calculateAuditRecordHash({

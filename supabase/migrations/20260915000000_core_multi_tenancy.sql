@@ -100,20 +100,119 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE RESTRICT,
     document_id TEXT NOT NULL,
-    sequence_number BIGINT NOT NULL,
+    -- Kettenfelder setzt ausschließlich der Trigger trg_audit_logs_chain; Clientwerte werden überschrieben.
+    sequence_number BIGINT NOT NULL DEFAULT 0,
     action TEXT NOT NULL,
-    "timestamp" TIMESTAMPTZ NOT NULL,
+    "timestamp" TIMESTAMPTZ NOT NULL DEFAULT now(),
     actor TEXT NOT NULL,
-    previous_hash VARCHAR NOT NULL,
-    current_hash VARCHAR NOT NULL,
+    actor_id UUID,
+    previous_hash VARCHAR NOT NULL DEFAULT '',
+    current_hash VARCHAR NOT NULL DEFAULT '',
     details JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
 -- Hash-Kette je Akte: eine Sequenznummer darf nur einmal vergeben werden (verhindert Gabelungen)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_audit_logs_doc_seq ON audit_logs(document_id, sequence_number);
+
+-- Hash eines Audit-Eintrags: SHA-256 über die kanonische jsonb-Darstellung (Schlüsselreihenfolge ist in
+-- PostgreSQL deterministisch). Schreiben und Prüfen nutzen dieselbe Funktion.
+CREATE OR REPLACE FUNCTION audit_record_hash(
+    p_document_id TEXT, p_sequence BIGINT, p_action TEXT, p_timestamp TIMESTAMPTZ,
+    p_actor TEXT, p_actor_id UUID, p_previous_hash TEXT, p_details JSONB
+) RETURNS TEXT AS $$
+    SELECT encode(sha256(convert_to(jsonb_build_object(
+        'documentId', p_document_id,
+        'sequenceNumber', p_sequence,
+        'action', p_action,
+        'timestamp', to_char(p_timestamp AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+        'actor', p_actor,
+        'actorId', p_actor_id,
+        'previousHash', p_previous_hash,
+        'details', p_details
+    )::text, 'UTF8')), 'hex');
+$$ LANGUAGE sql IMMUTABLE SET search_path = public, pg_temp;
+
+-- Verkettung serverseitig: Sequenz, Vorgänger-Hash, Zeitstempel, Akteur-ID und Hash kommen aus der Datenbank.
+-- Der Advisory-Lock je Akte serialisiert parallele Einträge (keine Lücken, keine Gabelungen).
+CREATE OR REPLACE FUNCTION audit_logs_chain() RETURNS TRIGGER AS $$
+DECLARE
+    v_sequence BIGINT;
+    v_previous TEXT;
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtextextended(NEW.document_id, 0));
+
+    SELECT sequence_number + 1, current_hash INTO v_sequence, v_previous
+    FROM audit_logs WHERE document_id = NEW.document_id
+    ORDER BY sequence_number DESC LIMIT 1;
+
+    IF NOT FOUND THEN
+        v_sequence := 0;
+        v_previous := repeat('0', 64);
+    END IF;
+
+    NEW.sequence_number := v_sequence;
+    NEW.previous_hash := v_previous;
+    NEW."timestamp" := now();
+    NEW.actor_id := auth.uid();
+    NEW.current_hash := audit_record_hash(
+        NEW.document_id, NEW.sequence_number, NEW.action, NEW."timestamp",
+        NEW.actor, NEW.actor_id, NEW.previous_hash, NEW.details
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_audit_logs_chain ON audit_logs;
+CREATE TRIGGER trg_audit_logs_chain BEFORE INSERT ON audit_logs
+    FOR EACH ROW EXECUTE FUNCTION audit_logs_chain();
+
+-- Append-only: Ändern, Löschen und Leeren sind für alle Rollen gesperrt (auch für das Servicekonto).
+CREATE OR REPLACE FUNCTION audit_logs_block_mutation() RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'audit_logs ist append-only' USING ERRCODE = '42501';
+END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_audit_logs_immutable ON audit_logs;
+CREATE TRIGGER trg_audit_logs_immutable BEFORE UPDATE OR DELETE ON audit_logs
+    FOR EACH ROW EXECUTE FUNCTION audit_logs_block_mutation();
+DROP TRIGGER IF EXISTS trg_audit_logs_no_truncate ON audit_logs;
+CREATE TRIGGER trg_audit_logs_no_truncate BEFORE TRUNCATE ON audit_logs
+    FOR EACH STATEMENT EXECUTE FUNCTION audit_logs_block_mutation();
+
+-- Prüft die Kette einer Akte (unter den Rechten des Aufrufers, also nur sichtbare Zeilen).
+CREATE OR REPLACE FUNCTION verify_audit_chain(p_document_id TEXT) RETURNS JSONB AS $$
+DECLARE
+    r audit_logs;
+    v_index BIGINT := 0;
+    v_previous TEXT := repeat('0', 64);
+BEGIN
+    FOR r IN SELECT * FROM audit_logs WHERE document_id = p_document_id ORDER BY sequence_number LOOP
+        IF r.sequence_number <> v_index THEN
+            RETURN jsonb_build_object('valid', false, 'totalEntries', v_index, 'brokenSequenceIndex', v_index,
+                'error', format('Invalide Sequenz: Erwartet %s, erhalten %s.', v_index, r.sequence_number));
+        END IF;
+        IF r.previous_hash <> v_previous THEN
+            RETURN jsonb_build_object('valid', false, 'totalEntries', v_index, 'brokenSequenceIndex', v_index,
+                'error', format('Kettenbruch bei Index %s: previousHash stimmt nicht überein.', v_index));
+        END IF;
+        IF r.current_hash <> audit_record_hash(r.document_id, r.sequence_number, r.action, r."timestamp",
+                r.actor, r.actor_id, r.previous_hash, r.details) THEN
+            RETURN jsonb_build_object('valid', false, 'totalEntries', v_index, 'brokenSequenceIndex', v_index,
+                'error', format('Datenmanipulation bei Index %s festgestellt: Hash weicht vom Nutzdateninhalt ab.', v_index));
+        END IF;
+        v_previous := r.current_hash;
+        v_index := v_index + 1;
+    END LOOP;
+    RETURN jsonb_build_object('valid', true, 'totalEntries', v_index);
+END;
+$$ LANGUAGE plpgsql STABLE SET search_path = public, pg_temp;
+
+REVOKE EXECUTE ON FUNCTION verify_audit_chain(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION verify_audit_chain(TEXT) TO authenticated;
 
 -- 6. Helper-Funktionen zur Bestimmung von Mitgliedschaft und Rolle
 CREATE OR REPLACE FUNCTION get_user_role(org_id UUID)

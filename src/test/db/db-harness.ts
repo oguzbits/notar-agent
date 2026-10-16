@@ -34,6 +34,27 @@ export interface TestUser {
   client: SupabaseClient;
 }
 
+/** Führt SQL als Datenbank-Superuser im lokalen Supabase-Container aus (z. B. um Manipulationen zu simulieren). */
+export function runPrivilegedSql(sql: string): void {
+  execFileSync(
+    'docker',
+    [
+      'exec',
+      'supabase_db_notar-partner-prototyp-copy',
+      'psql',
+      '-U',
+      'postgres',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-c',
+      sql,
+    ],
+    {
+      stdio: 'pipe',
+    }
+  );
+}
+
 export interface DbHarness {
   admin: SupabaseClient;
   anon: SupabaseClient;

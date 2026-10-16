@@ -205,6 +205,7 @@ export interface Database {
           action: AuditAction;
           timestamp: string;
           actor: string;
+          actor_id: string | null;
           previous_hash: string;
           current_hash: string;
           details: AuditLogDetails;
@@ -213,12 +214,12 @@ export interface Database {
           id?: string;
           organization_id?: string | null;
           document_id: string;
-          sequence_number: number;
+          sequence_number?: number;
           action: AuditAction;
-          timestamp: string;
+          timestamp?: string;
           actor: string;
-          previous_hash: string;
-          current_hash: string;
+          previous_hash?: string;
+          current_hash?: string;
           details?: AuditLogDetails;
         };
         Update: {
@@ -387,6 +388,10 @@ export interface Database {
           p_chamber_district: string;
         };
         Returns: Database['public']['Tables']['organizations']['Row'];
+      };
+      verify_audit_chain: {
+        Args: { p_document_id: string };
+        Returns: Json;
       };
       match_knowledge_documents: {
         Args: {

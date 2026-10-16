@@ -9,6 +9,10 @@ function createErrorMockSupabase(errorMessage: string) {
     eq() {
       return queryBuilder;
     },
+    insert() {
+      return queryBuilder;
+    },
+    single: async () => ({ data: null, error: { message: errorMessage } }),
     order() {
       return {
         limit: async () => ({ data: null, error: { message: errorMessage } }),
@@ -37,7 +41,7 @@ describe('SupabaseAuditRepository (Fail-Fast & SSOT)', () => {
         action: AUDIT_ACTIONS.DOCUMENT_INGESTED,
         actor: 'Tester',
       })
-    ).rejects.toThrow('Supabase audit fetch error: relation does not exist');
+    ).rejects.toThrow('Supabase audit insert error: relation does not exist');
   });
 
   it('throws an error when Supabase fails to fetch history', async () => {

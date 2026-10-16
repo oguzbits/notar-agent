@@ -310,11 +310,6 @@
       "count": 1
     }
   },
-  "src/lib/audit/audit-repository.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/lib/dossier/defaults.ts": {
     "max-lines-per-function": {
       "count": 1

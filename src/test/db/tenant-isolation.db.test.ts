@@ -240,11 +240,6 @@ describe('Audit-Trail', () => {
     expect(res.error).toBeNull();
   });
 
-  it('Dieselbe Sequenznummer ist je Akte nicht ein zweites Mal vergebbar', async () => {
-    const res = await owner.client.from(DB_TABLES.AUDIT_LOGS).insert(entry(1));
-    expect(res.error).not.toBeNull();
-  });
-
   it('Ohne Anmeldung ist kein Audit-Eintrag möglich', async () => {
     const res = await anon.from(DB_TABLES.AUDIT_LOGS).insert(entry(2));
     expect(res.error).not.toBeNull();

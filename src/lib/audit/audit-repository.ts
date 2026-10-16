@@ -1,7 +1,14 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { AuditAction, AuditIntegrityResult, AuditLogDetails, AuditLogEntry } from '@/types/audit';
-import { DB_TABLES, Database, TableInsert } from '@/types/database';
-import { calculateAuditRecordHash, GENESIS_HASH, verifyAuditChain } from './audit-crypto';
+import {
+  AuditAction,
+  AuditIntegrityResult,
+  AuditIntegrityResultSchema,
+  AuditLogDetails,
+  AuditLogEntry,
+} from '@/types/audit';
+import { DB_TABLES, Database, TableRow } from '@/types/database';
+
+type Row = TableRow<typeof DB_TABLES.AUDIT_LOGS>;
 
 export interface AppendAuditParams {
   documentId: string;
@@ -9,13 +16,12 @@ export interface AppendAuditParams {
   action: AuditAction;
   actor: string;
   details?: AuditLogDetails;
-  timestamp?: string;
 }
 
 export interface IAuditRepository {
   appendEvent(params: AppendAuditParams): Promise<AuditLogEntry>;
   getHistory(documentId: string, organizationId?: string): Promise<AuditLogEntry[]>;
-  verifyIntegrity(documentId: string, organizationId?: string): Promise<AuditIntegrityResult>;
+  verifyIntegrity(documentId: string): Promise<AuditIntegrityResult>;
 }
 
 /**
@@ -26,72 +32,25 @@ export class SupabaseAuditRepository implements IAuditRepository {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   async appendEvent(params: AppendAuditParams): Promise<AuditLogEntry> {
-    // 1. Letzten Eintrag abfragen zur Ermittlung von previousHash & sequenceNumber
-    const { data: latestRecords, error: fetchErr } = await this.supabase
+    // Sequenz, Hash, Zeitstempel und Akteur-ID setzt die Datenbank (Trigger trg_audit_logs_chain).
+    const { data, error } = await this.supabase
       .from(DB_TABLES.AUDIT_LOGS)
-      .select('*')
-      .eq('document_id', params.documentId)
-      .order('sequence_number', { ascending: false })
-      .limit(1);
-
-    if (fetchErr) {
-      throw new Error(`Supabase audit fetch error: ${fetchErr.message}`);
-    }
-
-    const lastRow = Array.isArray(latestRecords) && latestRecords[0] ? latestRecords[0] : null;
-    const sequenceNumber = lastRow ? Number(lastRow.sequence_number) + 1 : 0;
-    const previousHash = lastRow ? String(lastRow.current_hash) : GENESIS_HASH;
-    const timestamp = params.timestamp || new Date().toISOString();
-    const details = params.details || {};
-
-    // 2. SHA-256 Hash berechnen
-    const currentHash = calculateAuditRecordHash({
-      documentId: params.documentId,
-      sequenceNumber,
-      action: params.action,
-      timestamp,
-      actor: params.actor,
-      previousHash,
-      details,
-    });
-
-    // 3. Atomar in Supabase persistieren
-    const insertPayload: TableInsert<typeof DB_TABLES.AUDIT_LOGS> = {
-      document_id: params.documentId,
-      sequence_number: sequenceNumber,
-      action: params.action,
-      timestamp,
-      actor: params.actor,
-      previous_hash: previousHash,
-      current_hash: currentHash,
-      details,
-      organization_id: params.organizationId ?? null,
-    };
-
-    const { data: inserted, error: insertErr } = await this.supabase
-      .from(DB_TABLES.AUDIT_LOGS)
-      .insert(insertPayload)
+      .insert({
+        document_id: params.documentId,
+        organization_id: params.organizationId ?? null,
+        action: params.action,
+        actor: params.actor,
+        details: params.details ?? {},
+      })
       .select('*')
       .single();
 
-    if (insertErr || !inserted) {
+    if (error || !data) {
       throw new Error(
-        `Supabase audit insert error: ${insertErr?.message || 'Kein Datensatz zurückgegeben'}`
+        `Supabase audit insert error: ${error?.message || 'Kein Datensatz zurückgegeben'}`
       );
     }
-
-    return {
-      id: inserted.id,
-      organizationId: inserted.organization_id,
-      documentId: inserted.document_id,
-      sequenceNumber: inserted.sequence_number,
-      action: inserted.action,
-      timestamp: inserted.timestamp,
-      actor: inserted.actor,
-      previousHash: inserted.previous_hash,
-      currentHash: inserted.current_hash,
-      details: inserted.details || {},
-    };
+    return toEntry(data);
   }
 
   async getHistory(documentId: string, organizationId?: string): Promise<AuditLogEntry[]> {
@@ -111,25 +70,31 @@ export class SupabaseAuditRepository implements IAuditRepository {
       return [];
     }
 
-    return data.map((row) => ({
-      id: row.id,
-      organizationId: row.organization_id,
-      documentId: row.document_id,
-      sequenceNumber: row.sequence_number,
-      action: row.action,
-      timestamp: row.timestamp,
-      actor: row.actor,
-      previousHash: row.previous_hash,
-      currentHash: row.current_hash,
-      details: row.details || {},
-    }));
+    return data.map(toEntry);
   }
 
-  async verifyIntegrity(
-    documentId: string,
-    organizationId?: string
-  ): Promise<AuditIntegrityResult> {
-    const list = await this.getHistory(documentId, organizationId);
-    return verifyAuditChain(list);
+  async verifyIntegrity(documentId: string): Promise<AuditIntegrityResult> {
+    const { data, error } = await this.supabase.rpc('verify_audit_chain', {
+      p_document_id: documentId,
+    });
+    if (error) {
+      throw new Error(`Supabase verifyIntegrity error: ${error.message}`);
+    }
+    return AuditIntegrityResultSchema.parse(data);
   }
+}
+
+function toEntry(row: Row): AuditLogEntry {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    documentId: row.document_id,
+    sequenceNumber: row.sequence_number,
+    action: row.action,
+    timestamp: row.timestamp,
+    actor: row.actor,
+    previousHash: row.previous_hash,
+    currentHash: row.current_hash,
+    details: row.details || {},
+  };
 }

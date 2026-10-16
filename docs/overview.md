@@ -76,7 +76,7 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 ### 1.5 Revisionssicherer Audit-Trail (§ 17 BeurkG) ([`src/lib/audit/`](../src/lib/audit/))
 
 - Jede Statusänderung, Freigabe oder manuelle Übersteuerung wird im `audit_logs`-Schema dokumentiert ([`src/lib/audit/audit-repository.ts`](../src/lib/audit/audit-repository.ts)).
-- **Kryptographisches Hash-Chaining ([`src/lib/audit/audit-crypto.ts`](../src/lib/audit/audit-crypto.ts)):** Jeder Log-Eintrag verknüpft den vorherigen Hash (`previous_hash`) mit dem aktuellen Zustandshash (`current_hash`, SHA-256) zu einer manipulationsresistenten Kette.
+- **Kette in der Datenbank ([`supabase/migrations/20260915000000_core_multi_tenancy.sql`](../supabase/migrations/20260915000000_core_multi_tenancy.sql)):** Ein `BEFORE INSERT`-Trigger vergibt je Akte unter Advisory-Lock Sequenznummer, `previous_hash`, Zeitstempel, Akteur-ID (`auth.uid()`) und `current_hash` (SHA-256). Clientseitig übergebene Werte werden überschrieben, parallele Einträge können die Kette nicht verzweigen. Update, Delete und Truncate sind per Trigger gesperrt (auch für den Service-Rolle). `verify_audit_chain(document_id)` prüft die Kette in SQL; das Repository ruft sie per RPC auf. [`audit-crypto.ts`](../src/lib/audit/audit-crypto.ts) bleibt nur als Testdouble für die In-Memory-Variante. Externer Anker (Zeitstempeldienst) ist noch offen.
 
 ### 1.6 RLS-gestützte Multi-Tenancy & Knowledge Store (PostgreSQL 17)
 
