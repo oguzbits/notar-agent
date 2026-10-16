@@ -51,8 +51,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Test Suite
-        run: npm test
+      - name: Run Test Suite mit Coverage-Schwellen
+        run: npm run test:coverage
 
   build-validation:
     name: Next.js Production Build Validation
