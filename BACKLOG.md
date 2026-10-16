@@ -139,7 +139,7 @@ graph LR
    - Automatisches Preview-Deployment für jeden Pull Request zur visuellen Abnahme von Notariats-UI-Änderungen.
    - **Duale Prozess-Architektur (Web + Worker):** Zero-Downtime Rollout auf Produktivserver (Dokploy / Docker Compose / K8s).
      - `web`: Next.js Server (`npm run start`) für Nutzer-Interaktion und schnelle HTTP-Responses (`202 Accepted`).
-     - `worker`: Autonomer Hintergrund-Daemon (`npm run worker`), der 24/7 PENDING Jobs abarbeitet und Zombie-Sweeper betreibt.
+     - `worker`: Autonomer Hintergrund-Worker, der PENDING Jobs atomar (`FOR UPDATE SKIP LOCKED`) abarbeitet und Zombie-Sweeper betreibt. Braucht eigene Server-Zugangsdaten (Service-Key, nur serverseitig) und eine Betriebsumgebung. Der frühere `job-daemon` wurde mangels Aufrufer und Credentials entfernt (siehe Git-Historie).
    - Automatische Generierung des optimierten Multi-Stage `Dockerfile` und `docker-compose.yml`.
 
 ### Geplante Aufgaben

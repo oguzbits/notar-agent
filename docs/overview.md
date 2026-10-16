@@ -63,8 +63,8 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
 
 - **PostgreSQL Job-Queue (`dossier_jobs`):**
   - Entkoppelt rechenintensive Großakten (50–200 Seiten) vom HTTP-Request (`202 Accepted` in < 250 ms), um 504-Gateway-Timeouts zu verhindern.
-  - Transaktionssichere Job-Vergabe via `SELECT ... FOR UPDATE SKIP LOCKED` mit Concurrency-Limiting (`p-limit`, max. 2 parallele Läufe) gegen Provider-Rate-Limits (429) ([`src/lib/jobs/job-worker.ts`](../src/lib/jobs/job-worker.ts), [`src/lib/jobs/job-repository.ts`](../src/lib/jobs/job-repository.ts)).
-  - Robustes Worker-Lifecycle-Management mit automatischem Orphan-Recovery und Retry-Mechanismen ([`src/lib/jobs/job-daemon.ts`](../src/lib/jobs/job-daemon.ts)).
+  - Job-Vergabe mit Concurrency-Limiting (`p-limit`, max. 2 parallele Läufe) gegen Provider-Rate-Limits (429) ([`src/lib/jobs/job-worker.ts`](../src/lib/jobs/job-worker.ts), [`src/lib/jobs/job-repository.ts`](../src/lib/jobs/job-repository.ts)).
+  - Verarbeitung im Anfragekontext via `after()` mit Orphan-Recovery beim Abruf der Jobliste und Retry-Mechanismen; Stundenkontingent je Kanzlei (`JOB_RATE_LIMIT`). Ein eigener Dauer-Worker mit atomarem Abholen (`SKIP LOCKED`) ist im Backlog vorgemerkt.
   - **2-Stufen-Job-Chunking & 60s Serverless-Budget-Schutz ([`src/lib/ai/pipeline.ts`](../src/lib/ai/pipeline.ts), [`src/lib/jobs/job-worker.ts`](../src/lib/jobs/job-worker.ts)):**
     - Dekomposition der Pipeline in Stufe 1 (Ingestion, Extraktion & Faktenprüfung) und Stufe 2 (Notary Auditor & Reconciliation).
     - Zwischenergebnisse werden nach Stufe 1 als `stage1Output` im Job-Payload in PostgreSQL persistiert.
