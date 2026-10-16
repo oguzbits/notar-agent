@@ -9,6 +9,7 @@ import {
   formatKnowledgeForPrompt,
   selectApplicableKnowledge,
 } from '@/lib/knowledge/rules/rule-selector';
+import { errorClassOf, logEvent, timed } from '@/lib/observability/logger';
 import { getKnowledgeRepository } from '@/lib/supabase/server';
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
 import {
@@ -22,6 +23,10 @@ import {
 } from '@/types/dossier';
 import { ExtractionStageOutputSchema } from '@/types/pipeline';
 import { WORKFLOW_STEP_TYPES } from '@/types/workflow';
+
+function modelIdOf(model: LanguageModel): string {
+  return typeof model === 'string' ? model : model.modelId;
+}
 
 export interface PipelineTokenUsage {
   promptTokens: number;
@@ -175,17 +180,21 @@ export async function runExtractionStage(
       : undefined,
   });
 
-  const extractionResult = await generateText({
-    model,
-    instructions: extractionInstructions,
-    messages: [
-      {
-        role: 'user',
-        content: userPromptParts,
-      },
-    ],
-    temperature: 0.1,
-  });
+  const extractionResult = await timed(
+    { event: 'pipeline_stage', stage: 'extraktion', model: modelIdOf(model) },
+    () =>
+      generateText({
+        model,
+        instructions: extractionInstructions,
+        messages: [
+          {
+            role: 'user',
+            content: userPromptParts,
+          },
+        ],
+        temperature: 0.1,
+      })
+  );
 
   if (extractionResult.usage) {
     totalPromptTokens += extractionResult.usage.inputTokens || 0;
@@ -248,10 +257,12 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
         validatedExtraction = revalidated;
       }
     } catch (reflectionErr: unknown) {
-      console.warn(
-        '[pipeline] Self-Correction Reflection Pass für Stufe 1 fehlgeschlagen:',
-        reflectionErr
-      );
+      logEvent({
+        level: 'warn',
+        event: 'reflexion_fehlgeschlagen',
+        stage: 'extraktion',
+        errorClass: errorClassOf(reflectionErr),
+      });
     }
   }
 
@@ -400,12 +411,16 @@ ${JSON.stringify(existingDossier.inquiries || [])}
 Führe nun die notarielle Endkontrolle, Plausibilisierung und rechtliche Prüfung gemäß deinen Reconciler-Richtlinien durch.
 Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconciled Full Dossier oder im Delta-Format unter 'modifications').`;
 
-  const auditorResult = await generateText({
-    model,
-    instructions: auditorInstructions,
-    prompt: auditorContextPrompt,
-    temperature: 0.1,
-  });
+  const auditorResult = await timed(
+    { event: 'pipeline_stage', stage: 'pruefung', model: modelIdOf(model), organizationId },
+    () =>
+      generateText({
+        model,
+        instructions: auditorInstructions,
+        prompt: auditorContextPrompt,
+        temperature: 0.1,
+      })
+  );
 
   if (auditorResult.usage) {
     totalPromptTokens += auditorResult.usage.inputTokens || 0;

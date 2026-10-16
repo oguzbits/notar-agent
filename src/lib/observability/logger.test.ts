@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LogEventSchema } from '@/types/observability';
-import { errorClassOf, logEvent, timed } from './logger';
+import { errorClassOf, logEvent, logFailure, timed } from './logger';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -48,5 +48,17 @@ describe('errorClassOf', () => {
   it('liefert Klassenname oder Fallback', () => {
     expect(errorClassOf(new RangeError('x'))).toBe('RangeError');
     expect(errorClassOf('text')).toBe('UnbekannterFehler');
+  });
+});
+
+describe('logFailure', () => {
+  it('loggt nur Ereignis und Fehlerklasse', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    logFailure('warn', 'x_fehlgeschlagen', new Error('Vertrag Müller'));
+    expect(JSON.parse(String(spy.mock.calls[0]?.[0]))).toEqual({
+      level: 'warn',
+      event: 'x_fehlgeschlagen',
+      errorClass: 'Error',
+    });
   });
 });

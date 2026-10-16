@@ -9,6 +9,10 @@ export function errorClassOf(err: unknown): string {
   return err instanceof Error ? err.constructor.name : 'UnbekannterFehler';
 }
 
+export function logFailure(level: LogEvent['level'], event: string, err: unknown): void {
+  logEvent({ level, event, errorClass: errorClassOf(err) });
+}
+
 export async function timed<T>(
   base: Pick<LogEvent, 'event' | 'stage' | 'model' | 'jobId' | 'organizationId'>,
   fn: () => Promise<T>

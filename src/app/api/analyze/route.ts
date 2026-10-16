@@ -6,6 +6,7 @@ import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { hasFieldStatusChange } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
+import { logFailure } from '@/lib/observability/logger';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
 import {
   getAuditRepository,
@@ -90,10 +91,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         });
       } catch (afterErr: unknown) {
         // Fallback falls after() im aktuellen Laufzeit-/Testkontext nicht aktiv ist
-        console.debug(
-          '[analyze] after() nicht verfügbar, nutze direkten Hintergrund-Aufruf:',
-          afterErr
-        );
+        logFailure('info', 'after_nicht_verfuegbar', afterErr);
         void executeDossierJob(job.id, workerDeps);
       }
 
@@ -186,10 +184,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
           workflowInstance = existingInstance;
         } catch (workflowErr: unknown) {
-          console.warn(
-            '[analyze route] Workflow-Instanzierung nicht blockierend fehlgeschlagen:',
-            workflowErr
-          );
+          logFailure('warn', 'workflow_instanzierung_fehlgeschlagen', workflowErr);
         }
       }
 
@@ -219,7 +214,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    console.error('Analyse-Fehler:', error);
+    logFailure('error', 'analyse_fehlgeschlagen', error);
     const message =
       error instanceof Error ? error.message : 'Ein unerwarteter Fehler ist aufgetreten.';
     return NextResponse.json({ error: `Analyse fehlgeschlagen: ${message}` }, { status: 500 });
@@ -290,7 +285,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    console.error('PUT Analyse Error:', error);
+    logFailure('error', 'analyse_update_fehlgeschlagen', error);
     const message = error instanceof Error ? error.message : 'Fehler beim Aktualisieren.';
     return NextResponse.json({ error: message }, { status: 500 });
   }

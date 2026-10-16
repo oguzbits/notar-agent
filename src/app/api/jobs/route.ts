@@ -4,6 +4,7 @@ import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
 import type { IJobRepository } from '@/lib/jobs/job-repository';
 import { executeDossierJob, type WorkerDependencies } from '@/lib/jobs/job-worker';
+import { logFailure } from '@/lib/observability/logger';
 import { getDossierRepository, getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS } from '@/types/auth';
@@ -29,7 +30,7 @@ export async function GET(req?: NextRequest): Promise<Response> {
 
     // Asynchrones Self-Healing im Hintergrund (blockiert den schnellen Read-Pfad der Tabelle nicht mit 2 Extra-DB-Roundtrips)
     void repo.recoverOrphanJobs(3 * 60 * 1000).catch((healErr) => {
-      console.warn('[jobs GET] Self-healing fehlgeschlagen:', healErr);
+      logFailure('warn', 'self_healing_fehlgeschlagen', healErr);
     });
 
     const jobs = await repo.listJobs(orgId);
@@ -71,7 +72,7 @@ function startRetryInBackground(jobId: string, deps: WorkerDependencies): void {
       await executeDossierJob(jobId, deps);
     });
   } catch (afterErr: unknown) {
-    console.debug('[jobs] after() nicht verfügbar, nutze direkten Aufruf:', afterErr);
+    logFailure('info', 'after_nicht_verfuegbar', afterErr);
     void executeDossierJob(jobId, deps);
   }
 }

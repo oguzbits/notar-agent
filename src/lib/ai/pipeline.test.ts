@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { runAnalysisPipeline } from './pipeline';
 
@@ -83,5 +83,54 @@ describe('runAnalysisPipeline', () => {
     expect(stepCalls).toContain(
       'Step 2: Stufe 2: Notarielle Vorprüfung, Fristen & Plausibilisierung...'
     );
+  });
+
+  describe('Stage-Logs', () => {
+    const validStage1 = JSON.stringify({
+      caseTitle: 'Test',
+      overallStatus: OVERALL_STATUS.READY,
+      fields: {},
+      detectedDocuments: [],
+    });
+    const baseParams = {
+      files: [],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notes: '',
+      model: {} as never,
+      extractionInstructions: { role: 'system' as const, content: 'Extract' },
+      auditorInstructions: { role: 'system' as const, content: 'Audit' },
+      onStep: () => {},
+    };
+    const stageLines = (spy: { mock: { calls: unknown[][] } }) =>
+      spy.mock.calls
+        .map((c) => JSON.parse(String(c[0])))
+        .filter((l) => l.event === 'pipeline_stage');
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('loggt je Stufe genau ein Ereignis mit Dauer', async () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      mockGenerateText.mockResolvedValueOnce({ text: validStage1 }).mockResolvedValueOnce({
+        text: JSON.stringify({ overallStatus: OVERALL_STATUS.READY, fields: {} }),
+      });
+      await runAnalysisPipeline(baseParams);
+      const lines = stageLines(info);
+      expect(lines.map((l) => l.stage)).toEqual(['extraktion', 'pruefung']);
+      expect(lines.every((l) => l.outcome === 'ok' && l.durationMs >= 0)).toBe(true);
+    });
+
+    it('loggt den Fehlerfall mit Fehlerklasse ohne Meldungstext und wirft weiter', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockGenerateText.mockRejectedValueOnce(new TypeError('Vertrag Müller'));
+      await expect(runAnalysisPipeline(baseParams)).rejects.toThrow('Vertrag Müller');
+      const lines = stageLines(error);
+      expect(lines).toHaveLength(1);
+      expect(lines[0]).toMatchObject({
+        stage: 'extraktion',
+        outcome: 'fehler',
+        errorClass: 'TypeError',
+      });
+      expect(JSON.stringify(error.mock.calls)).not.toContain('Müller');
+    });
   });
 });

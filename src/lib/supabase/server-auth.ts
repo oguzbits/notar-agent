@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { validateEnv } from '@/env';
+import { logFailure } from '@/lib/observability/logger';
 import { DB_TABLES, Database } from '@/types/database';
 
 /**
@@ -13,7 +14,7 @@ export async function createServerAuthClient() {
     cookieStore = await cookies();
   } catch (cookieError: unknown) {
     // In unit test or non-request contexts, next/headers cookies() throws
-    console.debug('Cookie store unavailable in current context:', cookieError);
+    logFailure('info', 'cookie_store_nicht_verfuegbar', cookieError);
     return null;
   }
   const env = validateEnv(process.env);
@@ -35,7 +36,7 @@ export async function createServerAuthClient() {
         } catch (cookieError) {
           // The `setAll` method was called from a Server Component.
           // In Next.js SSR, cookies cannot be set during RSC render.
-          console.warn('Cookies cannot be set during RSC render:', cookieError);
+          logFailure('info', 'cookies_rsc_nicht_setzbar', cookieError);
         }
       },
     },
