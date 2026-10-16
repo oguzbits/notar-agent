@@ -29,6 +29,10 @@ export const ServerEnvSchema = z.object({
   // Supabase Credentials (erforderlich)
   NEXT_SUPABASE_URL: optionalTrimmedString,
   NEXT_SUPABASE_PUBLISHABLE_KEY: optionalTrimmedString,
+
+  // Hintergrundläufe (Cron): Service-Role-Key und Secret für den Cron-Aufruf
+  SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString,
+  CRON_SECRET: optionalTrimmedString,
 });
 
 export type Env = z.infer<typeof ServerEnvSchema>;

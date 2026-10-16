@@ -369,3 +369,27 @@ REVOKE ALL ON FUNCTION delete_dossier_system(TEXT) FROM PUBLIC, anon, authentica
 GRANT EXECUTE ON FUNCTION delete_dossier_system(TEXT) TO service_role;
 REVOKE ALL ON FUNCTION complete_dossier_purge(TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION complete_dossier_purge(TEXT) TO service_role;
+
+-- Fällige Dossiers: Anker gesetzt und längste geprüfte, gültige Frist (global oder eigene Kanzlei) abgelaufen.
+-- Ohne Fristdatensatz liefert die Funktion nichts (fail-closed).
+CREATE OR REPLACE FUNCTION list_retention_expired_dossiers(p_limit INT)
+RETURNS TABLE (id TEXT, organization_id UUID) AS $$
+    SELECT d.id, d.organization_id
+    FROM documents d
+    JOIN LATERAL (
+        SELECT max(k.retention_years) AS years
+        FROM knowledge_documents k
+        WHERE k.retention_years IS NOT NULL
+          AND k.review_status = 'GEPRUEFT'
+          AND (k.organization_id IS NULL OR k.organization_id = d.organization_id)
+          AND (k.valid_from IS NULL OR k.valid_from <= current_date)
+          AND (k.valid_until IS NULL OR k.valid_until >= current_date)
+    ) r ON r.years IS NOT NULL
+    WHERE d.retention_anchor_at IS NOT NULL
+      AND d.retention_anchor_at + make_interval(years => r.years) <= now()
+    ORDER BY d.retention_anchor_at
+    LIMIT p_limit;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
+
+REVOKE ALL ON FUNCTION list_retention_expired_dossiers(INT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION list_retention_expired_dossiers(INT) TO service_role;

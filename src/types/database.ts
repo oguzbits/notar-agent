@@ -459,6 +459,10 @@ export interface Database {
         Args: { p_document_id: string };
         Returns: Json;
       };
+      list_retention_expired_dossiers: {
+        Args: { p_limit: number };
+        Returns: { id: string; organization_id: string }[];
+      };
       complete_dossier_purge: {
         Args: { p_document_id: string };
         Returns: boolean;
