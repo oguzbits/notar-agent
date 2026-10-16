@@ -306,7 +306,19 @@ DROP POLICY IF EXISTS "Allow all access to documents for prototype" ON documents
 DROP POLICY IF EXISTS "Allow select audit_logs" ON audit_logs;
 
 DROP POLICY IF EXISTS rls_documents_all ON documents;
-CREATE POLICY rls_documents_all ON documents FOR ALL USING (is_org_member(organization_id)) WITH CHECK (is_org_member(organization_id));
+-- Lesen und Schreiben für alle Mitglieder; Löschen nur für Rollen mit DELETE_DOSSIER (Spiegel von src/lib/auth/rbac.ts,
+-- abgesichert durch src/lib/auth/rbac-sql-parity.test.ts).
+DROP POLICY IF EXISTS rls_documents_select ON documents;
+CREATE POLICY rls_documents_select ON documents FOR SELECT USING (is_org_member(organization_id));
+
+DROP POLICY IF EXISTS rls_documents_insert ON documents;
+CREATE POLICY rls_documents_insert ON documents FOR INSERT WITH CHECK (is_org_member(organization_id));
+
+DROP POLICY IF EXISTS rls_documents_update ON documents;
+CREATE POLICY rls_documents_update ON documents FOR UPDATE USING (is_org_member(organization_id)) WITH CHECK (is_org_member(organization_id));
+
+DROP POLICY IF EXISTS rls_documents_delete ON documents;
+CREATE POLICY rls_documents_delete ON documents FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'NOTARASSESSOR', 'ADMIN'));
 
 DROP POLICY IF EXISTS rls_audit_logs_select ON audit_logs;
 CREATE POLICY rls_audit_logs_select ON audit_logs FOR SELECT USING (is_org_member(organization_id));
