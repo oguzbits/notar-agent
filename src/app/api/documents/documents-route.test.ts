@@ -2,11 +2,12 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
-import { DocumentRecord, CASE_STATUS } from '@/lib/supabase/repository';
+import { DocumentRecord, CASE_STATUS, DossierNotFoundError } from '@/lib/supabase/repository';
 import * as serverDb from '@/lib/supabase/server';
 import * as serverAuth from '@/lib/supabase/server-auth';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { PERMISSION_ACTIONS } from '@/types/auth';
+import { DELETION_REASONS } from '@/types/deletion';
 import { NOTARY_ROLES } from '@/types/organization';
 import { GET, DELETE } from './route';
 
@@ -106,18 +107,29 @@ describe('Documents API Route (/api/documents)', () => {
   });
 
   describe('DELETE /api/documents', () => {
-    it('deletes document and returns 200 OK', async () => {
-      vi.mocked(serverDb.deleteDossierRecord).mockResolvedValueOnce(true);
-
-      const req = new NextRequest('http://localhost:3000/api/documents?id=doc-1', {
-        headers: { 'x-organization-id': 'org-123' },
+    const receipt = { documentId: 'doc-1', deletedRows: { documents: 1 }, storageTasks: 0 };
+    const deleteRequest = (
+      query = '?id=doc-1',
+      body: unknown = { reason: DELETION_REASONS.SONSTIGES }
+    ) =>
+      new NextRequest(`http://localhost:3000/api/documents${query}`, {
+        method: 'DELETE',
+        headers: { 'x-organization-id': 'org-123', 'content-type': 'application/json' },
+        body: JSON.stringify(body),
       });
-      const res = await DELETE(req);
+
+    it('löscht mit Grund und liefert den Nachweis', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockResolvedValueOnce(receipt);
+
+      const res = await DELETE(deleteRequest());
 
       expect(res.status).toBe(200);
-      const json = await res.json();
-      expect(json.success).toBe(true);
-      expect(serverDb.deleteDossierRecord).toHaveBeenCalledWith('doc-1', 'org-123', null);
+      expect((await res.json()).receipt).toEqual(receipt);
+      expect(serverDb.deleteDossierRecord).toHaveBeenCalledWith(
+        'doc-1',
+        DELETION_REASONS.SONSTIGES,
+        null
+      );
     });
 
     it('verlangt DELETE_DOSSIER und löscht für SACHBEARBEITER nichts', async () => {
@@ -125,8 +137,7 @@ describe('Documents API Route (/api/documents)', () => {
         fakeRequirePermission(NOTARY_ROLES.SACHBEARBEITER)
       );
 
-      const req = new NextRequest('http://localhost:3000/api/documents?id=doc-1');
-      const res = await DELETE(req);
+      const res = await DELETE(deleteRequest());
 
       expect(res.status).toBe(403);
       expect(requirePermission).toHaveBeenCalledWith(
@@ -138,23 +149,36 @@ describe('Documents API Route (/api/documents)', () => {
     });
 
     it('returns 400 when id is missing', async () => {
-      const req = new NextRequest('http://localhost:3000/api/documents');
-      const res = await DELETE(req);
+      const res = await DELETE(deleteRequest(''));
 
       expect(res.status).toBe(400);
-      const json = await res.json();
-      expect(json.error).toBe('ID fehlt.');
+      expect((await res.json()).error).toBe('ID fehlt.');
     });
 
-    it('returns 500 when delete fails', async () => {
-      vi.mocked(serverDb.deleteDossierRecord).mockResolvedValueOnce(false);
+    it.each([{}, { reason: 'weil' }])('lehnt ungültigen Löschgrund %j mit 400 ab', async (body) => {
+      const res = await DELETE(deleteRequest('?id=doc-1', body));
 
-      const req = new NextRequest('http://localhost:3000/api/documents?id=doc-1');
-      const res = await DELETE(req);
+      expect(res.status).toBe(400);
+      expect(serverDb.deleteDossierRecord).not.toHaveBeenCalled();
+    });
+
+    it('antwortet 404 für unbekannte Vorgänge', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockRejectedValueOnce(
+        new DossierNotFoundError('doc-1')
+      );
+
+      const res = await DELETE(deleteRequest());
+
+      expect(res.status).toBe(404);
+    });
+
+    it('antwortet 500, wenn das Löschen fehlschlägt', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockRejectedValueOnce(new Error('DB down'));
+
+      const res = await DELETE(deleteRequest());
 
       expect(res.status).toBe(500);
-      const json = await res.json();
-      expect(json.error).toBe('Vorgang konnte nicht gelöscht werden.');
+      expect((await res.json()).error).toBe('DB down');
     });
   });
 });

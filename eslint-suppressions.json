@@ -482,17 +482,6 @@
       "count": 1
     }
   },
-  "src/lib/supabase/repository.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-depth": {
-      "count": 3
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "src/lib/workflow/engine.ts": {
     "complexity": {
       "count": 1

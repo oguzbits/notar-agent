@@ -9,6 +9,7 @@ import {
 import { ITeamRepository, SupabaseTeamRepository } from '@/lib/team/team-repository';
 import { IWorkflowRepository, SupabaseWorkflowRepository } from '@/lib/workflow/repository';
 import { Database } from '@/types/database';
+import { DeletionReason, DeletionReceipt } from '@/types/deletion';
 import {
   IDossierRepository,
   SupabaseDossierRepository,
@@ -127,8 +128,8 @@ export async function fetchDossierRecordById(
 
 export async function deleteDossierRecord(
   id: string,
-  organizationId?: string,
+  reason: DeletionReason,
   client?: SupabaseClient<Database> | null
-): Promise<boolean> {
-  return getDossierRepository(client).delete(id, organizationId);
+): Promise<DeletionReceipt> {
+  return getDossierRepository(client).delete(id, reason);
 }

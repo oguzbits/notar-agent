@@ -3,16 +3,18 @@ import { calculateAuditRecordHash, GENESIS_HASH, verifyAuditChain } from '@/lib/
 import type { IAuditRepository, AppendAuditParams } from '@/lib/audit/audit-repository';
 import type { IJobRepository } from '@/lib/jobs/job-repository';
 import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
-import type {
-  IDossierRepository,
-  DocumentRecord,
-  PersistenceResult,
-  UpdateResult,
+import {
+  DossierNotFoundError,
+  type IDossierRepository,
+  type DocumentRecord,
+  type PersistenceResult,
+  type UpdateResult,
 } from '@/lib/supabase/repository';
 import type { ITeamRepository } from '@/lib/team/team-repository';
 import { calculateNextStep } from '@/lib/workflow/engine';
 import { AUDIT_ACTIONS, type AuditLogEntry } from '@/types/audit';
 import type { TeamMember, InviteMemberRequest } from '@/types/auth';
+import type { DeletionReceipt } from '@/types/deletion';
 import { CASE_STATUS } from '@/types/document';
 import type { Dossier } from '@/types/dossier';
 import { STORAGE_TYPES } from '@/types/dossier';
@@ -199,12 +201,9 @@ export function createMockDossierRepository(): IDossierRepository {
         return { success: true };
       }
     ),
-    delete: vi.fn(async (id: string, organizationId?: string): Promise<boolean> => {
-      const doc = docs.get(id);
-      if (!doc) return false;
-      if (organizationId && doc.organizationId !== organizationId) return false;
-      docs.delete(id);
-      return true;
+    delete: vi.fn(async (id: string): Promise<DeletionReceipt> => {
+      if (!docs.delete(id)) throw new DossierNotFoundError(id);
+      return { documentId: id, deletedRows: { documents: 1 }, storageTasks: 0 };
     }),
   };
 }

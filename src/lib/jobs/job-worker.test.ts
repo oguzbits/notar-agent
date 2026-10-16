@@ -71,7 +71,7 @@ function createMockDossierRepo(): IDossierRepository {
     update: vi.fn(async () => ({ success: true })),
     findById: vi.fn(async () => null),
     list: vi.fn(async () => []),
-    delete: vi.fn(async () => true),
+    delete: vi.fn(async (id: string) => ({ documentId: id, deletedRows: {}, storageTasks: 0 })),
   };
 }
 

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { DB_TABLES } from '@/types/database';
+import { DELETION_REASONS } from '@/types/deletion';
 import { Dossier, CASE_TYPES, OVERALL_STATUS } from '@/types/dossier';
-import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 import { createEmptyImmobilienFields } from './repository';
 
 function createMockDossier(title: string): Dossier {
@@ -54,122 +53,48 @@ describe('SupabaseDossierRepository (Fail-Fast SSOT)', () => {
     );
   });
 
-  it('cascades deletion to Supabase Object Storage and linked jobs on delete', async () => {
-    const mockRemove = vi.fn().mockResolvedValue({ data: [], error: null });
-    const mockList = vi.fn().mockResolvedValue({
-      data: [{ name: 'snapshot-123.json' }],
-      error: null,
-    });
-    const mockStorage = {
-      from: vi.fn().mockReturnValue({
-        remove: mockRemove,
-        list: mockList,
-      }),
-    };
-
-    const mockDelDocEq = vi.fn().mockResolvedValue({ error: null });
-    const mockDelJobsEq = vi.fn().mockResolvedValue({ error: null });
-
-    const mockSupabase = {
-      storage: mockStorage,
-      from: vi.fn((table: string) => {
-        if (table === DB_TABLES.DOSSIER_JOBS) {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                eq: vi.fn().mockResolvedValue({
-                  data: [
-                    {
-                      id: 'job-abc',
-                      payload: {
-                        files: [{ name: 'scan.pdf', storagePath: 'org-123/scan-1.pdf' }],
-                      },
-                    },
-                  ],
-                  error: null,
-                }),
-              }),
-            }),
-            delete: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                eq: mockDelJobsEq,
-              }),
-            }),
-          };
-        }
-        if (table === DB_TABLES.DOCUMENTS) {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  maybeSingle: vi.fn().mockResolvedValue({
-                    data: {
-                      id: 'doc-1',
-                      content: {
-                        caseType: CASE_TYPES.IMMOBILIENKAUF,
-                      },
-                    },
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
-            delete: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                eq: mockDelDocEq,
-              }),
-            }),
-          };
-        }
-        return {};
-      }),
-    };
+  it('löscht über die Datenbankfunktion und liefert den validierten Nachweis', async () => {
+    const receipt = { documentId: 'doc-1', deletedRows: { documents: 1 }, storageTasks: 2 };
+    const rpc = vi.fn().mockResolvedValue({ data: receipt, error: null });
 
     const { SupabaseDossierRepository } = await import('./repository');
-    const repo = new SupabaseDossierRepository(mockSupabase as never);
+    const repo = new SupabaseDossierRepository({ rpc } as never);
 
-    const success = await repo.delete('doc-1', 'org-123');
-
-    expect(success).toBe(true);
-    expect(mockStorage.from).toHaveBeenCalledWith(STORAGE_BUCKET_NAMES.DOSSIER_FILES);
-    expect(mockRemove).toHaveBeenCalledWith(
-      expect.arrayContaining(['org-123/scan-1.pdf', 'org-123/archive/doc-1/snapshot-123.json'])
+    await expect(repo.delete('doc-1', DELETION_REASONS.ENTWURF_VERWORFEN)).resolves.toEqual(
+      receipt
     );
-    expect(mockDelJobsEq).toHaveBeenCalled();
-    expect(mockDelDocEq).toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith('delete_dossier', {
+      p_document_id: 'doc-1',
+      p_reason: DELETION_REASONS.ENTWURF_VERWORFEN,
+    });
   });
 
-  it('fails fast and throws when Supabase delete encounters an error in delete', async () => {
-    const mockSupabase = {
-      from: vi.fn((table: string) => {
-        if (table === DB_TABLES.DOSSIER_JOBS) {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-            }),
-          };
-        }
-        if (table === DB_TABLES.DOCUMENTS) {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-              }),
-            }),
-            delete: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ error: { message: 'FK violation' } }),
-            }),
-          };
-        }
-        return {};
-      }),
-    };
+  it('wirft DossierNotFoundError, wenn die Datenbank das Dossier nicht findet', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: 'P0002', message: 'x' } });
 
+    const { SupabaseDossierRepository, DossierNotFoundError } = await import('./repository');
+    const repo = new SupabaseDossierRepository({ rpc } as never);
+
+    await expect(repo.delete('doc-x', DELETION_REASONS.SONSTIGES)).rejects.toBeInstanceOf(
+      DossierNotFoundError
+    );
+  });
+
+  it('fails fast bei Datenbankfehlern und ungültigem Nachweis', async () => {
     const { SupabaseDossierRepository } = await import('./repository');
-    const repo = new SupabaseDossierRepository(mockSupabase as never);
 
-    await expect(repo.delete('doc-err')).rejects.toThrow(
+    const failing = new SupabaseDossierRepository({
+      rpc: vi
+        .fn()
+        .mockResolvedValue({ data: null, error: { code: '23503', message: 'FK violation' } }),
+    } as never);
+    await expect(failing.delete('doc-err', DELETION_REASONS.SONSTIGES)).rejects.toThrow(
       'Supabase Dossier delete fehlgeschlagen: FK violation'
     );
+
+    const garbage = new SupabaseDossierRepository({
+      rpc: vi.fn().mockResolvedValue({ data: { storageTasks: -1 }, error: null }),
+    } as never);
+    await expect(garbage.delete('doc-1', DELETION_REASONS.SONSTIGES)).rejects.toThrow();
   });
 });
