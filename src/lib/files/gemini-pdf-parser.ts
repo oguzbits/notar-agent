@@ -150,9 +150,8 @@ export async function parseDocumentWithGemini(
     throw new Error('Kein GEMINI_API_KEY verfügbar für Gemini PDF-Parsing.');
   }
 
-  const primaryModel = options.model || env.GEMINI_PARSE_MODEL || 'gemini-3.1-flash-lite';
-  const fallbackModel =
-    options.fallbackModel || env.GEMINI_PARSE_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
+  const primaryModel = options.model || env.GEMINI_PARSE_MODEL;
+  const fallbackModel = options.fallbackModel || env.GEMINI_PARSE_FALLBACK_MODEL;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const sleepFn = options.sleep ?? defaultSleep;
 
