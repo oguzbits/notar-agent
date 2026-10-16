@@ -2,6 +2,7 @@ import { validateEnv } from '@/env';
 import { calculateFileFingerprint } from '@/lib/audit/audit-crypto';
 import { toCanonicalText } from '@/lib/files/canonical-text';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
+import { logEvent, logFailure } from '@/lib/observability/logger';
 import {
   DocumentLayoutBlock,
   DocumentParsedContent,
@@ -121,7 +122,7 @@ async function callGeminiGenerateContent(
         errorDetail = errJson.error.message;
       }
     } catch (jsonErr: unknown) {
-      console.debug('[gemini-pdf-parser] Fehler beim Auslesen des Fehler-Bodies:', jsonErr);
+      logFailure('info', 'gemini_fehlerbody_unlesbar', jsonErr);
     }
 
     throw new Error(`Gemini API HTTP ${response.status} (${model}): ${errorDetail}`);
@@ -182,12 +183,7 @@ export async function parseDocumentWithGemini(
       fallbackModel &&
       fallbackModel !== primaryModel
     ) {
-      console.warn(
-        '[gemini-pdf-parser] FinishReason bei Primärmodell. Aktiviere Fallback:',
-        candidate.finishReason,
-        primaryModel,
-        fallbackModel
-      );
+      logEvent({ level: 'warn', event: 'gemini_fallback_finishreason' });
       candidate = await callGeminiGenerateContent(
         apiKey,
         fallbackModel,
@@ -200,12 +196,7 @@ export async function parseDocumentWithGemini(
     }
   } catch (primaryErr: unknown) {
     if (fallbackModel && fallbackModel !== primaryModel) {
-      console.warn(
-        '[gemini-pdf-parser] Fehler beim Primärmodell. Versuche Fallback:',
-        primaryModel,
-        fallbackModel,
-        primaryErr
-      );
+      logFailure('warn', 'gemini_primaermodell_fehlgeschlagen', primaryErr);
       candidate = await callGeminiGenerateContent(
         apiKey,
         fallbackModel,

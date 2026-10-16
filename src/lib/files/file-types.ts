@@ -1,4 +1,5 @@
 import { fileTypeFromBuffer } from 'file-type';
+import { logFailure } from '@/lib/observability/logger';
 
 /**
  * Deklarative Typdefinitionen und Validierungsstrategien für Dateiuploads im Notariat.
@@ -86,7 +87,7 @@ export async function detectMimeFromBuffer(bytes: Uint8Array): Promise<string | 
     const result = await fileTypeFromBuffer(hostBuffer);
     return result?.mime;
   } catch (err: unknown) {
-    console.warn('[file-types] Fehler bei file-type Erkennung:', err);
+    logFailure('warn', 'dateityp_erkennung_fehlgeschlagen', err);
     return undefined;
   }
 }

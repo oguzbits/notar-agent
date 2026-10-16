@@ -1,3 +1,4 @@
+import { logFailure } from '@/lib/observability/logger';
 import { parsePdfDocument } from './pdf-document-parser';
 
 export const PDF_STREAM_TYPES = {
@@ -55,7 +56,7 @@ export async function classifyPdfStream(
       characterCount,
     };
   } catch (err: unknown) {
-    console.warn('[pdf-stream-classifier] Klassifikation fehlgeschlagen:', err);
+    logFailure('warn', 'pdf_klassifikation_fehlgeschlagen', err);
     return {
       streamType: PDF_STREAM_TYPES.SCANNED_IMAGE,
       hasTextLayer: false,

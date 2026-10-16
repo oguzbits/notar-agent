@@ -1,4 +1,5 @@
 import imageCompression from 'browser-image-compression';
+import { logFailure } from '@/lib/observability/logger';
 import { UploadedFilePayload } from '@/types/dossier';
 import { FILE_CATEGORIES, FileCategory, resolveFileCategory } from './file-types';
 
@@ -66,10 +67,7 @@ export async function processImageFile(file: File): Promise<{ content: string; s
       size: compressedBlob.size,
     };
   } catch (err: unknown) {
-    console.warn(
-      '[file-preparer] browser-image-compression fehlgeschlagen, Fallback auf Originaldatei:',
-      err
-    );
+    logFailure('warn', 'bildkompression_fehlgeschlagen', err);
     const content = await readFileAsBase64(file);
     return { content, size: file.size };
   }
@@ -153,11 +151,7 @@ async function readHeaderBytes(file: File, length = 4100): Promise<Uint8Array | 
     const arrayBuffer = await slice.arrayBuffer();
     return new Uint8Array(arrayBuffer);
   } catch (err: unknown) {
-    console.warn(
-      '[file-preparer] Header-Bytes konnten nicht gelesen werden für Datei:',
-      file.name,
-      err
-    );
+    logFailure('warn', 'header_bytes_nicht_lesbar', err);
     return undefined;
   }
 }

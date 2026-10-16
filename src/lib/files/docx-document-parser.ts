@@ -1,4 +1,5 @@
 import mammoth from 'mammoth';
+import { logFailure } from '@/lib/observability/logger';
 
 export interface DocxExtractedImage {
   id: string;
@@ -83,7 +84,7 @@ export async function parseDocxDocument(buffer: Buffer | Uint8Array): Promise<Do
             base64Data,
           });
         } catch (imgErr) {
-          console.debug('[docx-document-parser] Bildextraktion fehlgeschlagen:', imgErr);
+          logFailure('info', 'docx_bildextraktion_fehlgeschlagen', imgErr);
         }
         return { src: `[Grafik/Siegel #${extractedImages.length}: ${imageId}]` };
       });
@@ -100,7 +101,7 @@ export async function parseDocxDocument(buffer: Buffer | Uint8Array): Promise<Do
       extractedImages,
     };
   } catch (err: unknown) {
-    console.debug('[docx-document-parser] Konvertierung fehlgeschlagen:', err);
+    logFailure('info', 'docx_konvertierung_fehlgeschlagen', err);
     return {
       markdown: '',
       characterCount: 0,

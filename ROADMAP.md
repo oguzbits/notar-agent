@@ -94,9 +94,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] Zurechenbarkeit des Löschenden im Nachweis `DOSSIER_DELETED` (Pseudonym wird mit dem Dossier gelöscht) fachlich entscheiden
   - [ ] Dauerhaft fehlgeschlagene `deletion_tasks` (FAILED) zurücksetzen und anzeigen; Fehlercodes 42501/55006 der Löschroute als 403/409 melden
 - [ ] **C.8 Observability: Inbetriebnahme und Kostenerfassung:**
-  - [ ] Sentry-Konto in der EU-Region anlegen, `SENTRY_DSN` und `NEXT_PUBLIC_SENTRY_DSN` setzen; Auftragsverarbeitungsvertrag mit Sentry klären
-  - [ ] Log-Ausgabe der Hosting-Plattform prüfen und `/api/health` an einen Uptime-Dienst anbinden
-  - [ ] Übrige `console.*`-Aufrufe in `src/lib/ai/` und `src/lib/files/` (Parser, Merger, Dateityp-Erkennung) auf `logFailure` umstellen; sie können Fehlertexte mit Fallinhalt enthalten
+  - [ ] Sentry: `SENTRY_DSN` und `NEXT_PUBLIC_SENTRY_DSN` in Vercel prüfen; Auftragsverarbeitungsvertrag mit Sentry klären (Konto in der EU-Region besteht)
 - [ ] **C.5 XJustiz / XNP Schnittstellen:**
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
 - [ ] **C.6 Enterprise Styling Grundattribute & Design Tokens:**

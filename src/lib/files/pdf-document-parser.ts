@@ -1,5 +1,6 @@
 import zlib from 'node:zlib';
 import { calculateFileFingerprint } from '@/lib/audit/audit-crypto';
+import { logFailure } from '@/lib/observability/logger';
 import {
   DocumentLayoutBlock,
   DocumentParsedContent,
@@ -150,7 +151,7 @@ export async function parsePdfNativeStreamFallback(
 
     return DocumentParsedContentSchema.parse(result);
   } catch (err: unknown) {
-    console.debug('[pdf-document-parser] Nativer Stream-Fallback fehlgeschlagen:', err);
+    logFailure('info', 'pdf_stream_fallback_fehlgeschlagen', err);
     return {
       markdown: '',
       contentHash: calculateFileFingerprint(buffer),
@@ -193,10 +194,7 @@ export async function parsePdfDocument(
         return geminiResult;
       }
     } catch (err: unknown) {
-      console.warn(
-        '[pdf-document-parser] Gemini-Vision OCR für Scan fehlgeschlagen. Nutze nativen Fallback:',
-        err
-      );
+      logFailure('warn', 'pdf_vision_ocr_fehlgeschlagen', err);
     }
   }
 

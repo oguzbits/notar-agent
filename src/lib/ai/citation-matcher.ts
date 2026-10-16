@@ -1,4 +1,5 @@
 import { diffLevenshtein, diffMain, matchMain } from 'diff-match-patch-es';
+import { logFailure } from '@/lib/observability/logger';
 import { CITATION_MATCH_STATUS, CitationMatchResult } from '@/types/pipeline';
 
 export interface CitationMatchOptions {
@@ -110,7 +111,7 @@ export function matchCitationSnippet(
     const result = evaluateCandidate(matchIndex);
     if (result) return result;
   } catch (err) {
-    console.warn('[citation-matcher] Fehler bei diff-match-patch Bitap-Suche:', err);
+    logFailure('warn', 'zitatsuche_fehlgeschlagen', err);
   }
 
   // Nicht im Quelltext nachweisbar (potenzielle Halluzination)

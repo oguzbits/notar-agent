@@ -1,4 +1,5 @@
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
+import { logEvent } from '@/lib/observability/logger';
 import {
   CaseType,
   CASE_TYPES,
@@ -161,10 +162,7 @@ export function mergeDossierStages(params: MergeDossierParams): Dossier {
 
   const parseResult = ImmobilienDossierSchema.safeParse(rawImmobilienPayload);
   if (!parseResult.success) {
-    console.warn(
-      'Immobilien Zod Validierungswarnung (nutze Fallback):',
-      parseResult.error.format()
-    );
+    logEvent({ level: 'warn', event: 'immobilien_validierung_fallback' });
   }
 
   const dossier: Dossier = parseResult.success
