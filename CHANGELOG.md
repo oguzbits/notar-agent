@@ -164,3 +164,10 @@
 - **Mandantenspezifischer Client-Cache:** Erweiterung von `useDocuments` und `useJobs` um `organizationId`, sodass der `@tanstack/react-query`-Cache strikt pro Kanzlei (`['documents', orgId]`, `['jobs', orgId]`) partitioniert wird und Benutzer beim Wechsel zwischen Demo-Kanzlei und eigenem SSO-Login keine fremden Daten sehen.
 - **Bereinigung historischer Prototyp-RLS-Policies:** Deaktivierung/Bereinigung der permissiven Prototyp-Regeln (`"Allow all access to documents for prototype"`, `"Allow select audit_logs"`, `"Allow all access to dossier_jobs for prototype"`) in Supabase zugunsten der kanonischen `is_org_member(organization_id)`-Policies.
 - **Kanonische Demo-Daten-Zuordnung:** Neuzuordnung der bestehenden Musterakten zur Demo-Kanzlei (`Notariat Dr. Muster & Partner`, `d0000000-0000-0000-0000-000000000001`), sodass Demo-Gäste die Musterfälle sehen, während individuelle SSO-Notare ein sauberes, mandantenisoliertes Kanzleipostfach vorfinden.
+
+#### 11. Serverseitiges RBAC (Additions Modul 19)
+
+- **Berechtigungs-Guard:** `requirePermission()` in `src/lib/auth/require-permission.ts` prüft Rolle und Aktion serverseitig (401 ohne Sitzung oder Mitgliedschaft, 403 ohne Berechtigung). Verweigerungen erzeugen ein append-only `ACCESS_DENIED`-Ereignis in der Hash-Kette.
+- **Routen:** Löschen (`documents`, `jobs/[id]`), Team, Kanzlei-Update, Upload, Analyse, Job-Wiederholung und -Abbruch sind angebunden; der Statuswechsel in `PUT /api/analyze` verlangt `OVERRIDE_FIELD_STATUS`. Akteur und Rolle kommen nur aus der Sitzung.
+- **Datenbank:** `rls_documents_all` ist nach Operation getrennt; Löschen nur für NOTAR, NOTARASSESSOR und ADMIN. Paritätstest gegen die Matrix und DB-Test `src/test/db/rbac.db.test.ts`.
+- **Offen:** Die Migration ist lokal angewendet, auf dem Live-Projekt noch nicht (`DECLARATION_STAGED`).
