@@ -172,3 +172,10 @@
 - **Datenbank:** `rls_documents_all` und `rls_jobs_all` sind nach Operation getrennt; Löschen von Dossiers, Jobs und Originaldateien nur für NOTAR, NOTARASSESSOR und ADMIN. Verweigerungs-Ereignisse nur in die Kette der eigenen Kanzlei. Paritätstest gegen die Matrix und DB-Test `src/test/db/rbac.db.test.ts`.
 - **Härtung nach Gesamtprüfung:** Feldstatus-Änderungen verlangen `OVERRIDE_FIELD_STATUS` serverseitig (`hasFieldStatusChange`); bei Mehrfachmitgliedschaft ohne Kanzlei-Angabe lehnt der Guard ab.
 - **Offen:** Die Migration ist lokal angewendet, auf dem Live-Projekt noch nicht (`DECLARATION_STAGED`).
+
+#### 12. Löschpipeline & Pseudonyme im Audit-Trail (Additions Modul 20)
+
+- **Verträge:** `src/types/deletion.ts` (Löschgründe, Aufgabenstatus, Löschnachweis), Audit-Ereignisse `DOSSIER_DELETED` und `DOSSIER_PURGE_COMPLETED`.
+- **Datenbank:** `delete_dossier`, `delete_dossier_system`, `complete_dossier_purge`, `list_retention_expired_dossiers`, Outbox `deletion_tasks`, Pseudonym-Tabelle `audit_actor_map`; Trigger der Hash-Kette schreibt Pseudonyme statt Klarname und Nutzer-ID. Spalten `documents.retention_anchor_at` und `knowledge_documents.retention_years`. Tests: `dossier-deletion`, `audit-pseudonym`, `retention-sweep` unter `src/test/db/`; Mutation je Schutz (Rolle, Pfadpräfix, Jobsperre, REVOKE) geprüft.
+- **App:** `SupabaseDossierRepository.delete` ruft die Funktion auf (fail-fast, `DossierNotFoundError`); `DELETE /api/documents` verlangt `{ reason }` und liefert den Nachweis; Worker und Cron `GET /api/cron/deletion`; Löschdialog `DeleteDossierDialog` mit Pflichtgrund; E2E `e2e/dossier-deletion.spec.ts`.
+- **Offen:** Die Migrationen sind lokal angewendet, auf dem Live-Projekt nicht (`DECLARATION_STAGED`). `SUPABASE_SERVICE_ROLE_KEY` und `CRON_SECRET` müssen in Vercel gesetzt werden. `retention_anchor_at` wird noch von keiner Aktion gesetzt, Fristeinträge sind nicht angelegt (rechtlich offen). Anzeige „Löschung läuft“ fehlt.

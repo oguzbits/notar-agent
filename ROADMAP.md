@@ -86,6 +86,11 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 - [ ] **C.4 KI-Mandantenkorrespondenz & Post-Beurkundung:**
   - [ ] Determinismus-geprüfte Anschreiben- & Nachforderungsgenerierung
   - [ ] Fristen- und Wiedervorlagen-Extraktion für den Urkundenvollzug
+- [ ] **C.7 Löschpipeline: Restpunkte:**
+  - [ ] Aktion „Beurkundung abgeschlossen“ setzt `documents.retention_anchor_at`
+  - [ ] Fristeinträge (`knowledge_documents.retention_years`) nach rechtlicher Klärung anlegen
+  - [ ] Anzeige „Löschung läuft“ für offene `deletion_tasks`
+  - [ ] Live-Migration der Löschfunktionen und Pseudonym-Tabelle; `SUPABASE_SERVICE_ROLE_KEY` und `CRON_SECRET` in Vercel setzen
 - [ ] **C.5 XJustiz / XNP Schnittstellen:**
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
 - [ ] **C.6 Enterprise Styling Grundattribute & Design Tokens:**

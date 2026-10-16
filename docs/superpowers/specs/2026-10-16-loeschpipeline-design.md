@@ -1,6 +1,6 @@
 # Löschpipeline – Design
 
-Stand: 2026-10-16. Status: Entwurf, Chat-Design freigegeben (Ansatz 1); Spec zur Prüfung.
+Stand: 2026-10-16. Status: umgesetzt (lokal); Abweichungen: Fristberechnung in SQL (`list_retention_expired_dossiers`), Fristanker `documents.retention_anchor_at`, Löschgründe als feste Auswahl, Anzeige „Löschung läuft“ offen.
 
 ## Ziel
 
