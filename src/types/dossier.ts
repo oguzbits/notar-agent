@@ -42,6 +42,12 @@ export const SourceLocationSchema = z.object({
 });
 export type SourceLocation = z.infer<typeof SourceLocationSchema>;
 
+export const FieldReviewSchema = z.object({
+  confirmedAt: z.string(),
+  confirmedBy: z.string(),
+});
+export type FieldReview = z.infer<typeof FieldReviewSchema>;
+
 export function createFieldDossierSchema<T extends z.ZodTypeAny>(dataType: T) {
   return z.object({
     data: dataType.describe('Die extrahierten und typisierten Fachdaten'),
@@ -55,6 +61,7 @@ export function createFieldDossierSchema<T extends z.ZodTypeAny>(dataType: T) {
         'Bei VERIFIED leer (""), bei Klärungsbedarf (NEEDS_REVIEW, OUTDATED, MISSING) 1 prägnanter deutscher Satz mit Begründung'
       ),
     actionRequired: z.string().optional().describe('Optional'),
+    review: FieldReviewSchema.optional().describe('Prüfvermerk des Notars, nie vom Modell gesetzt'),
   });
 }
 
@@ -64,6 +71,7 @@ export interface GenericFieldDossier<T = Record<string, unknown>> {
   source: SourceLocation;
   note: string;
   actionRequired?: string;
+  review?: FieldReview;
 }
 
 /**

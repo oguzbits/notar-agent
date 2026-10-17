@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
-import { FIELD_STATUS, OVERALL_STATUS, isImmobilienDossier } from '@/types/dossier';
-import { getDossierFieldsRecord, hasFieldStatusChange, updateDossierFieldStatus } from './state';
+import { Dossier, FIELD_STATUS, OVERALL_STATUS, isImmobilienDossier } from '@/types/dossier';
+import {
+  carryOverReviews,
+  confirmField,
+  getDossierFieldsRecord,
+  hasFieldStatusChange,
+  updateDossierFieldStatus,
+} from './state';
 
 describe('Dossier State & Mutations (state.ts)', () => {
   it('liefert das typisierte fields-Dictionary zurück', () => {
@@ -76,5 +82,51 @@ describe('Dossier State & Mutations (state.ts)', () => {
 
       expect(hasFieldStatusChange(before, after)).toBe(false);
     });
+  });
+});
+
+describe('Prüfvermerk je Feld', () => {
+  const review = { confirmedAt: '2026-10-17T10:00:00.000Z', confirmedBy: 'Notar A' };
+  const verified = () =>
+    createTestImmobilienDossier({ fieldStatusMap: { verkaeufer: FIELD_STATUS.VERIFIED } });
+  const seller = (d: Dossier) => {
+    const field = getDossierFieldsRecord(d).verkaeufer;
+    if (!field) throw new Error('Testdossier ohne verkaeufer');
+    return field;
+  };
+
+  it('setzt den Vermerk nur bei Status VERIFIED und lehnt andere ab', () => {
+    const dossier = createTestImmobilienDossier({
+      fieldStatusMap: { kaeufer: FIELD_STATUS.NEEDS_REVIEW, verkaeufer: FIELD_STATUS.VERIFIED },
+    });
+    expect(() => confirmField(dossier, 'kaeufer', review)).toThrow();
+    expect(() => confirmField(dossier, 'gibtEsNicht', review)).toThrow();
+    expect(seller(confirmField(dossier, 'verkaeufer', review)).review).toEqual(review);
+    expect(seller(dossier).review).toBeUndefined();
+  });
+
+  it('behält den Vermerk bei unverändertem Feld, verwirft ihn bei geänderten Daten, Quelle oder Status', () => {
+    const base = confirmField(verified(), 'verkaeufer', review);
+    expect(seller(carryOverReviews(base, structuredClone(base))).review).toEqual(review);
+
+    const data = structuredClone(base);
+    seller(data).data = { ...seller(data).data, name: 'Anderer' };
+    expect(seller(carryOverReviews(base, data)).review).toBeUndefined();
+
+    const source = structuredClone(base);
+    seller(source).source = { ...seller(source).source, pageNumber: 99 };
+    expect(seller(carryOverReviews(base, source)).review).toBeUndefined();
+
+    const status = structuredClone(base);
+    seller(status).status = FIELD_STATUS.NEEDS_REVIEW;
+    expect(seller(carryOverReviews(base, status)).review).toBeUndefined();
+  });
+
+  it('übernimmt keinen vom Client mitgeschickten Vermerk', () => {
+    const stored = verified();
+    const forged = structuredClone(stored);
+    seller(forged).review = review;
+    expect(seller(carryOverReviews(stored, forged)).review).toBeUndefined();
+    expect(seller(carryOverReviews(undefined, forged)).review).toBeUndefined();
   });
 });

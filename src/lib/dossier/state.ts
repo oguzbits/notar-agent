@@ -1,6 +1,7 @@
 import {
   Dossier,
   GenericFieldDossier,
+  FieldReview,
   FieldStatus,
   FIELD_STATUS,
   OVERALL_STATUS,
@@ -49,4 +50,39 @@ export function hasFieldStatusChange(previous: Dossier, next: Dossier): boolean 
   return Object.entries(getDossierFieldsRecord(next)).some(
     ([key, field]) => field?.status !== before[key]?.status
   );
+}
+
+/**
+ * Setzt den Prüfvermerk an einem Feld. Nur belegte Felder (VERIFIED) lassen sich bestätigen;
+ * alle anderen Felder werden über die Statusänderung mit Begründung entschieden.
+ */
+export function confirmField(dossier: Dossier, fieldKey: string, review: FieldReview): Dossier {
+  const cloned: Dossier = structuredClone(dossier);
+  const field = getDossierFieldsRecord(cloned)[fieldKey];
+  if (!field) throw new Error(`Feld '${fieldKey}' existiert nicht.`);
+  if (field.status !== FIELD_STATUS.VERIFIED) {
+    throw new Error(`Feld '${fieldKey}' ist nicht belegt und kann nicht bestätigt werden.`);
+  }
+  field.review = review;
+  return cloned;
+}
+
+/**
+ * Ein Prüfvermerk gilt nur für den Stand, den der Notar gesehen hat: Er stammt immer aus dem
+ * gespeicherten Dossier (nie vom Client oder Modell) und entfällt bei geänderten Daten, Quelle oder Status.
+ */
+export function carryOverReviews(previous: Dossier | undefined, next: Dossier): Dossier {
+  const cloned: Dossier = structuredClone(next);
+  const before = previous ? getDossierFieldsRecord(previous) : {};
+  for (const [key, field] of Object.entries(getDossierFieldsRecord(cloned))) {
+    const old = before[key];
+    const unchanged =
+      old?.review &&
+      old.status === field.status &&
+      JSON.stringify(old.data) === JSON.stringify(field.data) &&
+      JSON.stringify(old.source) === JSON.stringify(field.source);
+    if (unchanged) field.review = old.review;
+    else delete field.review;
+  }
+  return cloned;
 }

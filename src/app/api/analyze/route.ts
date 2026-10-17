@@ -5,7 +5,7 @@ import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { createUsageRecorder } from '@/lib/ai/usage-repository';
 import { requirePermission } from '@/lib/auth/require-permission';
-import { hasFieldStatusChange } from '@/lib/dossier/state';
+import { carryOverReviews, hasFieldStatusChange } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
@@ -21,8 +21,14 @@ import {
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
 import { AUDIT_ACTIONS } from '@/types/audit';
-import { PERMISSION_ACTIONS } from '@/types/auth';
-import { AnalyzeRequestSchema, UpdateDossierRequestSchema, STORAGE_TYPES } from '@/types/dossier';
+import { PERMISSION_ACTIONS, SessionContext } from '@/types/auth';
+import {
+  AnalyzeRequestSchema,
+  UpdateDossierRequestSchema,
+  UpdateDossierRequest,
+  Dossier,
+  STORAGE_TYPES,
+} from '@/types/dossier';
 import { JOB_RATE_LIMIT } from '@/types/jobs';
 import { WORKFLOW_STEP_STATUS, WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
@@ -225,6 +231,27 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 }
 
+// Revisionssicherer Audit-Trail (§ 17 ff. BeurkG)
+async function appendOverrideAudit(
+  authSupabase: Awaited<ReturnType<typeof createServerAuthClient>>,
+  params: {
+    documentId: string;
+    organizationId: string;
+    override: NonNullable<UpdateDossierRequest['auditOverride']>;
+    dossier: Dossier;
+    sessionActor: SessionContext;
+  }
+): Promise<void> {
+  const { documentId, organizationId, override, dossier, sessionActor } = params;
+  await getAuditRepository(authSupabase).appendEvent({
+    documentId,
+    organizationId,
+    action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
+    actor: sessionActor.actorLabel,
+    details: { override, caseTitle: dossier.caseTitle, actorRole: sessionActor.role },
+  });
+}
+
 export async function PUT(req: NextRequest): Promise<Response> {
   try {
     const rawBody: unknown = await req.json().catch(() => ({}));
@@ -257,7 +284,11 @@ export async function PUT(req: NextRequest): Promise<Response> {
     if (auditOverride || (stored && hasFieldStatusChange(stored.content, dossier))) {
       await requirePermission(authSupabase, PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS, guardOptions);
     }
-    const updateRes = await repo.update(documentId, dossier, organizationId);
+    const updateRes = await repo.update(
+      documentId,
+      carryOverReviews(stored?.content, dossier),
+      organizationId
+    );
 
     if (!updateRes.success) {
       return NextResponse.json(
@@ -266,19 +297,13 @@ export async function PUT(req: NextRequest): Promise<Response> {
       );
     }
 
-    // Revisionssicherer Audit-Trail (§ 17 ff. BeurkG)
     if (auditOverride) {
-      const auditRepo = getAuditRepository(authSupabase);
-      await auditRepo.appendEvent({
+      await appendOverrideAudit(authSupabase, {
         documentId,
         organizationId,
-        action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
-        actor: sessionActor.actorLabel,
-        details: {
-          override: auditOverride,
-          caseTitle: dossier.caseTitle,
-          actorRole: sessionActor.role,
-        },
+        override: auditOverride,
+        dossier,
+        sessionActor,
       });
     }
 

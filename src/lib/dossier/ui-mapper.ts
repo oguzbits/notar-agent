@@ -111,6 +111,7 @@ function buildFieldObservation(
     status,
     note: resolvedNote,
     actionRequired: action || undefined,
+    review: field.review,
     source: field.source && field.source.fileName ? field.source : undefined,
     sources,
   };

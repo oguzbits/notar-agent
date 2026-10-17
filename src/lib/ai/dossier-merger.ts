@@ -1,3 +1,4 @@
+import { carryOverReviews } from '@/lib/dossier/state';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
 import { logEvent } from '@/lib/observability/logger';
 import {
@@ -178,5 +179,5 @@ export function mergeDossierStages(params: MergeDossierParams): Dossier {
     }
   }
 
-  return dossier;
+  return carryOverReviews(existingDossier, dossier);
 }

@@ -18,12 +18,14 @@ interface UnifiedFieldCockpitTableProps {
     note?: string,
     overrideReason?: string
   ) => void;
+  onConfirmField?: (fieldKey: string) => void;
   updatingFieldKey?: string | null;
 }
 
 export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> = ({
   dossier,
   onOverrideFieldStatus,
+  onConfirmField,
   updatingFieldKey,
 }) => {
   const [expandedFieldKeys, setExpandedFieldKeys] = useState<Set<string>>(new Set());
@@ -172,6 +174,7 @@ export const UnifiedFieldCockpitTable: React.FC<UnifiedFieldCockpitTableProps> =
                 isExpanded={expandedFieldKeys.has(row.fieldKey)}
                 onToggleExpand={() => toggleFieldExpand(row.fieldKey)}
                 onOverrideFieldStatus={onOverrideFieldStatus}
+                onConfirmField={onConfirmField}
                 updatingFieldKey={updatingFieldKey}
               />
             ))}

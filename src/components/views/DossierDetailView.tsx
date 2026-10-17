@@ -25,6 +25,7 @@ interface DossierDetailViewProps {
     customNote?: string,
     overrideReason?: string
   ) => void;
+  onConfirmField: (fieldKey: string) => void;
   updatingFieldKey?: string | null;
   // Nachreichen
   isAppending: boolean;
@@ -47,6 +48,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
   dossier,
   activeRecord,
   onOverrideFieldStatus,
+  onConfirmField,
   updatingFieldKey,
   isAppending,
   onToggleAppending,
@@ -248,6 +250,7 @@ export const DossierDetailView: React.FC<DossierDetailViewProps> = ({
               <UnifiedFieldCockpitTable
                 dossier={dossier}
                 onOverrideFieldStatus={onOverrideFieldStatus}
+                onConfirmField={onConfirmField}
                 updatingFieldKey={updatingFieldKey}
               />
             </ErrorBoundary>

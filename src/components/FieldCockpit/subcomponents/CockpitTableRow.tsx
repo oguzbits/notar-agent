@@ -1,5 +1,6 @@
 import { FileText, ChevronDown, ChevronUp, Pencil, Quote } from 'lucide-react';
 import React, { useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { FieldObservation } from '@/lib/dossier/types';
@@ -21,6 +22,7 @@ interface CockpitTableRowProps {
     note?: string,
     overrideReason?: string
   ) => void;
+  onConfirmField?: (fieldKey: string) => void;
   updatingFieldKey?: string | null;
 }
 
@@ -30,6 +32,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
   isExpanded,
   onToggleExpand,
   onOverrideFieldStatus,
+  onConfirmField,
   updatingFieldKey,
 }) => {
   const [isEditingNote, setIsEditingNote] = useState(false);
@@ -110,6 +113,30 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
           ) : (
             <StatusBadge status={row.status} size="sm" />
           )}
+          {row.status === FIELD_STATUS.VERIFIED &&
+            (row.review ? (
+              <p className="text-muted-foreground mt-1.5 text-sm">
+                Geprüft: {row.review.confirmedBy},{' '}
+                {new Date(row.review.confirmedAt).toLocaleString('de-DE', {
+                  dateStyle: 'short',
+                  timeStyle: 'short',
+                })}
+              </p>
+            ) : (
+              <div className="mt-1.5 flex flex-col items-start gap-1">
+                <span className="text-muted-foreground text-sm">Prüfung offen</span>
+                {onConfirmField && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    isLoading={updatingFieldKey === row.fieldKey}
+                    onClick={() => onConfirmField(row.fieldKey)}
+                  >
+                    Als geprüft bestätigen
+                  </Button>
+                )}
+              </div>
+            ))}
         </td>
 
         {/* Befund & Prüfungshinweis */}

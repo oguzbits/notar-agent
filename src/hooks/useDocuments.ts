@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { DB_TABLES } from '@/types/database';
 import { DeletionReason } from '@/types/deletion';
 import { DocumentRecord, DocumentListItem } from '@/types/document';
-import { Dossier } from '@/types/dossier';
+import { Dossier, FieldReview } from '@/types/dossier';
 
 export const DOCUMENTS_QUERY_KEY = [DB_TABLES.DOCUMENTS] as const;
 export const DOCUMENT_DETAIL_QUERY_PREFIX = 'document-detail' as const;
@@ -64,6 +64,24 @@ async function apiDeleteDocument(
     throw new Error('Fehler beim Löschen des Dokuments');
   }
   return true;
+}
+
+async function apiConfirmField({
+  documentId,
+  fieldKey,
+}: {
+  documentId: string;
+  fieldKey: string;
+}): Promise<FieldReview> {
+  const res = await fetch(`/api/documents/${encodeURIComponent(documentId)}/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fieldKey }),
+  });
+  if (!res.ok) {
+    throw new Error('Fehler beim Bestätigen des Feldes');
+  }
+  return (await res.json()).review;
 }
 
 async function apiUpdateDossier({
@@ -153,6 +171,15 @@ export function useDocuments(organizationId?: string, options?: UseDocumentsOpti
     },
   });
 
+  const confirmFieldMutation = useMutation({
+    mutationFn: apiConfirmField,
+    onSuccess: (_, { documentId }) => {
+      queryClient.invalidateQueries({
+        queryKey: getDocumentDetailQueryKey(documentId, organizationId),
+      });
+    },
+  });
+
   const deleteDocument = async (id: string, reason: DeletionReason) => {
     try {
       await deleteMutation.mutateAsync({ id, reason });
@@ -170,6 +197,7 @@ export function useDocuments(organizationId?: string, options?: UseDocumentsOpti
     loadError,
     deleteDocument,
     updateDossier: updateDossierMutation.mutateAsync,
+    confirmField: confirmFieldMutation.mutateAsync,
     isUpdatingDossier: updateDossierMutation.isPending,
   };
 }

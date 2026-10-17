@@ -15,7 +15,12 @@ import { useAnalysisWorkflow } from '@/hooks/useAnalysisWorkflow';
 import { useDocuments, useDocument } from '@/hooks/useDocuments';
 import { useJobs, useJob } from '@/hooks/useJobs';
 import { useVorgangSession } from '@/hooks/useVorgangSession';
-import { normalizeDossier, getDossierFieldsRecord, updateDossierFieldStatus } from '@/lib/dossier';
+import {
+  normalizeDossier,
+  getDossierFieldsRecord,
+  updateDossierFieldStatus,
+  confirmFieldInDossier,
+} from '@/lib/dossier';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { useAuth } from '@/providers/AuthProvider';
 import { DocumentListItem } from '@/types/document';
@@ -47,9 +52,8 @@ function HomeContent() {
 
   const { currentUser, organization, hasActiveOrganization, isLoadingSession } = useAuth();
 
-  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier } = useDocuments(
-    organization?.id
-  );
+  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier, confirmField } =
+    useDocuments(organization?.id);
   const { document: singleDocument, isLoadingDocument: isLoadingSingleDoc } = useDocument(
     vorgangParam,
     organization?.id
@@ -250,6 +254,24 @@ function HomeContent() {
     }
   };
 
+  const handleConfirmField = async (fieldKey: string) => {
+    const docId = session.activeDocumentId || vorgangParam;
+    if (!displayedDossier || !docId) return;
+    setUpdatingFieldKey(fieldKey);
+    setErrorMessage(null);
+    try {
+      const review = await confirmField({ documentId: docId, fieldKey });
+      actions.setDossier(confirmFieldInDossier(displayedDossier, fieldKey, review));
+    } catch (err) {
+      console.error('Feld-Bestätigung fehlgeschlagen:', err);
+      setErrorMessage(
+        `Die Bestätigung für „${fieldKey}“ konnte nicht gespeichert werden. Bitte wiederholen Sie den Vorgang.`
+      );
+    } finally {
+      setUpdatingFieldKey(null);
+    }
+  };
+
   useEffect(() => {
     if (!isLoadingSession && !currentUser) {
       router.replace('/login');
@@ -385,6 +407,7 @@ function HomeContent() {
               dossier={displayedDossier}
               activeRecord={activeRecord || null}
               onOverrideFieldStatus={handleOverrideFieldStatus}
+              onConfirmField={handleConfirmField}
               updatingFieldKey={updatingFieldKey}
               isAppending={session.isAppending}
               onToggleAppending={() => actions.setIsAppending(!session.isAppending)}

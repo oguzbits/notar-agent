@@ -1,4 +1,4 @@
-import { FieldStatus, SourceLocation } from '@/types/dossier';
+import { FieldReview, FieldStatus, SourceLocation } from '@/types/dossier';
 
 export interface SubSourceItem {
   fileName: string;
@@ -13,6 +13,7 @@ export interface FieldObservation {
   status: FieldStatus;
   note: string;
   actionRequired?: string;
+  review?: FieldReview;
   source?: SourceLocation;
   sources: SubSourceItem[];
 }

@@ -64,6 +64,8 @@ graph TD
   Zeichengenaue Verifikation von Beleg-Snippets auf dem PDF-Textlayer zur Vermeidung von Halluzinationen (§ 17 BeurkG Provenance) mit exakter Koordinaten- und Offset-Lokalisierung.
 - **Belegprüfung auf dem Prompt-Text (Implementiert):**
   Die Prüftexte stammen aus demselben Durchlauf, der den Prompt baut (Textlayer, DOCX-Markdown, Textdatei), und tragen die Prompt-Nummer des Dokuments. Zitate werden nur gegen das Dokument mit dieser Nummer geprüft; die Bearbeitungsnotiz ist kein Dokument. Fail-closed: Scans und Bilder ohne maschinenlesbaren Text sowie Ausgaben, die das Schema auch nach der Korrektur verletzen, behalten keinen Status `VERIFIED`, sondern gehen auf `NEEDS_REVIEW`.
+- **Prüfvermerk je Feld (Implementiert):**
+  Ein belegtes Feld (`VERIFIED`) trägt optional `review` (Zeitpunkt, Person) als Vermerk, dass der Notar es gesehen hat. Der Vermerk ist unabhängig vom Status, wird nur über `POST /api/documents/[id]/confirm` gesetzt (Recht `OVERRIDE_FIELD_STATUS`, Person aus der Sitzung, Audit-Eintrag `FIELD_CONFIRMED`) und entfällt bei geänderten Daten, Quelle oder Status. Beim Speichern und bei jeder erneuten Analyse stammt er ausschließlich aus dem gespeicherten Stand (`carryOverReviews`), nie vom Client oder Modell. Felder mit anderem Status entscheidet der Notar über die Statusänderung mit Begründung.
 - **Serverless Ingestion Overhaul (B.8):**
   Flache, modulare Zod-Sub-Schemas pro Dokumenttyp (Grundbuch, Energieausweis, Mietlisten) und selektives Windowing für Großakten (> 150 Seiten) bei 100 % Serverless-Kompatibilität.
 
