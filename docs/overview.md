@@ -243,4 +243,4 @@ Alle Änderungen durchlaufen den zentralen Prüfbefehl `npm run check`:
   - **N+1 DB-Performance Guard:** Automatischer Scan gegen synchrone Supabase-Abfragen innerhalb von Schleifenkörpern (`for`, `while`, `for-of`, `for await`).
 - **Magic String Audit (`audit:magic-strings`):** Stellt sicher, dass Statuswerte niemals als rohe String-Literale im Code verwendet werden ([`scripts/audit/audit-magic-strings.mjs`](../scripts/audit/audit-magic-strings.mjs)).
 - **Strict TypeScript & Linting:** `strict: true`, `noUncheckedIndexedAccess: true` ([`tsconfig.json`](../tsconfig.json)) sowie `@shadcn/lint` für semantische UI-Primitives.
-- **Git Hooks (Husky):** Automatisches `npm run check` und `lint-staged` bei Pre-Commit ([`.husky/pre-commit`](../.husky/pre-commit)) sowie `npm test` bei Pre-Push ([`.husky/pre-push`](../.husky/pre-push)).
+- **Git Hooks (Husky):** Automatisches `npm run check` und `lint-staged` bei Pre-Commit ([`.husky/pre-commit`](../.husky/pre-commit)) sowie `npm test` und `npm run audit:sast` (Semgrep) bei Pre-Push ([`.husky/pre-push`](../.husky/pre-push)).

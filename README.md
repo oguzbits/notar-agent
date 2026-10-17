@@ -161,4 +161,4 @@ Im Verzeichnis [`test-akten/`](test-akten/) stehen **10 synthetische, datenschut
 - **Asynchrone Großakten-Queue:** Transaktionssichere PostgreSQL-Job-Queue (`dossier_jobs` via `SKIP LOCKED`) zur entkoppelten Verarbeitung von 50–200 Seiten ohne Timeout-Gefahr (< 250 ms `202 Accepted`).
 - **Persistenz & Kanzlei-Compliance:** Supabase PostgreSQL 17 mit strikter Row-Level Security (RLS) nach § 203 StGB, dynamischer Wissensbasis via `pgvector` und lückenlosem, kryptographischem Audit-Trail (SHA-256 Hash-Chaining nach § 17 BeurkG).
 - **Automatisierte Evaluation & Testakten:** Promptfoo Golden Dataset Evaluationen (`npm run eval:smoke`, `npm run eval:live`) gegen synthetische, datenschutzkonforme Kanzlei-Stresstests in `test-akten/`.
-- **Deterministische Quality Gates:** 290+ Vitest-Tests, Playwright E2E, Dependency Cruiser (`depcruise`), Knip, jscpd (Duplication Audit), Magic-String-Checks und Husky Pre-Commit/Pre-Push Hooks.
+- **Deterministische Quality Gates:** Vitest-Tests, Playwright E2E, Dependency Cruiser (`depcruise`), Knip, jscpd (Duplication Audit), Magic-String-Checks und Husky Pre-Commit/Pre-Push Hooks (inkl. Semgrep-SAST).

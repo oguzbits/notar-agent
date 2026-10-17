@@ -15,7 +15,7 @@ Immobilienkaufverträge erfordern zwingend die Prüfung von 10 Kernfeldern. Der 
 
 1. `src/types/dossier.ts` (`ImmobilienFieldsSchema`)
 2. `src/lib/ai/prompts.ts` (`IMMOBILIEN_EXTRACTION_AGENT_PROMPT` & Reconciler)
-3. `src/lib/dossier-helpers.ts` (`extractAllFieldRows`)
+3. `src/lib/dossier/ui-mapper.ts` (`extractAllFieldRows`)
 4. `src/components/FieldCockpit/UnifiedFieldCockpitTable.tsx`
 
 **Die 10 Pflichtfelder:**
@@ -54,11 +54,7 @@ Kein Sachverhalt darf ohne Nachweis als rechtssicher gelten:
 
 Für Belastungstests und Model-Evaluations existiert ein verbindlicher Referenz-Datensatz in `test-akten/` (dokumentiert in `test-akten/README.md`):
 
-- `01_unscharfer_personalausweis_scan.png`: Stress-Test für Unschärfe/Verwacklung (Soll: `NEEDS_REVIEW` ohne Halluzination).
-- `01_scharfer_personalausweis_referenz.png`: Scharfe Gegenprobe (Soll: `VERIFIED`).
-- `02_fehlende_grundbuchseiten_scan.png`: Unvollständiges Grundbuchamt-Dokument ohne Abt. I (Soll: `NEEDS_REVIEW`, § 21 BeurkG Sperre).
-- `03_handschriftliche_kaufpreiskorrektur_scan.png`: Urkunde mit handschriftlicher Stift-Korrektur (Soll: 425.000 € statt 450.000 €).
-- `04_standard_kaufvertrag.pdf`: Vollständiger Referenzvertrag.
+Die Fälle (Ausweis-Unschärfe, fehlende Grundbuchseiten, Handschriftkorrektur, Referenzvertrag u. a.) mit Soll-Ergebnissen stehen in der Matrix von `test-akten/README.md`.
 
 Befehl für den Offline-Benchmark (0,00 € Kosten):
 
