@@ -90,7 +90,6 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] Aktion „Beurkundung abgeschlossen“ setzt `documents.retention_anchor_at`
   - [ ] Fristeinträge (`knowledge_documents.retention_years`) nach rechtlicher Klärung anlegen
   - [ ] Cron `/api/cron/deletion` läuft auf dem Vercel-Hobby-Tarif nur täglich; Storage-Löschungen starten sofort nach dem Löschen, der Cron fängt nur Fehlschläge auf. Stündlich erst mit Pro-Tarif oder externem Auslöser
-  - [ ] Anzeige „Löschung läuft“ für offene `deletion_tasks`
   - [ ] Zurechenbarkeit des Löschenden im Nachweis `DOSSIER_DELETED` (Pseudonym wird mit dem Dossier gelöscht) fachlich entscheiden
   - [ ] Dauerhaft fehlgeschlagene `deletion_tasks` (FAILED) zurücksetzen und anzeigen
 - [ ] **C.8 Observability: Inbetriebnahme und Kostenerfassung:**

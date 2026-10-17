@@ -83,4 +83,10 @@ export const DELETION_UI_TEXTS_DE = {
   CONFIRM: 'Endgültig löschen',
   ERROR: 'Der Vorgang konnte nicht gelöscht werden.',
   RETRY: 'Erneut versuchen',
+  PENDING_NOTICE: (count: number) =>
+    count === 1
+      ? 'Löschung läuft: 1 Datei wird noch entfernt.'
+      : `Löschung läuft: ${count} Dateien werden noch entfernt.`,
+  PENDING_LOADING: 'Offene Löschungen werden geprüft…',
+  PENDING_ERROR: 'Der Stand offener Löschungen konnte nicht geladen werden.',
 } as const;
