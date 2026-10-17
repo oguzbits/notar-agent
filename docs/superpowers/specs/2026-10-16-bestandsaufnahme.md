@@ -100,9 +100,7 @@ Tastatur- und Screenreader-Blocker, Kontraste, Fehlerzustände, Terminologie, Pr
 
 ## Offen für den Betreiber
 
-1. **AGENTS.md-Widerspruch:** Der Abschnitt „Authoritative Git Execution" und der Command-Guard blockieren Agenten-Commits; die Praxis und die globale Arbeitsregel behandeln Commits als Routine. Vorschlag: Antigravity-spezifische Sätze entfernen. Das ändert eine Regeldatei und braucht Zustimmung.
-2. **Live-Abgleich** der Datenbank (Policies, Grants, Audit-Spalten) per Supabase-Zugang und **Rotation des Anon-Keys**.
-3. **Prüfung der Live-Protokolle** auf Fremdbeitritte und anonyme Dateizugriffe.
+Betreiberaufgaben (Live-Abgleich der Datenbank, Anon-Key-Rotation, Prüfung der Live-Protokolle) stehen in [BACKLOG.md §21](../../../BACKLOG.md). Der frühere Widerspruch in der AGENTS.md zu Agenten-Commits ist behoben.
 
 ## Fragen an Fachjuristen (nicht Teil dieser Bewertung)
 

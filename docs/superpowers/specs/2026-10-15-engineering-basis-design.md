@@ -62,20 +62,13 @@ Jeder Test muss durch Entfernen des Schutzes rot werden.
 | Bash-Guard                      | `git commit --no-verify`, `git push --force`, `cat .env.local` → Block; `cat .env.example` → ok                       | die Muster entfernt werden                  |
 | ESLint-Grenzen, Modell-ID-Regel | Fixture mit Verstoß schlägt fehl                                                                                      | die Regel deaktiviert wird                  |
 
-## Offene Entscheidungen (vor Planstart zu klären)
+## Entscheidungen
 
-- Installationsweg für Semgrep lokal (Python-Paket oder Container) und Dauer im Pre-push.
-- Grenzwerte für CLS und für die ESLint-Grenzen (aus Messung der Ist-Werte ableiten, nicht schätzen).
-- Laufzeit von `npm run check` im Stop-Hook; gegebenenfalls schnellere Teilmenge.
-- Ob Branch-Protection mit Required Checks gesetzt wird (externe Wirkung auf GitHub, nur mit Zustimmung).
-- Ob der CLS-Test gegen die lokale App mit Fake-Modell oder gegen Fixtures läuft.
+Die zunächst offenen Fragen (Semgrep lokal, Grenzwerte, Stop-Hook, Branch-Protection, CLS-Test) sind in der [Bestandsaufnahme](2026-10-16-bestandsaufnahme.md) entschieden.
 
-## Nicht enthalten (eigene Specs, Reihenfolge nach Wirkung)
+## Nicht enthalten
 
-1. **Observability:** Request-ID, typisiertes Log-Schema, Sentry mit Allowlist-Scrubbing, Uptime-Workflow.
-2. **Mutation-Tests (Stryker) auf `src/lib`** sowie Eval-Gate mit Baseline, Quota-Stop und eigenem Eval-Schlüssel.
-3. **Kosten und Limits:** Token-Zählung je Modellaufruf, Bericht, Nutzerlimits; die Parallelitätssperre muss serverless-tauglich in der Datenbank liegen.
-4. Produkt- und Design-Fundament, danach Beleg-Cockpit und Features.
+Folgearbeiten stehen in [BACKLOG.md §21](../../../BACKLOG.md).
 
 ## Wirkung und Nachweis
 

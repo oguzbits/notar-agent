@@ -752,3 +752,22 @@ Für den Entwicklungsstand nachrangig; vor einem Produktivbetrieb mit echten Akt
 - [ ] **Fristeinträge:** `knowledge_documents.retention_years` nach rechtlicher Klärung anlegen.
 - [ ] **Zurechenbarkeit des Löschenden:** Im Nachweis `DOSSIER_DELETED` wird das Pseudonym mit dem Dossier gelöscht; fachlich entscheiden, ob das so bleibt.
 - [ ] **Auftragsverarbeitungsvertrag mit Sentry** klären (Konto in der EU-Region besteht, DSNs sind in Vercel gesetzt).
+
+---
+
+## 21. Folgearbeiten aus Bestandsaufnahme und Löschpipeline
+
+Stand der Übernahme aus den Specs unter `docs/superpowers/specs/`; vor Beginn jeweils gegen den Code prüfen, ob schon umgesetzt.
+
+### Geplante Aufgaben
+
+- [ ] **Mutation-Tests (Stryker)** auf `src/lib` sowie Eval-Gate mit Baseline, Quota-Stop und eigenem Eval-Schlüssel.
+- [ ] **Kosten und Limits:** Token-Zählung je Modellaufruf, Kostenbericht, Nutzerlimits; Parallelitätssperre serverless-tauglich in der Datenbank.
+- [ ] **Produkt- und Design-Fundament:** `PRODUCT.md`, `DESIGN.md`, Beleg-Cockpit mit Fundstelle und Konfidenz, Prüfplan vor dem Lauf, Review-Tabelle mit Zellstatus, Strg+K.
+- [ ] **Löschpipeline-Erweiterungen:** Rechte-Editor in der UI, Löschanfragen Betroffener, Backups und Point-in-Time-Recovery (Aufbewahrung dort gesondert regeln).
+
+### Betreiberaufgaben (kein Code)
+
+- [ ] Live-Abgleich der Datenbank (Policies, Grants, Audit-Spalten) und Rotation des Anon-Keys.
+- [ ] Prüfung der Live-Protokolle auf Fremdbeitritte und anonyme Dateizugriffe.
+- [ ] Live-Anwendung der Migrationen (Löschpipeline, RBAC) nur mit Zustimmung; bis dahin `DECLARATION_STAGED`.
