@@ -35,6 +35,7 @@
 | **Additions** | Modul 19 Observability (Zyklus 1)          | [x] Abgeschlossen | Strukturierte Pipeline-Logs (`logEvent`/`timed`), Sentry EU mit Allowlist-Scrubber (nur mit DSN), öffentlicher `GET /api/health`                                                        |
 | **Additions** | Modul 20 Löschnachlauf nach dem Löschen    | [x] Abgeschlossen | `DELETE /api/documents` räumt die Storage-Dateien der Akte sofort ab (`documentId`-Filter im Worker), Cron nur noch täglich für Wiederholungen                                          |
 | **Additions** | Modul 21 Verbrauchserfassung (Zyklus 2)    | [x] Abgeschlossen | Token je Modellaufruf (`onStageUsage`) append-only in `llm_usage` (RLS), Preise in `model_prices`, Kosten per View `llm_usage_costs`; Migration live eingespielt, Preise nicht gepflegt |
+| **Additions** | Modul 22 Fehlercodes der Löschroute        | [x] Abgeschlossen | Löschroute meldet 42501 als 403 und 55006 als 409 statt 500                                                                                                                             |
 
 ---
 
