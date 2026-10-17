@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { DocumentTable } from '@/components/DocumentTable';
 import { Header } from '@/components/Header';
-import { PendingDeletionNotice } from '@/components/PendingDeletionNotice';
 import { Button } from '@/components/ui/Button';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
 import { JobProgressView } from '@/components/views/JobProgressView';
@@ -317,21 +316,18 @@ function HomeContent() {
               (isLoadingDocs && documents.length === 0) || (isLoadingJobs && jobs.length === 0);
 
             return (
-              <>
-                <PendingDeletionNotice organizationId={organization?.id} />
-                <DocumentTable
-                  documents={documents}
-                  isLoading={isTableLoading}
-                  onSelectDocument={handleSelectDocument}
-                  onSelectJob={handleSelectJob}
-                  onCreateNew={handleCreateNew}
-                  onDeleteDocument={deleteDocument}
-                  activeJobs={[...activeJobs, ...failedJobs]}
-                  onRetryJob={retryJob}
-                  onCancelJob={cancelJob}
-                  onDeleteJob={deleteJob}
-                />
-              </>
+              <DocumentTable
+                documents={documents}
+                isLoading={isTableLoading}
+                onSelectDocument={handleSelectDocument}
+                onSelectJob={handleSelectJob}
+                onCreateNew={handleCreateNew}
+                onDeleteDocument={deleteDocument}
+                activeJobs={[...activeJobs, ...failedJobs]}
+                onRetryJob={retryJob}
+                onCancelJob={cancelJob}
+                onDeleteJob={deleteJob}
+              />
             );
           })()}
 
