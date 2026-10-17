@@ -190,6 +190,12 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Parser und Merger melden Fehler über logFailure, nicht über console
+    files: ['src/lib/ai/**/*.ts', 'src/lib/files/**/*.ts'],
+    ignores: ['src/**/*.test.ts'],
+    rules: { 'no-console': 'error' },
+  },
+  {
     // Barrierefreiheit (BFSG/WCAG): vollständiges jsx-a11y-Regelset als Fehler
     files: ['src/**/*.tsx'],
     rules: {
