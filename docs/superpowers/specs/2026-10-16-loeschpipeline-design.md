@@ -58,7 +58,7 @@ entschieden ist; die Spec legt nur den technischen Mechanismus fest.
 - **`src/lib/dossier/` (Mechanismus):** reine Funktion zur Fristberechnung aus Fristdatensatz + Beurkundungsdatum.
 - **Repository:** `deleteDossierRecord` ruft die RPC auf, wirft bei Fehler (fail-fast), gibt `DeletionReceipt` zurück.
 - **Route:** `DELETE /api/documents` verlangt Grund im Body, liefert Nachweis.
-- **Worker:** Route `POST /api/cron/deletion` (geschützt über Cron-Secret) arbeitet `deletion_tasks` ab und
+- **Worker:** Route `GET /api/cron/deletion` (geschützt über Cron-Secret) arbeitet `deletion_tasks` ab und
   erkennt abgelaufene Fristen.
 - **UI:** Löschdialog mit Pflichtgrund (vorhandenes `ConfirmDialog`), 4 Zustände, Hinweis „Löschung läuft“,
   solange Aufgaben offen sind. Texte aus `src/lib/dossier/constants.ts`.

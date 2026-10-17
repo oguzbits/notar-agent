@@ -144,9 +144,9 @@ Kein Rechtsdokument verlässt das System ohne definierte Freigabeschranken:
 
 ---
 
-## 3. Roadmap & Phasen-Status
+## 3. Umsetzung der Stufen
 
-Die konkrete Umsetzung dieser 5-Stufen-Architektur wird im zentralen Fortschrittstracker in [ROADMAP.md](../../ROADMAP.md) (Phase A.2, Phase B.2, Phase B.8 sowie Phase C.3) gepflegt:
+Wo die 5 Stufen im Code liegen. Offene Aufgaben stehen in [ROADMAP.md](../../ROADMAP.md), abgeschlossene Meilensteine in [CHANGELOG.md](../../CHANGELOG.md):
 
 - **Schritt 1 (Database-First SSOT):** Materielle Rechtsnormen in `knowledge_documents` (PostgreSQL), Code und Prompts vollständig frei von Gesetzes-Strings.
 - **Schritt 2 (Dual-Stream Ingestion):** Introspektion auf Byte-Ebene (`pdf-stream-classifier.ts`) und multimodale Dokumenten-Extraktion via Google Gemini Vision und nativer Stream-Fallback (`pdf-document-parser.ts`, `gemini-pdf-parser.ts`).

@@ -99,7 +99,7 @@ graph LR
 
 ### Geplante Aufgaben
 
-- Offene Inbetriebnahme-Schritte (Sentry-Konto, DSN, AVV, Uptime-Dienst) stehen in [ROADMAP.md](./ROADMAP.md) unter C.8.
+- Offener Inbetriebnahme-Schritt (Auftragsverarbeitungsvertrag mit Sentry) steht in §20.
 
 ---
 
@@ -463,7 +463,7 @@ graph TD
 - **Storage Partitioning & Cookie-Hygiene:** In modernen Browsern (Safari ITP, Chrome CHIPS) werden Cookies über Drittanbieter-Domains (`*.supabase.co`) blockiert oder nach 7 Tagen gelöscht.
 - **Lösung:** Konfiguration einer **Custom Auth Domain** (z. B. `auth.notaragent.de` als CNAME auf den Supabase-Projekt-Ref).
 - **Vorteil:** Die Auth-Cookies (`sb-access-token`, `sb-refresh-token`) agieren als echte **First-Party-Cookies**, was Session-Drops und Login-Schleifen im Notariatsalltag verhindert.
-- **Produktions-Migration:** Live-Anwendung der Datei `supabase/migrations/20260917150000_auth_profiles_and_members.sql` und Aktivierung von RLS.
+- **Produktions-Migration:** Live-Anwendung der konsolidierten Migrationen in `supabase/migrations/` und Aktivierung von RLS.
 
 #### 3. Google & Enterprise SSO Go-Live Setup
 
@@ -496,7 +496,7 @@ graph TD
 - [ ] **DNS & Domain:** Domain-Registrierung und Routing (CNAME / A-Record auf Production-Host)
 - [ ] **Security Headers:** HSTS, CSP und Frameguard in `next.config.ts` konfigurieren
 - [ ] **Custom Auth Domain:** Supabase CNAME-Routing (`auth.<domain>`) einrichten
-- [ ] **DB-Migration:** `20260917150000_auth_profiles_and_members.sql` auf Live-PostgreSQL anwenden
+- [ ] **DB-Migration:** konsolidierte Migrationen aus `supabase/migrations/` auf Live-PostgreSQL anwenden
 - [ ] **Google OAuth:** Live-Credentials in Google Cloud Console & Supabase Auth aktivieren
 - [ ] **SMTP / Mail-Relay:** Eigener Kanzlei-Mailversand für Einladungen via Resend / M365
 - [ ] **Health-Check Route:** `/api/health` Endpunkt mit DB-Ping für Uptime-Monitoring bereitstellen

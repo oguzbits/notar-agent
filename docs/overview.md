@@ -208,7 +208,7 @@ Automatisierte Pre-Tool- und Post-Tool-Lifecycle-Hooks sichern das System gegen 
   - **`context7` MCP:** Semantische Dokumentationsrecherche für Bibliotheken und SDKs.
   - **`chrome-devtools` MCP:** Headless-Browser-Inspektion zur Überprüfung barrierefreier Hierarchien (A11y) und CLS-Vermeidung.
 
-### 1.5 Multi-Stage Agentic Evaluation & Visueller Artefakt-Report ([`src/test/eval/`](../src/test/eval/), `reports/` (lokal erzeugt, nicht versioniert))
+### 2.5 Multi-Stage Agentic Evaluation & Visueller Artefakt-Report ([`src/test/eval/`](../src/test/eval/), `reports/` (lokal erzeugt, nicht versioniert))
 
 Um die Qualität und Verlässlichkeit des KI-Systems ohne Blindflug zu garantieren, verfügt Notar Agent über ein mehrstufiges, schichtenbasiertes Evaluations- und Visualisierungs-Framework:
 
@@ -230,7 +230,7 @@ Um die Qualität und Verlässlichkeit des KI-Systems ohne Blindflug zu garantier
   - _Sticky Soll-Ist-Tabelle:_ Hält die Soll-Ist-Vergleichstabelle (`Feld`, `Soll`, `Ist`, `Status`, `Begründung`) beim Scrollen durch das Dokument dauerhaft auf Augenhöhe im Blickfeld.
   - _Full Keyboard & Screenreader Accessibility:_ ARIA-Semantik (`role="tab"`, `role="toolbar"`, `role="region"`, `role="status"`), `:focus-visible`-Ringe und dynamische Seitennavigation (`Seite: [1] [2]...`).
 
-### 2.5 Deterministische Quality-Gates & Tooling
+### 2.6 Deterministische Quality-Gates & Tooling
 
 Alle Änderungen durchlaufen den zentralen Prüfbefehl `npm run check`:
 
