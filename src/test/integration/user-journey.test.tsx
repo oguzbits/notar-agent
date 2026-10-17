@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DocumentTable } from '@/components/DocumentTable/DocumentTable';
 import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
-import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
+import { PRUEFPLAN_UI_TEXTS_DE, STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { CASE_STATUS, DocumentRecord } from '@/types/document';
 import { CASE_TYPES, UploadedFilePayload } from '@/types/dossier';
@@ -24,6 +24,13 @@ vi.mock('@/providers/AuthProvider', () => ({
   useAuth: () => mockAuthValue,
   useOptionalAuth: () => mockAuthValue,
 }));
+
+const PLAN_FIXTURE = {
+  caseType: CASE_TYPES.IMMOBILIENKAUF,
+  fields: [{ fieldKey: 'verkaeufer', title: 'Verkäufer' }],
+  rules: [],
+  ruleBasisReviewed: false,
+};
 
 describe('User Journey Integration Suite: Vorgangslebenszyklus & Fehlerbehandlung', () => {
   let queryClient: QueryClient;
@@ -56,10 +63,15 @@ describe('User Journey Integration Suite: Vorgangslebenszyklus & Fehlerbehandlun
       filesState = newFiles;
     });
     const onSubmit = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(PLAN_FIXTURE))
+    );
 
     const { rerender } = render(
       <TestWrapper>
         <NewVorgangUploadView
+          caseType={CASE_TYPES.IMMOBILIENKAUF}
           files={filesState}
           onFilesChange={onFilesChange}
           notes="Dringender Beurkundungstermin am Freitag"
@@ -83,6 +95,9 @@ describe('User Journey Integration Suite: Vorgangslebenszyklus & Fehlerbehandlun
 
     // 3. User klickt Submit
     fireEvent.click(submitBtn);
+    expect(onSubmit).not.toHaveBeenCalled();
+    await screen.findByText('Verkäufer');
+    fireEvent.click(screen.getByRole('button', { name: PRUEFPLAN_UI_TEXTS_DE.START }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
 
     // 4. User entfernt Datei -> Liste aktualisiert sich
@@ -93,6 +108,7 @@ describe('User Journey Integration Suite: Vorgangslebenszyklus & Fehlerbehandlun
     rerender(
       <TestWrapper>
         <NewVorgangUploadView
+          caseType={CASE_TYPES.IMMOBILIENKAUF}
           files={[]}
           onFilesChange={onFilesChange}
           notes=""

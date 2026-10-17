@@ -74,6 +74,24 @@ export const DELETION_REASON_LABELS_DE: Record<DeletionReason, string> = {
   SONSTIGES: 'Sonstiger Grund',
 };
 
+export const PRUEFPLAN_UI_TEXTS_DE = {
+  TITLE: 'Prüfplan',
+  DESCRIPTION: 'Bitte prüfen Sie vor dem Start, was untersucht wird.',
+  DOCUMENTS: 'Unterlagen',
+  FIELDS: 'Pflichtangaben',
+  FIELDS_EMPTY: 'Für diese Vorgangsart sind keine Pflichtangaben hinterlegt.',
+  RULES: 'Geltende Prüfregeln',
+  RULES_EMPTY: 'Es sind keine Prüfregeln hinterlegt.',
+  RULE_REVIEWED: 'geprüft',
+  RULE_UNREVIEWED: 'nicht geprüft',
+  WARNING: 'Die Regelgrundlage ist nicht vollständig geprüft. Sie können dennoch starten.',
+  LOADING: 'Prüfplan wird geladen…',
+  ERROR: 'Der Prüfplan konnte nicht geladen werden.',
+  RETRY: 'Erneut laden',
+  CANCEL: 'Zurück',
+  START: 'Prüfung starten',
+} as const;
+
 export const DELETION_UI_TEXTS_DE = {
   FORMER_USER: 'Gelöschter Nutzer',
   DIALOG_TITLE: 'Vorgang endgültig löschen',

@@ -1,12 +1,14 @@
 'use client';
 
 import { X } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { UploadZone } from '@/components/UploadZone';
-import { UploadedFilePayload } from '@/types/dossier';
+import { CaseType, UploadedFilePayload } from '@/types/dossier';
+import { PruefplanDialog } from './PruefplanDialog';
 
 interface NewVorgangUploadViewProps {
+  caseType: CaseType;
   files: UploadedFilePayload[];
   onFilesChange: (files: UploadedFilePayload[]) => void;
   notes: string;
@@ -18,6 +20,7 @@ interface NewVorgangUploadViewProps {
 }
 
 export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
+  caseType,
   files,
   onFilesChange,
   notes,
@@ -27,6 +30,8 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
   onClearError,
   onSubmit,
 }) => {
+  const [isPlanOpen, setIsPlanOpen] = useState(false);
+
   return (
     <section className="space-y-4">
       <div>
@@ -93,12 +98,22 @@ export const NewVorgangUploadView: React.FC<NewVorgangUploadViewProps> = ({
           type="button"
           disabled={files.length === 0}
           isLoading={isStarting}
-          onClick={onSubmit}
+          onClick={() => setIsPlanOpen(true)}
           size="md"
         >
           {isStarting ? 'Vorgang wird gestartet...' : 'Unterlagen prüfen'}
         </Button>
       </div>
+      <PruefplanDialog
+        isOpen={isPlanOpen}
+        caseType={caseType}
+        files={files}
+        onCancel={() => setIsPlanOpen(false)}
+        onStart={() => {
+          setIsPlanOpen(false);
+          onSubmit();
+        }}
+      />
     </section>
   );
 };

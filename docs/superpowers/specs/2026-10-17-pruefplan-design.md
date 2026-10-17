@@ -18,7 +18,7 @@ Heute startet „Unterlagen prüfen“ sofort die Analyse. Der Notar sieht erst 
 2. **Freigabe ist der bisherige Start.** Der Dialog hat „Prüfung starten“ und „Abbrechen“. Der Start im Dialog ist der einzige Auslöser; der Knopf im Formular öffnet nur die Vorschau (Single Source of Action).
 3. **Keine Regeln im Code.** Regelnamen kommen ausschließlich aus der Wissensbasis über eine neue Leseroute; die Pflichtfelder aus der vorhandenen Registry. Es gibt keine fest verdrahtete Planliste.
 4. **Hinweis bei Lücken statt Sperre:** Fehlen Regeln in der Wissensbasis oder nur ungeprüfte (`UNGEPRUEFT`), steht das im Plan sichtbar („nicht geprüfte Regelgrundlage“). Der Notar entscheidet, ob er startet.
-5. **Audit:** Die Freigabe ist heute durch den Start des Jobs belegt (`DOCUMENT_INGESTED`). Der Plan-Inhalt (Regel-IDs, Pflichtfelder) wird im Eintrag mitgeschrieben, damit nachvollziehbar bleibt, auf welcher Grundlage geprüft wurde.
+5. **Audit (nicht Teil dieses Schritts):** Beim Start eines Jobs wird heute kein Audit-Eintrag geschrieben (`DOCUMENT_INGESTED` wird im Code nirgends erzeugt). Regel-IDs im Audit festzuhalten braucht erst diesen Eintrag und ist ein eigener Schritt.
 
 ## Offene Fragen an den Nutzer
 
@@ -27,11 +27,11 @@ Heute startet „Unterlagen prüfen“ sofort die Analyse. Der Notar sieht erst 
 
 ## Nicht enthalten
 
-Abwahl oder Bearbeiten von Regeln, Playbooks, Plan für Nachreichungen, Kostenvorschau.
+Audit der Planfreigabe, Abwahl oder Bearbeiten von Regeln, Playbooks, Plan für Nachreichungen, Kostenvorschau.
 
 ## Wirkung und Nachweis
 
 - Impact: `LOCAL_CODE_ONLY`, keine Migration (Annahme zu `audit_logs.details` ohne Einschränkung; nicht gegen Live geprüft).
 - Neue Leseroute für die Regelgrundlage; Authentifizierung und Mandantentrennung wie bei den übrigen Leseroutes.
-- Tests (jeder wird ohne die Schutzfunktion rot): Route liefert nur Regeln der eigenen Kanzlei und keine zurückgezogenen; Plan nennt keine Regel, die nicht aus der Wissensbasis stammt; der Lauf startet erst nach der Freigabe im Dialog; Abbrechen startet nichts; Audit-Eintrag enthält die Regel-IDs.
+- Tests (jeder wird ohne die Schutzfunktion rot): Route liefert nur Regeln der eigenen Kanzlei und keine zurückgezogenen; Plan nennt keine Regel, die nicht aus der Wissensbasis stammt; der Lauf startet erst nach der Freigabe im Dialog; Abbrechen startet nichts.
 - Erfolgskriterium: `npm run check` und `npm test` grün, Dialog bei 1440 und 390 px ohne Layoutsprung (Playwright-Qualitätstest).

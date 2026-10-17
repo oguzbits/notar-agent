@@ -763,7 +763,7 @@ Stand der Übernahme aus den Specs unter `docs/superpowers/specs/`; vor Beginn j
 
 - [ ] **Mutation-Tests (Stryker)** auf `src/lib` sowie Eval-Gate mit Baseline, Quota-Stop und eigenem Eval-Schlüssel.
 - [ ] **Kosten und Limits:** Token-Zählung je Modellaufruf, Kostenbericht, Nutzerlimits; Parallelitätssperre serverless-tauglich in der Datenbank.
-- [ ] **Produkt- und Design-Fundament:** `PRODUCT.md`, `DESIGN.md`, Beleg-Cockpit mit Fundstelle und Konfidenz, Prüfplan vor dem Lauf, Review-Tabelle mit Zellstatus, Strg+K.
+- [ ] **Produkt- und Design-Fundament:** `PRODUCT.md`, `DESIGN.md`, Beleg-Cockpit mit Fundstelle und Konfidenz, Review-Tabelle mit Zellstatus, Strg+K.
 - [ ] **Löschpipeline-Erweiterungen:** Rechte-Editor in der UI, Löschanfragen Betroffener, Backups und Point-in-Time-Recovery (Aufbewahrung dort gesondert regeln).
 
 ### Betreiberaufgaben (kein Code)

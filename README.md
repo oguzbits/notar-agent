@@ -21,7 +21,7 @@ Die Anwendung ist produktiv bereitgestellt unter **[notar-agent.vercel.app](http
 3. **Sofort-Test mit vorbereiteten Testakten:**
    - Klicke auf **„Neuen Vorgang starten“** (oder **„Erste Akte anlegen“**).
    - Nimm eine der synthetischen, datenschutzkonformen Testakten aus dem Ordner [`test-akten/`](test-akten/) (z. B. [`test-akten/fall-04-standard-urkunde/Kaufvertrag_Koeln_UR89.pdf`](test-akten/fall-04-standard-urkunde/Kaufvertrag_Koeln_UR89.pdf) für den fehlerfreien Standardfall oder [`test-akten/fall-03-vertragsaenderung-handschrift/Kaufvertrag_Scan.png`](test-akten/fall-03-vertragsaenderung-handschrift/Kaufvertrag_Scan.png) für handschriftliche Randkorrekturen).
-   - Ziehe die Datei per Drag-and-Drop in den Upload-Bereich und klicke auf **„Unterlagen prüfen“**.
+   - Ziehe die Datei per Drag-and-Drop in den Upload-Bereich und klicke auf **„Unterlagen prüfen“**. Im Prüfplan bestätigst du mit **„Prüfung starten“**.
    - Die KI analysiert die Urkunde, validiert die 10 Pflichtfelder mit Belegzitaten und schlüsselt das Ergebnis im Notar-Cockpit auf.
 
 ---
@@ -128,7 +128,7 @@ Im Verzeichnis [`test-akten/`](test-akten/) stehen **10 synthetische, datenschut
 2. Klicke auf **„Neuen Vorgang starten“** (oder **„Erste Akte anlegen“**).
 3. Ziehe die gewünschte Datei (z. B. `Kaufvertrag_Koeln_UR89.pdf`) per Drag-and-Drop in den Upload-Bereich.
 4. _(Optional)_ Informelle Notizen im Textfeld vermerken (z. B. _„Käufer reicht Ausweis nach“_).
-5. Klicke auf **„Unterlagen prüfen“**: Der agentische Prüfprozess extrahiert die 10 Pflichtfelder mit Belegzitaten, prüft juristische Regeln und stellt das Ergebnis im Cockpit dar.
+5. Klicke auf **„Unterlagen prüfen“** und bestätige den Prüfplan mit **„Prüfung starten“**: Der agentische Prüfprozess extrahiert die 10 Pflichtfelder mit Belegzitaten, prüft juristische Regeln und stellt das Ergebnis im Cockpit dar.
 
 ---
 

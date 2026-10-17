@@ -1,11 +1,18 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
+import { CASE_TYPES } from '@/types/dossier';
 import { NewVorgangUploadView } from './NewVorgangUploadView';
+
+const render = (ui: React.ReactElement) =>
+  rtlRender(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
 
 describe('NewVorgangUploadView Component', () => {
   it('renders heading, upload zone and action buttons', () => {
     render(
       <NewVorgangUploadView
+        caseType={CASE_TYPES.IMMOBILIENKAUF}
         files={[]}
         onFilesChange={vi.fn()}
         notes=""
@@ -31,6 +38,7 @@ describe('NewVorgangUploadView Component', () => {
 
     render(
       <NewVorgangUploadView
+        caseType={CASE_TYPES.IMMOBILIENKAUF}
         files={[]}
         onFilesChange={handleFilesChange}
         notes=""
@@ -65,6 +73,7 @@ describe('NewVorgangUploadView Component', () => {
 
     render(
       <NewVorgangUploadView
+        caseType={CASE_TYPES.IMMOBILIENKAUF}
         files={stagedFiles}
         onFilesChange={vi.fn()}
         notes="Notiz"

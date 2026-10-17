@@ -356,6 +356,7 @@ function HomeContent() {
         {/* Ansicht 2: Upload-Bereich für neue Zuarbeit */}
         {effectiveView === VIEW_MODE.UPLOAD && (
           <NewVorgangUploadView
+            caseType={session.caseType}
             files={session.files}
             onFilesChange={actions.setFiles}
             notes={session.notes}

@@ -1,6 +1,6 @@
 import { SYNTHETIC_KAUFVERTRAG_RAW, SYNTHETIC_BEARBEITER_NOTIZ } from './fixtures/test-files';
 import { test, expect } from './support/demo-session';
-import { IMMOBILIEN_FIELD_METADATA } from '../src/lib/dossier/constants';
+import { IMMOBILIEN_FIELD_METADATA, PRUEFPLAN_UI_TEXTS_DE } from '../src/lib/dossier/constants';
 import { CASE_STATUS } from '../src/lib/supabase/repository';
 import {
   CASE_TYPES,
@@ -249,6 +249,16 @@ test.describe('Notar Agent E2E Smoke Workflow (A.1)', () => {
     });
 
     // Mock API Route für GET /api/jobs* (liefert den fertigen Testjob)
+    await page.route('*/**/api/pruefplan*', async (route) => {
+      await route.fulfill({
+        json: {
+          caseType: CASE_TYPES.IMMOBILIENKAUF,
+          fields: [{ fieldKey: 'verkaeufer', title: 'Verkäufer' }],
+          rules: [],
+          ruleBasisReviewed: false,
+        },
+      });
+    });
     await page.route('*/**/api/jobs*', async (route) => {
       await route.fulfill({
         status: 200,
@@ -340,6 +350,7 @@ test.describe('Notar Agent E2E Smoke Workflow (A.1)', () => {
     const submitButton = page.getByRole('button', { name: /Unterlagen prüfen/i });
     await expect(submitButton).toBeEnabled();
     await submitButton.click();
+    await page.getByRole('button', { name: PRUEFPLAN_UI_TEXTS_DE.START }).click();
 
     // 7. Weiterleitung & Cockpit-Ansicht prüfen
     await page.waitForURL(new RegExp(`vorgang=${mockDossierId}`));
