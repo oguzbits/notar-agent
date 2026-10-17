@@ -86,8 +86,6 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 - [ ] **C.4 KI-Mandantenkorrespondenz & Post-Beurkundung:**
   - [ ] Determinismus-geprüfte Anschreiben- & Nachforderungsgenerierung
   - [ ] Fristen- und Wiedervorlagen-Extraktion für den Urkundenvollzug
-- [ ] **C.7 Löschpipeline: Restpunkte:**
-  - [ ] Cron `/api/cron/deletion` läuft auf dem Vercel-Hobby-Tarif nur täglich; Storage-Löschungen starten sofort nach dem Löschen, der Cron fängt nur Fehlschläge auf. Stündlich erst mit Pro-Tarif oder externem Auslöser
 - [ ] **C.5 XJustiz / XNP Schnittstellen:**
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
 - [ ] **C.6 Enterprise Styling Grundattribute & Design Tokens:**
