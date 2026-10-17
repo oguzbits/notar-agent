@@ -26,6 +26,20 @@ Zweck: Entscheidungsgrundlage, welche Fähigkeiten der Anbieter zu einem Notaria
 | Word, Outlook, DMS-Anbindung                                    | breit: Word, Outlook, iManage, NetDocuments, SharePoint                  | Word, Outlook, iManage                                           | Export-Ansicht; keine Anbindung                                                               | Zurückstellen. Zielsysteme im Notariat sind Fachverfahren, nicht Word-Add-ins.                                          |
 | Intake, Monitors, Skills, Portal, Echtzeit-Zusammenarbeit       | teils (Shared Spaces, Gastkonten)                                        | belegt                                                           | nicht vorhanden                                                                               | Passt nicht zum aktuellen Fokus; später prüfen.                                                                         |
 
+## Ergänzung: deutsche Vergleichsgruppe (öffentliche Quellen, Stand 2026-10-17)
+
+Für ein Notariat sind Notarsoftware und deutsche Legal-KI die näheren Wettbewerber. Alle Angaben sind Herstellerangaben, mehrere Herstellerseiten waren nur als Suchauszug lesbar.
+
+| Anbieter                            | Funktionen (belegt)                                                                                           | XJustiz                                                     | Beleg-/Zitatprüfung |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------- |
+| TriNotar Expert AI (Wolters Kluwer) | Vertrags- und Dokumentenanalyse, Document Chat, Case Chat, optional Anonymisierung, semantische Suche mit OCR | Änderungshistorie nennt XJustiz 3.6.2, Details nicht belegt | nicht belegt        |
+| wz-it (KI-Plattform für Notariate)  | Grundbuchauszüge auslesen, Treuhandauflagen zusammenfassen, Entwurfsvorbereitung                              | nicht genannt                                               | nicht genannt       |
+| NoRA Advanced                       | KI-Assistent laut Drittprofil, Herstellerseite nicht geprüft                                                  | nicht gefunden                                              | nicht gefunden      |
+| Beck-Noxtua, Libra, Legalfly        | Recherche, Entwurf, Prüfung für Kanzleien und Rechtsabteilungen                                               | nicht genannt                                               | nicht genannt       |
+| XNotar (NotarNet)                   | Registeranmeldungen, Import aus XJustiz-XML (Handbuch von 2015)                                               | ja                                                          | keine KI            |
+
+Nicht gefunden: Notar 4.0 und RA-MICRO KI, Fristenfunktionen, Kammer-Zertifizierung für KI-Software. Daraus folgt: Belegprüfung mit Fundstelle ist im Notariat bei keinem Anbieter belegt; TriNotar ist der Maßstab für den Funktionsumfang, wz-it für die Grundbuch-Auswertung.
+
 ## Was uns besser machen würde (Rangfolge)
 
 1. **Belege auch bei Scans prüfen und bei Zweifel auf „Prüfung nötig" setzen (F01, fail-closed).** Voraussetzung für das Kernversprechen. Ohne diese Korrektur wäre jeder Beleg-Vorsprung unglaubwürdig.
