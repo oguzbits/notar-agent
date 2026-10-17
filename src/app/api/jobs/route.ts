@@ -5,7 +5,12 @@ import { requirePermission } from '@/lib/auth/require-permission';
 import type { IJobRepository } from '@/lib/jobs/job-repository';
 import { executeDossierJob, type WorkerDependencies } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
-import { getDossierRepository, getJobRepository } from '@/lib/supabase/server';
+import {
+  getAuditRepository,
+  getDossierRepository,
+  getJobRepository,
+  getKnowledgeRepository,
+} from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { JOB_STATUS, RetryJobRequestSchema, type DossierJob } from '@/types/jobs';
@@ -111,6 +116,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     startRetryInBackground(jobId, {
       jobRepo: repo,
       dossierRepo: getDossierRepository(authSupabase),
+      knowledgeRepo: getKnowledgeRepository(authSupabase),
+      auditRepo: getAuditRepository(authSupabase),
     });
 
     return NextResponse.json(

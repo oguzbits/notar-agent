@@ -68,6 +68,10 @@ export const AuditLogDetailsSchema = z
     override: AuditOverrideDetailsSchema.optional(),
     sourceFingerprints: z.array(AuditSourceFingerprintSchema).optional(),
     archive: AuditArchiveDetailsSchema.optional(),
+    pruefgrundlage: z
+      .object({ fileNames: z.array(z.string()), ruleIds: z.array(z.string()) })
+      .optional()
+      .describe('Unterlagen und Prüfregeln, auf deren Grundlage ein Lauf stattfand'),
     note: z.string().optional(),
     caseTitle: z.string().optional(),
     actorRole: z.string().optional(),

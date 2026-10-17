@@ -6,6 +6,8 @@ import { resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import {
   createMockJobRepository,
   createMockDossierRepository,
+  createMockKnowledgeRepository,
+  createMockAuditRepository,
 } from '@/test/fixtures/mock-repositories';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { PERMISSION_ACTIONS } from '@/types/auth';
@@ -41,6 +43,8 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
     ...actual,
     getJobRepository: () => mockJobRepo,
     getDossierRepository: () => mockDossierRepo,
+    getKnowledgeRepository: () => createMockKnowledgeRepository(),
+    getAuditRepository: () => createMockAuditRepository(),
     getServerSupabase: vi.fn(),
   };
 });

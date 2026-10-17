@@ -4,7 +4,11 @@ import { executeDossierJob, WorkerDependencies } from '@/lib/jobs/job-worker';
 import { computeJobProgressPercent } from '@/lib/jobs/progress';
 import type { IDossierRepository } from '@/lib/supabase/repository';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
-import { createMockKnowledgeRepository } from '@/test/fixtures/mock-repositories';
+import {
+  createMockAuditRepository,
+  createMockKnowledgeRepository,
+} from '@/test/fixtures/mock-repositories';
+import { AUDIT_ACTIONS } from '@/types/audit';
 import { CASE_TYPES, STORAGE_TYPES } from '@/types/dossier';
 import {
   JOB_STATUS,
@@ -74,6 +78,8 @@ function createMockDossierRepo(): IDossierRepository {
     delete: vi.fn(async (id: string) => ({ documentId: id, deletedRows: {}, storageTasks: 0 })),
   };
 }
+
+const ORG_ID = 'a0000000-0000-4000-8000-000000000001';
 
 describe('job-worker (executeDossierJob)', () => {
   let jobRepo: IJobRepository;
@@ -257,5 +263,67 @@ describe('job-worker (executeDossierJob)', () => {
 
     expect(pipeline).not.toHaveBeenCalled();
     expect(result?.status).toBe(JOB_STATUS.PROCESSING);
+  });
+
+  describe('Prüfgrundlage im Audit-Trail', () => {
+    const pipelineFn: NonNullable<WorkerDependencies['pipelineFn']> = async () => mockResultDossier;
+    const payload: CreateJobPayload = {
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [{ name: 'vertrag.pdf', size: 100, type: 'application/pdf', content: 'test' }],
+      notes: '',
+    };
+
+    it('schreibt nach dem Speichern genau einen Eintrag mit Unterlagen und Regel-IDs', async () => {
+      const auditRepo = createMockAuditRepository();
+      const knowledgeRepo = createMockKnowledgeRepository();
+      const rules = await knowledgeRepo.getStatutoryRules(ORG_ID);
+      const job = await jobRepo.createJob(payload, ORG_ID);
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        auditRepo,
+        knowledgeRepo,
+        pipelineFn,
+      });
+
+      expect(auditRepo.appendEvent).toHaveBeenCalledTimes(1);
+      const call = vi.mocked(auditRepo.appendEvent).mock.calls[0]?.[0];
+      expect(call?.action).toBe(AUDIT_ACTIONS.DOCUMENT_INGESTED);
+      expect(call?.documentId).toBe(done?.resultDossierId);
+      expect(call?.organizationId).toBe(ORG_ID);
+      expect(call?.details?.pruefgrundlage).toEqual({
+        fileNames: ['vertrag.pdf'],
+        ruleIds: rules.map((r) => r.id),
+      });
+    });
+
+    it('schreibt bei einem fehlgeschlagenen Lauf keinen Eintrag', async () => {
+      const auditRepo = createMockAuditRepository();
+      const job = await jobRepo.createJob(payload, ORG_ID);
+
+      await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        auditRepo,
+        pipelineFn: async () => {
+          throw new Error('Modellfehler');
+        },
+      });
+
+      expect(auditRepo.appendEvent).not.toHaveBeenCalled();
+    });
+
+    it('lässt den Job abgeschlossen, wenn der Audit-Eintrag scheitert (kein Doppel-Dossier bei Wiederholung)', async () => {
+      const auditRepo = createMockAuditRepository();
+      vi.mocked(auditRepo.appendEvent).mockRejectedValueOnce(
+        new Error('Audit-DB nicht erreichbar')
+      );
+      const job = await jobRepo.createJob(payload, ORG_ID);
+
+      const done = await executeDossierJob(job.id, { jobRepo, dossierRepo, auditRepo, pipelineFn });
+
+      expect(done?.status).toBe(JOB_STATUS.COMPLETED);
+    });
   });
 });

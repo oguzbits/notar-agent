@@ -90,6 +90,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         jobRepo,
         dossierRepo,
         knowledgeRepo: getKnowledgeRepository(authSupabase),
+        auditRepo: getAuditRepository(authSupabase),
         usageRepo: getLlmUsageRepository(authSupabase),
       };
 

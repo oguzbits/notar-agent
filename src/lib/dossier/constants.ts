@@ -74,6 +74,9 @@ export const DELETION_REASON_LABELS_DE: Record<DeletionReason, string> = {
   SONSTIGES: 'Sonstiger Grund',
 };
 
+/** Akteur für Einträge, die der Hintergrundlauf ohne Sitzung schreibt. */
+export const AUDIT_SYSTEM_ACTOR_DE = 'System';
+
 export const PRUEFPLAN_UI_TEXTS_DE = {
   TITLE: 'Prüfplan',
   DESCRIPTION: 'Bitte prüfen Sie vor dem Start, was untersucht wird.',

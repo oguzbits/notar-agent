@@ -6,7 +6,9 @@ import type {
   AuditorStageParams,
 } from '@/lib/ai/pipeline';
 import { createUsageRecorder, ILlmUsageRepository } from '@/lib/ai/usage-repository';
+import type { IAuditRepository } from '@/lib/audit/audit-repository';
 import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
+import { recordPruefgrundlage } from '@/lib/jobs/audit-pruefgrundlage';
 import { IJobRepository } from '@/lib/jobs/job-repository';
 import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import { IDossierRepository } from '@/lib/supabase/repository';
@@ -19,6 +21,8 @@ export interface WorkerDependencies {
   dossierRepo?: IDossierRepository;
   /** Wissensspeicher mit Sitzungskontext, damit RLS die Regeln der Kanzlei freigibt */
   knowledgeRepo?: IKnowledgeRepository;
+  /** Prüfprotokoll; ohne Repository wird kein Eintrag zur Prüfgrundlage geschrieben */
+  auditRepo?: IAuditRepository;
   /** Verbrauchserfassung; ohne Repository wird nichts erfasst */
   usageRepo?: ILlmUsageRepository;
   pipelineFn?: (params: PipelineParams) => Promise<Dossier>;
@@ -309,14 +313,10 @@ async function runJobExecution(
       },
     });
 
-    let resultDossierId: string;
-    if (documentId) {
-      await dossierRepo.update(documentId, dossier, orgId);
-      resultDossierId = documentId;
-    } else {
-      const saveRes = await dossierRepo.save(dossier, orgId);
-      resultDossierId = saveRes.id;
-    }
+    if (documentId) await dossierRepo.update(documentId, dossier, orgId);
+    const resultDossierId = documentId ?? (await dossierRepo.save(dossier, orgId)).id;
+
+    await recordPruefgrundlage(deps, resultDossierId, orgId, job.payload);
 
     return await jobRepo.updateJobStatus(jobId, {
       status: JOB_STATUS.COMPLETED,

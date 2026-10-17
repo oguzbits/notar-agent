@@ -68,6 +68,8 @@ graph TD
   Ein belegtes Feld (`VERIFIED`) trägt optional `review` (Zeitpunkt, Person) als Vermerk, dass der Notar es gesehen hat. Der Vermerk ist unabhängig vom Status, wird nur über `POST /api/documents/[id]/confirm` gesetzt (Recht `OVERRIDE_FIELD_STATUS`, Person aus der Sitzung, Audit-Eintrag `FIELD_CONFIRMED`) und entfällt bei geänderten Daten, Quelle oder Status. Beim Speichern und bei jeder erneuten Analyse stammt er ausschließlich aus dem gespeicherten Stand (`carryOverReviews`), nie vom Client oder Modell. Felder mit anderem Status entscheidet der Notar über die Statusänderung mit Begründung.
 - **Prüfplan vor dem Lauf (Implementiert):**
   „Unterlagen prüfen“ öffnet eine Vorschau, der Start erfolgt erst über „Prüfung starten“. Der Plan wird nicht gespeichert: `GET /api/pruefplan` leitet ihn über `buildPruefplan` ab (Pflichtfelder aus der Registry der Vorgangsart, Regeln ausschließlich aus `knowledge_documents` über `getStatutoryRules` der eigenen Kanzlei, ohne Regelinhalt). Fehlt die Regelgrundlage oder ist sie nicht vollständig geprüft, zeigt der Plan einen Hinweis, sperrt den Start aber nicht.
+- **Prüfgrundlage im Audit-Trail (Implementiert):**
+  Nach dem Speichern schreibt der Lauf einen Eintrag `DOCUMENT_INGESTED` mit den Dateinamen der Unterlagen und den IDs der geltenden Prüfregeln (`details.pruefgrundlage`, Akteur „System“). Scheitert der Eintrag, bleibt der Job abgeschlossen und der Fehler wird protokolliert, weil eine Wiederholung das bereits gespeicherte Dossier doppelt anlegen würde.
 - **Serverless Ingestion Overhaul (B.8):**
   Flache, modulare Zod-Sub-Schemas pro Dokumenttyp (Grundbuch, Energieausweis, Mietlisten) und selektives Windowing für Großakten (> 150 Seiten) bei 100 % Serverless-Kompatibilität.
 

@@ -18,7 +18,7 @@ Heute startet „Unterlagen prüfen“ sofort die Analyse. Der Notar sieht erst 
 2. **Freigabe ist der bisherige Start.** Der Dialog hat „Prüfung starten“ und „Abbrechen“. Der Start im Dialog ist der einzige Auslöser; der Knopf im Formular öffnet nur die Vorschau (Single Source of Action).
 3. **Keine Regeln im Code.** Regelnamen kommen ausschließlich aus der Wissensbasis über eine neue Leseroute; die Pflichtfelder aus der vorhandenen Registry. Es gibt keine fest verdrahtete Planliste.
 4. **Hinweis bei Lücken statt Sperre:** Fehlen Regeln in der Wissensbasis oder nur ungeprüfte (`UNGEPRUEFT`), steht das im Plan sichtbar („nicht geprüfte Regelgrundlage“). Der Notar entscheidet, ob er startet.
-5. **Audit (nicht Teil dieses Schritts):** Beim Start eines Jobs wird heute kein Audit-Eintrag geschrieben (`DOCUMENT_INGESTED` wird im Code nirgends erzeugt). Regel-IDs im Audit festzuhalten braucht erst diesen Eintrag und ist ein eigener Schritt.
+5. **Audit (umgesetzt als eigener Schritt, siehe Architektur „Prüfgrundlage im Audit-Trail“):** Beim Start eines Jobs wird heute kein Audit-Eintrag geschrieben (`DOCUMENT_INGESTED` wird im Code nirgends erzeugt). Regel-IDs im Audit festzuhalten braucht erst diesen Eintrag und ist ein eigener Schritt.
 
 ## Offene Fragen an den Nutzer
 
