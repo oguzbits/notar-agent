@@ -1,8 +1,10 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as worker from '@/lib/dossier/deletion-worker';
 import { GET } from './route';
 
+vi.mock('@sentry/nextjs', () => ({ captureMessage: vi.fn() }));
 vi.mock('@/env', () => ({ getEnv: () => ({ CRON_SECRET: process.env.TEST_CRON_SECRET }) }));
 vi.mock('@/lib/supabase/admin', () => ({ createServiceRoleClient: vi.fn(() => ({})) }));
 vi.mock('@/lib/dossier/deletion-worker', async (importOriginal) => ({
@@ -42,5 +44,19 @@ describe('GET /api/cron/deletion', () => {
     const res = await call('Bearer geheim');
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ tasks: { done: 1 }, retention: { deleted: 0 } });
+  });
+
+  it('meldet dauerhaft fehlgeschlagene Löschaufgaben ohne Inhalte an Sentry', async () => {
+    vi.mocked(worker.processDeletionTasks).mockResolvedValueOnce({ done: 0, failed: 2, purged: 0 });
+    await call('Bearer geheim');
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      'Löschaufgaben dauerhaft fehlgeschlagen',
+      expect.objectContaining({ level: 'error', extra: { count: 2 } })
+    );
+  });
+
+  it('meldet nichts, wenn keine Aufgabe fehlgeschlagen ist', async () => {
+    await call('Bearer geheim');
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
   });
 });
