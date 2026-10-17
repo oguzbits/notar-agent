@@ -739,3 +739,16 @@ graph TD
 - [ ] **Datenbank-Partitioning:** Evaluation von Postgres Table Partitioning (`PARTITION BY LIST (organization_id)`) für `dossier_chunks`.
 - [ ] **Cold-Storage Serializer:** Implementierung eines Export- und Rehydrierungs-Services (`src/lib/storage/dossier-tiering.ts`), der Chunks in verschlüsseltem Parquet-Format in Supabase Storage ablegt.
 - [ ] **Hybrid RRF Search Engine:** Erweiterung von `IKnowledgeRepository` und `SupabaseKnowledgeRepository` um kombiniertes BM25/Trigram- und pgvector-Matching mit konfigurierbaren RRF-Gewichten.
+
+---
+
+## 20. Rechtliche und fachliche Klärungen (Löschpipeline, Aufbewahrung)
+
+Für den Entwicklungsstand nachrangig; vor einem Produktivbetrieb mit echten Akten zu klären.
+
+### Geplante Aufgaben
+
+- [ ] **Aufbewahrungsanker:** Aktion „Beurkundung abgeschlossen“ setzt `documents.retention_anchor_at`.
+- [ ] **Fristeinträge:** `knowledge_documents.retention_years` nach rechtlicher Klärung anlegen.
+- [ ] **Zurechenbarkeit des Löschenden:** Im Nachweis `DOSSIER_DELETED` wird das Pseudonym mit dem Dossier gelöscht; fachlich entscheiden, ob das so bleibt.
+- [ ] **Auftragsverarbeitungsvertrag mit Sentry** klären (Konto in der EU-Region besteht, DSNs sind in Vercel gesetzt).
