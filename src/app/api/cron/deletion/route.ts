@@ -28,11 +28,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const admin = createServiceRoleClient();
     const retention = await runRetentionSweep(admin, { limit: DELETION_WORKER_DEFAULTS.batchSize });
     const tasks = await processDeletionTasks(admin, DELETION_WORKER_DEFAULTS);
-    // Nur die Anzahl: Dateipfade und Fehlertexte können Mandantendaten enthalten
-    if (tasks.failed > 0) {
-      Sentry.captureMessage('Löschaufgaben dauerhaft fehlgeschlagen', {
+    // Nur Anzahlen: Dateipfade und Fehlertexte können Mandantendaten enthalten
+    const failedCount = tasks.failed + retention.failed.length;
+    if (failedCount > 0) {
+      Sentry.captureMessage('Löschlauf mit dauerhaften Fehlern', {
         level: 'error',
-        extra: { count: tasks.failed },
+        extra: { tasks: tasks.failed, retention: retention.failed.length },
       });
     }
     return NextResponse.json({ tasks, retention });

@@ -50,8 +50,20 @@ describe('GET /api/cron/deletion', () => {
     vi.mocked(worker.processDeletionTasks).mockResolvedValueOnce({ done: 0, failed: 2, purged: 0 });
     await call('Bearer geheim');
     expect(Sentry.captureMessage).toHaveBeenCalledWith(
-      'Löschaufgaben dauerhaft fehlgeschlagen',
-      expect.objectContaining({ level: 'error', extra: { count: 2 } })
+      'Löschlauf mit dauerhaften Fehlern',
+      expect.objectContaining({ level: 'error', extra: { tasks: 2, retention: 0 } })
+    );
+  });
+
+  it('meldet fehlgeschlagene Fristlöschungen an Sentry', async () => {
+    vi.mocked(worker.runRetentionSweep).mockResolvedValueOnce({
+      deleted: 0,
+      failed: [{ documentId: 'doc-1', error: 'x' }],
+    });
+    await call('Bearer geheim');
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      'Löschlauf mit dauerhaften Fehlern',
+      expect.objectContaining({ extra: { tasks: 0, retention: 1 } })
     );
   });
 
