@@ -22,11 +22,29 @@ export type PersistenceResult = PersistenceMeta & {
 
 /** SQLSTATE `no_data_found`: die Löschfunktion meldet damit auch fremde Kanzleien als „nicht gefunden“. */
 const PG_NO_DATA_FOUND = 'P0002';
+/** SQLSTATE `insufficient_privilege`: die Rolle darf nicht löschen. */
+const PG_INSUFFICIENT_PRIVILEGE = '42501';
+/** SQLSTATE `object_not_in_prerequisite_state`: für den Vorgang läuft noch eine Verarbeitung. */
+const PG_OBJECT_NOT_IN_PREREQUISITE_STATE = '55006';
 
 export class DossierNotFoundError extends Error {
   constructor(id: string) {
     super(`Vorgang nicht gefunden: ${id}`);
     this.name = 'DossierNotFoundError';
+  }
+}
+
+export class DossierDeletionForbiddenError extends Error {
+  constructor(id: string) {
+    super(`Keine Berechtigung zum Löschen: ${id}`);
+    this.name = 'DossierDeletionForbiddenError';
+  }
+}
+
+export class DossierBusyError extends Error {
+  constructor(id: string) {
+    super(`Für den Vorgang läuft noch eine Verarbeitung: ${id}`);
+    this.name = 'DossierBusyError';
   }
 }
 
@@ -185,6 +203,8 @@ export class SupabaseDossierRepository implements IDossierRepository {
     });
     if (error) {
       if (error.code === PG_NO_DATA_FOUND) throw new DossierNotFoundError(id);
+      if (error.code === PG_INSUFFICIENT_PRIVILEGE) throw new DossierDeletionForbiddenError(id);
+      if (error.code === PG_OBJECT_NOT_IN_PREREQUISITE_STATE) throw new DossierBusyError(id);
       throw new Error(`Supabase Dossier delete fehlgeschlagen: ${error.message}`);
     }
     return DeletionReceiptSchema.parse(data);

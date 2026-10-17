@@ -4,7 +4,11 @@ import { requirePermission } from '@/lib/auth/require-permission';
 import { DELETION_WORKER_DEFAULTS, processDeletionTasks } from '@/lib/dossier/deletion-worker';
 import { logFailure } from '@/lib/observability/logger';
 import { createServiceRoleClient } from '@/lib/supabase/admin';
-import { DossierNotFoundError } from '@/lib/supabase/repository';
+import {
+  DossierBusyError,
+  DossierDeletionForbiddenError,
+  DossierNotFoundError,
+} from '@/lib/supabase/repository';
 import {
   fetchDossierRecords,
   fetchDossierRecordById,
@@ -63,6 +67,22 @@ async function purgeStorageFor(documentId: string): Promise<void> {
   }
 }
 
+function deletionErrorResponse(error: unknown): NextResponse | null {
+  if (error instanceof DossierNotFoundError) {
+    return NextResponse.json({ error: 'Vorgang nicht gefunden.' }, { status: 404 });
+  }
+  if (error instanceof DossierDeletionForbiddenError) {
+    return NextResponse.json({ error: 'Keine Berechtigung zum Löschen.' }, { status: 403 });
+  }
+  if (error instanceof DossierBusyError) {
+    return NextResponse.json(
+      { error: 'Für den Vorgang läuft noch eine Verarbeitung. Bitte später erneut versuchen.' },
+      { status: 409 }
+    );
+  }
+  return null;
+}
+
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   try {
     const authSupabase = await createServerAuthClient();
@@ -96,9 +116,8 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    if (error instanceof DossierNotFoundError) {
-      return NextResponse.json({ error: 'Vorgang nicht gefunden.' }, { status: 404 });
-    }
+    const known = deletionErrorResponse(error);
+    if (known) return known;
     const msg = error instanceof Error ? error.message : 'Fehler beim Löschen des Vorgangs.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

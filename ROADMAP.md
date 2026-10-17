@@ -92,9 +92,9 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] Cron `/api/cron/deletion` läuft auf dem Vercel-Hobby-Tarif nur täglich; Storage-Löschungen starten sofort nach dem Löschen, der Cron fängt nur Fehlschläge auf. Stündlich erst mit Pro-Tarif oder externem Auslöser
   - [ ] Anzeige „Löschung läuft“ für offene `deletion_tasks`
   - [ ] Zurechenbarkeit des Löschenden im Nachweis `DOSSIER_DELETED` (Pseudonym wird mit dem Dossier gelöscht) fachlich entscheiden
-  - [ ] Dauerhaft fehlgeschlagene `deletion_tasks` (FAILED) zurücksetzen und anzeigen; Fehlercodes 42501/55006 der Löschroute als 403/409 melden
+  - [ ] Dauerhaft fehlgeschlagene `deletion_tasks` (FAILED) zurücksetzen und anzeigen
 - [ ] **C.8 Observability: Inbetriebnahme und Kostenerfassung:**
-  - [ ] Sentry: `SENTRY_DSN` und `NEXT_PUBLIC_SENTRY_DSN` in Vercel prüfen; Auftragsverarbeitungsvertrag mit Sentry klären (Konto in der EU-Region besteht)
+  - [ ] Auftragsverarbeitungsvertrag mit Sentry klären (Konto in der EU-Region besteht, DSNs sind in Vercel gesetzt)
 - [ ] **C.5 XJustiz / XNP Schnittstellen:**
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
 - [ ] **C.6 Enterprise Styling Grundattribute & Design Tokens:**

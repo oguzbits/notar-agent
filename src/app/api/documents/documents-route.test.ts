@@ -3,7 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { processDeletionTasks } from '@/lib/dossier/deletion-worker';
 import { createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
-import { DocumentRecord, CASE_STATUS, DossierNotFoundError } from '@/lib/supabase/repository';
+import {
+  DocumentRecord,
+  CASE_STATUS,
+  DossierBusyError,
+  DossierDeletionForbiddenError,
+  DossierNotFoundError,
+} from '@/lib/supabase/repository';
 import * as serverDb from '@/lib/supabase/server';
 import * as serverAuth from '@/lib/supabase/server-auth';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
@@ -216,6 +222,20 @@ describe('Documents API Route (/api/documents)', () => {
       const res = await DELETE(deleteRequest());
 
       expect(res.status).toBe(404);
+    });
+
+    it('antwortet 403, wenn die Datenbank das Löschen mangels Rolle verweigert', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockRejectedValueOnce(
+        new DossierDeletionForbiddenError('doc-1')
+      );
+
+      expect((await DELETE(deleteRequest())).status).toBe(403);
+    });
+
+    it('antwortet 409, solange für den Vorgang eine Verarbeitung läuft', async () => {
+      vi.mocked(serverDb.deleteDossierRecord).mockRejectedValueOnce(new DossierBusyError('doc-1'));
+
+      expect((await DELETE(deleteRequest())).status).toBe(409);
     });
 
     it('antwortet 500, wenn das Löschen fehlschlägt', async () => {

@@ -80,6 +80,19 @@ describe('SupabaseDossierRepository (Fail-Fast SSOT)', () => {
     );
   });
 
+  it.each([
+    ['42501', 'DossierDeletionForbiddenError'],
+    ['55006', 'DossierBusyError'],
+  ])('übersetzt den Datenbankfehlercode %s in %s', async (code, errorName) => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code, message: 'x' } });
+    const { SupabaseDossierRepository } = await import('./repository');
+    const repo = new SupabaseDossierRepository({ rpc } as never);
+
+    await expect(repo.delete('doc-1', DELETION_REASONS.SONSTIGES)).rejects.toMatchObject({
+      name: errorName,
+    });
+  });
+
   it('fails fast bei Datenbankfehlern und ungültigem Nachweis', async () => {
     const { SupabaseDossierRepository } = await import('./repository');
 
