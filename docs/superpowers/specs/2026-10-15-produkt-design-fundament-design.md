@@ -8,7 +8,7 @@ Produkt und Software auf Premium-Industriestandard für Legal-Tech heben. Dieses
 
 ## Umfang
 
-1. **Design-Audit der Ist-UI.** Playwright-Screenshots der Hauptansichten (Login, Vorgangspostfach, Upload, Fortschritt, Cockpit, Team) bei 1440 und 390 px, hell und dunkel. Ergebnis ist eine Mängelliste (Kontrast, Typo-Skala, Dichte, Zustände, Touch-Ziele), kein Umbau.
+1. **Design-Audit der Ist-UI.** Playwright-Screenshots der Hauptansichten (Login, Vorgangspostfach, Upload, Fortschritt, Cockpit, Team) bei 1440 und 390 px, nur hell (einen Dark Mode gibt es im Code nicht). Ergebnis ist eine Mängelliste (Kontrast, Typo-Skala, Dichte, Zustände, Touch-Ziele), kein Umbau.
 2. **PRODUCT.md.** Zielnutzer (Notar, Notarfachangestellte, Reviewer), Positionierung („jede Aussage mit Beleg"), Produktprinzipien, Abgrenzung.
 3. **DESIGN.md.** Nordstern, Farb-, Typografie-, Radius-, Dichte- und Zustandsregeln, Do's and Don'ts. Die Design-Sprache wird aus einer ausführlichen Studie der Legal-AI-Marktführer Harvey und Legora (Produktseiten, Demos, Screenshots, Hilfe-Center) und dem Audit der Ist-UI abgeleitet.
 4. **Token-Umbau.** Die Markenpalette `notar-*` (Limettengrün) wird durch eine warme Neutralpalette nach Harvey-Vorbild ersetzt (Ivory-Flächen, Ink-Text, kein Markenakzent; Farbe nur für Status und Fokus); Serif für Akten- und Dokumenttitel, Mono für Aktenzeichen; Typo-Skala nach AGENTS.md Abschnitt 3. Keine Feature-Änderungen.
@@ -17,6 +17,9 @@ Produkt und Software auf Premium-Industriestandard für Legal-Tech heben. Dieses
 ## Entscheidungen
 
 - **Richtung Harvey-nah (vom Nutzer gewählt):** Farbe trägt Bedeutung (Status, Fokus, Auswahl, Beleg), nicht Dekoration. Werte und Belege stehen in [der Referenzstudie](2026-10-15-legal-ai-referenzstudie.md); sie werden im Audit gegen die Ist-UI geprüft und als semantische Tokens umgesetzt.
+- **Zuschnitt (2026-10-17):** Alle fünf Umfangspunkte in einem Zyklus. Das Limettengrün `notar-*` entfällt vollständig, es gibt keinen Markenakzent.
+- **Referenzquellen (Stand 2026-10-17):** Die Apps von Harvey und Legora werden nicht reverse-engineered: Beide Anbieter verbieten Reverse Engineering und automatisiertes Auslesen (Harvey Platform Agreement 3.2(iii) und (iv), Legora Acceptable Use Policy). Referenz sind ausschließlich öffentliche Quellen (Release Notes, Briefs, Playbooks-Seite) und die vorhandene Referenzstudie. REA darf nur öffentliche Seiten ohne Login erfassen, nachrangig. Ein Demo- oder Pilotzugang käme nur nach Prüfung der Bedingungen und ausdrücklicher Entscheidung des Nutzers in Frage, manuell und ohne Automatisierung. Die Ist-UI wird mit Playwright auditiert, da der Quelltext vorliegt.
+- **Lücke:** Zu Zellstatus-Logik und Dichte der Anbieter gibt es keine belastbaren öffentlichen Quellen; diese Punkte werden aus Produktprinzipien abgeleitet, nicht kopiert.
 - **Semantische Tokens bleiben der einzige Weg:** Komponenten nutzen weiterhin ausschließlich Tokens; der Umbau geschieht zentral in `globals.css`. Das hält `@shadcn/lint` grün und begrenzt die Diff-Größe.
 - **Design-Quelle:** Harvey und Legora sind die maßgebliche Referenz für Optik und Produktmuster (Beleg pro Satz, Zellstatus, Playbooks).
 - **NotebookLM-Klon:** Quelle ausschließlich für Engineering-Verbesserungen (Code, Checks, Docs, Tests, agentische Entwicklung), siehe Teilprojekte 4 und 5, nie für Design oder Produkt.
