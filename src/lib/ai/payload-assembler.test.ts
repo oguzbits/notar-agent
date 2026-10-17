@@ -50,6 +50,30 @@ describe('payload-assembler', () => {
     expect((thirdPart as { text: string }).text).toBe('</documents>');
   });
 
+  it('meldet je Datei den prüfbaren Text mit der Prompt-Nummer (Bild ohne Text)', async () => {
+    const collected: Array<{ docIndex: number; fileName: string; textContent: string }> = [];
+    await assembleExtractionPromptParts({
+      files: [
+        { name: 'brief.txt', type: 'text/plain', size: 10, content: 'Kaufpreis 450.000 Euro' },
+        {
+          name: 'scan.jpg',
+          type: 'image/jpeg',
+          size: 10,
+          isBase64: true,
+          content: 'data:image/jpeg;base64,AAAA',
+        },
+      ],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notesSection: '',
+      onSourceText: (doc) => collected.push(doc),
+    });
+
+    expect(collected).toEqual([
+      { docIndex: 1, fileName: 'brief.txt', textContent: 'Kaufpreis 450.000 Euro' },
+      { docIndex: 2, fileName: 'scan.jpg', textContent: '' },
+    ]);
+  });
+
   it('handles image uploads and strips base64 data URLs', async () => {
     const rawImageBase64 =
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';

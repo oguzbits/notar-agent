@@ -180,3 +180,62 @@ describe('runAnalysisPipeline', () => {
     ]);
   });
 });
+
+describe('runExtractionStage: Beleg-Prüfung', () => {
+  const verifiedField = (docIndex: number, snippet: string) => ({
+    value: '450.000 €',
+    status: FIELD_STATUS.VERIFIED,
+    confidence: 0.9,
+    data: {
+      amountInFigures: 450000,
+      amountInWords: 'vierhundertfünfzigtausend Euro',
+      currency: 'EUR',
+      previousOffers: [],
+      priceEvolutionSummary: '',
+      isFinalAgreedPrice: true,
+    },
+    source: { fileName: `Datei ${docIndex}`, docIndex, snippet },
+  });
+  const stageOutput = (field: unknown, overallStatus: string = OVERALL_STATUS.READY) =>
+    JSON.stringify({
+      caseTitle: 'Vorgang',
+      overallStatus,
+      fields: { kaufpreis: field },
+      detectedDocuments: [],
+    });
+  const files = [
+    { name: 'a.txt', type: 'text/plain', size: 10, content: 'Kaufpreis 450.000 Euro' },
+    { name: 'b.txt', type: 'text/plain', size: 10, content: 'Lastenfrei übergeben' },
+  ];
+  const run = async (text: string) => {
+    mockGenerateText.mockResolvedValue({ text });
+    const { runExtractionStage } = await import('./pipeline');
+    return runExtractionStage({
+      files,
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notes: 'Eilt, bitte vorrangig.',
+      model: {} as never,
+      extractionInstructions: { role: 'system', content: 'Extract' },
+      onStep: () => undefined,
+    });
+  };
+  const statusOf = (result: Awaited<ReturnType<typeof run>>) => {
+    const fields = result.parsedExtractionRaw.fields as Record<string, { status: string }>;
+    return fields.kaufpreis?.status;
+  };
+
+  it('prüft ein Zitat gegen das Dokument mit der Prompt-Nummer, auch wenn eine Notiz vorangeht', async () => {
+    const result = await run(stageOutput(verifiedField(1, 'Kaufpreis 450.000 Euro')));
+    expect(statusOf(result)).toBe(FIELD_STATUS.VERIFIED);
+  });
+
+  it('stuft ein Zitat ab, das nur im anderen Dokument steht', async () => {
+    const result = await run(stageOutput(verifiedField(2, 'Kaufpreis 450.000 Euro')));
+    expect(statusOf(result)).toBe(FIELD_STATUS.NEEDS_REVIEW);
+  });
+
+  it('stuft VERIFIED-Felder ab, wenn die Ausgabe auch nach der Korrektur das Schema verletzt', async () => {
+    const result = await run(stageOutput(verifiedField(1, 'Kaufpreis 450.000 Euro'), 'UNGUELTIG'));
+    expect(statusOf(result)).toBe(FIELD_STATUS.NEEDS_REVIEW);
+  });
+});

@@ -62,6 +62,8 @@ graph TD
 
 - **Deterministisches Zitat-Grounding via `diff-match-patch` (Implementiert):**
   Zeichengenaue Verifikation von Beleg-Snippets auf dem PDF-Textlayer zur Vermeidung von Halluzinationen (§ 17 BeurkG Provenance) mit exakter Koordinaten- und Offset-Lokalisierung.
+- **Belegprüfung auf dem Prompt-Text (Implementiert):**
+  Die Prüftexte stammen aus demselben Durchlauf, der den Prompt baut (Textlayer, DOCX-Markdown, Textdatei), und tragen die Prompt-Nummer des Dokuments. Zitate werden nur gegen das Dokument mit dieser Nummer geprüft; die Bearbeitungsnotiz ist kein Dokument. Fail-closed: Scans und Bilder ohne maschinenlesbaren Text sowie Ausgaben, die das Schema auch nach der Korrektur verletzen, behalten keinen Status `VERIFIED`, sondern gehen auf `NEEDS_REVIEW`.
 - **Serverless Ingestion Overhaul (B.8):**
   Flache, modulare Zod-Sub-Schemas pro Dokumenttyp (Grundbuch, Energieausweis, Mietlisten) und selektives Windowing für Großakten (> 150 Seiten) bei 100 % Serverless-Kompatibilität.
 

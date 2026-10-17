@@ -17,6 +17,7 @@ import {
   CaseType,
   UploadedFilePayload,
 } from '@/types/dossier';
+import type { SourceDocumentText } from './source-document-resolver';
 
 export interface AssembledFilePayload extends UploadedFilePayload {
   streamType?: PdfStreamType;
@@ -38,6 +39,8 @@ export interface AssembleExtractionPromptOptions {
     overallStatus: string;
     detectedDocuments: DetectedDocument[];
   };
+  /** Meldet je Datei den maschinenlesbaren Text (leer bei Scans und Bildern) für die Belegprüfung. */
+  onSourceText?: (doc: SourceDocumentText & { docIndex: number }) => void;
 }
 
 /**
@@ -82,7 +85,7 @@ export function sanitizeXmlDocumentContent(content: string): string {
 export async function assembleExtractionPromptParts(
   options: AssembleExtractionPromptOptions
 ): Promise<MultimodalPromptPart[]> {
-  const { files, caseType, notesSection, existingDossier } = options;
+  const { files, caseType, notesSection, existingDossier, onSourceText } = options;
 
   let contextHeader = '';
   if (existingDossier) {
@@ -157,6 +160,7 @@ ${notesSection}${
         type: 'text',
         text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="${escapeXmlAttr(file.type)}" source="image">\n[Obiges Bild gehört zu Datei: "${file.name}"]\n</document>`,
       });
+      onSourceText?.({ docIndex, fileName: file.name, textContent: '' });
       triageList.push(
         triageDocument({
           fileName: file.name,
@@ -208,6 +212,7 @@ ${notesSection}${
         fileName: file.name,
         textContent: extractedText || '',
       });
+      onSourceText?.({ docIndex, fileName: file.name, textContent: extractedText || '' });
       triageList.push(triage);
 
       // ADAPTIVE MULTIMODAL INGESTION:
@@ -356,6 +361,7 @@ ${notesSection}${
         }
       }
 
+      onSourceText?.({ docIndex, fileName: file.name, textContent: docxMarkdown });
       triageList.push(
         triageDocument({
           fileName: file.name,
@@ -377,6 +383,7 @@ ${notesSection}${
         type: 'text',
         text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="${escapeXmlAttr(file.type || 'text/plain')}">\n${sanitized}\n</document>`,
       });
+      onSourceText?.({ docIndex, fileName: file.name, textContent: textContent || '' });
       triageList.push(
         triageDocument({
           fileName: file.name,
@@ -388,6 +395,7 @@ ${notesSection}${
         type: 'text',
         text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="${escapeXmlAttr(file.type || 'unknown')}" status="metadata-only">\n(Metadaten vorhanden, kein Inhalt)\n</document>`,
       });
+      onSourceText?.({ docIndex, fileName: file.name, textContent: '' });
       triageList.push(
         triageDocument({
           fileName: file.name,

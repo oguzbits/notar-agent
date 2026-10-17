@@ -3,6 +3,7 @@ import { parseAuditorOutput } from '@/lib/ai/auditor-output';
 import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
+import { downgradeUnvalidatedFields, SourceDocumentText } from '@/lib/ai/verifiable-fact-checker';
 import { runNotaryVerification } from '@/lib/ai/verification-engine';
 import { normalizeDossier } from '@/lib/dossier';
 import {
@@ -178,10 +179,12 @@ export async function runExtractionStage(
   const step1Title = activeWorkflow.steps[0]?.title || 'Urkunden- & Sachverhaltserfassung';
   onStep(1, `Stufe 1: ${step1Title} läuft...`);
 
+  const fileSourceTexts: SourceDocumentText[] = [];
   const userPromptParts = await assembleExtractionPromptParts({
     files,
     caseType,
     notesSection,
+    onSourceText: (doc) => fileSourceTexts.push(doc),
     existingDossier: existingDossier
       ? {
           caseTitle: existingDossier.caseTitle,
@@ -295,23 +298,11 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
 
   // UNIFIED VERIFICATION & DETERMINISTIC GUARDRAILS
   if (validatedExtraction?.success) {
-    const textSources: Array<{ fileName: string; textContent: string }> = [];
-
-    if (notesSection.trim()) {
-      textSources.push({
-        fileName: 'Bearbeitungsnotiz',
-        textContent: notesSection,
-      });
-    }
-
-    for (const file of files) {
-      if (file.content && !file.isBase64) {
-        textSources.push({
-          fileName: file.name,
-          textContent: file.content,
-        });
-      }
-    }
+    // docIndex 0: Die Notiz ist kein Prompt-Dokument und darf nie als „Dokument n“ aufgelöst werden
+    const textSources: SourceDocumentText[] = notesSection.trim()
+      ? [{ fileName: 'Bearbeitungsnotiz', docIndex: 0, textContent: notesSection }]
+      : [];
+    textSources.push(...fileSourceTexts);
 
     const verified = runNotaryVerification({
       stageOutput: validatedExtraction.data,
@@ -319,6 +310,11 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
       referenceDate: new Date(),
     });
     parsedExtractionRaw.fields = verified.fields;
+  } else {
+    // Fail-closed: Ohne gültiges Schema ist nichts prüfbar, also bleibt kein Feld VERIFIED
+    if (parsedExtractionRaw.fields !== undefined) {
+      parsedExtractionRaw.fields = downgradeUnvalidatedFields(parsedExtractionRaw.fields);
+    }
   }
 
   const usage: PipelineTokenUsage = {

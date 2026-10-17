@@ -261,3 +261,27 @@ export function verifyExtractionFacts(
     verificationIssues,
   };
 }
+
+/**
+ * Fail-closed für Ausgaben, die das Schema verletzen: Nichts ist prüfbar, also darf kein Feld VERIFIED bleiben.
+ */
+export function downgradeUnvalidatedFields(fields: unknown): unknown {
+  if (typeof fields !== 'object' || fields === null || Array.isArray(fields)) return fields;
+  const reason =
+    'Automatische Verifikation: Ausgabe entspricht nicht dem Schema und wurde nicht geprüft';
+  return Object.fromEntries(
+    Object.entries(fields).map(([key, field]) => {
+      if (
+        typeof field !== 'object' ||
+        field === null ||
+        !('status' in field) ||
+        field.status !== FIELD_STATUS.VERIFIED
+      ) {
+        return [key, field];
+      }
+      const note =
+        'note' in field && typeof field.note === 'string' ? `${field.note} (${reason})` : reason;
+      return [key, { ...field, status: FIELD_STATUS.NEEDS_REVIEW, note }];
+    })
+  );
+}

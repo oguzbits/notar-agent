@@ -1,12 +1,21 @@
 export interface SourceDocumentText {
   fileName: string;
   textContent: string;
+  /** Prompt-Nummer (1-basiert); 0 für Quellen ohne Prompt-Dokument (Notiz). Fehlt sie, zählt die Listenposition. */
+  docIndex?: number;
 }
 
 export interface ResolvedSourceDocument {
   docIndex: number;
   fileName: string;
   textContent: string;
+}
+
+function findByPromptIndex(
+  sourceDocuments: SourceDocumentText[],
+  promptIndex: number
+): SourceDocumentText | undefined {
+  return sourceDocuments.find((d, i) => (d.docIndex ?? i + 1) === promptIndex);
 }
 
 /**
@@ -20,7 +29,7 @@ export function resolveSourceDocument(
 
   // 1. Prioritärer Lookup über expliziten 1-basierten docIndex
   if (typeof source.docIndex === 'number' && source.docIndex > 0) {
-    const doc = sourceDocuments[source.docIndex - 1];
+    const doc = findByPromptIndex(sourceDocuments, source.docIndex);
     if (doc) {
       return {
         docIndex: source.docIndex,
@@ -41,8 +50,8 @@ export function resolveSourceDocument(
   if (docNumMatch) {
     const rawNum = docNumMatch[1] || docNumMatch[2];
     const parsedNum = rawNum ? parseInt(rawNum, 10) : NaN;
-    if (!isNaN(parsedNum) && parsedNum > 0 && parsedNum <= sourceDocuments.length) {
-      const doc = sourceDocuments[parsedNum - 1];
+    if (!isNaN(parsedNum) && parsedNum > 0) {
+      const doc = findByPromptIndex(sourceDocuments, parsedNum);
       if (doc) {
         return {
           docIndex: parsedNum,
@@ -56,15 +65,13 @@ export function resolveSourceDocument(
   // 3. Fallback: Exakter & case-insensitiver Dateinamen-Abgleich
   const lowerKey = key.toLowerCase();
   const foundIdx = sourceDocuments.findIndex((d) => d.fileName.toLowerCase().trim() === lowerKey);
-  if (foundIdx !== -1) {
-    const doc = sourceDocuments[foundIdx];
-    if (doc) {
-      return {
-        docIndex: foundIdx + 1,
-        fileName: doc.fileName,
-        textContent: doc.textContent,
-      };
-    }
+  const found = sourceDocuments[foundIdx];
+  if (found) {
+    return {
+      docIndex: found.docIndex ?? foundIdx + 1,
+      fileName: found.fileName,
+      textContent: found.textContent,
+    };
   }
 
   return undefined;
