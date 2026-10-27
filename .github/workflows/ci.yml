@@ -90,17 +90,23 @@ jobs:
           node-version: 22
           cache: 'npm'
 
-      - name: Install Dependencies
-        run: npm ci
-
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: 2.120.0
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Start Supabase Local Containers (Docker)
-        run: supabase start -x studio,edge-runtime,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,realtime
+      - name: Supabase starten und Abhängigkeiten installieren (parallel)
+        run: |
+          supabase start -x studio,edge-runtime,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,realtime &
+          supabase_pid=$!
+          npm ci &
+          npm_pid=$!
+          supabase_status=0
+          npm_status=0
+          wait "$supabase_pid" || supabase_status=$?
+          wait "$npm_pid" || npm_status=$?
+          test "$supabase_status" -eq 0 && test "$npm_status" -eq 0
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -168,23 +174,29 @@ jobs:
           version: 2.120.0
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Start Supabase Local Containers (Docker)
-        run: supabase start -x studio,edge-runtime,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,realtime
-
-      - name: Verify Clean Migration Run & Reset
-        run: supabase db reset
-
-      - name: Lint Database Schema & Security
-        run: supabase db lint
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Supabase starten und Abhängigkeiten installieren (parallel)
+        run: |
+          supabase start -x studio,edge-runtime,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,realtime &
+          supabase_pid=$!
+          npm ci &
+          npm_pid=$!
+          supabase_status=0
+          npm_status=0
+          wait "$supabase_pid" || supabase_status=$?
+          wait "$npm_pid" || npm_status=$?
+          test "$supabase_status" -eq 0 && test "$npm_status" -eq 0
+
+      - name: Verify Clean Migration Run & Reset
+        run: supabase db reset
+
+      - name: Lint Database Schema & Security
+        run: supabase db lint
 
       - name: Tenant Isolation Tests (RLS gegen echtes Postgres)
         run: npm run test:db
