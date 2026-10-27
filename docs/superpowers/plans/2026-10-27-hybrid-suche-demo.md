@@ -134,3 +134,7 @@
 ## Definition of Done
 
 DoD-Quittung nach AGENTS.md 4C; `Database Migration & Sync: NOT_REQUIRED`; offen unter "Explicitly Out-of-Scope": Live-Befüllung (benötigt Schlüssel, Kosten, Zustimmung).
+
+## Ledger
+
+Aufgaben 1 bis 5 inline in der Hauptsitzung ausgeführt (keine Subagenten für die Umsetzung); eine Recherche (Haiku, 24.665 Tokens, 47 s) zur Embedding-Doku. Ergebnis: 5 Commits, `npm run check` und `npm test` (728 Tests) grün, DB-Test gegen lokale Supabase grün. Abweichungen vom Plan: keine eigene Stapelkonstante (`embedMany` stapelt), Schreibmethoden nur am Supabase-Repository statt am Interface, `getEmbedder()` wird in `runAuditorStage` aufgelöst (wie das Repository), damit auch der Job-Worker erfasst ist.
