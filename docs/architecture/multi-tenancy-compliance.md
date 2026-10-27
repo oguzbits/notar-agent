@@ -46,7 +46,9 @@ CREATE POLICY tenant_isolation_policy ON dossiers
 
 - **Append-Only Event-Tabelle:** `audit_logs` protokolliert jede Modifikation (Status-Overrides, Exporte, Berechtigungsänderungen).
 - **Kryptografische Integrität:** Jeder Datensatz ist über SHA-256 mit dem Hash des Vorgängers verkettet (Hash-Chaining).
-- **Zwingende Begründung:** Bei manuellem Herabstufen einer KI-Warnung (`NEEDS_REVIEW` $\rightarrow$ `VERIFIED`) muss eine juristische Begründung hinterlegt werden.
+- **Zwingende Begründung:** Jeder manuelle Statuswechsel an einem Feld braucht eine Begründung (`auditOverride`); ohne sie lehnt `PUT /api/analyze` mit 400 ab und speichert nichts.
+- **Teamänderungen:** Einladen, Rollenwechsel und Entfernen schreiben `MEMBER_INVITED`, `MEMBER_ROLE_CHANGED` bzw. `MEMBER_REMOVED` in die Kette `team:<Kanzlei>` (Akteur, Ziel, alte und neue Rolle; [`team-service.ts`](../../src/lib/team/team-service.ts)). Die Insert-Policy lässt diese Kette nur für die eigene Kanzlei zu.
+- **Kanzleibesetzung in der Datenbank:** Der Trigger `organization_members_guard` lehnt für angemeldete Nutzer die Änderung oder Entfernung der eigenen Mitgliedschaft ab (SQLSTATE `42501`, API 403) und verhindert, dass die Kanzlei ihren letzten `NOTAR` verliert (`23514`, API 409). Ein Advisory-Lock je Kanzlei serialisiert parallele Änderungen, sodass zwei gleichzeitige Herabstufungen nicht beide gelingen. Servicekonto und Kaskaden (Kanzlei oder Konto löschen) bleiben unberührt.
 
 ## 5. Löschpipeline & Pseudonyme im Audit-Trail
 

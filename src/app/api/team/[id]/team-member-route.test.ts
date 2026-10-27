@@ -2,8 +2,13 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
-import { createMockTeamRepository } from '@/test/fixtures/mock-repositories';
+import { LastNotarError, TeamSelfChangeError } from '@/lib/team/team-repository';
+import {
+  createMockAuditRepository,
+  createMockTeamRepository,
+} from '@/test/fixtures/mock-repositories';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { AUDIT_ACTIONS } from '@/types/audit';
 import { NOTARY_ROLES } from '@/types/organization';
 import { PATCH, DELETE } from './route';
 
@@ -27,12 +32,14 @@ vi.mock('@/lib/supabase/server-auth', async () => {
 });
 
 const mockTeamRepo = createMockTeamRepository();
+const mockAuditRepo = createMockAuditRepository();
 
 vi.mock('@/lib/supabase/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
   return {
     ...actual,
     getTeamRepository: () => mockTeamRepo,
+    getAuditRepository: () => mockAuditRepo,
     getServerSupabase: vi.fn(),
   };
 });
@@ -103,6 +110,59 @@ describe('API Route: /api/team/[id]', () => {
     expect([patched.status, deleted.status]).toEqual([403, 403]);
     const check = await repo.getMemberById(memberId, testOrgId);
     expect(check?.role).toBe(NOTARY_ROLES.SACHBEARBEITER);
+  });
+
+  const patchRole = () =>
+    PATCH(
+      new NextRequest(`http://localhost:3000/api/team/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'x-organization-id': testOrgId, 'content-type': 'application/json' },
+        body: JSON.stringify({ role: NOTARY_ROLES.NOTARASSESSOR }),
+      }),
+      { params: Promise.resolve({ id: memberId }) }
+    );
+
+  it('PATCH schreibt ein Audit-Ereignis mit alter und neuer Rolle', async () => {
+    await patchRole();
+
+    const history = await mockAuditRepo.getHistory(`team:${testOrgId}`);
+    expect(history.at(-1)).toMatchObject({
+      action: AUDIT_ACTIONS.MEMBER_ROLE_CHANGED,
+      details: {
+        member: {
+          memberId,
+          previousRole: NOTARY_ROLES.SACHBEARBEITER,
+          newRole: NOTARY_ROLES.NOTARASSESSOR,
+        },
+      },
+    });
+  });
+
+  it('PATCH: eigene Rolle → 403, letzter Notar → 409', async () => {
+    vi.mocked(repo.updateMemberRole)
+      .mockRejectedValueOnce(new TeamSelfChangeError())
+      .mockRejectedValueOnce(new LastNotarError());
+
+    const self = await patchRole();
+    const last = await patchRole();
+
+    expect([self.status, last.status]).toEqual([403, 409]);
+    expect((await last.json()).error).toContain('mindestens einen Notar');
+  });
+
+  it('DELETE des letzten Notars → 409, Mitglied bleibt', async () => {
+    vi.mocked(repo.removeMember).mockRejectedValueOnce(new LastNotarError());
+
+    const res = await DELETE(
+      new NextRequest(`http://localhost:3000/api/team/${memberId}`, {
+        method: 'DELETE',
+        headers: { 'x-organization-id': testOrgId },
+      }),
+      { params: Promise.resolve({ id: memberId }) }
+    );
+
+    expect(res.status).toBe(409);
+    expect(await repo.getMemberById(memberId, testOrgId)).not.toBeNull();
   });
 
   it('PATCH /api/team/[id] returns 404 for non-existent member', async () => {

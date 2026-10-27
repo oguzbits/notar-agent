@@ -328,6 +328,31 @@ CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE T
 DROP POLICY IF EXISTS rls_org_members_delete ON public.organization_members;
 CREATE POLICY rls_org_members_delete ON public.organization_members FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
 
+-- Kanzleibesetzung: Niemand ändert oder entfernt die eigene Mitgliedschaft, und die Kanzlei behält mindestens
+-- einen NOTAR. Gilt für angemeldete Nutzer (auth.uid()); Servicekonto und Kaskaden (Kanzlei/Konto löschen)
+-- bleiben frei. Der Advisory-Lock je Kanzlei serialisiert parallele Änderungen, damit zwei gleichzeitige
+-- Herabstufungen nicht beide den jeweils anderen NOTAR zählen.
+CREATE OR REPLACE FUNCTION organization_members_guard() RETURNS TRIGGER AS $$
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN COALESCE(NEW, OLD);
+    END IF;
+    PERFORM pg_advisory_xact_lock(hashtextextended('organization_members:' || OLD.organization_id::text, 0));
+    IF OLD.user_id = auth.uid() THEN
+        RAISE EXCEPTION 'Eigene Mitgliedschaft kann nicht geändert werden' USING ERRCODE = '42501';
+    END IF;
+    IF OLD.role = 'NOTAR' AND (TG_OP = 'DELETE' OR NEW.role <> 'NOTAR')
+       AND NOT EXISTS (SELECT 1 FROM organization_members
+                       WHERE organization_id = OLD.organization_id AND role = 'NOTAR' AND id <> OLD.id) THEN
+        RAISE EXCEPTION 'Die Kanzlei braucht mindestens einen NOTAR' USING ERRCODE = '23514';
+    END IF;
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+DROP TRIGGER IF EXISTS trg_organization_members_guard ON organization_members;
+CREATE TRIGGER trg_organization_members_guard BEFORE UPDATE OR DELETE ON organization_members
+    FOR EACH ROW EXECUTE FUNCTION organization_members_guard();
+
 -- Documents & Audit Logs (Veraltete Prototyp-Policies bereinigen)
 DROP POLICY IF EXISTS "Allow all access to documents for prototype" ON documents;
 DROP POLICY IF EXISTS "Allow select audit_logs" ON audit_logs;
@@ -369,9 +394,11 @@ DROP POLICY IF EXISTS rls_audit_actor_map_select ON audit_actor_map;
 CREATE POLICY rls_audit_actor_map_select ON audit_actor_map FOR SELECT USING (is_org_member(organization_id));
 
 DROP POLICY IF EXISTS rls_audit_logs_insert ON audit_logs;
--- Verweigerungs-Ereignisse (access-denied:<Kanzlei>) dürfen nur in die Kette der eigenen Kanzlei geschrieben werden.
+-- Verweigerungs- und Team-Ereignisse (access-denied:<Kanzlei>, team:<Kanzlei>) dürfen nur in die Kette der
+-- eigenen Kanzlei geschrieben werden.
 CREATE POLICY rls_audit_logs_insert ON audit_logs FOR INSERT WITH CHECK (
     is_org_member(organization_id)
     AND action NOT IN ('DOSSIER_DELETED', 'DOSSIER_PURGE_COMPLETED')
     AND (document_id NOT LIKE 'access-denied:%' OR document_id = 'access-denied:' || organization_id::text)
+    AND (document_id NOT LIKE 'team:%' OR document_id = 'team:' || organization_id::text)
 );

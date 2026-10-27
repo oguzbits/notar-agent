@@ -2,8 +2,12 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
-import { createMockTeamRepository } from '@/test/fixtures/mock-repositories';
+import {
+  createMockAuditRepository,
+  createMockTeamRepository,
+} from '@/test/fixtures/mock-repositories';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { AUDIT_ACTIONS } from '@/types/audit';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { NOTARY_ROLES } from '@/types/organization';
 import { GET, POST } from './route';
@@ -28,12 +32,14 @@ vi.mock('@/lib/supabase/server-auth', async () => {
 });
 
 const mockTeamRepo = createMockTeamRepository();
+const mockAuditRepo = createMockAuditRepository();
 
 vi.mock('@/lib/supabase/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
   return {
     ...actual,
     getTeamRepository: () => mockTeamRepo,
+    getAuditRepository: () => mockAuditRepo,
     getServerSupabase: vi.fn(),
   };
 });
@@ -94,6 +100,12 @@ describe('API Route: /api/team', () => {
     const listData = await listRes.json();
     expect(listData.members).toHaveLength(1);
     expect(listData.members[0].id).toBe(data.member.id);
+
+    const history = await mockAuditRepo.getHistory(`team:${testOrgId}`);
+    expect(history.at(-1)).toMatchObject({
+      action: AUDIT_ACTIONS.MEMBER_INVITED,
+      details: { member: { memberId: data.member.id, newRole: NOTARY_ROLES.NOTAR } },
+    });
   });
 
   it('POST /api/team verlangt MANAGE_TEAM und lädt für SACHBEARBEITER nicht ein', async () => {

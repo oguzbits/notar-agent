@@ -3,6 +3,35 @@ import { TeamMember, InviteMemberRequest } from '@/types/auth';
 import { DB_TABLES, Database } from '@/types/database';
 import { NotaryRole } from '@/types/organization';
 
+/** SQLSTATE `insufficient_privilege`: Trigger organization_members_guard lehnt die eigene Mitgliedschaft ab. */
+const PG_INSUFFICIENT_PRIVILEGE = '42501';
+/** SQLSTATE `check_violation`: Trigger organization_members_guard lehnt das Entfernen des letzten NOTAR ab. */
+const PG_CHECK_VIOLATION = '23514';
+
+export class TeamSelfChangeError extends Error {
+  constructor() {
+    super(
+      'Die eigene Rolle und Mitgliedschaft können nur von einer anderen berechtigten Person geändert werden.'
+    );
+    this.name = 'TeamSelfChangeError';
+  }
+}
+
+export class LastNotarError extends Error {
+  constructor() {
+    super(
+      'Die Kanzlei braucht mindestens einen Notar. Bitte zuerst eine weitere Person zum Notar ernennen.'
+    );
+    this.name = 'LastNotarError';
+  }
+}
+
+function memberWriteError(error: { code?: string; message: string }, context: string): Error {
+  if (error.code === PG_INSUFFICIENT_PRIVILEGE) return new TeamSelfChangeError();
+  if (error.code === PG_CHECK_VIOLATION) return new LastNotarError();
+  return new Error(`${context}: ${error.message}`);
+}
+
 export interface ITeamRepository {
   listMembers(organizationId: string): Promise<TeamMember[]>;
   getMemberById(id: string, organizationId: string): Promise<TeamMember | null>;
@@ -116,7 +145,7 @@ export class SupabaseTeamRepository implements ITeamRepository {
       .maybeSingle();
 
     if (error) {
-      throw new Error(`Failed to update member role: ${error.message}`);
+      throw memberWriteError(error, 'Failed to update member role');
     }
     if (!updated) return null;
 
@@ -173,15 +202,16 @@ export class SupabaseTeamRepository implements ITeamRepository {
   }
 
   async removeMember(id: string, organizationId: string): Promise<boolean> {
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .delete()
       .eq('id', id)
-      .eq('organization_id', organizationId);
+      .eq('organization_id', organizationId)
+      .select('id');
 
     if (error) {
-      throw new Error(`Failed to remove member: ${error.message}`);
+      throw memberWriteError(error, 'Failed to remove member');
     }
-    return true;
+    return (data ?? []).length > 0;
   }
 }

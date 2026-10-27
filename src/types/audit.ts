@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { PermissionActionSchema } from './auth';
 import { DeletionReasonSchema } from './deletion';
 import { FieldStatusSchema } from './dossier';
+import { NotaryRoleSchema } from './organization';
 import { DbUuidSchema } from './primitives';
 
 export const AUDIT_ACTIONS = {
@@ -18,6 +19,9 @@ export const AUDIT_ACTIONS = {
   ACCESS_DENIED: 'ACCESS_DENIED',
   DOSSIER_DELETED: 'DOSSIER_DELETED',
   DOSSIER_PURGE_COMPLETED: 'DOSSIER_PURGE_COMPLETED',
+  MEMBER_INVITED: 'MEMBER_INVITED',
+  MEMBER_ROLE_CHANGED: 'MEMBER_ROLE_CHANGED',
+  MEMBER_REMOVED: 'MEMBER_REMOVED',
 } as const;
 
 export const AuditActionSchema = z.enum([
@@ -34,6 +38,9 @@ export const AuditActionSchema = z.enum([
   AUDIT_ACTIONS.ACCESS_DENIED,
   AUDIT_ACTIONS.DOSSIER_DELETED,
   AUDIT_ACTIONS.DOSSIER_PURGE_COMPLETED,
+  AUDIT_ACTIONS.MEMBER_INVITED,
+  AUDIT_ACTIONS.MEMBER_ROLE_CHANGED,
+  AUDIT_ACTIONS.MEMBER_REMOVED,
 ]);
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -77,6 +84,15 @@ export const AuditLogDetailsSchema = z
     actorRole: z.string().optional(),
     deniedAction: PermissionActionSchema.optional(),
     route: z.string().optional(),
+    member: z
+      .object({
+        memberId: z.string().min(1),
+        userId: z.string().nullable().optional(),
+        previousRole: NotaryRoleSchema.optional(),
+        newRole: NotaryRoleSchema.optional(),
+      })
+      .optional()
+      .describe('Ziel einer Teamänderung (Einladen, Rollenwechsel, Entfernen)'),
     deletion: z
       .object({
         reason: DeletionReasonSchema,

@@ -1,37 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
-import { getTeamRepository } from '@/lib/supabase/server';
+import { getAuditRepository, getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
-import { InviteMemberRequestSchema, PERMISSION_ACTIONS, PermissionAction } from '@/types/auth';
+import { inviteMember } from '@/lib/team/team-service';
+import { InviteMemberRequestSchema, PERMISSION_ACTIONS } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
 
 type ValidatedTeamSession =
-  | { errorResponse: NextResponse }
-  | {
-      authSupabase: Awaited<ReturnType<typeof createServerAuthClient>>;
-      orgId: string;
-      repo: ReturnType<typeof getTeamRepository>;
-    };
+  { errorResponse: NextResponse } | { orgId: string; repo: ReturnType<typeof getTeamRepository> };
 
-async function getValidatedTeamSession(
-  req: NextRequest,
-  requiredAction?: PermissionAction
-): Promise<ValidatedTeamSession> {
-  const authSupabase = await createServerAuthClient();
-  const queryOrgId =
+function requestedOrgId(req: NextRequest): string | undefined {
+  return (
     req.headers.get('x-organization-id') ||
     req.nextUrl.searchParams.get('organizationId') ||
-    undefined;
-  const orgId = requiredAction
-    ? (
-        await requirePermission(authSupabase, requiredAction, {
-          requestedOrgId: queryOrgId,
-          route: `${req.method} /api/team`,
-        })
-      ).organizationId
-    : await resolveSessionOrganizationId(authSupabase, queryOrgId);
+    undefined
+  );
+}
+
+async function getValidatedTeamSession(req: NextRequest): Promise<ValidatedTeamSession> {
+  const authSupabase = await createServerAuthClient();
+  const orgId = await resolveSessionOrganizationId(authSupabase, requestedOrgId(req));
 
   if (!orgId) {
     return {
@@ -42,7 +32,7 @@ async function getValidatedTeamSession(
     };
   }
 
-  return { authSupabase, orgId, repo: getTeamRepository(authSupabase) };
+  return { orgId, repo: getTeamRepository(authSupabase) };
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -60,8 +50,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const session = await getValidatedTeamSession(req, PERMISSION_ACTIONS.MANAGE_TEAM);
-    if ('errorResponse' in session) return session.errorResponse;
+    const authSupabase = await createServerAuthClient();
+    const session = await requirePermission(authSupabase, PERMISSION_ACTIONS.MANAGE_TEAM, {
+      requestedOrgId: requestedOrgId(req),
+      route: 'POST /api/team',
+    });
 
     const body = await req.json();
     const parsed = InviteMemberRequestSchema.safeParse(body);
@@ -73,7 +66,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const member = await session.repo.inviteMember(parsed.data, session.orgId);
+    const repo = getTeamRepository(authSupabase);
+    const audit = getAuditRepository(authSupabase);
+    const member = await inviteMember({ repo, audit, session }, parsed.data);
     return NextResponse.json({ member }, { status: 201 });
   } catch (err: unknown) {
     const denied = authzErrorResponse(err);

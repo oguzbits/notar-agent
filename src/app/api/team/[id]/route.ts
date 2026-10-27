@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
-import { getTeamRepository } from '@/lib/supabase/server';
+import { getAuditRepository, getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { LastNotarError, TeamSelfChangeError } from '@/lib/team/team-repository';
+import { changeMemberRole, removeMember, TeamServiceDeps } from '@/lib/team/team-service';
 import { PERMISSION_ACTIONS, UpdateMemberRoleRequestSchema } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +15,18 @@ interface RouteContext {
 
 interface ResolvedTeamRequest {
   id: string;
-  orgId: string;
-  repo: ReturnType<typeof getTeamRepository>;
+  deps: TeamServiceDeps;
+}
+
+/** Abgelehnte Teamänderung: eigene Mitgliedschaft 403, letzter NOTAR 409; sonst `undefined`. */
+function teamChangeErrorResponse(err: unknown): NextResponse | undefined {
+  if (err instanceof TeamSelfChangeError) {
+    return NextResponse.json({ error: err.message }, { status: 403 });
+  }
+  if (err instanceof LastNotarError) {
+    return NextResponse.json({ error: err.message }, { status: 409 });
+  }
+  return undefined;
 }
 
 async function resolveTeamRequest(
@@ -27,19 +39,17 @@ async function resolveTeamRequest(
     req.headers.get('x-organization-id') ||
     req.nextUrl.searchParams.get('organizationId') ||
     undefined;
-  const { organizationId: orgId } = await requirePermission(
-    authSupabase,
-    PERMISSION_ACTIONS.MANAGE_TEAM,
-    { requestedOrgId: queryOrgId, route: `${req.method} /api/team/[id]` }
-  );
-
-  return { id, orgId, repo: getTeamRepository(authSupabase) };
+  const session = await requirePermission(authSupabase, PERMISSION_ACTIONS.MANAGE_TEAM, {
+    requestedOrgId: queryOrgId,
+    route: `${req.method} /api/team/[id]`,
+  });
+  const repo = getTeamRepository(authSupabase);
+  return { id, deps: { repo, audit: getAuditRepository(authSupabase), session } };
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
-    const resolved = await resolveTeamRequest(req, context);
-    const { id, orgId, repo } = resolved;
+    const { id, deps } = await resolveTeamRequest(req, context);
 
     const body = await req.json();
 
@@ -51,7 +61,7 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
       );
     }
 
-    const updated = await repo.updateMemberRole(id, parsed.data.role, orgId);
+    const updated = await changeMemberRole(deps, id, parsed.data.role);
 
     if (!updated) {
       return NextResponse.json({ error: 'Mitglied nicht gefunden.' }, { status: 404 });
@@ -59,7 +69,7 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
 
     return NextResponse.json({ member: updated });
   } catch (err: unknown) {
-    const denied = authzErrorResponse(err);
+    const denied = authzErrorResponse(err) ?? teamChangeErrorResponse(err);
     if (denied) return denied;
     const msg = err instanceof Error ? err.message : 'Fehler beim Ändern der Rolle.';
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -68,17 +78,16 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
 
 export async function DELETE(req: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
-    const resolved = await resolveTeamRequest(req, context);
-    const { id, orgId, repo } = resolved;
+    const { id, deps } = await resolveTeamRequest(req, context);
 
-    const success = await repo.removeMember(id, orgId);
+    const success = await removeMember(deps, id);
     if (!success) {
       return NextResponse.json({ error: 'Mitglied nicht gefunden.' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
-    const denied = authzErrorResponse(err);
+    const denied = authzErrorResponse(err) ?? teamChangeErrorResponse(err);
     if (denied) return denied;
     const msg = err instanceof Error ? err.message : 'Fehler beim Entfernen des Mitglieds.';
     return NextResponse.json({ error: msg }, { status: 500 });
