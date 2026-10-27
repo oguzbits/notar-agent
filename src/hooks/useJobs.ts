@@ -1,8 +1,9 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DOCUMENTS_QUERY_KEY } from '@/hooks/useDocuments';
+import { DELETION_UI_TEXTS_DE } from '@/lib/dossier/constants';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
 
 export const JOBS_QUERY_KEY = ['jobs'] as const;
@@ -30,7 +31,8 @@ async function apiRetryJob(jobId: string): Promise<void> {
     body: JSON.stringify({ jobId }),
   });
   if (!res.ok) {
-    throw new Error('Fehler beim Wiederholen des Jobs');
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Der Vorgang konnte nicht erneut gestartet werden.');
   }
 }
 
@@ -40,7 +42,7 @@ async function apiCancelJob(jobId: string): Promise<void> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Fehler beim Abbrechen des Jobs');
+    throw new Error(data.error || 'Der Vorgang konnte nicht abgebrochen werden.');
   }
 }
 
@@ -50,7 +52,7 @@ async function apiDeleteJob(jobId: string): Promise<void> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Fehler beim Löschen des Jobs');
+    throw new Error(data.error || DELETION_UI_TEXTS_DE.ERROR);
   }
 }
 
@@ -62,6 +64,7 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
   const queryClient = useQueryClient();
   const previousActiveCount = useRef<number>(0);
   const queryKey = getJobsQueryKey(organizationId);
+  const [jobActionError, setJobActionError] = useState<string | null>(null);
 
   const {
     data: jobs = [],
@@ -135,31 +138,37 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
   const failedJobs = jobs.filter((j) => j.status === JOB_STATUS.FAILED);
 
   const retryJob = async (jobId: string): Promise<boolean> => {
+    setJobActionError(null);
     try {
       await retryMutation.mutateAsync(jobId);
       return true;
     } catch (err) {
       console.error('Job-Retry fehlgeschlagen:', err);
+      setJobActionError(err instanceof Error ? err.message : String(err));
       return false;
     }
   };
 
   const cancelJob = async (jobId: string): Promise<boolean> => {
+    setJobActionError(null);
     try {
       await cancelMutation.mutateAsync(jobId);
       return true;
     } catch (err) {
       console.error('Job-Abbruch fehlgeschlagen:', err);
+      setJobActionError(err instanceof Error ? err.message : String(err));
       return false;
     }
   };
 
   const deleteJob = async (jobId: string): Promise<boolean> => {
+    setJobActionError(null);
     try {
       await deleteMutation.mutateAsync(jobId);
       return true;
     } catch (err) {
       console.error('Job-Löschen fehlgeschlagen:', err);
+      setJobActionError(err instanceof Error ? err.message : String(err));
       return false;
     }
   };
@@ -171,6 +180,8 @@ export function useJobs(organizationId?: string, options?: UseJobsOptions) {
     hasActiveJobs: activeJobs.length > 0,
     isLoadingJobs,
     jobsError,
+    jobActionError,
+    clearJobActionError: () => setJobActionError(null),
     loadJobs,
     retryJob,
     cancelJob,
@@ -212,6 +223,8 @@ export function useJob(jobId: string | null | undefined, organizationId?: string
     enabled: !!jobId,
     refetchInterval: (query) => {
       const currentJob = query.state.data;
+      // null = vom Server als nicht vorhanden gemeldet (404): nicht weiter abfragen
+      if (currentJob === null) return false;
       if (!currentJob) return 2000;
       const isActive =
         currentJob.status === JOB_STATUS.PENDING || currentJob.status === JOB_STATUS.PROCESSING;

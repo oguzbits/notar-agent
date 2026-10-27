@@ -7,6 +7,7 @@ import { DocumentTable } from '@/components/DocumentTable';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/Button';
 import { DossierDetailView } from '@/components/views/DossierDetailView';
+import { ErrorNotice } from '@/components/views/ErrorNotice';
 import { JobProgressView } from '@/components/views/JobProgressView';
 import { NewVorgangUploadView } from '@/components/views/NewVorgangUploadView';
 import { OrganizationGatewayModal } from '@/components/views/OrganizationGatewayModal';
@@ -21,7 +22,7 @@ import {
   updateDossierFieldStatus,
   confirmFieldInDossier,
 } from '@/lib/dossier';
-import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
+import { STAGE_ACTIVITY_LABELS_DE, UEBERSICHT_FEHLER_TEXTS_DE } from '@/lib/dossier/constants';
 import { useAuth } from '@/providers/AuthProvider';
 import { DocumentListItem } from '@/types/document';
 import { FieldStatus, STORAGE_TYPES } from '@/types/dossier';
@@ -52,8 +53,15 @@ function HomeContent() {
 
   const { currentUser, organization, hasActiveOrganization, isLoadingSession } = useAuth();
 
-  const { documents, isLoadingDocs, loadDocuments, deleteDocument, updateDossier, confirmField } =
-    useDocuments(organization?.id);
+  const {
+    documents,
+    isLoadingDocs,
+    loadDocuments,
+    loadError,
+    deleteDocument,
+    updateDossier,
+    confirmField,
+  } = useDocuments(organization?.id);
   const { document: singleDocument, isLoadingDocument: isLoadingSingleDoc } = useDocument(
     vorgangParam,
     organization?.id
@@ -64,6 +72,9 @@ function HomeContent() {
     activeJobs,
     failedJobs,
     isLoadingJobs,
+    jobsError,
+    jobActionError,
+    clearJobActionError,
     retryJob,
     isRetrying,
     cancelJob,
@@ -91,9 +102,10 @@ function HomeContent() {
   // Selektierten Job bzw. Datensatz auflösen
   const activeJobFromQuery =
     (effectiveJobId ? jobs.find((j) => j.id === effectiveJobId) : null) || singleJob;
+  // Platzhalter nur beim Laden bzw. direkt nach dem Einreihen; ein unbekannter Job führt zur Nicht-gefunden-Ansicht
   const activeJob =
     activeJobFromQuery ||
-    (effectiveJobId
+    (effectiveJobId && (isLoadingSingleJob || enqueuedJobId === effectiveJobId)
       ? {
           id: effectiveJobId,
           status: JOB_STATUS.PENDING,
@@ -330,12 +342,31 @@ function HomeContent() {
       </div>
 
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 pt-3 pb-8 sm:px-6 lg:px-8">
+        {jobActionError && <ErrorNotice message={jobActionError} onDismiss={clearJobActionError} />}
+
         {/* Ansicht 1: Kanzlei Vorgangsübersicht */}
         {effectiveView === VIEW_MODE.TABLE &&
           (() => {
             // Tabelle synchron anzeigen, sobald sowohl Dokumente als auch Hintergrund-Jobs initial geladen sind (verhindert CLS und nachgelagertes Aufpoppen)
             const isTableLoading =
               (isLoadingDocs && documents.length === 0) || (isLoadingJobs && jobs.length === 0);
+
+            if (
+              (loadError || jobsError) &&
+              documents.length === 0 &&
+              jobs.length === 0 &&
+              !isTableLoading
+            ) {
+              return (
+                <ErrorNotice
+                  message={UEBERSICHT_FEHLER_TEXTS_DE.LADEN}
+                  onRetry={() => {
+                    loadDocuments();
+                    loadJobs();
+                  }}
+                />
+              );
+            }
 
             return (
               <DocumentTable
@@ -382,7 +413,11 @@ function HomeContent() {
               isDeleting={isDeletingJob}
             />
           ) : isLoadingSingleJob ? (
-            <div className="animate-pulse space-y-4" aria-busy="true" aria-label="Job wird geladen">
+            <div
+              className="animate-pulse space-y-4"
+              aria-busy="true"
+              aria-label="Vorgang wird geladen"
+            >
               <div className="bg-muted h-8 w-48 rounded" />
               <div className="bg-card border-border h-24 rounded-xl border" />
               <div className="bg-card border-border h-48 rounded-xl border" />
@@ -393,7 +428,7 @@ function HomeContent() {
                 Hintergrund-Vorgang nicht gefunden
               </p>
               <p className="text-muted-foreground text-sm">
-                Der angeforderte Job existiert nicht oder wurde bereits archiviert.
+                Der angeforderte Vorgang existiert nicht oder wurde bereits entfernt.
               </p>
               <Button onClick={handleBackToTable} variant="outline" size="md">
                 Zurück zur Vorgangsübersicht

@@ -95,6 +95,12 @@ export const PRUEFPLAN_UI_TEXTS_DE = {
   START: 'Prüfung starten',
 } as const;
 
+export const UEBERSICHT_FEHLER_TEXTS_DE = {
+  LADEN: 'Die Vorgänge konnten nicht geladen werden. Bitte versuchen Sie es erneut.',
+  RETRY: PRUEFPLAN_UI_TEXTS_DE.RETRY,
+  DISMISS: 'Meldung schließen',
+} as const;
+
 export const STATUS_OVERRIDE_TEXTS_DE = {
   REASON_REQUIRED: 'Ein Statuswechsel am Feld braucht eine Begründung für die Akte.',
   MISMATCH:

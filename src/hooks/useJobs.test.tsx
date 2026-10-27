@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node';
 import React from 'react';
 import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { DOCUMENTS_QUERY_KEY } from '@/hooks/useDocuments';
+import { DELETION_UI_TEXTS_DE } from '@/lib/dossier/constants';
 import { CASE_TYPES } from '@/types/dossier';
 import { DossierJob, JOB_STATUS, JOB_STAGES } from '@/types/jobs';
 import { useJobs, useJob, jobDetailQueryKey } from './useJobs';
@@ -177,6 +178,79 @@ describe('useJobs Hook with TanStack Query & MSW', () => {
       expect(result.current.jobs.length).toBe(1);
     });
     expect(result.current.jobs[0]?.id).toBe('job-123');
+  });
+
+  it('meldet Fehler der Wiederholung mit der Servermeldung und löscht sie beim nächsten Versuch', async () => {
+    server.use(
+      http.post('/api/jobs', () =>
+        HttpResponse.json(
+          { error: 'Dieser Vorgang kann nicht erneut gestartet werden.' },
+          { status: 409 }
+        )
+      )
+    );
+    const { result } = renderHook(() => useJobs(), { wrapper });
+    await waitFor(() => expect(result.current.isLoadingJobs).toBe(false));
+
+    await act(async () => {
+      expect(await result.current.retryJob('job-123')).toBe(false);
+    });
+    expect(result.current.jobActionError).toBe(
+      'Dieser Vorgang kann nicht erneut gestartet werden.'
+    );
+
+    act(() => result.current.clearJobActionError());
+    expect(result.current.jobActionError).toBeNull();
+  });
+
+  it('meldet Fehler des Abbruchs mit der Servermeldung', async () => {
+    server.use(
+      http.post('/api/jobs/:id/cancel', () =>
+        HttpResponse.json(
+          { error: 'Der Vorgang kann nicht mehr abgebrochen werden.' },
+          { status: 409 }
+        )
+      )
+    );
+    const { result } = renderHook(() => useJobs(), { wrapper });
+    await waitFor(() => expect(result.current.isLoadingJobs).toBe(false));
+
+    await act(async () => {
+      expect(await result.current.cancelJob('job-123')).toBe(false);
+    });
+    expect(result.current.jobActionError).toBe('Der Vorgang kann nicht mehr abgebrochen werden.');
+  });
+
+  it('meldet Fehler des Löschens mit fester deutscher Meldung und löscht sie bei Erfolg', async () => {
+    server.use(http.delete('/api/jobs/:id', () => new HttpResponse(null, { status: 500 })));
+    const { result } = renderHook(() => useJobs(), { wrapper });
+    await waitFor(() => expect(result.current.isLoadingJobs).toBe(false));
+
+    await act(async () => {
+      await result.current.deleteJob('job-123');
+    });
+    expect(result.current.jobActionError).toBe(DELETION_UI_TEXTS_DE.ERROR);
+
+    server.use(http.delete('/api/jobs/:id', () => HttpResponse.json({ success: true })));
+    await act(async () => {
+      expect(await result.current.deleteJob('job-123')).toBe(true);
+    });
+    expect(result.current.jobActionError).toBeNull();
+  });
+
+  it('beendet das Abfragen von useJob, sobald der Job nicht gefunden wird', async () => {
+    server.use(
+      http.get('/api/jobs/job-weg', () =>
+        HttpResponse.json({ error: 'nicht gefunden' }, { status: 404 })
+      )
+    );
+    const { result } = renderHook(() => useJob('job-weg'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const query = queryClient.getQueryCache().find({ queryKey: jobDetailQueryKey('job-weg') });
+    const interval = query?.observers[0]?.options.refetchInterval;
+    expect(result.current.job).toBeNull();
+    expect(typeof interval === 'function' && query ? interval(query) : 'fehlt').toBe(false);
   });
 
   it('fetches a single job by id via useJob and polls until completed', async () => {
