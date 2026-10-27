@@ -103,11 +103,8 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
               status={row.status}
               isUpdating={updatingFieldKey === row.fieldKey}
               onChange={(newStatus) => {
-                if (newStatus === FIELD_STATUS.VERIFIED && row.status !== FIELD_STATUS.VERIFIED) {
-                  setPendingStatusChange(newStatus);
-                } else {
-                  onOverrideFieldStatus(row.fieldKey, newStatus, row.note);
-                }
+                // Jeder Statuswechsel braucht eine Begründung für die Akte (Server lehnt sonst ab)
+                if (newStatus !== row.status) setPendingStatusChange(newStatus);
               }}
             />
           ) : (
@@ -299,6 +296,7 @@ export const CockpitTableRow: React.FC<CockpitTableRowProps> = ({
       <StatusOverrideReasonModal
         isOpen={pendingStatusChange !== null}
         fieldTitle={row.fieldTitle}
+        targetStatus={pendingStatusChange ?? row.status}
         onConfirm={(reason) => {
           if (onOverrideFieldStatus && pendingStatusChange) {
             onOverrideFieldStatus(row.fieldKey, pendingStatusChange, row.note, reason);

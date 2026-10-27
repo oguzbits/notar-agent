@@ -1,19 +1,23 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { AlertCircle, Check, X } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
+import { STATUS_LABELS_DE } from '@/lib/dossier/constants';
+import { FieldStatus } from '@/types/dossier';
 
 interface StatusOverrideReasonModalProps {
   isOpen: boolean;
   fieldTitle: string;
+  targetStatus: FieldStatus;
   onConfirm: (reason: string) => void;
   onCancel: () => void;
 }
 
 const ReasonDialogContent: React.FC<{
   fieldTitle: string;
+  targetStatus: FieldStatus;
   onConfirm: (reason: string) => void;
   onCancel: () => void;
-}> = ({ fieldTitle, onConfirm, onCancel }) => {
+}> = ({ fieldTitle, targetStatus, onConfirm, onCancel }) => {
   const [reason, setReason] = useState('');
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -70,9 +74,11 @@ const ReasonDialogContent: React.FC<{
             className="text-muted-foreground text-sm leading-relaxed"
           >
             Sie markieren dieses Feld als{' '}
-            <strong className="text-notar-900 dark:text-notar-400 font-semibold">„Belegt“</strong>.
-            Für die revisionssichere Kanzleiakte und den gerichtsfesten Prüfbericht muss der Grund
-            für die Freigabe dokumentiert werden (z. B.{' '}
+            <strong className="text-notar-900 dark:text-notar-400 font-semibold">
+              „{STATUS_LABELS_DE[targetStatus]}“
+            </strong>
+            . Für die revisionssichere Kanzleiakte und den gerichtsfesten Prüfbericht muss der Grund
+            für die Änderung dokumentiert werden (z. B.{' '}
             <em>„Originaler Erbschein lag bei Beurkundung vor“</em>).
           </Dialog.Description>
 
@@ -127,6 +133,7 @@ const ReasonDialogContent: React.FC<{
 export const StatusOverrideReasonModal: React.FC<StatusOverrideReasonModalProps> = ({
   isOpen,
   fieldTitle,
+  targetStatus,
   onConfirm,
   onCancel,
 }) => {
@@ -136,6 +143,7 @@ export const StatusOverrideReasonModal: React.FC<StatusOverrideReasonModalProps>
         <ReasonDialogContent
           key={fieldTitle}
           fieldTitle={fieldTitle}
+          targetStatus={targetStatus}
           onConfirm={onConfirm}
           onCancel={onCancel}
         />

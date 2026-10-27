@@ -71,20 +71,22 @@ export async function POST(req: NextRequest): Promise<Response> {
       req.nextUrl.searchParams.get('async') === 'true' ||
       req.headers.get('x-async-mode') === 'true';
 
+    // Kontingent gilt für beide Wege (Hintergrund-Job und Live-Stream)
+    const jobRepo = getJobRepository(authSupabase);
+    const windowStart = new Date(Date.now() - JOB_RATE_LIMIT.WINDOW_MS).toISOString();
+    const recentJobs = await jobRepo.countJobsSince(resolvedOrgId, windowStart);
+    if (recentJobs >= JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW) {
+      return NextResponse.json(
+        {
+          error:
+            'Das Kontingent an Analysen pro Stunde ist erreicht. Bitte später erneut versuchen.',
+        },
+        { status: 429, headers: { 'Retry-After': '3600' } }
+      );
+    }
+
     if (isAsync) {
-      const jobRepo = getJobRepository(authSupabase);
       const dossierRepo = getDossierRepository(authSupabase);
-      const windowStart = new Date(Date.now() - JOB_RATE_LIMIT.WINDOW_MS).toISOString();
-      const recentJobs = await jobRepo.countJobsSince(resolvedOrgId, windowStart);
-      if (recentJobs >= JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW) {
-        return NextResponse.json(
-          {
-            error:
-              'Das Kontingent an Analysen pro Stunde ist erreicht. Bitte später erneut versuchen.',
-          },
-          { status: 429, headers: { 'Retry-After': '3600' } }
-        );
-      }
       const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
       const workerDeps = {
         jobRepo,
@@ -282,8 +284,13 @@ export async function PUT(req: NextRequest): Promise<Response> {
     const repo = getDossierRepository(authSupabase);
     // Ein Statuswechsel am Feld gilt als Override, auch wenn der Client `auditOverride` weglässt.
     const stored = await repo.findById(documentId, organizationId);
-    if (auditOverride || (stored && hasFieldStatusChange(stored.content, dossier))) {
+    const statusChanged = stored !== null && hasFieldStatusChange(stored.content, dossier);
+    if (auditOverride || statusChanged) {
       await requirePermission(authSupabase, PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS, guardOptions);
+    }
+    if (statusChanged && !auditOverride) {
+      const error = 'Ein Statuswechsel am Feld braucht eine Begründung für die Akte.';
+      return NextResponse.json({ error }, { status: 400 });
     }
     const updateRes = await repo.update(
       documentId,
@@ -292,10 +299,8 @@ export async function PUT(req: NextRequest): Promise<Response> {
     );
 
     if (!updateRes.success) {
-      return NextResponse.json(
-        { error: updateRes.error || 'Update fehlgeschlagen' },
-        { status: 500 }
-      );
+      const error = updateRes.error || 'Update fehlgeschlagen';
+      return NextResponse.json({ error }, { status: 500 });
     }
 
     if (auditOverride) {
@@ -308,10 +313,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      storageType: STORAGE_TYPES.SUPABASE,
-    });
+    return NextResponse.json({ success: true, storageType: STORAGE_TYPES.SUPABASE });
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;

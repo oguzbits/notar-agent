@@ -212,6 +212,28 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
+  it('PUT mit geändertem Feldstatus ohne auditOverride: 400, nichts gespeichert', async () => {
+    const orgId = 'a0000000-0000-4000-8000-000000000001';
+    const before = createTestImmobilienDossier({
+      fieldStatusMap: { verkaeufer: FIELD_STATUS.NEEDS_REVIEW },
+    });
+    await mockDossierRepo.update('doc-status-ohne-grund', before, orgId);
+    const updateSpy = vi.spyOn(mockDossierRepo, 'update');
+    updateSpy.mockClear();
+    const changed = updateDossierFieldStatus(before, 'verkaeufer', FIELD_STATUS.VERIFIED);
+
+    const res = await PUT(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'PUT',
+        body: JSON.stringify({ documentId: 'doc-status-ohne-grund', dossier: changed }),
+      })
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Begründung');
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
   it('PUT ohne auditOverride verlangt UPLOAD_DOCUMENTS', async () => {
     const req = new NextRequest('http://localhost:3000/api/analyze', {
       method: 'PUT',
@@ -281,6 +303,24 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
       const res = await POST(req);
       expect(res.status).toBe(429);
       expect(res.headers.get('Retry-After')).toBeDefined();
+    } finally {
+      if (prevKey) process.env.GEMINI_API_KEY = prevKey;
+      else delete process.env.GEMINI_API_KEY;
+    }
+  });
+
+  it('Kontingent gilt auch für den Live-Pfad (SSE): 429 ohne Analyse', async () => {
+    const prevKey = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test-key';
+    vi.mocked(mockJobRepo.countJobsSince).mockResolvedValueOnce(JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW);
+    try {
+      const res = await POST(
+        new NextRequest('http://localhost:3000/api/analyze', {
+          method: 'POST',
+          body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+        })
+      );
+      expect(res.status).toBe(429);
     } finally {
       if (prevKey) process.env.GEMINI_API_KEY = prevKey;
       else delete process.env.GEMINI_API_KEY;

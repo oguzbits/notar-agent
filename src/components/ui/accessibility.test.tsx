@@ -48,6 +48,7 @@ describe('Accessibility (a11y) automated audits via vitest-axe', () => {
       <StatusOverrideReasonModal
         isOpen={true}
         fieldTitle="Kaufpreis"
+        targetStatus={FIELD_STATUS.VERIFIED}
         onConfirm={() => {}}
         onCancel={() => {}}
       />
