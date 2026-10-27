@@ -769,7 +769,7 @@ Stand der Übernahme aus den Specs unter `docs/superpowers/specs/`; vor Beginn j
 
 ### Geplante Aufgaben
 
-- [ ] **Mutation-Tests (Stryker) ausweiten:** Pilot läuft für Eval-Gate, Wissensauswahl und Agenten-Leitplanken (`npm run mutation`); offen sind weitere Module von `src/lib`, die 20 überlebenden Mutanten in `rule-selector.ts` und ein Eval-Schlüssel mit Quota-Stop.
+- [ ] **Mutation-Tests (Stryker) ausweiten:** Pilot läuft für Eval-Gate, Wissensauswahl und Agenten-Leitplanken (`npm run mutation`); offen sind weitere Module von `src/lib`, die Restmutanten in `rule-selector.ts` (Score 81 %, überwiegend gleichwertig) und ein Eval-Schlüssel mit Quota-Stop.
 - [ ] **Generierte Doku (`docs:generate --check`):** Prüfbefund (Zeitbox): Routen, Umgebungsvariablen und Tabellennamen stehen in `docs/` nur verstreut in Fließtext (zwölf Routenverweise, kein aufzählender Block), nicht als Listen oder Tabellen. Damit gibt es keinen Block, den ein Generator ersetzen könnte; Regel der Drei nicht erfüllt. Erst anlegen, wenn eine Referenzliste (z. B. API-Routen) in die Doku aufgenommen wird.
 - [ ] **Kosten und Limits:** Token-Zählung je Modellaufruf, Kostenbericht, Nutzerlimits; Parallelitätssperre serverless-tauglich in der Datenbank.
 - [ ] **Produkt- und Design-Fundament:** `PRODUCT.md`, `DESIGN.md`, Beleg-Cockpit mit Fundstelle und Konfidenz, Review-Tabelle mit Zellstatus, Strg+K.

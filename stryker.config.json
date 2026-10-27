@@ -13,5 +13,5 @@
   "reporters": ["clear-text", "json"],
   "jsonReporter": { "fileName": "reports/mutation/mutation.json" },
   "tempDirName": ".stryker-tmp",
-  "thresholds": { "high": 90, "low": 70, "break": 70 }
+  "thresholds": { "high": 90, "low": 70, "break": 80 }
 }

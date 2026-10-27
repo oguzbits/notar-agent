@@ -8,7 +8,7 @@ export default defineConfig({
     root: process.cwd(),
     environment: 'node',
     include: [
-      'src/lib/knowledge/rules/rule-selector.test.ts',
+      'src/lib/knowledge/rules/rule-selector*.test.ts',
       'src/lib/knowledge/eval-gate.test.ts',
       'scripts/agent/guards*.test.mjs',
     ],
