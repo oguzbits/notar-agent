@@ -5,7 +5,7 @@ import { EMBEDDING_DIMENSIONS, EmbeddingVectorSchema } from '@/types/knowledge';
 import { formatDocumentForEmbedding, formatQueryForEmbedding } from './embedding-text';
 
 export interface IEmbedder {
-  embedQuery(text: string): Promise<number[]>;
+  embedQuery(text: string, abortSignal?: AbortSignal): Promise<number[]>;
   embedDocuments(docs: { title: string; content: string }[]): Promise<number[][]>;
 }
 
@@ -14,11 +14,12 @@ const providerOptions = { google: { outputDimensionality: EMBEDDING_DIMENSIONS }
 
 export function createEmbedder(model: EmbeddingModel): IEmbedder {
   return {
-    async embedQuery(text) {
+    async embedQuery(text, abortSignal) {
       const { embedding } = await embed({
         model,
         value: formatQueryForEmbedding(text),
         providerOptions,
+        abortSignal,
       });
       return EmbeddingVectorSchema.parse(embedding);
     },

@@ -4,7 +4,7 @@ import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { formatInternalNotes } from '@/lib/ai/internal-notes';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
-import { downgradeUnvalidatedFields, SourceDocumentText } from '@/lib/ai/verifiable-fact-checker';
+import { SourceDocumentText } from '@/lib/ai/verifiable-fact-checker';
 import { runNotaryVerification } from '@/lib/ai/verification-engine';
 import { normalizeDossier } from '@/lib/dossier';
 import { getEmbedder } from '@/lib/knowledge/embedder';
@@ -32,6 +32,10 @@ function modelIdOf(model: LanguageModel): string {
   return typeof model === 'string' ? model : model.modelId;
 }
 
+/** Feste Meldung für den Job, wenn Stufe 1 auch nach der Korrektur kein gültiges Ergebnis liefert. */
+export const EXTRACTION_INVALID_MESSAGE =
+  'Die Unterlagen konnten nicht zuverlässig erfasst werden. Bitte Vorgang erneut starten.';
+
 export interface PipelineTokenUsage {
   promptTokens: number;
   completionTokens: number;
@@ -50,6 +54,8 @@ export interface PipelineParams {
   onStep: (step: number, stepDetail: string) => void;
   onUsage?: (usage: PipelineTokenUsage) => void;
   onStageUsage?: StageUsageHandler;
+  /** Bricht Modellaufrufe und Einbettung ab (Benutzerabbruch des Jobs) */
+  abortSignal?: AbortSignal;
   onTrace?: (trace: import('@/types/pipeline').PipelineTraceArtifacts) => void;
   knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
   /** Fehlt er, gilt die Konfiguration (EMBEDDING_MODEL_ID); ohne beides sucht die Pipeline nur im Volltext. */
@@ -91,6 +97,7 @@ export interface ExtractionStageParams {
   onStep: (step: number, stepDetail: string) => void;
   onUsage?: (usage: PipelineTokenUsage) => void;
   onStageUsage?: StageUsageHandler;
+  abortSignal?: AbortSignal;
 }
 
 export interface ExtractionStageResult {
@@ -110,6 +117,7 @@ export interface AuditorStageParams extends Pick<
   | 'onStep'
   | 'onUsage'
   | 'onStageUsage'
+  | 'abortSignal'
   | 'onTrace'
   | 'knowledgeRepo'
   | 'embedder'
@@ -142,6 +150,7 @@ export async function runExtractionStage(
     onStep,
     onUsage,
     onStageUsage,
+    abortSignal,
   } = params;
 
   let totalPromptTokens = 0;
@@ -181,6 +190,7 @@ export async function runExtractionStage(
           },
         ],
         temperature: 0.1,
+        abortSignal,
       })
   );
 
@@ -237,6 +247,7 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
           },
         ],
         temperature: 0.0,
+        abortSignal,
       });
 
       if (repairedResult.usage) {
@@ -266,30 +277,24 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     }
   }
 
-  const parsedExtractionRaw: Record<string, unknown> = validatedExtraction?.success
-    ? validatedExtraction.data
-    : rawExtractionJson || {};
-
-  // UNIFIED VERIFICATION & DETERMINISTIC GUARDRAILS
-  if (validatedExtraction?.success) {
-    // docIndex 0: Die Notiz ist kein Prompt-Dokument und darf nie als „Dokument n“ aufgelöst werden
-    const textSources: SourceDocumentText[] = notesSection.trim()
-      ? [{ fileName: 'Bearbeitungsnotiz', docIndex: 0, textContent: notesSection }]
-      : [];
-    textSources.push(...fileSourceTexts);
-
-    const verified = runNotaryVerification({
-      stageOutput: validatedExtraction.data,
-      sourceDocuments: textSources,
-      referenceDate: new Date(),
-    });
-    parsedExtractionRaw.fields = verified.fields;
-  } else {
-    // Fail-closed: Ohne gültiges Schema ist nichts prüfbar, also bleibt kein Feld VERIFIED
-    if (parsedExtractionRaw.fields !== undefined) {
-      parsedExtractionRaw.fields = downgradeUnvalidatedFields(parsedExtractionRaw.fields);
-    }
+  // Fail-fast: Ein ungültiges Ergebnis darf weder als Checkpoint gespeichert noch geprüft werden
+  if (!validatedExtraction?.success) {
+    throw new Error(EXTRACTION_INVALID_MESSAGE);
   }
+  const parsedExtractionRaw: Record<string, unknown> = validatedExtraction.data;
+
+  // docIndex 0: Die Notiz ist kein Prompt-Dokument und darf nie als „Dokument n“ aufgelöst werden
+  const textSources: SourceDocumentText[] = notesSection.trim()
+    ? [{ fileName: 'Bearbeitungsnotiz', docIndex: 0, textContent: notesSection }]
+    : [];
+  textSources.push(...fileSourceTexts);
+
+  const verified = runNotaryVerification({
+    stageOutput: validatedExtraction.data,
+    sourceDocuments: textSources,
+    referenceDate: new Date(),
+  });
+  parsedExtractionRaw.fields = verified.fields;
 
   const usage: PipelineTokenUsage = {
     promptTokens: totalPromptTokens,
@@ -307,7 +312,7 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     notesSection,
     usage,
     extractionTextResult,
-    validationSuccess: validatedExtraction?.success ?? false,
+    validationSuccess: true,
   };
 }
 
@@ -327,6 +332,7 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
     onUsage,
     onStageUsage,
     onTrace,
+    abortSignal,
     knowledgeRepo: passedKnowledgeRepo,
     embedder: passedEmbedder,
     initialUsage,
@@ -377,7 +383,7 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
   const searchTerms = buildKnowledgeSearchText(caseType, notesSection, docNames);
 
   const embedder = passedEmbedder ?? getEmbedder();
-  const queryEmbedding = embedder ? await embedder.embedQuery(searchTerms) : undefined;
+  const queryEmbedding = embedder ? await embedder.embedQuery(searchTerms, abortSignal) : undefined;
 
   const knowledgeResults = await knowledgeRepo.search({
     queryText: searchTerms,
@@ -423,6 +429,7 @@ Antworte AUSSCHLIESSLICH mit dem geforderten JSON-Format (entweder als Reconcile
         instructions: auditorInstructions,
         prompt: auditorContextPrompt,
         temperature: 0.1,
+        abortSignal,
       })
   );
 

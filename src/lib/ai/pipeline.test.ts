@@ -3,7 +3,7 @@ import { buildKnowledgeSearchText } from '@/lib/knowledge/search-text';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { LLM_USAGE_STAGES } from '@/types/llm-usage';
 import { formatInternalNotes } from './internal-notes';
-import { runAnalysisPipeline } from './pipeline';
+import { EXTRACTION_INVALID_MESSAGE, runAnalysisPipeline } from './pipeline';
 
 // Mock Supabase Server Knowledge Repository
 const mockKnowledgeSearch = vi.hoisted(() => vi.fn());
@@ -34,7 +34,10 @@ describe('runAnalysisPipeline', () => {
   });
 
   describe('Vektorsuche', () => {
-    const run = (embedder?: { embedQuery: (text: string) => Promise<number[]> }) => {
+    const run = (
+      embedder?: { embedQuery: (text: string) => Promise<number[]> },
+      abortSignal?: AbortSignal
+    ) => {
       mockGenerateText.mockReset().mockResolvedValue({
         text: JSON.stringify({
           caseTitle: 'T',
@@ -51,6 +54,7 @@ describe('runAnalysisPipeline', () => {
         extractionInstructions: { role: 'system', content: 'Extract' },
         auditorInstructions: { role: 'system', content: 'Audit' },
         onStep: () => undefined,
+        abortSignal,
         ...(embedder ? { embedder: { ...embedder, embedDocuments: vi.fn() } } : {}),
       });
     };
@@ -64,8 +68,17 @@ describe('runAnalysisPipeline', () => {
       const embedQuery = vi.fn().mockResolvedValue([0.1, 0.2]);
       await run({ embedQuery });
       const query = mockKnowledgeSearch.mock.calls[0]?.[0];
-      expect(embedQuery).toHaveBeenCalledWith(query.queryText);
+      expect(embedQuery.mock.calls[0]?.[0]).toBe(query.queryText);
       expect(query.queryEmbedding).toEqual([0.1, 0.2]);
+    });
+
+    it('reicht das Abbruchsignal an jeden Modellaufruf und an die Einbettung durch', async () => {
+      const embedQuery = vi.fn().mockResolvedValue([0.1]);
+      const signal = new AbortController().signal;
+      await run({ embedQuery }, signal);
+      expect(mockGenerateText).toHaveBeenCalled();
+      for (const [params] of mockGenerateText.mock.calls) expect(params.abortSignal).toBe(signal);
+      expect(embedQuery).toHaveBeenCalledWith(expect.any(String), signal);
     });
 
     it('nutzt den konfigurierten Einbetter, wenn keiner übergeben wird', async () => {
@@ -335,8 +348,13 @@ describe('runExtractionStage: Beleg-Prüfung', () => {
     expect(statusOf(result)).toBe(FIELD_STATUS.NEEDS_REVIEW);
   });
 
-  it('stuft VERIFIED-Felder ab, wenn die Ausgabe auch nach der Korrektur das Schema verletzt', async () => {
-    const result = await run(stageOutput(verifiedField(1, 'Kaufpreis 450.000 Euro'), 'UNGUELTIG'));
-    expect(statusOf(result)).toBe(FIELD_STATUS.NEEDS_REVIEW);
+  it('wirft, wenn die Ausgabe auch nach der Korrektur das Schema verletzt (kein Checkpoint)', async () => {
+    await expect(
+      run(stageOutput(verifiedField(1, 'Kaufpreis 450.000 Euro'), 'UNGUELTIG'))
+    ).rejects.toThrow(EXTRACTION_INVALID_MESSAGE);
+  });
+
+  it('wirft, wenn die Ausgabe kein JSON ist', async () => {
+    await expect(run('kein json')).rejects.toThrow(EXTRACTION_INVALID_MESSAGE);
   });
 });
