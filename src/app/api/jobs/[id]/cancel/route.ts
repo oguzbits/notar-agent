@@ -53,6 +53,13 @@ export async function POST(
     }
 
     const cancelledJob = await cancelDossierJob(id, { jobRepo: repo });
+    // Wettlauf verloren: Der Job wurde inzwischen fertig, ist gescheitert oder speichert bereits
+    if (cancelledJob?.status !== JOB_STATUS.CANCELLED) {
+      return NextResponse.json(
+        { error: 'Der Vorgang kann nicht mehr abgebrochen werden.', job: cancelledJob },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json(
       {

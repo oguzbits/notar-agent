@@ -9,7 +9,7 @@ import {
   createMockKnowledgeRepository,
   createMockAuditRepository,
 } from '@/test/fixtures/mock-repositories';
-import { fakeRequirePermission } from '@/test/fixtures/session-context';
+import { fakeRequirePermission, TEST_ORG_ID } from '@/test/fixtures/session-context';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STATUS } from '@/types/jobs';
@@ -109,11 +109,14 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   });
 
   it('POST /api/jobs retries a failed job', async () => {
-    const job = await repo.createJob({
-      caseType: CASE_TYPES.IMMOBILIENKAUF,
-      files: [],
-      notes: 'Failing Job',
-    });
+    const job = await repo.createJob(
+      {
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: 'Failing Job',
+      },
+      TEST_ORG_ID
+    );
 
     await repo.updateJobStatus(job.id, {
       status: JOB_STATUS.FAILED,
@@ -175,11 +178,14 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   });
 
   it('POST /api/jobs zählt jede Wiederholung', async () => {
-    const job = await repo.createJob({
-      caseType: CASE_TYPES.IMMOBILIENKAUF,
-      files: [],
-      notes: 'x',
-    });
+    const job = await repo.createJob(
+      {
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: 'x',
+      },
+      TEST_ORG_ID
+    );
     await repo.updateJobStatus(job.id, {
       status: JOB_STATUS.FAILED,
       retryCount: 1,

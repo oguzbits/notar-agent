@@ -62,7 +62,7 @@ async function requeueFailedJob(
     job.id,
     [JOB_STATUS.FAILED],
     { status: JOB_STATUS.PENDING, retryCount: job.retryCount + 1, errorMessage: null },
-    orgId
+    { organizationId: orgId }
   );
   if (requeued) return null;
   return NextResponse.json(

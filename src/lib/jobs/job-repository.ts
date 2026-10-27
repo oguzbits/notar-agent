@@ -16,6 +16,15 @@ import {
 } from '@/types/jobs';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 
+/** Zusatzbedingungen eines Übergangs; jede gesetzte Bedingung muss zutreffen. */
+export interface JobTransitionGuard {
+  organizationId?: string;
+  /** Lauf-Kennung: nur der Lauf, der den Job mit dieser Sperrzeit übernommen hat, darf ändern. */
+  lockedAt?: string;
+  /** Nicht in dieser Stufe (Jobs ohne Stufe zählen als zutreffend). */
+  stageNot?: JobStage;
+}
+
 export interface IJobRepository {
   createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob>;
   getJobById(id: string, organizationId?: string): Promise<DossierJob | null>;
@@ -28,7 +37,7 @@ export interface IJobRepository {
     id: string,
     fromStatuses: JobStatus[],
     update: UpdateJobParams,
-    organizationId?: string
+    guard?: JobTransitionGuard
   ): Promise<DossierJob | null>;
   listJobs(organizationId?: string): Promise<DossierJob[]>;
   countJobsSince(organizationId: string, sinceIso: string): Promise<number>;
@@ -106,15 +115,21 @@ export class SupabaseJobRepository implements IJobRepository {
     id: string,
     fromStatuses: JobStatus[],
     update: UpdateJobParams,
-    organizationId?: string
+    guard: JobTransitionGuard = {}
   ): Promise<DossierJob | null> {
     let query = this.supabase
       .from(DB_TABLES.DOSSIER_JOBS)
       .update(this.buildUpdateData(update))
       .eq('id', id)
       .in('status', fromStatuses);
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
+    if (guard.organizationId) {
+      query = query.eq('organization_id', guard.organizationId);
+    }
+    if (guard.lockedAt) {
+      query = query.eq('locked_at', guard.lockedAt);
+    }
+    if (guard.stageNot) {
+      query = query.or(`stage.is.null,stage.neq.${guard.stageNot}`);
     }
 
     const { data, error } = await query.select('*');

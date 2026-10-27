@@ -210,6 +210,103 @@ describe('job-worker (executeDossierJob)', () => {
       expect((await jobRepo.getJobById(job.id))?.status).toBe(JOB_STATUS.COMPLETED);
     });
 
+    it('Abbruch während des Speicherns wird abgelehnt: Dossier und Job bleiben stimmig', async () => {
+      const job = await jobRepo.createJob(payload);
+      let statusAfterCancel: string | undefined;
+      vi.mocked(dossierRepo.save).mockImplementationOnce(async () => {
+        statusAfterCancel = (await cancelDossierJob(job.id, { jobRepo }))?.status;
+        return {
+          persisted: true,
+          id: 'dossier-mock',
+          storageType: STORAGE_TYPES.SUPABASE,
+          caseNumber: 'x',
+        };
+      });
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        auditorFn: async () => mockResultDossier,
+      });
+
+      expect(statusAfterCancel).toBe(JOB_STATUS.PROCESSING);
+      expect(done?.status).toBe(JOB_STATUS.COMPLETED);
+      expect(done?.resultDossierId).toBe('dossier-mock');
+    });
+
+    it('ein abgelöster Lauf (Heilung und Neustart) speichert nichts und ändert den neuen Lauf nicht', async () => {
+      const job = await jobRepo.createJob(payload);
+      const newRunLock = '2099-01-01T00:00:00.000Z';
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        auditorFn: async () => {
+          // Ein zweiter Lauf hat den Job inzwischen mit eigener Sperrzeit übernommen
+          await jobRepo.updateJobStatus(job.id, { lockedAt: newRunLock });
+          return mockResultDossier;
+        },
+      });
+
+      expect(dossierRepo.save).not.toHaveBeenCalled();
+      expect(done?.status).toBe(JOB_STATUS.PROCESSING);
+      expect(done?.lockedAt).toBe(newRunLock);
+    });
+
+    it('ein abgelöster Lauf entfernt beim Ende nicht den Abbruch-Zugriff des neuen Laufs', async () => {
+      const job = await jobRepo.createJob(payload);
+      let releaseOld!: () => void;
+      let releaseNew!: () => void;
+      let markOldInStage2!: () => void;
+      const oldInStage2 = new Promise<void>((r) => (markOldInStage2 = r));
+      let newSignal: AbortSignal | undefined;
+      let markNewInStage2!: () => void;
+      const newInStage2 = new Promise<void>((r) => (markNewInStage2 = r));
+
+      const oldRun = executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        auditorFn: async () => {
+          markOldInStage2();
+          await new Promise<void>((r) => (releaseOld = r));
+          return mockResultDossier;
+        },
+      });
+      await oldInStage2;
+      // Eigene Millisekunde, damit der neue Lauf eine andere Sperrzeit (Lauf-Kennung) erhält
+      await new Promise((r) => setTimeout(r, 2));
+      // Heilung und Wiederholung: der Job wartet wieder und wird vom neuen Lauf übernommen
+      await jobRepo.updateJobStatus(job.id, { status: JOB_STATUS.PENDING, lockedAt: null });
+      const newRun = executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        auditorFn: async ({ abortSignal }) => {
+          newSignal = abortSignal;
+          markNewInStage2();
+          await new Promise<void>((r) => {
+            releaseNew = r;
+            abortSignal?.addEventListener('abort', () => r());
+          });
+          return mockResultDossier;
+        },
+      });
+      await newInStage2;
+
+      releaseOld();
+      await oldRun;
+      await cancelDossierJob(job.id, { jobRepo });
+      const abortedImmediately = newSignal?.aborted;
+      releaseNew();
+      await newRun;
+
+      expect(abortedImmediately).toBe(true);
+      expect((await jobRepo.getJobById(job.id))?.status).toBe(JOB_STATUS.CANCELLED);
+    });
+
     it('Shutdown-Signal zwischen den Stufen: kein Dossier, Job wartet wieder', async () => {
       const job = await jobRepo.createJob(payload);
       const shutdown = new AbortController();

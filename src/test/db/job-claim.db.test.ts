@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import { DB_TABLES } from '@/types/database';
 import { CASE_TYPES } from '@/types/dossier';
-import { JOB_STATUS } from '@/types/jobs';
+import { JOB_STAGES, JOB_STATUS } from '@/types/jobs';
 import { NOTARY_ROLES } from '@/types/organization';
 import { createDbHarness, TestUser } from './db-harness';
 
@@ -27,7 +27,14 @@ describe('Atomarer Statusübergang (transitionJob)', () => {
     const job = await newJob();
     const attempts = await Promise.all(
       Array.from({ length: 8 }, () =>
-        repo.transitionJob(job.id, [JOB_STATUS.PENDING], { status: JOB_STATUS.PROCESSING }, orgId)
+        repo.transitionJob(
+          job.id,
+          [JOB_STATUS.PENDING],
+          { status: JOB_STATUS.PROCESSING },
+          {
+            organizationId: orgId,
+          }
+        )
       )
     );
     expect(attempts.filter((a) => a !== null)).toHaveLength(1);
@@ -40,10 +47,43 @@ describe('Atomarer Statusübergang (transitionJob)', () => {
       job.id,
       [JOB_STATUS.FAILED],
       { status: JOB_STATUS.PENDING },
-      orgId
+      { organizationId: orgId }
     );
     expect(result).toBeNull();
     expect((await repo.getJobById(job.id, orgId))?.status).toBe(JOB_STATUS.COMPLETED);
+  });
+});
+
+describe('Zusatzbedingungen (Lauf-Kennung, Stufe, Kanzlei)', () => {
+  it('ändert nur mit passender Sperrzeit, nicht in der ausgeschlossenen Stufe, nur in der eigenen Kanzlei', async () => {
+    const job = await newJob();
+    const lockedAt = new Date().toISOString();
+    await repo.updateJobStatus(job.id, { status: JOB_STATUS.PROCESSING, lockedAt });
+    const touch = { progressDetails: { currentStep: 2, totalSteps: 4 } };
+    const otherRun = new Date(Date.now() - 60_000).toISOString();
+
+    expect(
+      await repo.transitionJob(job.id, [JOB_STATUS.PROCESSING], touch, { lockedAt: otherRun })
+    ).toBeNull();
+    expect(
+      await repo.transitionJob(job.id, [JOB_STATUS.PROCESSING], touch, {
+        organizationId: randomUUID(),
+      })
+    ).toBeNull();
+    // Ohne Stufe zählt die Bedingung als erfüllt
+    expect(
+      await repo.transitionJob(job.id, [JOB_STATUS.PROCESSING], touch, {
+        lockedAt,
+        stageNot: JOB_STAGES.PERSISTING,
+      })
+    ).not.toBeNull();
+
+    await repo.updateJobStatus(job.id, { stage: JOB_STAGES.PERSISTING });
+    expect(
+      await repo.transitionJob(job.id, [JOB_STATUS.PROCESSING], touch, {
+        stageNot: JOB_STAGES.PERSISTING,
+      })
+    ).toBeNull();
   });
 });
 
@@ -59,7 +99,7 @@ describe('Felder löschen (null)', () => {
       job.id,
       [JOB_STATUS.FAILED],
       { status: JOB_STATUS.PENDING, errorMessage: null, lockedAt: null },
-      orgId
+      { organizationId: orgId }
     );
     expect(requeued?.errorMessage).toBeUndefined();
     expect(requeued?.lockedAt).toBeUndefined();

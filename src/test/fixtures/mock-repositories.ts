@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { calculateAuditRecordHash, GENESIS_HASH, verifyAuditChain } from '@/lib/audit/audit-crypto';
 import type { IAuditRepository, AppendAuditParams } from '@/lib/audit/audit-repository';
-import type { IJobRepository } from '@/lib/jobs/job-repository';
+import type { IJobRepository, JobTransitionGuard } from '@/lib/jobs/job-repository';
 import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import {
   DossierNotFoundError,
@@ -62,11 +62,21 @@ export function createMockJobRepository(): IJobRepository {
       return job;
     }),
     getJobById: vi.fn(async (id: string) => jobs.get(id) ?? null),
-    transitionJob: vi.fn(async (id: string, fromStatuses: JobStatus[], update: UpdateJobParams) => {
-      const job = jobs.get(id);
-      if (!job || !fromStatuses.includes(job.status)) return null;
-      return applyJobUpdate(job, update);
-    }),
+    transitionJob: vi.fn(
+      async (
+        id: string,
+        fromStatuses: JobStatus[],
+        update: UpdateJobParams,
+        guard: JobTransitionGuard = {}
+      ) => {
+        const job = jobs.get(id);
+        if (!job || !fromStatuses.includes(job.status)) return null;
+        if (guard.organizationId && job.organizationId !== guard.organizationId) return null;
+        if (guard.lockedAt && job.lockedAt !== guard.lockedAt) return null;
+        if (guard.stageNot && job.stage === guard.stageNot) return null;
+        return applyJobUpdate(job, update);
+      }
+    ),
     updateJobStatus: vi.fn(async (id: string, update: UpdateJobParams) => {
       const job = jobs.get(id);
       if (!job) return null;

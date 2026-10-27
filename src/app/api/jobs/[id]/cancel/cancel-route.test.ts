@@ -6,7 +6,7 @@ import { createMockJobRepository } from '@/test/fixtures/mock-repositories';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CASE_TYPES } from '@/types/dossier';
-import { JOB_STATUS } from '@/types/jobs';
+import { JOB_STAGES, JOB_STATUS } from '@/types/jobs';
 import { POST } from './route';
 
 vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
@@ -125,5 +125,22 @@ describe('API Route: POST /api/jobs/[id]/cancel', () => {
 
     const updatedJob = await repo.getJobById(job.id);
     expect(updatedJob?.status).toBe(JOB_STATUS.CANCELLED);
+  });
+
+  it('meldet 409, wenn der Job schon gespeichert wird, und lässt ihn weiterlaufen', async () => {
+    const job = await repo.createJob({ caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: '' });
+    await repo.updateJobStatus(job.id, {
+      status: JOB_STATUS.PROCESSING,
+      stage: JOB_STAGES.PERSISTING,
+    });
+
+    const req = new NextRequest(`http://localhost:3000/api/jobs/${job.id}/cancel`, {
+      method: 'POST',
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: job.id }) });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain('nicht mehr abgebrochen');
+    expect((await repo.getJobById(job.id))?.status).toBe(JOB_STATUS.PROCESSING);
   });
 });

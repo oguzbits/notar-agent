@@ -63,9 +63,11 @@ export async function cancelDossierJob(
       status: JOB_STATUS.CANCELLED,
       errorMessage: 'Vorgang durch Benutzer abgebrochen.',
       lockedAt: null,
-    }
+    },
+    // Ab der Speicherstufe nicht mehr abbrechbar: Das Dossier wird sonst gespeichert, der Job aber CANCELLED
+    { stageNot: JOB_STAGES.PERSISTING }
   );
-  // Abgeschlossen oder gescheitert, bevor der Abbruch ankam: nichts überschreiben
+  // Abgeschlossen, gescheitert oder schon beim Speichern: nichts überschreiben
   if (!cancelled) return jobRepo.getJobById(jobId);
 
   activeJobControllers.get(jobId)?.abort();
@@ -98,7 +100,8 @@ export async function executeDossierJob(
   try {
     return await limit(() => runJobExecution(jobId, jobRepo, dossierRepo, deps, combinedSignal));
   } finally {
-    activeJobControllers.delete(jobId);
+    // Ein späterer Lauf desselben Jobs kann schon einen eigenen Controller eingetragen haben
+    if (activeJobControllers.get(jobId) === internalController) activeJobControllers.delete(jobId);
   }
 }
 
@@ -137,10 +140,11 @@ async function runJobExecution(
 
   // Job auf PROCESSING setzen mit aktuellem Lease-Lock.
   // Falls stage1Output bereits vorliegt, direkt in Stufe 2 (AUDITING) einsteigen!
+  const runLockedAt = new Date().toISOString();
   const claimed = await jobRepo.transitionJob(jobId, [JOB_STATUS.PENDING], {
     status: JOB_STATUS.PROCESSING,
     stage: stage1Output ? JOB_STAGES.AUDITING : JOB_STAGES.PAGE_SPLITTING,
-    lockedAt: new Date().toISOString(),
+    lockedAt: runLockedAt,
     progressDetails: {
       currentStep: stage1Output ? 3 : 1,
       totalSteps: 4,
@@ -157,9 +161,9 @@ async function runJobExecution(
   // Ein anderer Lauf hat den Job bereits übernommen oder er ist nicht mehr wartend
   if (!claimed) return jobRepo.getJobById(jobId);
 
-  // Nur ein laufender Job darf sich ändern; abgebrochene oder geheilte Jobs bleiben unberührt
+  // Nur der eigene, noch laufende Lauf darf ändern; abgebrochene, geheilte oder neu gestartete Jobs bleiben unberührt
   const whileProcessing = (update: UpdateJobParams) =>
-    jobRepo.transitionJob(jobId, [JOB_STATUS.PROCESSING], update);
+    jobRepo.transitionJob(jobId, [JOB_STATUS.PROCESSING], update, { lockedAt: runLockedAt });
   // Abgebrochen oder geheilt: weiterarbeiten wäre verschwendet, der Fehlerpfad lässt den Status stehen
   const advance = async (update: UpdateJobParams) => {
     if (!(await whileProcessing(update))) throw new Error('Vorgang läuft nicht mehr.');
