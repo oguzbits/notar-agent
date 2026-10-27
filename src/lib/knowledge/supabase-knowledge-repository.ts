@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import { DB_TABLES, Database } from '@/types/database';
 import {
+  EmbeddingVectorSchema,
   HybridSearchQuery,
   HybridSearchResult,
   KNOWLEDGE_CATEGORIES,
@@ -114,5 +115,35 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
 
     const rows = data as Record<string, unknown>[];
     return rows.map((row) => rowToDocument(row));
+  }
+
+  /** Für das Befüllskript: Dokumente ohne Vektor, mit `all` alle (nach einem Modellwechsel). */
+  async listForEmbedding(options: {
+    all: boolean;
+  }): Promise<Pick<KnowledgeDocument, 'id' | 'title' | 'content'>[]> {
+    let query = this.supabase.from(DB_TABLES.KNOWLEDGE_DOCUMENTS).select('id, title, content');
+    if (!options.all) query = query.is('embedding', null);
+    const { data, error } = await query;
+    if (error || !data) {
+      throw new Error(
+        `Supabase listForEmbedding fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
+      );
+    }
+    return data;
+  }
+
+  async saveEmbedding(id: string, vector: number[]): Promise<void> {
+    const checked = EmbeddingVectorSchema.parse(vector);
+    const { data, error } = await this.supabase
+      .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
+      .update({ embedding: checked })
+      .eq('id', id)
+      .select('id');
+    if (error) {
+      throw new Error(`Supabase saveEmbedding fehlgeschlagen: ${error.message}`);
+    }
+    if (!data?.length) {
+      throw new Error(`Dokument ${id} nicht gefunden oder nicht beschreibbar.`);
+    }
   }
 }

@@ -107,22 +107,20 @@
 
 **Schnittstellen**
 
-- `IKnowledgeRepository` (und `SupabaseKnowledgeRepository`): `listWithoutEmbedding(): Promise<KnowledgeDocument[]>`, `saveEmbedding(id: string, vector: number[]): Promise<void>`.
-- `scripts/knowledge/embed-documents.ts`: liest Dokumente ohne Vektor, bettet sie über `IEmbedder` ein, schreibt über `saveEmbedding`. Läuft gegen die durch Umgebungsvariablen benannte Datenbank mit Service-Rolle; Schlüssel und URL werden nur aus der Umgebung gelesen, nie ausgegeben. Meldet Anzahl und bricht beim ersten Fehler ab. Mit `--dry-run` nur zählen.
+- Nur `SupabaseKnowledgeRepository` (nicht `IKnowledgeRepository`, der Schreibpfad ist ein Verwaltungsvorgang): `listForEmbedding({ all }): Promise<{ id; title; content }[]>`, `saveEmbedding(id: string, vector: number[]): Promise<void>`.
+- `scripts/knowledge/embed-documents.ts`: liest Dokumente ohne Vektor, bettet sie über `IEmbedder` ein, schreibt über `saveEmbedding`. Läuft gegen die durch Umgebungsvariablen benannte Datenbank mit Service-Rolle; Schlüssel und URL werden nur aus der Umgebung gelesen, nie ausgegeben. Meldet Anzahl und bricht beim ersten Fehler ab. Mit `--dry-run` nur zählen; `--all` bettet auch Dokumente mit vorhandenem Vektor neu ein.
 
 **Regeln**
 
 - Vektor wird gegen `EmbeddingVectorSchema` geprüft, bevor er geschrieben wird.
 - Unbekannte ID oder Datenbankfehler wirft; kein Teilerfolg wird verschwiegen.
-- Wechsel des Modells: Skript-Option `--all` bettet auch Dokumente mit vorhandenem Vektor neu ein.
 
 **Testfälle** (Repository gegen die lokale Supabase im DB-Test)
 
-1. `listWithoutEmbedding` liefert nur Dokumente mit `embedding IS NULL`.
+1. `listForEmbedding({ all: false })` liefert nur Dokumente mit `embedding IS NULL`, mit `all: true` alle.
 2. `saveEmbedding` setzt den Vektor; danach fehlt das Dokument in der Liste.
 3. Falsche Länge wirft vor dem Schreiben.
 4. Unbekannte ID wirft.
-5. Skriptlogik (reine Funktion `planEmbeddingRun(docs, { all })`): wählt je nach `--all` die richtigen Dokumente.
 
 **Schutz gegen roten Test:** Längenprüfung entfernen: Test 3; Prüfung auf betroffene Zeilen entfernen: Test 4.
 
