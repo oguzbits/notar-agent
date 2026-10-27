@@ -33,8 +33,8 @@ export async function GET(req?: NextRequest): Promise<Response> {
       );
     const repo = getJobRepository(authSupabase);
 
-    // Asynchrones Self-Healing im Hintergrund (blockiert den schnellen Read-Pfad der Tabelle nicht mit 2 Extra-DB-Roundtrips)
-    void repo.recoverOrphanJobs(3 * 60 * 1000).catch((healErr) => {
+    // Heilung veralteter Jobs als ein bedingtes Update im Hintergrund (blockiert den Lesepfad nicht)
+    void repo.recoverOrphanJobs(3 * 60 * 1000, orgId).catch((healErr) => {
       logFailure('warn', 'self_healing_fehlgeschlagen', healErr);
     });
 
@@ -61,7 +61,7 @@ async function requeueFailedJob(
   const requeued = await repo.transitionJob(
     job.id,
     [JOB_STATUS.FAILED],
-    { status: JOB_STATUS.PENDING, retryCount: job.retryCount + 1, errorMessage: undefined },
+    { status: JOB_STATUS.PENDING, retryCount: job.retryCount + 1, errorMessage: null },
     orgId
   );
   if (requeued) return null;

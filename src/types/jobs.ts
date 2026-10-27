@@ -110,6 +110,23 @@ export const DossierJobSchema = z.object({
   updatedAt: z.string().describe('Letzte Aktualisierung (ISO UTC)'),
 });
 
+/**
+ * Änderung eines Jobs: `undefined` lässt ein Feld unverändert, `null` löscht es
+ * (Sperre und alte Fehlermeldung müssen sich zurücksetzen lassen).
+ */
+export const UpdateJobParamsSchema = z.object({
+  status: JobStatusSchema.optional(),
+  stage: JobStageSchema.optional(),
+  progressDetails: JobProgressDetailsSchema.optional(),
+  payload: CreateJobPayloadSchema.optional(),
+  resultDossierId: z.string().optional(),
+  errorMessage: z.string().nullable().optional(),
+  retryCount: z.number().int().nonnegative().optional(),
+  lockedAt: z.string().nullable().optional(),
+});
+
+export type UpdateJobParams = z.infer<typeof UpdateJobParamsSchema>;
+
 export const RetryJobRequestSchema = z.object({
   jobId: z.string().min(1, 'Parameter "jobId" fehlt oder ist leer.'),
 });

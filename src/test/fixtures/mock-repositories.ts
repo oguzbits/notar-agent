@@ -18,7 +18,13 @@ import type { DeletionReceipt } from '@/types/deletion';
 import { CASE_STATUS } from '@/types/document';
 import type { Dossier } from '@/types/dossier';
 import { STORAGE_TYPES } from '@/types/dossier';
-import { JOB_STATUS, type DossierJob, type CreateJobPayload, type JobStatus } from '@/types/jobs';
+import {
+  JOB_STATUS,
+  type DossierJob,
+  type CreateJobPayload,
+  type JobStatus,
+  type UpdateJobParams,
+} from '@/types/jobs';
 import type { KnowledgeDocument } from '@/types/knowledge';
 import { KNOWLEDGE_CATEGORIES, MATCH_SOURCES } from '@/types/knowledge';
 import type { NotaryRole } from '@/types/organization';
@@ -56,19 +62,15 @@ export function createMockJobRepository(): IJobRepository {
       return job;
     }),
     getJobById: vi.fn(async (id: string) => jobs.get(id) ?? null),
-    transitionJob: vi.fn(
-      async (id: string, fromStatuses: JobStatus[], update: Partial<DossierJob>) => {
-        const job = jobs.get(id);
-        if (!job || !fromStatuses.includes(job.status)) return null;
-        Object.assign(job, update, { updatedAt: new Date().toISOString() });
-        return job;
-      }
-    ),
-    updateJobStatus: vi.fn(async (id: string, update: Partial<DossierJob>) => {
+    transitionJob: vi.fn(async (id: string, fromStatuses: JobStatus[], update: UpdateJobParams) => {
+      const job = jobs.get(id);
+      if (!job || !fromStatuses.includes(job.status)) return null;
+      return applyJobUpdate(job, update);
+    }),
+    updateJobStatus: vi.fn(async (id: string, update: UpdateJobParams) => {
       const job = jobs.get(id);
       if (!job) return null;
-      Object.assign(job, update, { updatedAt: new Date().toISOString() });
-      return job;
+      return applyJobUpdate(job, update);
     }),
     listJobs: vi.fn(async (organizationId?: string) => {
       const all = [...jobs.values()];
@@ -84,9 +86,19 @@ export function createMockJobRepository(): IJobRepository {
         ).length
     ),
     deleteJob: vi.fn(async (id: string) => jobs.delete(id)),
-    recoverOrphanJobs: vi.fn(async () => []),
+    recoverOrphanJobs: vi.fn(async () => 0),
     pruneCompletedJobs: vi.fn(async () => 0),
   };
+}
+
+/** Wie das Supabase-Repository: `undefined` bleibt unverändert, `null` löscht das Feld. */
+function applyJobUpdate(job: DossierJob, update: UpdateJobParams): DossierJob {
+  for (const [key, value] of Object.entries(update)) {
+    if (value === undefined) continue;
+    Object.assign(job, { [key]: value === null ? undefined : value });
+  }
+  job.updatedAt = new Date().toISOString();
+  return job;
 }
 
 /**

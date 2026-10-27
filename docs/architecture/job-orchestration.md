@@ -75,4 +75,4 @@ Für Uploads und Analysen aus der Web-Applikation (`POST /api/analyze?async=true
 - **Sofortige Antwort:** Der Client erhält binnen < 250 ms ein `202 Accepted` mit `jobId`.
 - **Runtime-Garantie:** Über `after(() => executeDossierJob(job.id))` garantiert die Next.js-Laufzeit auf Vercel, dass die Lambda-Funktion bis zum Abschluss der Analyse aktiv bleibt, ohne auf externe HTTP-Aufrufe angewiesen zu sein.
 - **Lokale Autarkie & Zero-Config:** Funktioniert lokal in `npm run dev` sowie in Produktion ohne Ngrok, externe Tunnel, Webhook-Pings oder zusätzliche `SUPABASE_WEBHOOK_SECRET`-Keys.
-- **Lease Timeout & Orphan Sweeper:** Bricht ein Serverless-Container unerwartet ab, identifiziert die Abfrage verwaiste Jobs anhand von `lease_timeout_at` und ermöglicht automatische Retries.
+- **Lebenszeichen & Heilung:** Bricht ein Serverless-Container unerwartet ab, erneuert niemand mehr `updated_at`. Beim Abruf der Jobliste setzt ein einziges bedingtes Update alle PENDING- und PROCESSING-Jobs ohne Lebenszeichen seit drei Minuten auf FAILED; ein erneuter Start zählt `retryCount` beim Requeue.

@@ -41,11 +41,6 @@
       "count": 1
     }
   },
-  "src/app/api/jobs/[id]/route.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/api/organization/route.ts": {
     "complexity": {
       "count": 2

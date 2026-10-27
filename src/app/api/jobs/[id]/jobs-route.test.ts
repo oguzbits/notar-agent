@@ -87,27 +87,25 @@ describe('API Route: GET /api/jobs/[id]', () => {
     expect(data.progressDetails?.currentActivity).toBe('Beteiligte extrahieren...');
   });
 
-  it('automatically transitions stale PROCESSING job to FAILED when lease expired', async () => {
+  it('verändert beim Lesen den Status eines laufenden Jobs nicht, auch bei alter Sperre', async () => {
     const job = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
-      notes: 'Hängengebliebener Job',
+      notes: 'Laufender Job',
     });
-
-    const fourMinutesAgoIso = new Date(Date.now() - 4 * 60 * 1000).toISOString();
     await repo.updateJobStatus(job.id, {
       status: JOB_STATUS.PROCESSING,
-      lockedAt: fourMinutesAgoIso,
+      lockedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     });
+    vi.mocked(repo.updateJobStatus).mockClear();
+    vi.mocked(repo.transitionJob).mockClear();
 
     const req = new NextRequest(`http://localhost:3000/api/jobs/${job.id}`);
     const res = await GET(req, { params: Promise.resolve({ id: job.id }) });
 
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.id).toBe(job.id);
-    expect(data.status).toBe(JOB_STATUS.FAILED);
-    expect(data.errorMessage).toBe('Verarbeitung unterbrochen. Bitte Vorgang erneut starten.');
+    expect((await res.json()).status).toBe(JOB_STATUS.PROCESSING);
+    expect(repo.updateJobStatus).not.toHaveBeenCalled();
+    expect(repo.transitionJob).not.toHaveBeenCalled();
   });
 
   describe('DELETE /api/jobs/[id]', () => {

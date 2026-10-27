@@ -12,19 +12,9 @@ import {
   JOB_STATUS,
   JobStatus,
   JobStage,
+  UpdateJobParams,
 } from '@/types/jobs';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
-
-export interface UpdateJobParams {
-  status?: JobStatus;
-  stage?: JobStage;
-  progressDetails?: JobProgressDetails;
-  payload?: CreateJobPayload;
-  resultDossierId?: string;
-  errorMessage?: string;
-  retryCount?: number;
-  lockedAt?: string;
-}
 
 export interface IJobRepository {
   createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob>;
@@ -44,7 +34,8 @@ export interface IJobRepository {
   countJobsSince(organizationId: string, sinceIso: string): Promise<number>;
   deleteJob(id: string, organizationId?: string): Promise<boolean>;
   pruneCompletedJobs(maxAgeMs?: number): Promise<number>;
-  recoverOrphanJobs(leaseTimeoutMs?: number, organizationId?: string): Promise<DossierJob[]>;
+  /** Setzt PENDING/PROCESSING-Jobs ohne Lebenszeichen (`updated_at`) auf FAILED; liefert die Anzahl. */
+  recoverOrphanJobs(leaseTimeoutMs?: number, organizationId?: string): Promise<number>;
 }
 
 /**
@@ -277,66 +268,32 @@ export class SupabaseJobRepository implements IJobRepository {
     return true;
   }
 
-  async recoverOrphanJobs(leaseTimeoutMs = 3 * 60 * 1000): Promise<DossierJob[]> {
+  async recoverOrphanJobs(
+    leaseTimeoutMs = 3 * 60 * 1000,
+    organizationId?: string
+  ): Promise<number> {
     const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
 
-    // 1. Suche nach hängengebliebenen PROCESSING-Jobs (Lease abgelaufen)
-    const { data: stuckProcessingJobs, error: procError } = await this.supabase
+    // Ein bedingtes Update: Jedes Fortschritts-Update erneuert updated_at, also gilt nur ein stiller Job als veraltet
+    let query = this.supabase
       .from(DB_TABLES.DOSSIER_JOBS)
-      .select('*')
-      .eq('status', JOB_STATUS.PROCESSING)
-      .or(`locked_at.lte.${cutoffIso},and(locked_at.is.null,updated_at.lte.${cutoffIso})`);
-
-    if (procError) {
-      throw new Error(
-        `Supabase recoverOrphanJobs (PROCESSING) fehlgeschlagen: ${procError.message}`
-      );
+      .update(
+        this.buildUpdateData({
+          status: JOB_STATUS.FAILED,
+          errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
+          lockedAt: null,
+        })
+      )
+      .in('status', [JOB_STATUS.PENDING, JOB_STATUS.PROCESSING])
+      .lt('updated_at', cutoffIso);
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
     }
 
-    // 2. Suche nach verwaisten PENDING-Jobs, die seit Ablauf des Timeouts nie übernommen wurden
-    const { data: stuckPendingJobs, error: pendError } = await this.supabase
-      .from(DB_TABLES.DOSSIER_JOBS)
-      .select('*')
-      .eq('status', JOB_STATUS.PENDING)
-      .lte('created_at', cutoffIso);
-
-    if (pendError) {
-      throw new Error(`Supabase recoverOrphanJobs (PENDING) fehlgeschlagen: ${pendError.message}`);
+    const { data, error } = await query.select('id');
+    if (error) {
+      throw new Error(`Supabase recoverOrphanJobs fehlgeschlagen: ${error.message}`);
     }
-
-    const recovered: DossierJob[] = [];
-
-    // Verwaiste PROCESSING-Jobs behandeln (Automatischer Abbruch mit klarer Notar-Fehlermeldung)
-    for (const row of stuckProcessingJobs ?? []) {
-      const job = this.mapRowToJob(row);
-      const nextRetry = job.retryCount + 1;
-
-      const updated = await this.updateJobStatus(job.id, {
-        status: JOB_STATUS.FAILED,
-        errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
-        retryCount: nextRetry,
-        lockedAt: undefined,
-      });
-
-      if (updated) {
-        recovered.push(updated);
-      }
-    }
-
-    // Verwaiste PENDING-Jobs behandeln (Automatisch FAILED mit verständlicher Notar-Fehlermeldung)
-    for (const row of stuckPendingJobs ?? []) {
-      const job = this.mapRowToJob(row);
-      const updated = await this.updateJobStatus(job.id, {
-        status: JOB_STATUS.FAILED,
-        errorMessage: 'Verarbeitung unterbrochen. Bitte Vorgang erneut starten.',
-        retryCount: job.retryCount + 1,
-      });
-
-      if (updated) {
-        recovered.push(updated);
-      }
-    }
-
-    return recovered;
+    return data?.length ?? 0;
   }
 }

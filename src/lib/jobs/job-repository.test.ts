@@ -125,6 +125,33 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
     expect(mockDeleteEq).toHaveBeenCalled();
   });
 
+  it('schreibt null für lockedAt und errorMessage, lässt undefined-Felder aber weg', async () => {
+    const update = vi.fn();
+    const chain = {
+      update: (data: unknown) => {
+        update(data);
+        return chain;
+      },
+      eq: () => chain,
+      in: () => chain,
+      select: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const mockSupabase = { from: vi.fn().mockReturnValue(chain) };
+
+    const { SupabaseJobRepository } = await import('./job-repository');
+    const repo = new SupabaseJobRepository(mockSupabase as never);
+    await repo.transitionJob('job-1', [JOB_STATUS.PROCESSING], {
+      status: JOB_STATUS.CANCELLED,
+      lockedAt: null,
+      errorMessage: null,
+      resultDossierId: undefined,
+    });
+
+    const written = update.mock.calls[0]?.[0];
+    expect(written).toMatchObject({ locked_at: null, error_message: null });
+    expect(written).not.toHaveProperty('result_dossier_id');
+  });
+
   it('fails fast and throws when Supabase delete encounters an error in deleteJob', async () => {
     const mockSupabase = {
       from: vi.fn().mockReturnValue({

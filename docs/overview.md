@@ -69,6 +69,10 @@ Notar Agent folgt einem strikt unidirektionalen Datenfluss mit klarer Schichtent
     - Dekomposition der Pipeline in Stufe 1 (Ingestion, Extraktion & Faktenprüfung) und Stufe 2 (Notary Auditor & Reconciliation).
     - Zwischenergebnisse werden nach Stufe 1 als `stage1Output` im Job-Payload in PostgreSQL persistiert.
     - Bei Wiederanlauf oder Folgeaufrufen wird Stufe 1 übersprungen und Stufe 2 mit frischem 60s-Laufzeitbudget direkt mit dem Checkpoint ausgeführt.
+    - Verletzt die Extraktion das Schema auch nach der Korrektur, scheitert der Job mit fester Meldung; es entsteht kein Checkpoint.
+  - **Statusübergänge nur bedingt:** Jeder Statuswechsel und jedes Fortschritts-Update läuft über `transitionJob` (Compare-and-set auf den Ausgangsstatus). Ein abgebrochener oder bereits beendeter Job wird so nie überschrieben, auch nicht von einem Worker in einer anderen Instanz. Erlaubt sind PENDING→PROCESSING, PROCESSING→COMPLETED/FAILED, PENDING|PROCESSING→CANCELLED, FAILED→PENDING (Requeue, zählt `retryCount` als einzige Stelle) und PENDING|PROCESSING→FAILED (veraltet). In `UpdateJobParams` löscht `null` ein Feld (Sperre, alte Fehlermeldung), `undefined` lässt es unverändert.
+  - **Abbruch:** Das Abbruchsignal des Workers erreicht jeden Modellaufruf (`generateText`) und die Einbettung; der Worker prüft es zusätzlich vor dem Speichern.
+  - **Lebenszeichen:** Ein Job gilt als veraltet, wenn `updated_at` älter als drei Minuten ist; jedes Fortschritts-Update erneuert es. Die Heilung ist ein einziges bedingtes Update beim Abruf der Jobliste; das Lesen eines einzelnen Jobs schreibt keinen Status.
 - **Workflow-Orchestrator ([`src/lib/workflow/orchestrator.ts`](../src/lib/workflow/orchestrator.ts), [`src/lib/workflow/engine.ts`](../src/lib/workflow/engine.ts)):**
   - Deterministischer Zustandsautomat für mehrstufige Workflows mit Rollenprüfung ([`src/lib/workflow/default-workflows.ts`](../src/lib/workflow/default-workflows.ts)).
   - Hält an Human-in-the-Loop Gates (z. B. Freigabe durch den Notar) automatisch an.

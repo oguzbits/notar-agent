@@ -105,7 +105,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     const orphanSpy = vi.spyOn(repo, 'recoverOrphanJobs');
     const res = await GET();
     expect(res.status).toBe(200);
-    expect(orphanSpy).toHaveBeenCalledWith(3 * 60 * 1000);
+    expect(orphanSpy).toHaveBeenCalledWith(3 * 60 * 1000, expect.any(String));
   });
 
   it('POST /api/jobs retries a failed job', async () => {
@@ -180,7 +180,11 @@ describe('API Route: /api/jobs (List & Retry)', () => {
       files: [],
       notes: 'x',
     });
-    await repo.updateJobStatus(job.id, { status: JOB_STATUS.FAILED, retryCount: 1 });
+    await repo.updateJobStatus(job.id, {
+      status: JOB_STATUS.FAILED,
+      retryCount: 1,
+      errorMessage: 'Zeitüberschreitung',
+    });
 
     await POST(
       new NextRequest('http://localhost:3000/api/jobs', {
@@ -188,7 +192,9 @@ describe('API Route: /api/jobs (List & Retry)', () => {
         body: JSON.stringify({ jobId: job.id }),
       })
     );
-    expect((await repo.getJobById(job.id))?.retryCount).toBe(2);
+    const requeued = await repo.getJobById(job.id);
+    expect(requeued?.retryCount).toBe(2);
+    expect(requeued?.errorMessage).toBeUndefined();
   });
 
   it('POST /api/jobs returns 400 when jobId is missing', async () => {

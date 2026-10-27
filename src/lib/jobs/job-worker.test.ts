@@ -1,68 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IJobRepository } from '@/lib/jobs/job-repository';
-import { executeDossierJob, WorkerDependencies } from '@/lib/jobs/job-worker';
+import { cancelDossierJob, executeDossierJob, WorkerDependencies } from '@/lib/jobs/job-worker';
 import { computeJobProgressPercent } from '@/lib/jobs/progress';
 import type { IDossierRepository } from '@/lib/supabase/repository';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import {
   createMockAuditRepository,
+  createMockJobRepository,
   createMockKnowledgeRepository,
 } from '@/test/fixtures/mock-repositories';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { CASE_TYPES, STORAGE_TYPES } from '@/types/dossier';
-import {
-  JOB_STATUS,
-  JOB_STAGES,
-  type DossierJob,
-  type CreateJobPayload,
-  type JobStatus,
-} from '@/types/jobs';
-
-/**
- * Erzeugt ein Mock-JobRepository basierend auf vi.fn(), das Jobs in einer Map verwaltet.
- */
-function createMockJobRepo(): IJobRepository {
-  const jobs = new Map<string, DossierJob>();
-  let idCounter = 0;
-
-  return {
-    createJob: vi.fn(async (payload: CreateJobPayload, organizationId?: string) => {
-      const id = `job-${++idCounter}`;
-      const job: DossierJob = {
-        id,
-        status: JOB_STATUS.PENDING,
-        payload,
-        retryCount: 0,
-        maxRetries: 3,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        organizationId,
-      };
-      jobs.set(id, job);
-      return job;
-    }),
-    getJobById: vi.fn(async (id: string) => jobs.get(id) ?? null),
-    transitionJob: vi.fn(
-      async (id: string, fromStatuses: JobStatus[], update: Partial<DossierJob>) => {
-        const job = jobs.get(id);
-        if (!job || !fromStatuses.includes(job.status)) return null;
-        Object.assign(job, update, { updatedAt: new Date().toISOString() });
-        return job;
-      }
-    ),
-    updateJobStatus: vi.fn(async (id: string, update: Partial<DossierJob>) => {
-      const job = jobs.get(id);
-      if (!job) return null;
-      Object.assign(job, update, { updatedAt: new Date().toISOString() });
-      return job;
-    }),
-    listJobs: vi.fn(async () => [...jobs.values()]),
-    deleteJob: vi.fn(async (id: string) => jobs.delete(id)),
-    recoverOrphanJobs: vi.fn(async () => []),
-    pruneCompletedJobs: vi.fn(async () => 0),
-    countJobsSince: vi.fn(async () => 0),
-  };
-}
+import { JOB_STATUS, JOB_STAGES, type CreateJobPayload } from '@/types/jobs';
 
 function createMockDossierRepo(): IDossierRepository {
   return {
@@ -88,7 +37,7 @@ describe('job-worker (executeDossierJob)', () => {
   const mockResultDossier = createTestImmobilienDossier();
 
   beforeEach(() => {
-    jobRepo = createMockJobRepo();
+    jobRepo = createMockJobRepository();
     dossierRepo = createMockDossierRepo();
   });
 
@@ -120,7 +69,7 @@ describe('job-worker (executeDossierJob)', () => {
     expect(processedJob?.resultDossierId).toBeDefined();
   });
 
-  it('catches pipeline errors, updates job to FAILED and increments retryCount', async () => {
+  it('setzt bei Pipeline-Fehler FAILED, gibt die Sperre frei und zählt keinen Versuch (das macht der Requeue)', async () => {
     const failingPipeline: NonNullable<WorkerDependencies['pipelineFn']> = async () => {
       throw new Error('Anthropic API 500');
     };
@@ -139,12 +88,218 @@ describe('job-worker (executeDossierJob)', () => {
 
     expect(failedJob?.status).toBe(JOB_STATUS.FAILED);
     expect(failedJob?.errorMessage).toContain('Anthropic API 500');
-    expect(failedJob?.retryCount).toBe(1);
+    expect(failedJob?.retryCount).toBe(0);
+    expect(failedJob?.lockedAt).toBeUndefined();
+  });
+
+  describe('Abbruch', () => {
+    const payload: CreateJobPayload = {
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [{ name: 'vertrag.pdf', size: 100, type: 'application/pdf', content: 'test' }],
+      notes: '',
+    };
+    const extractionFn: NonNullable<WorkerDependencies['extractionFn']> = async () => ({
+      parsedExtractionRaw: { fields: {} },
+      noteList: [],
+      notesSection: '',
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      extractionTextResult: '{}',
+      validationSuccess: true,
+    });
+
+    it('Abbruch während Stufe 2: Signal erreicht die Stufe, kein Dossier, Status bleibt CANCELLED', async () => {
+      const job = await jobRepo.createJob(payload);
+      let auditorSignal: AbortSignal | undefined;
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        // Das Modell antwortet trotz Abbruch; nur der Worker darf das Ergebnis verwerfen
+        auditorFn: async ({ abortSignal }) => {
+          auditorSignal = abortSignal;
+          await cancelDossierJob(job.id, { jobRepo });
+          return mockResultDossier;
+        },
+      });
+
+      expect(auditorSignal?.aborted).toBe(true);
+      expect(done?.status).toBe(JOB_STATUS.CANCELLED);
+      expect(done?.lockedAt).toBeUndefined();
+      expect(dossierRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('Abbruch aus einer anderen Instanz beim Speichern: Abschluss überschreibt CANCELLED nicht', async () => {
+      const job = await jobRepo.createJob(payload);
+      vi.mocked(dossierRepo.save).mockImplementationOnce(async () => {
+        // Kein AbortController in diesem Prozess: nur der Datenbankstatus ändert sich
+        await jobRepo.transitionJob(job.id, [JOB_STATUS.PROCESSING], {
+          status: JOB_STATUS.CANCELLED,
+        });
+        return {
+          persisted: true,
+          id: 'dossier-mock',
+          storageType: STORAGE_TYPES.SUPABASE,
+          caseNumber: 'x',
+        };
+      });
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        auditorFn: async () => mockResultDossier,
+      });
+
+      expect(done?.status).toBe(JOB_STATUS.CANCELLED);
+      expect((await jobRepo.getJobById(job.id))?.status).toBe(JOB_STATUS.CANCELLED);
+    });
+
+    it('Abbruch aus einer anderen Instanz während Stufe 2: kein Dossier gespeichert', async () => {
+      const job = await jobRepo.createJob(payload);
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        auditorFn: async () => {
+          await jobRepo.transitionJob(job.id, [JOB_STATUS.PROCESSING], {
+            status: JOB_STATUS.CANCELLED,
+          });
+          return mockResultDossier;
+        },
+      });
+
+      expect(done?.status).toBe(JOB_STATUS.CANCELLED);
+      expect(dossierRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('Abbruch aus einer anderen Instanz während Stufe 1: kein Checkpoint, Stufe 2 läuft nicht', async () => {
+      const job = await jobRepo.createJob(payload);
+      const auditorFn = vi.fn(async () => mockResultDossier);
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn: async (params) => {
+          await jobRepo.transitionJob(job.id, [JOB_STATUS.PROCESSING], {
+            status: JOB_STATUS.CANCELLED,
+          });
+          return extractionFn(params);
+        },
+        auditorFn,
+      });
+
+      expect(done?.status).toBe(JOB_STATUS.CANCELLED);
+      expect(done?.payload.stage1Output).toBeUndefined();
+      expect(auditorFn).not.toHaveBeenCalled();
+    });
+
+    it('ein abgeschlossener Job lässt sich nicht mehr abbrechen', async () => {
+      const job = await jobRepo.createJob(payload);
+      await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        auditorFn: async () => mockResultDossier,
+      });
+
+      const result = await cancelDossierJob(job.id, { jobRepo });
+
+      expect(result?.status).toBe(JOB_STATUS.COMPLETED);
+      expect((await jobRepo.getJobById(job.id))?.status).toBe(JOB_STATUS.COMPLETED);
+    });
+
+    it('Shutdown-Signal zwischen den Stufen: kein Dossier, Job wartet wieder', async () => {
+      const job = await jobRepo.createJob(payload);
+      const shutdown = new AbortController();
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn,
+        abortSignal: shutdown.signal,
+        auditorFn: async () => {
+          shutdown.abort();
+          return mockResultDossier;
+        },
+      });
+
+      expect(done?.status).toBe(JOB_STATUS.PENDING);
+      expect(dossierRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('reicht das Abbruchsignal an die Extraktion durch', async () => {
+      const job = await jobRepo.createJob(payload);
+      const extraction = vi.fn(extractionFn);
+
+      await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        extractionFn: extraction,
+        auditorFn: async () => mockResultDossier,
+      });
+
+      expect(extraction.mock.calls[0]?.[0].abortSignal).toBeInstanceOf(AbortSignal);
+    });
+  });
+
+  describe('Fortschritt', () => {
+    it('ein verspätetes Fortschritts-Update ändert einen abgeschlossenen Job nicht', async () => {
+      let lateStep: ((step: number, detail: string) => void) | undefined;
+      const job = await jobRepo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: '',
+      });
+
+      await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        pipelineFn: async ({ onStep }) => {
+          lateStep = onStep;
+          return mockResultDossier;
+        },
+      });
+      lateStep?.(1, 'verspätet');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const after = await jobRepo.getJobById(job.id);
+      expect(after?.status).toBe(JOB_STATUS.COMPLETED);
+      expect(after?.stage).toBe(JOB_STAGES.PERSISTING);
+      expect(after?.progressDetails?.currentStep).toBe(4);
+    });
+
+    it('ein Datenbankfehler im Fortschritt wird protokolliert und bricht den Lauf nicht ab', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const original = vi.mocked(jobRepo.transitionJob).getMockImplementation()!;
+      vi.mocked(jobRepo.transitionJob).mockImplementation(async (id, from, update, org) => {
+        if (update.stage === JOB_STAGES.EXTRACTION) throw new Error('Datenbank nicht erreichbar');
+        return original(id, from, update, org);
+      });
+      const job = await jobRepo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: '',
+      });
+
+      const done = await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        pipelineFn: async ({ onStep }) => {
+          onStep(1, 'Dokumente aufbereiten');
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          return mockResultDossier;
+        },
+      });
+
+      expect(done?.status).toBe(JOB_STATUS.COMPLETED);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('fortschritt_fehlgeschlagen'));
+      warn.mockRestore();
+    });
   });
 
   it('cancels active job via cancelDossierJob and sets status to CANCELLED', async () => {
-    const { cancelDossierJob } = await import('@/lib/jobs/job-worker');
-
     const slowPipeline: NonNullable<WorkerDependencies['pipelineFn']> = async ({ onStep }) => {
       onStep(1, 'Dokumente aufbereiten');
       await new Promise<void>((resolve) => {

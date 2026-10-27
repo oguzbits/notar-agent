@@ -11,10 +11,17 @@ import { STAGE_ACTIVITY_LABELS_DE } from '@/lib/dossier/constants';
 import { recordPruefgrundlage } from '@/lib/jobs/audit-pruefgrundlage';
 import { IJobRepository } from '@/lib/jobs/job-repository';
 import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
+import { logFailure } from '@/lib/observability/logger';
 import { IDossierRepository } from '@/lib/supabase/repository';
 import { getJobRepository, getDossierRepository } from '@/lib/supabase/server';
 import { Dossier } from '@/types/dossier';
-import { DossierJob, JOB_STATUS, JOB_STAGES, PROGRESS_UNIT_LABELS } from '@/types/jobs';
+import {
+  DossierJob,
+  JOB_STATUS,
+  JOB_STAGES,
+  PROGRESS_UNIT_LABELS,
+  type UpdateJobParams,
+} from '@/types/jobs';
 
 export interface WorkerDependencies {
   jobRepo?: IJobRepository;
@@ -39,26 +46,31 @@ const limit = pLimit(MAX_CONCURRENT_JOBS);
 const activeJobControllers = new Map<string, AbortController>();
 
 /**
- * Bricht einen aktiven oder wartenden Dossier-Job sofort ab:
- * 1. Signalisiert dem laufenden Worker via AbortController den Abbruch
- * 2. Aktualisiert den Job-Status in der Datenbank auf CANCELLED
+ * Bricht einen aktiven oder wartenden Dossier-Job ab:
+ * 1. Setzt den Status bedingt (nur aus PENDING/PROCESSING) auf CANCELLED
+ * 2. Signalisiert einem Worker in diesem Prozess den Abbruch; Worker in anderen
+ *    Instanzen erkennen ihn am Status, weil ihre Übergänge dann ins Leere laufen
  */
 export async function cancelDossierJob(
   jobId: string,
   deps: { jobRepo?: IJobRepository } = {}
 ): Promise<DossierJob | null> {
   const jobRepo = deps.jobRepo ?? getJobRepository();
-  const activeController = activeJobControllers.get(jobId);
-  if (activeController) {
-    activeController.abort();
-    activeJobControllers.delete(jobId);
-  }
+  const cancelled = await jobRepo.transitionJob(
+    jobId,
+    [JOB_STATUS.PENDING, JOB_STATUS.PROCESSING],
+    {
+      status: JOB_STATUS.CANCELLED,
+      errorMessage: 'Vorgang durch Benutzer abgebrochen.',
+      lockedAt: null,
+    }
+  );
+  // Abgeschlossen oder gescheitert, bevor der Abbruch ankam: nichts überschreiben
+  if (!cancelled) return jobRepo.getJobById(jobId);
 
-  return jobRepo.updateJobStatus(jobId, {
-    status: JOB_STATUS.CANCELLED,
-    errorMessage: 'Vorgang durch Benutzer abgebrochen.',
-    lockedAt: undefined,
-  });
+  activeJobControllers.get(jobId)?.abort();
+  activeJobControllers.delete(jobId);
+  return cancelled;
 }
 
 /**
@@ -67,7 +79,7 @@ export async function cancelDossierJob(
  * 2. Status auf PROCESSING + QUEUED/PAGE_SPLITTING setzen
  * 3. KI-Pipeline (Extraction + RAG Auditor) aufrufen und Teilschritte melden
  * 4. Dossier im Repository persistieren
- * 5. Status auf COMPLETED oder FAILED setzen (oder PENDING bei Abbruch)
+ * 5. Status bedingt (nur aus PROCESSING) auf COMPLETED oder FAILED setzen
  */
 export async function executeDossierJob(
   jobId: string,
@@ -80,7 +92,7 @@ export async function executeDossierJob(
   activeJobControllers.set(jobId, internalController);
 
   const combinedSignal = deps.abortSignal
-    ? anyAbortSignal([deps.abortSignal, internalController.signal])
+    ? AbortSignal.any([deps.abortSignal, internalController.signal])
     : internalController.signal;
 
   try {
@@ -88,18 +100,6 @@ export async function executeDossierJob(
   } finally {
     activeJobControllers.delete(jobId);
   }
-}
-
-function anyAbortSignal(signals: AbortSignal[]): AbortSignal {
-  const controller = new AbortController();
-  for (const signal of signals) {
-    if (signal.aborted) {
-      controller.abort();
-      return controller.signal;
-    }
-    signal.addEventListener('abort', () => controller.abort(), { once: true });
-  }
-  return controller.signal;
 }
 
 async function runJobExecution(
@@ -118,17 +118,9 @@ async function runJobExecution(
     return job;
   }
 
+  // Vor Beginn abgebrochen: Job bleibt, wie er ist (wartend oder bereits CANCELLED)
   if (abortSignal?.aborted) {
-    // Wenn durch cancelJob bereits CANCELLED gesetzt wurde, beibehalten
-    const current = await jobRepo.getJobById(jobId);
-    if (current?.status === JOB_STATUS.CANCELLED) {
-      return current;
-    }
-    // Vor Beginn durch Shutdown abgebrochen: Zurück auf PENDING
-    return jobRepo.updateJobStatus(jobId, {
-      status: JOB_STATUS.PENDING,
-      lockedAt: undefined,
-    });
+    return jobRepo.getJobById(jobId);
   }
 
   const totalFiles = job.payload.files.length;
@@ -165,12 +157,25 @@ async function runJobExecution(
   // Ein anderer Lauf hat den Job bereits übernommen oder er ist nicht mehr wartend
   if (!claimed) return jobRepo.getJobById(jobId);
 
+  // Nur ein laufender Job darf sich ändern; abgebrochene oder geheilte Jobs bleiben unberührt
+  const whileProcessing = (update: UpdateJobParams) =>
+    jobRepo.transitionJob(jobId, [JOB_STATUS.PROCESSING], update);
+  // Abgebrochen oder geheilt: weiterarbeiten wäre verschwendet, der Fehlerpfad lässt den Status stehen
+  const advance = async (update: UpdateJobParams) => {
+    if (!(await whileProcessing(update))) throw new Error('Vorgang läuft nicht mehr.');
+  };
+  const reportProgress = (update: UpdateJobParams) => {
+    whileProcessing(update).catch((err: unknown) => {
+      logFailure('warn', 'fortschritt_fehlgeschlagen', err);
+    });
+  };
+
   try {
     const { files, caseType, notes, documentId, existingDossier } = job.payload;
 
     const handleStepUpdate = (step: number, stepDetail: string) => {
       if (step === 1) {
-        void jobRepo.updateJobStatus(jobId, {
+        reportProgress({
           stage: JOB_STAGES.EXTRACTION,
           progressDetails: {
             currentStep: 2,
@@ -182,7 +187,7 @@ async function runJobExecution(
           },
         });
       } else if (step === 2) {
-        void jobRepo.updateJobStatus(jobId, {
+        reportProgress({
           stage: JOB_STAGES.AUDITING,
           progressDetails: {
             currentStep: 3,
@@ -192,7 +197,7 @@ async function runJobExecution(
           },
         });
       } else if (step === 3) {
-        void jobRepo.updateJobStatus(jobId, {
+        reportProgress({
           stage: JOB_STAGES.PERSISTING,
           progressDetails: {
             currentStep: 4,
@@ -217,6 +222,7 @@ async function runJobExecution(
         extractionInstructions: {} as PipelineParams['extractionInstructions'],
         auditorInstructions: {} as PipelineParams['auditorInstructions'],
         onStep: handleStepUpdate,
+        abortSignal,
       });
     } else if (currentEnv.MOCK_AI && !deps.extractionFn && !deps.auditorFn) {
       const { runMockSimulation } = await import('@/lib/jobs/mock-simulation');
@@ -225,6 +231,7 @@ async function runJobExecution(
         notes,
         onStep: handleStepUpdate,
         stepDelayMs: 6000,
+        abortSignal,
       });
     } else {
       // 2-Stufen-Job-Chunking für Serverless Runtime Resilience (60s-Budget je Stufe)
@@ -263,6 +270,7 @@ async function runJobExecution(
           extractionInstructions: aiConfig.extractionInstructions,
           onStep: handleStepUpdate,
           onStageUsage,
+          abortSignal,
         });
 
         stage1Output = extractionResult.parsedExtractionRaw;
@@ -270,7 +278,7 @@ async function runJobExecution(
         notesSection = extractionResult.notesSection;
 
         // Checkpoint in Postgres persistieren für Serverless Timeout-Resilienz und Wiederanlauf
-        await jobRepo.updateJobStatus(jobId, {
+        await advance({
           stage: JOB_STAGES.AUDITING,
           payload: {
             ...job.payload,
@@ -300,11 +308,13 @@ async function runJobExecution(
         auditorInstructions: aiConfig.auditorInstructions,
         onStep: handleStepUpdate,
         onStageUsage,
+        abortSignal,
       });
     }
+    abortSignal?.throwIfAborted();
 
-    // Persistenz-Schritt
-    await jobRepo.updateJobStatus(jobId, {
+    // Persistenz-Schritt: Ein nicht mehr laufender Job speichert kein Dossier
+    await advance({
       stage: JOB_STAGES.PERSISTING,
       progressDetails: {
         currentStep: 4,
@@ -318,7 +328,7 @@ async function runJobExecution(
 
     await recordPruefgrundlage(deps, resultDossierId, orgId, job.payload);
 
-    return await jobRepo.updateJobStatus(jobId, {
+    const completed = await whileProcessing({
       status: JOB_STATUS.COMPLETED,
       stage: JOB_STAGES.PERSISTING,
       progressDetails: {
@@ -327,21 +337,14 @@ async function runJobExecution(
         currentActivity: 'Analyse erfolgreich abgeschlossen.',
       },
       resultDossierId,
-      lockedAt: undefined,
+      lockedAt: null,
     });
+    return completed ?? (await jobRepo.getJobById(jobId));
   } catch (error: unknown) {
-    // Prüfen, ob der Job explizit abgebrochen wurde
-    const currentJob = await jobRepo.getJobById(jobId);
-    if (currentJob?.status === JOB_STATUS.CANCELLED) {
-      return currentJob;
-    }
-
     if (abortSignal?.aborted) {
-      // Wurde durch Graceful Shutdown unterbrochen: Zurückstellen auf PENDING
-      return await jobRepo.updateJobStatus(jobId, {
-        status: JOB_STATUS.PENDING,
-        lockedAt: undefined,
-      });
+      // Benutzerabbruch hat CANCELLED schon gesetzt (Übergang trifft nichts); Shutdown stellt zurück auf PENDING
+      const requeued = await whileProcessing({ status: JOB_STATUS.PENDING, lockedAt: null });
+      return requeued ?? (await jobRepo.getJobById(jobId));
     }
 
     const errMsg =
@@ -350,11 +353,12 @@ async function runJobExecution(
         : 'Unbekannter Fehler während der Hintergrundverarbeitung.';
     console.error('[executeDossierJob] Fehler bei Job:', jobId, errMsg);
 
-    return await jobRepo.updateJobStatus(jobId, {
+    // retryCount zählt allein der Requeue (POST /api/jobs)
+    const failed = await whileProcessing({
       status: JOB_STATUS.FAILED,
       errorMessage: errMsg,
-      retryCount: (job.retryCount || 0) + 1,
-      lockedAt: undefined,
+      lockedAt: null,
     });
+    return failed ?? (await jobRepo.getJobById(jobId));
   }
 }
