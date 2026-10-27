@@ -54,7 +54,12 @@ describe('Audit Trail API Route & PUT /api/analyze Integration', () => {
   beforeEach(async () => {
     vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
     const dossierRepo = getDossierRepository();
-    const dummyDossier = createTestImmobilienDossier();
+    // Gespeicherter Stand: Verkäufer offen, damit der PUT einen echten Statuswechsel begründet
+    const dummyDossier = updateDossierFieldStatus(
+      createTestImmobilienDossier(),
+      'verkaeufer',
+      FIELD_STATUS.NEEDS_REVIEW
+    );
     await dossierRepo.update(docId, dummyDossier, TEST_ORG_ID);
   });
 
