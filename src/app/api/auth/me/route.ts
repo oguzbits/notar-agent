@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerAuthClient } from '@/lib/supabase/server-auth';
+import { createServerAuthClient, pickOrganization } from '@/lib/supabase/server-auth';
 import { AuthSessionResponseSchema } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES, NotaryRole } from '@/types/organization';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: NextRequest): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const supabase = await createServerAuthClient();
 
@@ -33,14 +33,24 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       .eq('id', user.id)
       .single();
 
-    // Kanzlei-Mitgliedschaft und Organisation abrufen
-    const { data: member } = await supabase
+    // Alle Mitgliedschaften laden; die Kanzlei wählt die Auswahl-Logik wie bei den übrigen Routen.
+    const { data: memberships, error: memberError } = await supabase
       .from(DB_TABLES.ORGANIZATION_MEMBERS)
-      .select('role, organization:organizations(*)')
+      .select('organization_id, role, organization:organizations(*)')
       .eq('user_id', user.id)
-      .single();
+      .order('joined_at', { ascending: true });
+    if (memberError) {
+      throw new Error(`Mitgliedschaft konnte nicht geladen werden: ${memberError.message}`);
+    }
 
-    const role: NotaryRole = (member?.role as NotaryRole) || NOTARY_ROLES.SACHBEARBEITER;
+    const activeOrgId = pickOrganization(
+      (memberships ?? []).map((m) => m.organization_id),
+      req.headers.get('x-organization-id') ?? undefined
+    );
+    const member = (memberships ?? []).find((m) => m.organization_id === activeOrgId);
+
+    // Ohne Kanzlei gilt die geringste Rolle (das Schema verlangt eine Rolle).
+    const role: NotaryRole = (member?.role as NotaryRole) ?? NOTARY_ROLES.SACHBEARBEITER;
     const org = member?.organization as {
       id?: string;
       name?: string;

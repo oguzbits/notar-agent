@@ -10,7 +10,8 @@ import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES } from '@/types/organization';
 
 // Mock server auth client
-vi.mock('@/lib/supabase/server-auth', () => ({
+vi.mock('@/lib/supabase/server-auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/supabase/server-auth')>()),
   createServerAuthClient: vi.fn(),
 }));
 
@@ -161,8 +162,10 @@ describe('Auth API Routes', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({
-                data: { role: NOTARY_ROLES.NOTAR, organization: mockOrg },
+              order: vi.fn().mockResolvedValue({
+                data: [
+                  { organization_id: mockOrg.id, role: NOTARY_ROLES.NOTAR, organization: mockOrg },
+                ],
                 error: null,
               }),
             };
@@ -180,6 +183,83 @@ describe('Auth API Routes', () => {
       expect(json.user.role).toBe(NOTARY_ROLES.NOTAR);
       expect(json.organization.name).toBe('Notariat Westfalen');
       expect(json.hasActiveOrganization).toBe(true);
+    });
+
+    describe('mehrere Mitgliedschaften', () => {
+      const userId = 'a0000000-0000-4000-8000-000000000001';
+      const orgA = {
+        id: 'b0000000-0000-4000-8000-00000000000a',
+        name: 'Notariat A',
+        official_seat: 'Münster',
+        chamber_district: 'Westfälische Notarkammer',
+      };
+      const orgB = { ...orgA, id: 'b0000000-0000-4000-8000-00000000000b', name: 'Notariat B' };
+
+      function clientWith(memberResult: { data: unknown; error: { message: string } | null }) {
+        return {
+          auth: {
+            getUser: vi.fn().mockResolvedValue({
+              data: { user: { id: userId, email: 'n@kanzlei.de' } },
+              error: null,
+            }),
+          },
+          from: vi.fn((table: string) => {
+            if (table === DB_TABLES.ORGANIZATION_MEMBERS) {
+              return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                order: vi.fn().mockResolvedValue(memberResult),
+              };
+            }
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({ data: { full_name: 'Dr. Notar' }, error: null }),
+            };
+          }),
+        };
+      }
+      const memberships = {
+        data: [
+          { organization_id: orgA.id, role: NOTARY_ROLES.SACHBEARBEITER, organization: orgA },
+          { organization_id: orgB.id, role: NOTARY_ROLES.NOTAR, organization: orgB },
+        ],
+        error: null,
+      };
+
+      it('wählt die angeforderte Kanzlei samt Rolle (x-organization-id)', async () => {
+        mockCreateServerAuthClient.mockResolvedValue(clientWith(memberships) as never);
+
+        const res = await meRoute(
+          new NextRequest('http://localhost:3000/api/auth/me', {
+            headers: { 'x-organization-id': orgB.id },
+          })
+        );
+
+        const json = await res.json();
+        expect(json.organization.id).toBe(orgB.id);
+        expect(json.user.role).toBe(NOTARY_ROLES.NOTAR);
+      });
+
+      it('nimmt ohne Angabe die erste Mitgliedschaft samt ihrer Rolle', async () => {
+        mockCreateServerAuthClient.mockResolvedValue(clientWith(memberships) as never);
+
+        const res = await meRoute(new NextRequest('http://localhost:3000/api/auth/me'));
+
+        const json = await res.json();
+        expect(json.organization.id).toBe(orgA.id);
+        expect(json.user.role).toBe(NOTARY_ROLES.SACHBEARBEITER);
+      });
+
+      it('meldet einen Datenbankfehler als 500 statt die Rolle zu raten', async () => {
+        mockCreateServerAuthClient.mockResolvedValue(
+          clientWith({ data: null, error: { message: 'db down' } }) as never
+        );
+
+        const res = await meRoute(new NextRequest('http://localhost:3000/api/auth/me'));
+
+        expect(res.status).toBe(500);
+      });
     });
 
     it('successfully validates demo organization ID d0000000-0000-0000-0000-000000000001', async () => {
@@ -212,8 +292,10 @@ describe('Auth API Routes', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({
-                data: { role: NOTARY_ROLES.NOTAR, organization: mockOrg },
+              order: vi.fn().mockResolvedValue({
+                data: [
+                  { organization_id: mockOrg.id, role: NOTARY_ROLES.NOTAR, organization: mockOrg },
+                ],
                 error: null,
               }),
             };
@@ -255,7 +337,7 @@ describe('Auth API Routes', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } }),
+              order: vi.fn().mockResolvedValue({ data: [], error: null }),
             };
           }
           return { select: vi.fn().mockReturnThis() };

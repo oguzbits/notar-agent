@@ -74,7 +74,7 @@ export async function resolveSessionOrganizationId(
   return pickOrganization(organizationIds, requestedOrgId, options.requireExplicit);
 }
 
-function pickOrganization(
+export function pickOrganization(
   organizationIds: string[],
   requestedOrgId: string | undefined,
   requireExplicit = false
