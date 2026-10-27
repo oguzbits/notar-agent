@@ -5,7 +5,7 @@ export interface DynamicWeightsResult {
 }
 
 /**
- * Berechnet dynamisch die Gewichtung zwischen Volltextsuche (BM25) und semantischer Vektorsuche.
+ * Berechnet dynamisch die Gewichtung zwischen Volltextsuche (`ts_rank_cd`) und semantischer Vektorsuche.
  *
  * Leitprinzip (gem. Roadmap & Invariante 5/6):
  * - Bei exakten Normen, Paragraphen (§), Registernummern (HRB) oder Flurstücken muss der Volltext

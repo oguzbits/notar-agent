@@ -58,9 +58,9 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
     - [x] _(Architektur-Baseline: Legora & turbopuffer – Vermeidung von RAM-Thrashing und monolithischen HNSW-Clustern)_
     - [x] Dossier-basierte Namespaces: Trennung aktiver Bearbeitungskontexte von ruhenden Mandantenarchiven (Zero Cache-Pollution in PostgreSQL pgvector)
     - [x] Lifecycle & Storage-Tiering: Automatischer Export ruhender Akten-Vektoren und Chunks in verschlüsselten Supabase Object Storage nach Beurkundungsvollzug (§ 17 BeurkG)
-  - [x] **B.8.6 Deterministische Hybrid-Suche (BM25 + pgvector mit RRF):**
+  - [x] **B.8.6 Deterministische Suche (Volltext `ts_rank_cd`; pgvector/RRF in der RPC angelegt, ohne Vektoren inaktiv):**
     - [x] Lexikalische Volltext- und Trigram-Suche (`tsvector` / `pg_trgm`) für exakte Ziffernfolgen (Flurstücke, Gemarkungen, Aktenzeichen, Kaufpreise)
-    - [x] Semantische Vektorsuche (`pgvector`) für juristische Klauselbedeutungen
+    - [x] Semantische Vektorsuche (`pgvector`) in der RPC angelegt; ohne Dokumentvektoren und Query-Embeddings nicht wirksam (Messbefund: [BACKLOG.md §19](./BACKLOG.md))
     - [x] Reciprocal Rank Fusion (RRF) Scorer zur deterministischen Zusammenführung vor Modell-Injektion
 - [ ] **B.9 k6 API- & Supabase-Lasttest-Suite:**
   - _(Detaillierte Spezifikation und Aufgabenplan in [BACKLOG.md §18](./BACKLOG.md#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing) hinterlegt)_

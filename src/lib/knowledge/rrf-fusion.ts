@@ -12,7 +12,7 @@ export interface FusedRankItem<T> {
  * Formel pro Dokument d:
  *   RRF(d) = (textWeight / (k + rank_text(d))) + (vectorWeight / (k + rank_vector(d)))
  *
- * @param textRanked Die nach Volltext/BM25 sortierten Dokumente.
+ * @param textRanked Die nach Volltext (`ts_rank_cd`) sortierten Dokumente.
  * @param vectorRanked Die nach semantischer Vektorähnlichkeit sortierten Dokumente.
  * @param textWeight Das Gewicht der Volltextsuche (Standard: 0.5).
  * @param vectorWeight Das Gewicht der Vektorsuche (Standard: 0.5).

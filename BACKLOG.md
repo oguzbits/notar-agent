@@ -738,7 +738,14 @@ graph TD
 
 - [ ] **Datenbank-Partitioning:** Evaluation von Postgres Table Partitioning (`PARTITION BY LIST (organization_id)`) für `dossier_chunks`.
 - [ ] **Cold-Storage Serializer:** Implementierung eines Export- und Rehydrierungs-Services (`src/lib/storage/dossier-tiering.ts`), der Chunks in verschlüsseltem Parquet-Format in Supabase Storage ablegt.
-- [ ] **Hybrid RRF Search Engine:** Erweiterung von `IKnowledgeRepository` und `SupabaseKnowledgeRepository` um kombiniertes BM25/Trigram- und pgvector-Matching mit konfigurierbaren RRF-Gewichten.
+- [ ] **Hybrid RRF Search Engine:** Erweiterung von `IKnowledgeRepository` und `SupabaseKnowledgeRepository` um kombiniertes Volltext/Trigram- und pgvector-Matching mit konfigurierbaren RRF-Gewichten. **Zurückgestellt (Messbefund Oktober 2026):**
+  - Echtes BM25 ist auf Supabase nicht verfügbar (`pg_search`/`pg_textsearch` fehlen); handgebautes BM25 (k1 = 1,2, b = 0,75) lieferte auf dem Benchmark dieselben Top 3 wie `ts_rank_cd`.
+  - Auf 48 synthetischen, verrauschten Fällen (Schlagwortauswahl plus Top 3) lag der Vektor nur +0,04 Abdeckung über dem Volltext (0,96 gegen 1,00); die vorab festgelegte Schwelle von 0,08 wurde nicht erreicht. Die frühere Lücke (35/44 gegen 42/44) stammte aus gezielt gegen den Volltext gebauten Umschreibungen.
+  - Flaches Rank-RRF (k = 60) mit der ODER-Volltextliste verschlechterte Umschreibungen; ein Gate (Volltext nur bei §/Zahl/Register, sonst Vektor) war die beste Fusion. Ein Ähnlichkeits-Schwellenwert für Fälle ohne Treffer trennt nicht (8 von 40 Fällen mit Treffer unter dem besten Fall ohne Treffer).
+  - Grenzen: Fälle selbst geschrieben, Korpus klein, Rechtsgrundlage in den Dokument-Embeddings, ein Lauf. Wiedervorlage mit echten anonymisierten Notizen und größerem Korpus.
+  - Voraussetzungen vor einem Vektorpfad: Schreibpfad für Dokumentvektoren, Query-Embedding in der Pipeline, Embedding-Modell in `src/env.ts` (vorher gegen aktuelle Doku prüfen), bezahlter API-Zugang für echte Mandantendaten, Migration in der Knowledge-Domäne.
+  - Offen: Schlagwortauswahl lädt nur `GESETZLICHE_NORM`; DNotI-Gutachten und Kanzleirichtlinien erreichen den Prompt nicht über Schlagwörter.
+  - Offen: RPC-Spalte `bm25_score`/`raw_bm25` und `MATCH_SOURCES.BM25_EXACT` bezeichnen `ts_rank_cd`; Umbenennung erfordert Migration und DB-Sync.
 
 ---
 
