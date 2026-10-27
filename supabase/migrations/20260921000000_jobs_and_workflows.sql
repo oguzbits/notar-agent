@@ -202,8 +202,7 @@ VALUES
     NULL,
     '[
         {"id": "step_ingestion_extraction", "title": "Urkunden- & Sachverhaltserfassung", "type": "EXTRACTION", "actor": "AGENT", "action": "extract_documents", "isOptional": false, "description": "Multimodale Erfassung von Grundbuchauszug, Verträgen und Ausweisen mit Belegnachweisen."},
-        {"id": "step_guardrails", "title": "Deterministische Notar-Guardrails", "type": "GUARDRAILS", "actor": "SYSTEM", "action": "apply_guardrails", "isOptional": false, "description": "Prüfung von Fristen (10 Jahre GEG), Arithmetik (Parzellenflächen, Mieten) und Identitäten."},
-        {"id": "step_gwg_gate", "title": "Geldwäsche-Sonderprüfung (GWG)", "type": "CONDITIONAL_GATE", "actor": "AGENT", "action": "verify_gwg_threshold", "condition": {"field": "kaufpreis", "operator": "GREATER_THAN", "value": 1000000}, "isOptional": false, "description": "Automatische Sonderprüfung bei Transaktionsvolumen über 1.000.000 €."},
+        {"id": "step_guardrails", "title": "Deterministische Notar-Guardrails", "type": "GUARDRAILS", "actor": "SYSTEM", "action": "apply_guardrails", "isOptional": false, "description": "Prüfung von Fristen, Arithmetik (Parzellenflächen, Mieten) und Identitäten."},
         {"id": "step_notary_auditor", "title": "Notarielle Vorprüfung, Fristen & Plausibilisierung", "type": "AUDITOR", "actor": "AGENT", "action": "audit_dossier", "isOptional": false, "description": "JIT-Regelprüfung gegen Kanzlei-Knowledge und Erstellung von Nachforderungen."},
         {"id": "step_human_approval", "title": "Notarfreigabe & Entwurfsabnahme", "type": "HUMAN_APPROVAL", "actor": "NOTAR", "action": "approve_dossier", "isOptional": false, "description": "Rechtsverbindliche Abschlussfreigabe durch Notar oder Sachbearbeitung (§ 17 BeurkG)."}
     ]'::jsonb
@@ -216,7 +215,7 @@ VALUES
     NULL,
     '[
         {"id": "step_ingestion_extraction", "title": "Erfassung der Gründungsunterlagen", "type": "EXTRACTION", "actor": "AGENT", "action": "extract_documents", "isOptional": false, "description": "Extraktion von Gesellschafterdaten, Stammkapital und Unternehmensgegenstand."},
-        {"id": "step_guardrails", "title": "Stammkapital- & Satzungs-Guardrails", "type": "GUARDRAILS", "actor": "SYSTEM", "action": "apply_guardrails", "isOptional": false, "description": "Validierung des Mindeststammkapitals (25.000 € gem. § 5 GmbHG) und Bareinlagen."},
+        {"id": "step_guardrails", "title": "Stammkapital- & Satzungs-Guardrails", "type": "GUARDRAILS", "actor": "SYSTEM", "action": "apply_guardrails", "isOptional": false, "description": "Validierung des Mindeststammkapitals und der Einlagen."},
         {"id": "step_notary_auditor", "title": "Notarielle Satzungsprüfung", "type": "AUDITOR", "actor": "AGENT", "action": "audit_dossier", "isOptional": false, "description": "Prüfung auf genehmigungsbedürftige Gegenstände (§ 34c GewO etc.) und Vertretungsregeln."},
         {"id": "step_human_approval", "title": "Notarfreigabe Gründungsurkunde", "type": "HUMAN_APPROVAL", "actor": "NOTAR", "action": "approve_dossier", "isOptional": false, "description": "Abschlussprüfung durch den Notar vor Beurkundungstermin."}
     ]'::jsonb

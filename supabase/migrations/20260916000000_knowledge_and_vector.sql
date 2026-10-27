@@ -435,6 +435,19 @@ INSERT INTO knowledge_documents (
         ARRAY['kaufpreis', 'gestrichen', 'durchgestrichen', 'handschriftlich', 'randkorrektur', 'nachtrag', 'paraphe'],
         '2026-09-24T20:00:00.000Z',
         '2026-09-24T20:00:00.000Z'
+    ),
+    -- 12. § 5, § 7 GmbHG Mindeststammkapital & Mindesteinzahlung
+    (
+        'd0000000-0000-4000-8000-000000000012',
+        NULL,
+        'GESETZLICHE_NORM',
+        '§ 5 Abs. 1 GmbHG, § 7 Abs. 2 und 3 GmbHG',
+        NULL,
+        'Mindeststammkapital und Mindesteinzahlung bei der GmbH-Gründung',
+        'Das Stammkapital der GmbH muss mindestens 25.000 Euro betragen (§ 5 Abs. 1 GmbHG); der Nennbetrag jedes Geschäftsanteils muss auf volle Euro lauten (§ 5 Abs. 2 GmbHG). Die Anmeldung zum Handelsregister ist erst zulässig, wenn auf jeden Geschäftsanteil mindestens ein Viertel des Nennbetrags eingezahlt ist und die Geldeinlagen zuzüglich des Nennbetrags der Anteile mit Sacheinlagen insgesamt mindestens die Hälfte des Mindeststammkapitals erreichen (§ 7 Abs. 2 GmbHG). Sacheinlagen müssen vor der Anmeldung so erbracht sein, dass sie endgültig zur freien Verfügung der Geschäftsführer stehen (§ 7 Abs. 3 GmbHG). Weicht das Stammkapital oder die Einzahlung im Gründungsdokument von diesen Vorgaben ab, MUSS das betroffene Feld auf NEEDS_REVIEW gesetzt werden.',
+        ARRAY['stammkapital', 'gmbh', 'gründung', 'geschäftsanteil', 'stammeinlage', 'einzahlung', 'sacheinlage'],
+        '2026-10-28T00:00:00.000Z',
+        '2026-10-28T00:00:00.000Z'
     )
 ON CONFLICT (id) DO UPDATE SET
     category = EXCLUDED.category,
