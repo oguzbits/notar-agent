@@ -170,6 +170,70 @@ describe('Kanzleiteam: Selbständerung und letzter Notar', () => {
     expect(other.error?.code).toBe('42501');
   });
 
+  describe('Rollenwechsel und Audit-Eintrag atomar', () => {
+    const teamEntries = async () => {
+      const res = await harness.admin
+        .from(DB_TABLES.AUDIT_LOGS)
+        .select('action, details')
+        .eq('document_id', `team:${orgId}`);
+      return res.data ?? [];
+    };
+    const setRole = (id: string, role: NotaryRole) =>
+      notar.client.from(DB_TABLES.ORGANIZATION_MEMBERS).update({ role }).eq('id', id);
+
+    it('die Datenbank schreibt den Eintrag mit alter und neuer Rolle und Akteurrolle', async () => {
+      const target = await addMember(NOTARY_ROLES.SACHBEARBEITER);
+
+      const res = await setRole(target.memberId, NOTARY_ROLES.NOTARASSESSOR);
+
+      expect(res.error).toBeNull();
+      expect(await teamEntries()).toEqual([
+        {
+          action: AUDIT_ACTIONS.MEMBER_ROLE_CHANGED,
+          details: {
+            actorRole: NOTARY_ROLES.NOTAR,
+            member: {
+              memberId: target.memberId,
+              userId: target.user.id,
+              previousRole: NOTARY_ROLES.SACHBEARBEITER,
+              newRole: NOTARY_ROLES.NOTARASSESSOR,
+            },
+          },
+        },
+      ]);
+    });
+
+    it('unveränderte Rolle schreibt keinen Eintrag', async () => {
+      const target = await addMember(NOTARY_ROLES.SACHBEARBEITER);
+      await setRole(target.memberId, NOTARY_ROLES.SACHBEARBEITER);
+      expect(await teamEntries()).toEqual([]);
+    });
+
+    it('scheitert der Eintrag, bleibt die Rolle unverändert', async () => {
+      const target = await addMember(NOTARY_ROLES.SACHBEARBEITER);
+      const foreign = await harness.admin
+        .from(DB_TABLES.ORGANIZATIONS)
+        .insert({ name: 'Fremd', official_seat: 'Test', chamber_district: 'Test' })
+        .select('id')
+        .single();
+      // Die Kette team:<Kanzlei> gehört einer fremden Kanzlei: Der Eintrag wird abgelehnt (42501)
+      runPrivilegedSql(
+        `INSERT INTO audit_logs (organization_id, document_id, action, actor) ` +
+          `VALUES ('${foreign.data?.id}', 'team:${orgId}', '${AUDIT_ACTIONS.MEMBER_INVITED}', 'x')`
+      );
+
+      const res = await setRole(target.memberId, NOTARY_ROLES.NOTARASSESSOR);
+
+      expect(res.error).not.toBeNull();
+      const after = await harness.admin
+        .from(DB_TABLES.ORGANIZATION_MEMBERS)
+        .select('role')
+        .eq('id', target.memberId)
+        .single();
+      expect(after.data?.role).toBe(NOTARY_ROLES.SACHBEARBEITER);
+    });
+  });
+
   describe('Rolle NOTAR vergibt nur ein NOTAR', () => {
     const insertAs = async (client: TestUser['client'], role: NotaryRole) => {
       const candidate = await harness.createUser();

@@ -362,6 +362,39 @@ DROP TRIGGER IF EXISTS trg_organization_members_guard ON organization_members;
 CREATE TRIGGER trg_organization_members_guard BEFORE UPDATE OR DELETE ON organization_members
     FOR EACH ROW EXECUTE FUNCTION organization_members_guard();
 
+-- Rollenwechsel und Nachweis atomar: Der Eintrag MEMBER_ROLE_CHANGED entsteht in derselben Transaktion wie die
+-- Änderung (Team-Kette der Kanzlei); scheitert er, wird auch die Rolle zurückgenommen. Die Anwendung schreibt ihn nicht
+-- selbst. Gilt wie der Wächter für angemeldete Nutzer; Servicekonto und Kaskaden haben keinen handelnden Nutzer.
+CREATE OR REPLACE FUNCTION organization_members_audit_role() RETURNS TRIGGER AS $$
+DECLARE
+    v_actor_name TEXT;
+BEGIN
+    IF auth.uid() IS NULL OR pg_trigger_depth() > 1 THEN
+        RETURN NULL;
+    END IF;
+    SELECT COALESCE(full_name, 'Kanzleimitglied') INTO v_actor_name FROM profiles WHERE id = auth.uid();
+    INSERT INTO audit_logs (organization_id, document_id, action, actor, details)
+    VALUES (
+        NEW.organization_id,
+        'team:' || NEW.organization_id::text,
+        'MEMBER_ROLE_CHANGED',
+        COALESCE(v_actor_name, 'Kanzleimitglied'),
+        jsonb_build_object(
+            'actorRole', get_user_role(NEW.organization_id)::text,
+            'member', jsonb_build_object(
+                'memberId', NEW.id, 'userId', NEW.user_id,
+                'previousRole', OLD.role::text, 'newRole', NEW.role::text
+            )
+        )
+    );
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+DROP TRIGGER IF EXISTS trg_organization_members_audit_role ON organization_members;
+CREATE TRIGGER trg_organization_members_audit_role AFTER UPDATE OF role ON organization_members
+    FOR EACH ROW WHEN (OLD.role IS DISTINCT FROM NEW.role)
+    EXECUTE FUNCTION organization_members_audit_role();
+
 -- Documents & Audit Logs (Veraltete Prototyp-Policies bereinigen)
 DROP POLICY IF EXISTS "Allow all access to documents for prototype" ON documents;
 DROP POLICY IF EXISTS "Allow select audit_logs" ON audit_logs;

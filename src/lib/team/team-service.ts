@@ -25,25 +25,17 @@ async function appendTeamEvent(
   });
 }
 
-/** Ändert die Rolle; Selbständerung und letzter NOTAR lehnt die Datenbank ab (Fehler aus dem Repository). */
+/**
+ * Ändert die Rolle; Selbständerung und letzter NOTAR lehnt die Datenbank ab (Fehler aus dem Repository).
+ * Den Eintrag MEMBER_ROLE_CHANGED schreibt der Trigger organization_members_audit_role in derselben Transaktion.
+ */
 export async function changeMemberRole(
   deps: TeamServiceDeps,
   memberId: string,
   newRole: NotaryRole
 ): Promise<TeamMember | null> {
   const orgId = deps.session.organizationId;
-  const before = await deps.repo.getMemberById(memberId, orgId);
-  if (!before) return null;
-  const { userId, role: previousRole } = before;
-  const updated = await deps.repo.updateMemberRole(memberId, newRole, orgId);
-  if (!updated) return null;
-  await appendTeamEvent(deps, AUDIT_ACTIONS.MEMBER_ROLE_CHANGED, {
-    memberId,
-    userId,
-    previousRole,
-    newRole,
-  });
-  return updated;
+  return deps.repo.updateMemberRole(memberId, newRole, orgId);
 }
 
 export async function removeMember(deps: TeamServiceDeps, memberId: string): Promise<boolean> {

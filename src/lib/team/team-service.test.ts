@@ -36,22 +36,11 @@ describe('Teamänderungen schreiben ein Audit-Ereignis', () => {
 
   const lastEvent = async () => (await deps.audit.getHistory(`team:${TEST_ORG_ID}`)).at(-1);
 
-  it('Rollenwechsel: Akteur, Ziel, alte und neue Rolle', async () => {
-    await changeMemberRole(deps, memberId, NOTARY_ROLES.NOTARASSESSOR);
+  it('Rollenwechsel: den Eintrag schreibt die Datenbank (Trigger), nicht die Anwendung', async () => {
+    const updated = await changeMemberRole(deps, memberId, NOTARY_ROLES.NOTARASSESSOR);
 
-    expect(await lastEvent()).toMatchObject({
-      action: AUDIT_ACTIONS.MEMBER_ROLE_CHANGED,
-      organizationId: TEST_ORG_ID,
-      actor: 'Dr. Muster',
-      details: {
-        actorRole: NOTARY_ROLES.NOTAR,
-        member: {
-          memberId,
-          previousRole: NOTARY_ROLES.SACHBEARBEITER,
-          newRole: NOTARY_ROLES.NOTARASSESSOR,
-        },
-      },
-    });
+    expect(updated?.role).toBe(NOTARY_ROLES.NOTARASSESSOR);
+    expect(deps.audit.appendEvent).not.toHaveBeenCalled();
   });
 
   it('Entfernen: Ziel und bisherige Rolle', async () => {

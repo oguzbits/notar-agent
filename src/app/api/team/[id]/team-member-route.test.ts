@@ -12,7 +12,6 @@ import {
   createMockTeamRepository,
 } from '@/test/fixtures/mock-repositories';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
-import { AUDIT_ACTIONS } from '@/types/audit';
 import { NOTARY_ROLES } from '@/types/organization';
 import { PATCH, DELETE } from './route';
 
@@ -125,22 +124,6 @@ describe('API Route: /api/team/[id]', () => {
       }),
       { params: Promise.resolve({ id: memberId }) }
     );
-
-  it('PATCH schreibt ein Audit-Ereignis mit alter und neuer Rolle', async () => {
-    await patchRole();
-
-    const history = await mockAuditRepo.getHistory(`team:${testOrgId}`);
-    expect(history.at(-1)).toMatchObject({
-      action: AUDIT_ACTIONS.MEMBER_ROLE_CHANGED,
-      details: {
-        member: {
-          memberId,
-          previousRole: NOTARY_ROLES.SACHBEARBEITER,
-          newRole: NOTARY_ROLES.NOTARASSESSOR,
-        },
-      },
-    });
-  });
 
   it('PATCH: eigene Rolle → 403, letzter Notar → 409', async () => {
     vi.mocked(repo.updateMemberRole)
