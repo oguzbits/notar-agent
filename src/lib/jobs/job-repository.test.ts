@@ -248,6 +248,9 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
       const deleteIn = vi
         .fn()
         .mockReturnValue({ or: vi.fn().mockReturnValue({ select: deleteSelect }) });
+      const selectOr = vi.fn().mockReturnValue({
+        lt: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit }) }),
+      });
       deleteSelect.mockImplementation(() =>
         Promise.resolve({
           data: deleteIn.mock.calls[0]?.[1]?.map((id: string) => ({ id })),
@@ -259,15 +262,11 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
           from: vi.fn().mockReturnValue({ remove: vi.fn(async (p: string[]) => removeImpl(p)) }),
         },
         from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            or: vi.fn().mockReturnValue({
-              lt: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit }) }),
-            }),
-          }),
+          select: vi.fn().mockReturnValue({ or: selectOr }),
           delete: vi.fn().mockReturnValue({ in: deleteIn }),
         }),
       };
-      return { supabase, limit, deleteIn };
+      return { supabase, limit, deleteIn, selectOr };
     }
 
     it('löscht Jobs mit Speicherfehler nicht, verarbeitet die übrigen weiter', async () => {
@@ -331,6 +330,15 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
       const { SupabaseJobRepository } = await import('./job-repository');
       await new SupabaseJobRepository(supabase as never).pruneCompletedJobs();
       expect(remove).not.toHaveBeenCalled();
+    });
+
+    it('räumt fehlgeschlagene Vorgänge unabhängig vom Wiederholungszähler auf', async () => {
+      const { supabase, selectOr } = setup([], () => ({ error: null }));
+      const { SupabaseJobRepository } = await import('./job-repository');
+      await new SupabaseJobRepository(supabase as never).pruneCompletedJobs();
+      const filter = String(selectOr.mock.calls[0]?.[0]);
+      expect(filter).toContain(JOB_STATUS.FAILED);
+      expect(filter).not.toContain('retry_count');
     });
 
     it('fragt höchstens JOB_PRUNE_BATCH Kandidaten ab', async () => {

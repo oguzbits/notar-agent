@@ -7,9 +7,11 @@ import { GET } from './route';
 vi.mock('@sentry/nextjs', () => ({ captureMessage: vi.fn() }));
 vi.mock('@/env', () => ({ getEnv: () => ({ CRON_SECRET: process.env.TEST_CRON_SECRET }) }));
 const prune = vi.hoisted(() => vi.fn(async () => 2));
+const heal = vi.hoisted(() => vi.fn(async () => 1));
 vi.mock('@/lib/jobs/job-repository', () => ({
   SupabaseJobRepository: class {
     pruneCompletedJobs = prune;
+    recoverOrphanJobs = heal;
   },
 }));
 vi.mock('@/lib/supabase/admin', () => ({ createServiceRoleClient: vi.fn(() => ({})) }));
@@ -38,6 +40,7 @@ describe('GET /api/cron/deletion', () => {
       expect((await call(auth)).status).toBe(401);
       expect(worker.processDeletionTasks).not.toHaveBeenCalled();
       expect(prune).not.toHaveBeenCalled();
+      expect(heal).not.toHaveBeenCalled();
     }
   );
 
@@ -55,6 +58,12 @@ describe('GET /api/cron/deletion', () => {
       retention: { deleted: 0 },
       jobsPruned: 2,
     });
+  });
+
+  it('heilt hängende Vorgänge aller Kanzleien vor dem Aufräumen', async () => {
+    await call('Bearer geheim');
+    expect(heal).toHaveBeenCalledTimes(1);
+    expect(heal.mock.invocationCallOrder[0]).toBeLessThan(prune.mock.invocationCallOrder[0] ?? 0);
   });
 
   it('meldet dauerhaft fehlgeschlagene Löschaufgaben ohne Inhalte an Sentry', async () => {

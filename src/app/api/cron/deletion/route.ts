@@ -30,7 +30,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const admin = createServiceRoleClient();
     const retention = await runRetentionSweep(admin, { limit: DELETION_WORKER_DEFAULTS.batchSize });
     const tasks = await processDeletionTasks(admin, DELETION_WORKER_DEFAULTS);
-    const jobsPruned = await new SupabaseJobRepository(admin).pruneCompletedJobs();
+    const jobRepo = new SupabaseJobRepository(admin);
+    // Erst heilen (hängende Vorgänge werden FAILED und wiederholbar), dann Altes aufräumen
+    const jobsHealed = await jobRepo.recoverOrphanJobs();
+    const jobsPruned = await jobRepo.pruneCompletedJobs();
     // Nur Anzahlen: Dateipfade und Fehlertexte können Mandantendaten enthalten
     const failedCount = tasks.failed + retention.failed.length;
     if (failedCount > 0) {
@@ -39,7 +42,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         extra: { tasks: tasks.failed, retention: retention.failed.length },
       });
     }
-    return NextResponse.json({ tasks, retention, jobsPruned });
+    return NextResponse.json({ tasks, retention, jobsHealed, jobsPruned });
   } catch (error: unknown) {
     logFailure('error', 'cron_deletion_fehlgeschlagen', error);
     return NextResponse.json({ error: 'Löschlauf fehlgeschlagen.' }, { status: 500 });

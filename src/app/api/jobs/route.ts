@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { fromError } from 'zod-validation-error';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
-import type { IJobRepository } from '@/lib/jobs/job-repository';
+import { JOB_RETENTION_MS, type IJobRepository } from '@/lib/jobs/job-repository';
 import { executeDossierJob, type WorkerDependencies } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
 import {
@@ -55,6 +55,16 @@ async function requeueFailedJob(
   if (job.status !== JOB_STATUS.FAILED || job.retryCount >= job.maxRetries) {
     return NextResponse.json(
       { error: 'Dieser Vorgang kann nicht erneut gestartet werden.' },
+      { status: 409 }
+    );
+  }
+  // Nach der Aufbewahrungsfrist räumt der Cron auf, die Quelldateien können schon gelöscht sein
+  if (Date.now() - Date.parse(job.updatedAt) > JOB_RETENTION_MS) {
+    return NextResponse.json(
+      {
+        error:
+          'Die Aufbewahrungsfrist dieses Vorgangs ist abgelaufen. Bitte die Dateien neu hochladen.',
+      },
       { status: 409 }
     );
   }

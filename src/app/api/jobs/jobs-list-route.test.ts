@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
+import { JOB_RETENTION_MS } from '@/lib/jobs/job-repository';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { getJobRepository } from '@/lib/supabase/server';
 import { resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
@@ -208,6 +209,32 @@ describe('API Route: /api/jobs (List & Retry)', () => {
       })
     );
     expect(res.status).toBe(409);
+  });
+
+  it('POST /api/jobs lehnt die Wiederholung nach Ablauf der Aufbewahrungsfrist mit 409 ab', async () => {
+    const job = await repo.createJob(
+      { caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: 'x' },
+      TEST_ORG_ID
+    );
+    await repo.updateJobStatus(job.id, { status: JOB_STATUS.FAILED, retryCount: 1 });
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + JOB_RETENTION_MS + 60_000);
+    try {
+      const res = await POST(
+        new NextRequest('http://localhost:3000/api/jobs', {
+          method: 'POST',
+          body: JSON.stringify({ jobId: job.id }),
+        })
+      );
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({
+        error:
+          'Die Aufbewahrungsfrist dieses Vorgangs ist abgelaufen. Bitte die Dateien neu hochladen.',
+      });
+      expect((await repo.getJobById(job.id))?.status).toBe(JOB_STATUS.FAILED);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('POST /api/jobs zählt jede Wiederholung', async () => {

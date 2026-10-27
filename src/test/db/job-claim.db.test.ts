@@ -197,7 +197,7 @@ describe('Aufbewahrung beendeter Vorgänge (pruneCompletedJobs)', () => {
   };
   const exists = async (id: string) => (await repo.getJobById(id, orgId)) !== null;
 
-  it('löscht nur alte Endzustände; frische, laufende und wiederholbare bleiben', async () => {
+  it('löscht nur alte Endzustände (auch fehlgeschlagene mit offenen Wiederholungen); frische und laufende bleiben', async () => {
     const [oldDone, oldCancelled, oldFailedFinal, freshDone, oldRunning, oldPending, oldRetryable] =
       await Promise.all([newJob(), newJob(), newJob(), newJob(), newJob(), newJob(), newJob()]);
     const old = { updated_at: daysAgo(30) };
@@ -213,10 +213,12 @@ describe('Aufbewahrung beendeter Vorgänge (pruneCompletedJobs)', () => {
     await admin.pruneCompletedJobs();
 
     expect(
-      await Promise.all([oldDone, oldCancelled, oldFailedFinal].map((j) => exists(j.id)))
-    ).toEqual([false, false, false]);
-    expect(
-      await Promise.all([freshDone, oldRunning, oldPending, oldRetryable].map((j) => exists(j.id)))
-    ).toEqual([true, true, true, true]);
+      await Promise.all(
+        [oldDone, oldCancelled, oldFailedFinal, oldRetryable].map((j) => exists(j.id))
+      )
+    ).toEqual([false, false, false, false]);
+    expect(await Promise.all([freshDone, oldRunning, oldPending].map((j) => exists(j.id)))).toEqual(
+      [true, true, true]
+    );
   });
 });

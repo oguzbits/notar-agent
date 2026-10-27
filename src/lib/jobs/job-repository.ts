@@ -275,8 +275,8 @@ export class SupabaseJobRepository implements IJobRepository {
 
   async pruneCompletedJobs(maxAgeMs = JOB_RETENTION_MS): Promise<number> {
     const cutoffIso = new Date(Date.now() - maxAgeMs).toISOString();
-    // Nur Endzustände: abgeschlossen, abgebrochen oder fehlgeschlagen ohne weitere Wiederholung
-    const isPrunable = `status.in.(${JOB_STATUS.COMPLETED},${JOB_STATUS.CANCELLED}),and(status.eq.${JOB_STATUS.FAILED},retry_count.gte.${JOB_MAX_RETRIES})`;
+    // Nur Endzustände; ein fehlgeschlagener Vorgang ist nach der Frist nicht mehr wiederholbar (Quelldateien weg)
+    const isPrunable = `status.in.(${JOB_STATUS.COMPLETED},${JOB_STATUS.CANCELLED},${JOB_STATUS.FAILED})`;
     const candidates = await executeList(
       this.supabase
         .from(DB_TABLES.DOSSIER_JOBS)
