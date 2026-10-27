@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed, embedMany, type EmbeddingModel } from 'ai';
+import { getEnv, type Env } from '@/env';
 import { EMBEDDING_DIMENSIONS, EmbeddingVectorSchema } from '@/types/knowledge';
 import { formatDocumentForEmbedding, formatQueryForEmbedding } from './embedding-text';
 
@@ -34,3 +35,18 @@ export function createEmbedder(model: EmbeddingModel): IEmbedder {
 
 export const createGeminiEmbedder = (modelId: string, apiKey: string): IEmbedder =>
   createEmbedder(createGoogleGenerativeAI({ apiKey }).embeddingModel(modelId));
+
+/** Ohne EMBEDDING_MODEL_ID sucht die Pipeline nur im Volltext; mit Modell-ID aber ohne Schlüssel ist die Konfiguration falsch. */
+export function getEmbedder(
+  config: Pick<
+    Env,
+    'EMBEDDING_MODEL_ID' | 'GEMINI_API_KEY' | 'GOOGLE_GENERATIVE_AI_API_KEY'
+  > = getEnv()
+): IEmbedder | undefined {
+  if (!config.EMBEDDING_MODEL_ID) return undefined;
+  const apiKey = config.GEMINI_API_KEY || config.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('EMBEDDING_MODEL_ID ist gesetzt, aber GEMINI_API_KEY fehlt.');
+  }
+  return createGeminiEmbedder(config.EMBEDDING_MODEL_ID, apiKey);
+}

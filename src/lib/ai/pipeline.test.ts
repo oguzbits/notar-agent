@@ -14,6 +14,9 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }));
 
+const mockGetEmbedder = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/knowledge/embedder', () => ({ getEmbedder: () => mockGetEmbedder() }));
+
 // Mock AI module generateText
 const mockGenerateText = vi.fn();
 vi.mock('ai', async (importOriginal) => {
@@ -27,6 +30,56 @@ vi.mock('ai', async (importOriginal) => {
 describe('runAnalysisPipeline', () => {
   beforeEach(() => {
     mockKnowledgeSearch.mockReset().mockResolvedValue([]);
+    mockGetEmbedder.mockReset().mockReturnValue(undefined);
+  });
+
+  describe('Vektorsuche', () => {
+    const run = (embedder?: { embedQuery: (text: string) => Promise<number[]> }) => {
+      mockGenerateText.mockReset().mockResolvedValue({
+        text: JSON.stringify({
+          caseTitle: 'T',
+          overallStatus: OVERALL_STATUS.READY,
+          fields: {},
+          reconciliationAuditTrail: [],
+        }),
+      });
+      return runAnalysisPipeline({
+        files: [],
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        notes: 'Notiz',
+        model: {} as never,
+        extractionInstructions: { role: 'system', content: 'Extract' },
+        auditorInstructions: { role: 'system', content: 'Audit' },
+        onStep: () => undefined,
+        ...(embedder ? { embedder: { ...embedder, embedDocuments: vi.fn() } } : {}),
+      });
+    };
+
+    it('sucht ohne Einbetter ohne Vektor', async () => {
+      await run();
+      expect(mockKnowledgeSearch.mock.calls[0]?.[0]).not.toHaveProperty('queryEmbedding');
+    });
+
+    it('übergibt den Vektor der Anfrage mit demselben Suchtext', async () => {
+      const embedQuery = vi.fn().mockResolvedValue([0.1, 0.2]);
+      await run({ embedQuery });
+      const query = mockKnowledgeSearch.mock.calls[0]?.[0];
+      expect(embedQuery).toHaveBeenCalledWith(query.queryText);
+      expect(query.queryEmbedding).toEqual([0.1, 0.2]);
+    });
+
+    it('nutzt den konfigurierten Einbetter, wenn keiner übergeben wird', async () => {
+      const embedQuery = vi.fn().mockResolvedValue([0.3]);
+      mockGetEmbedder.mockReturnValue({ embedQuery, embedDocuments: vi.fn() });
+      await run();
+      expect(mockKnowledgeSearch.mock.calls[0]?.[0].queryEmbedding).toEqual([0.3]);
+    });
+
+    it('bricht ab, wenn die Einbettung fehlschlägt, ohne zu suchen', async () => {
+      const embedQuery = vi.fn().mockRejectedValue(new Error('Dienst nicht erreichbar'));
+      await expect(run({ embedQuery })).rejects.toThrow('Dienst nicht erreichbar');
+      expect(mockKnowledgeSearch).not.toHaveBeenCalled();
+    });
   });
 
   it('sucht in der Wissensbasis mit Vorgangstyp, Notizblock und erkannten Dateinamen', async () => {

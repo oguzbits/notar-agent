@@ -7,6 +7,7 @@ import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
 import { downgradeUnvalidatedFields, SourceDocumentText } from '@/lib/ai/verifiable-fact-checker';
 import { runNotaryVerification } from '@/lib/ai/verification-engine';
 import { normalizeDossier } from '@/lib/dossier';
+import { getEmbedder } from '@/lib/knowledge/embedder';
 import {
   formatKnowledgeForPrompt,
   selectApplicableKnowledge,
@@ -51,6 +52,8 @@ export interface PipelineParams {
   onStageUsage?: StageUsageHandler;
   onTrace?: (trace: import('@/types/pipeline').PipelineTraceArtifacts) => void;
   knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
+  /** Fehlt er, gilt die Konfiguration (EMBEDDING_MODEL_ID); ohne beides sucht die Pipeline nur im Volltext. */
+  embedder?: import('@/lib/knowledge/embedder').IEmbedder;
 }
 
 function extractAuditorModifications(raw: Record<string, unknown>): {
@@ -109,6 +112,7 @@ export interface AuditorStageParams extends Pick<
   | 'onStageUsage'
   | 'onTrace'
   | 'knowledgeRepo'
+  | 'embedder'
 > {
   stage1Output: Record<string, unknown>;
   notes?: string;
@@ -324,6 +328,7 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
     onStageUsage,
     onTrace,
     knowledgeRepo: passedKnowledgeRepo,
+    embedder: passedEmbedder,
     initialUsage,
     extractionTextResult,
     validationSuccess,
@@ -371,8 +376,12 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
 
   const searchTerms = buildKnowledgeSearchText(caseType, notesSection, docNames);
 
+  const embedder = passedEmbedder ?? getEmbedder();
+  const queryEmbedding = embedder ? await embedder.embedQuery(searchTerms) : undefined;
+
   const knowledgeResults = await knowledgeRepo.search({
     queryText: searchTerms,
+    ...(queryEmbedding ? { queryEmbedding } : {}),
     organizationId,
     topK: 3,
   });

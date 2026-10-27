@@ -1,7 +1,7 @@
 import { MockEmbeddingModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
 import { EMBEDDING_DIMENSIONS } from '@/types/knowledge';
-import { createEmbedder } from './embedder';
+import { createEmbedder, getEmbedder } from './embedder';
 
 const vector = (seed: number, length = EMBEDDING_DIMENSIONS) => Array.from({ length }, () => seed);
 
@@ -48,5 +48,20 @@ describe('createEmbedder', () => {
       },
     });
     await expect(createEmbedder(model).embedQuery('x')).rejects.toThrow('Dienst nicht erreichbar');
+  });
+});
+
+describe('getEmbedder', () => {
+  it('liefert ohne Modell-ID keinen Einbetter (nur Volltext)', () => {
+    expect(getEmbedder({})).toBeUndefined();
+  });
+  it('wirft, wenn eine Modell-ID ohne Schlüssel gesetzt ist', () => {
+    expect(() => getEmbedder({ EMBEDDING_MODEL_ID: 'gemini-embedding-2' })).toThrow(
+      /GEMINI_API_KEY/
+    );
+  });
+  it('liefert mit Modell-ID und Schlüssel einen Einbetter', () => {
+    const embedder = getEmbedder({ EMBEDDING_MODEL_ID: 'm', GOOGLE_GENERATIVE_AI_API_KEY: 'k' });
+    expect(typeof embedder?.embedQuery).toBe('function');
   });
 });
