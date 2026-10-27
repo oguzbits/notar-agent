@@ -51,3 +51,6 @@ _TEMP_*.md
 # audit reports
 /reports/
 .reports/
+
+# Mutationstests
+/.stryker-tmp/

@@ -43,12 +43,22 @@ describe('summarizeRetrievalEval', () => {
       summarizeRetrievalEval([result(KIND.KENNUNG, 1, 1)]).coverageWithoutIdentifier
     ).toBeNull();
   });
+  it('zählt nur vollständig abgedeckte Fälle, nicht Fälle mit anderer Zahl', () => {
+    const summary = summarizeRetrievalEval([
+      result(KIND.KENNUNG, 2, 2),
+      result(KIND.KENNUNG, 1, 1),
+      result(KIND.KENNUNG, 3, 1),
+    ]);
+    expect(summary.fullCoverageRate).toBeCloseTo(2 / 3);
+  });
   it('wirft ohne Fälle mit einschlägiger Norm', () => {
-    expect(() => summarizeRetrievalEval([])).toThrow();
-    expect(() => summarizeRetrievalEval([result(KIND.OHNE_TREFFER, 0, 0)])).toThrow();
+    expect(() => summarizeRetrievalEval([])).toThrow(/mindestens einen Fall/);
+    expect(() => summarizeRetrievalEval([result(KIND.OHNE_TREFFER, 0, 0)])).toThrow(
+      /mindestens einen Fall/
+    );
   });
   it('wirft, wenn mehr Normen abgedeckt als einschlägig sind', () => {
-    expect(() => summarizeRetrievalEval([result(KIND.KENNUNG, 1, 2)])).toThrow();
+    expect(() => summarizeRetrievalEval([result(KIND.KENNUNG, 1, 2)])).toThrow(/mehr abgedeckt/);
   });
 });
 
