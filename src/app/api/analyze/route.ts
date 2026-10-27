@@ -87,6 +87,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
 
     if (isAsync) {
+      // Der Hintergrund-Pfad legt bewusst keine Workflow-Instanz an: der Worker hat kein
+      // Workflow-Repository und kein Client liest den Ablaufstand eines Jobs.
       const dossierRepo = getDossierRepository(authSupabase);
       const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
       const workerDeps = {
@@ -158,6 +160,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       // Workflow-Definition und Instanz in PostgreSQL synchronisieren
       const activeWorkflow = DEFAULT_WORKFLOWS_BY_CASE_TYPE[caseType];
       let workflowInstance = null;
+      let workflowError: string | undefined;
       if (persistenceResult.id) {
         try {
           const workflowRepo = getWorkflowRepository(authSupabase);
@@ -198,7 +201,8 @@ export async function POST(req: NextRequest): Promise<Response> {
 
           workflowInstance = existingInstance;
         } catch (workflowErr: unknown) {
-          logFailure('warn', 'workflow_instanzierung_fehlgeschlagen', workflowErr);
+          logFailure('error', 'workflow_instanzierung_fehlgeschlagen', workflowErr);
+          workflowError = 'Der Ablauf des Vorgangs konnte nicht gespeichert werden.';
         }
       }
 
@@ -207,6 +211,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         success: true,
         dossier,
         persistence: persistenceResult,
+        workflowError,
         workflow: {
           definitionId: activeWorkflow.id,
           title: activeWorkflow.title,

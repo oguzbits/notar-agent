@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { updateDossierFieldStatus } from '@/lib/dossier/state';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
@@ -34,6 +35,11 @@ vi.mock('@/lib/supabase/server-auth', async () => {
       .mockResolvedValue({ label: 'Test Notar', role: NOTARY_ROLES.NOTAR }),
   };
 });
+
+vi.mock('@/lib/ai/pipeline', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/ai/pipeline')>()),
+  runAnalysisPipeline: vi.fn(),
+}));
 
 const mockJobRepo = createMockJobRepository();
 const mockDossierRepo = createMockDossierRepository();
@@ -405,5 +411,43 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
       if (prevKey) process.env.GEMINI_API_KEY = prevKey;
       else delete process.env.GEMINI_API_KEY;
     }
+  });
+});
+
+describe('API Route: POST /api/analyze Live-Pfad (SSE) Ablaufverfolgung', () => {
+  async function runLive(): Promise<Record<string, unknown>> {
+    vi.mocked(runAnalysisPipeline).mockResolvedValueOnce(createTestImmobilienDossier());
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+      })
+    );
+    const events = (await res.text())
+      .split('\n\n')
+      .filter((chunk) => chunk.startsWith('data: '))
+      .map((chunk) => JSON.parse(chunk.slice(6)) as Record<string, unknown>);
+    const result = events.find((e) => e.type === 'result');
+    if (!result) throw new Error('Kein Ergebnis-Ereignis im Stream');
+    return result;
+  }
+
+  beforeEach(() => {
+    process.env.GEMINI_API_KEY = 'test-key';
+  });
+
+  it('meldet einen Fehler der Ablaufverfolgung im Ergebnis, ohne Fehlertext durchzureichen', async () => {
+    vi.mocked(mockWorkflowRepo.saveDefinition).mockRejectedValueOnce(
+      new Error('geheimer Datenbankfehler')
+    );
+    const result = await runLive();
+    expect(result.success).toBe(true);
+    expect(result.workflowError).toBe('Der Ablauf des Vorgangs konnte nicht gespeichert werden.');
+    expect(JSON.stringify(result)).not.toContain('geheimer');
+  });
+
+  it('meldet bei erfolgreicher Ablaufverfolgung keinen Fehler', async () => {
+    const result = await runLive();
+    expect(result.workflowError).toBeUndefined();
   });
 });
