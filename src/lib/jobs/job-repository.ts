@@ -306,6 +306,7 @@ export class SupabaseJobRepository implements IJobRepository {
       .delete()
       .in('id', deletable)
       .or(isPrunable)
+      .lt('updated_at', cutoffIso)
       .select('id');
     if (error) {
       throw new Error(`Supabase pruneCompletedJobs fehlgeschlagen: ${error.message}`);

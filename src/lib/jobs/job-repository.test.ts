@@ -245,9 +245,8 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
       const deleteSelect = vi
         .fn()
         .mockImplementation(() => Promise.resolve({ data: [], error: null }));
-      const deleteIn = vi
-        .fn()
-        .mockReturnValue({ or: vi.fn().mockReturnValue({ select: deleteSelect }) });
+      const deleteLt = vi.fn().mockReturnValue({ select: deleteSelect });
+      const deleteIn = vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ lt: deleteLt }) });
       const selectOr = vi.fn().mockReturnValue({
         lt: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit }) }),
       });
@@ -266,7 +265,7 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
           delete: vi.fn().mockReturnValue({ in: deleteIn }),
         }),
       };
-      return { supabase, limit, deleteIn, selectOr };
+      return { supabase, limit, deleteIn, deleteLt, selectOr };
     }
 
     it('löscht Jobs mit Speicherfehler nicht, verarbeitet die übrigen weiter', async () => {
@@ -339,6 +338,16 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
       const filter = String(selectOr.mock.calls[0]?.[0]);
       expect(filter).toContain(JOB_STATUS.FAILED);
       expect(filter).not.toContain('retry_count');
+    });
+
+    it('löscht nur Zeilen, die beim Löschen noch älter als die Aufbewahrungsfrist sind', async () => {
+      const { supabase, deleteLt } = setup(
+        [{ id: 'job', organization_id: 'org', files: [] }],
+        () => ({ data: [], error: null })
+      );
+      const { SupabaseJobRepository } = await import('./job-repository');
+      await new SupabaseJobRepository(supabase as never).pruneCompletedJobs();
+      expect(deleteLt).toHaveBeenCalledWith('updated_at', expect.any(String));
     });
 
     it('fragt höchstens JOB_PRUNE_BATCH Kandidaten ab', async () => {
