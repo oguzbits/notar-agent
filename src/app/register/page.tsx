@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prev) => ({
@@ -50,6 +51,10 @@ export default function RegisterPage() {
       }
 
       setIsSuccess(true);
+      if (data.emailConfirmationRequired) {
+        setNeedsEmailConfirmation(true);
+        return;
+      }
       setTimeout(() => {
         router.push('/');
         router.refresh();
@@ -84,12 +89,28 @@ export default function RegisterPage() {
                 <CheckCircle2 className="h-8 w-8" />
               </div>
               <h2 className="text-foreground text-2xl font-bold">
-                Kanzlei erfolgreich registriert!
+                {needsEmailConfirmation
+                  ? 'Bitte E-Mail bestätigen'
+                  : 'Kanzlei erfolgreich registriert!'}
               </h2>
               <p className="text-muted-foreground text-base">
-                Ihr Notariat wurde angelegt. Sie werden automatisch zum Arbeitsbereich
-                weitergeleitet...
+                {needsEmailConfirmation ? (
+                  <>
+                    Wir haben Ihnen eine E-Mail zur Bestätigung Ihrer Adresse gesendet. Nach der
+                    Bestätigung melden Sie sich an und legen Ihr Notariat im Arbeitsbereich an.
+                  </>
+                ) : (
+                  <>
+                    Ihr Notariat wurde angelegt. Sie werden automatisch zum Arbeitsbereich
+                    weitergeleitet...
+                  </>
+                )}
               </p>
+              {needsEmailConfirmation && (
+                <Button variant="primary" size="md" onClick={() => router.push('/login')}>
+                  Zur Anmeldung
+                </Button>
+              )}
             </div>
           ) : (
             <form className="space-y-6" onSubmit={handleSubmit}>

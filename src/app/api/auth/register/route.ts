@@ -48,6 +48,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const userId = authData.user.id;
 
+    // Bei aktiver E-Mail-Bestätigung gibt es noch keine Sitzung: Die Kanzlei wird beim ersten Login
+    // über den Onboarding-Weg (POST /api/organization) angelegt.
+    if (!authData.session) {
+      return NextResponse.json(
+        {
+          success: true,
+          emailConfirmationRequired: true,
+          user: { id: userId, email, fullName, title },
+        },
+        { status: 201 }
+      );
+    }
+
     // 2. Kanzlei und NOTAR-Mitgliedschaft atomar anlegen (kontrollierter Onboarding-Pfad)
     const { data: orgData, error: orgError } = await supabase.rpc('create_new_organization', {
       org_name: organizationName,

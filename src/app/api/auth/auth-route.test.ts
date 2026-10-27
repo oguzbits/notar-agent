@@ -377,7 +377,7 @@ describe('Auth API Routes', () => {
       const mockSupabase = {
         auth: {
           signUp: vi.fn().mockResolvedValue({
-            data: { user: mockUser },
+            data: { user: mockUser, session: { access_token: 'token' } },
             error: null,
           }),
         },
@@ -407,6 +407,39 @@ describe('Auth API Routes', () => {
         org_seat: 'Köln',
         org_chamber: 'Rheinische Notarkammer',
       });
+    });
+  });
+
+  describe('POST /api/auth/register ohne Sitzung (E-Mail-Bestätigung aktiv)', () => {
+    it('meldet Erfolg mit Bestätigungshinweis und ruft die Kanzlei-Anlage nicht auf', async () => {
+      const mockSupabase = {
+        auth: {
+          signUp: vi.fn().mockResolvedValue({
+            data: { user: { id: 'u124', email: 'neu@kanzlei.de' }, session: null },
+            error: null,
+          }),
+        },
+        rpc: vi.fn().mockRejectedValue(new Error('Anmeldung erforderlich')),
+      };
+      mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
+
+      const res = await registerRoute(
+        new NextRequest('http://localhost:3000/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: 'neu@kanzlei.de',
+            password: 'Password123!',
+            fullName: 'Dr. Neuer Notar',
+            organizationName: 'Notariat Neu',
+            officialSeat: 'Köln',
+            chamberDistrict: 'Rheinische Notarkammer',
+          }),
+        })
+      );
+
+      expect(res.status).toBe(201);
+      expect((await res.json()).emailConfirmationRequired).toBe(true);
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
     });
   });
 
