@@ -2,7 +2,6 @@
 
 import { FileText, Search, Plus, Trash2, ExternalLink, Loader2, RotateCw, Ban } from 'lucide-react';
 import React, { useState } from 'react';
-import { ConfirmDialog } from '@/components/ui';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
@@ -11,6 +10,7 @@ import { DeletionReason } from '@/types/deletion';
 import { DocumentListItem, CaseStatus, CASE_STATUS } from '@/types/document';
 import { DossierJob, JOB_STATUS } from '@/types/jobs';
 import { DeleteDossierDialog } from './DeleteDossierDialog';
+import { DeleteJobDialog } from './DeleteJobDialog';
 
 export interface DocumentTableProps {
   documents: DocumentListItem[];
@@ -69,7 +69,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   const [activeFilter, setActiveFilter] = useState<FilterStatus>(DOCUMENT_FILTERS.ALL);
   const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentListItem | null>(null);
   const [pendingDeleteJob, setPendingDeleteJob] = useState<DossierJob | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
 
@@ -113,20 +112,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       }).format(new Date(dateStr));
     } catch (_err) {
       return dateStr;
-    }
-  };
-
-  const handleConfirmDeleteJob = async () => {
-    if (!pendingDeleteJob || !onDeleteJob) return;
-    const jobToDelete = pendingDeleteJob;
-    setPendingDeleteJob(null);
-    setIsDeleting(true);
-    try {
-      await onDeleteJob(jobToDelete.id);
-    } catch (err) {
-      console.error('Fehler beim Löschen des Jobs:', err);
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -533,26 +518,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         />
       )}
 
-      {/* Bestätigungsdialog für das Verwerfen/Löschen fehlgeschlagener Hintergrund-Jobs */}
-      <ConfirmDialog
-        isOpen={Boolean(pendingDeleteJob)}
-        isLoading={isDeleting}
-        onClose={() => setPendingDeleteJob(null)}
-        onConfirm={handleConfirmDeleteJob}
-        title="Fehlgeschlagenen Vorgang verwerfen?"
-        description={
-          <span>
-            Möchten Sie den fehlgeschlagenen Vorgang{' '}
-            <strong className="text-foreground font-semibold">
-              {pendingDeleteJob?.payload.notes || 'diese Vorbereitung'}
-            </strong>{' '}
-            wirklich verwerfen und aus der Kanzleiübersicht entfernen?
-          </span>
-        }
-        confirmLabel="Vorgang verwerfen"
-        cancelLabel="Abbrechen"
-        variant="danger"
-      />
+      {pendingDeleteJob && (
+        <DeleteJobDialog
+          job={pendingDeleteJob}
+          onDeleteJob={onDeleteJob}
+          onClose={() => setPendingDeleteJob(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { DELETION_UI_TEXTS_DE } from '@/lib/dossier/constants';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { DocumentRecord, CASE_STATUS } from '@/types/document';
 import { CASE_TYPES, OVERALL_STATUS } from '@/types/dossier';
@@ -229,5 +230,68 @@ describe('DocumentTable Component', () => {
     });
 
     expect(handleDeleteJob).toHaveBeenCalledWith(failedJob.id);
+  });
+
+  describe('Verwerfen eines fehlgeschlagenen Vorgangs', () => {
+    const failedJob: DossierJob = {
+      ...mockJob,
+      id: 'job-failed',
+      status: JOB_STATUS.FAILED,
+      errorMessage: 'Verarbeitung unterbrochen.',
+    };
+
+    async function openDialog(onDeleteJob: () => Promise<boolean | void>) {
+      render(
+        <DocumentTable
+          documents={[]}
+          activeJobs={[failedJob]}
+          isLoading={false}
+          onSelectDocument={vi.fn()}
+          onCreateNew={vi.fn()}
+          onDeleteDocument={vi.fn()}
+          onRetryJob={vi.fn()}
+          onDeleteJob={onDeleteJob}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Fehlgeschlagenen Vorgang verwerfen' }));
+      });
+    }
+
+    it('lässt den Dialog während des Löschens offen', async () => {
+      let finish: (deleted: boolean) => void = () => undefined;
+      await openDialog(() => new Promise<boolean>((resolve) => (finish = resolve)));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Vorgang verwerfen'));
+      });
+
+      expect(screen.getByText('Fehlgeschlagenen Vorgang verwerfen?')).toBeDefined();
+      const confirm = screen.getByRole('button', {
+        name: /Vorgang verwerfen/,
+      }) as HTMLButtonElement;
+      expect(confirm.disabled).toBe(true);
+
+      await act(async () => finish(true));
+      expect(screen.queryByText('Fehlgeschlagenen Vorgang verwerfen?')).toBeNull();
+    });
+
+    it('bleibt bei Fehler offen, zeigt eine Meldung und erlaubt einen neuen Versuch', async () => {
+      const onDeleteJob = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      await openDialog(onDeleteJob);
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Vorgang verwerfen'));
+      });
+
+      expect(screen.getByRole('alert').textContent).toBe(DELETION_UI_TEXTS_DE.ERROR);
+      expect(screen.getByText('Fehlgeschlagenen Vorgang verwerfen?')).toBeDefined();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText(DELETION_UI_TEXTS_DE.RETRY));
+      });
+      expect(onDeleteJob).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText('Fehlgeschlagenen Vorgang verwerfen?')).toBeNull();
+    });
   });
 });
