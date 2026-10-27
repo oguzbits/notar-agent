@@ -7,9 +7,16 @@ runAdapter((payload, { buildStopSteps, selectChangedSources }) => {
   if (payload.terminationReason && payload.terminationReason !== 'model_stop') {
     return { decision: 'allow' };
   }
-  const porcelain = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf-8' });
+  const porcelain = execFileSync('git', ['status', '--porcelain', '-uall'], {
+    encoding: 'utf-8',
+    cwd: require('path').join(__dirname, '..', '..'),
+  });
   for (const [cmd, args] of buildStopSteps(selectChangedSources(porcelain))) {
-    const result = spawnSync(cmd, args, { encoding: 'utf-8', timeout: 90000 });
+    const result = spawnSync(cmd, args, {
+      encoding: 'utf-8',
+      timeout: 90000,
+      cwd: require('path').join(__dirname, '..', '..'),
+    });
     if (result.status !== 0) {
       const out = `${result.stdout ?? ''}${result.stderr ?? ''}`.slice(-1500);
       return {

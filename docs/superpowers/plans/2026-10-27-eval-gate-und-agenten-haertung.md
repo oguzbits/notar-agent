@@ -122,11 +122,12 @@ Zeitbox 20 Minuten: Welche Fakten in `docs/` sind aus dem Code ableitbar (API-Ro
 
 ## Ledger
 
-| Aufgabe | Dauer | Subagent-Tokens | Ergebnis |
-| ------- | ----- | --------------- | -------- |
-| 1       |       |                 |          |
-| 2       |       |                 |          |
-| 3       |       |                 |          |
-| 4       |       |                 |          |
-| 5       |       |                 |          |
-| 6       |       |                 |          |
+| Aufgabe | Dauer                           | Subagent-Tokens         | Ergebnis                                                 |
+| ------- | ------------------------------- | ----------------------- | -------------------------------------------------------- |
+| 1       | nicht gemessen                  | 0 (inline)              | Stop-Hook und Adapter testbar                            |
+| 2       | nicht gemessen                  | 0 (inline)              | 48 Fälle, Baseline 0,89 gegen echte RPC                  |
+| 3       | nicht gemessen                  | 0 (inline)              | Vergleichsskript Volltext, Vektor, Hybrid                |
+| 4       | nicht gemessen                  | 0 (inline)              | Stryker-Pilot, Schwelle 70                               |
+| 5       | rund 5 Min                      | 0 (inline)              | Kein Generator, Befund im Backlog                        |
+| 6       | rund 10 Min                     | 102.387 (Gesamtprüfung) | Doku nachgezogen, Prüfung: 4 mittlere Befunde, 3 behoben |
+| Summe   | Dauer nicht durchgängig erfasst | 102.387                 |                                                          |

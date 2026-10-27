@@ -7,7 +7,7 @@ import { readInput } from './hook-io.mjs';
 const input = readInput();
 if (input.stop_hook_active) process.exit(0); // Endlosschleife vermeiden
 
-const porcelain = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' });
+const porcelain = execFileSync('git', ['status', '--porcelain', '-uall'], { encoding: 'utf8' });
 
 for (const [cmd, args] of buildStopSteps(selectChangedSources(porcelain))) {
   const result = spawnSync(cmd, args, { encoding: 'utf8', timeout: 90_000 });
