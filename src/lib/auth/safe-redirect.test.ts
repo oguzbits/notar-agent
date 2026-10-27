@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { safeRedirectPath } from './safe-redirect';
 
 describe('safeRedirectPath', () => {
+  it('gibt den normalisierten Pfad zurück', () => {
+    expect(safeRedirectPath('/a/../vorgang?id=1#feld')).toBe('/vorgang?id=1#feld');
+  });
+
   it.each([
     '@evil.example',
     '//evil.example',
@@ -9,6 +13,9 @@ describe('safeRedirectPath', () => {
     'https://evil.example',
     '/\t/evil.example',
     'javascript:alert(1)',
+    '/.//evil.example',
+    '/..//evil.example',
+    '/x/..//evil.example',
     '',
     null,
     undefined,

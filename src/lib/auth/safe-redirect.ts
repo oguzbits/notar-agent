@@ -8,7 +8,9 @@ export function safeRedirectPath(target: string | null | undefined): string {
   if (!target || !target.startsWith('/') || target.startsWith('//') || target.startsWith('/\\')) {
     return '/';
   }
-  // Der URL-Parser entfernt Tab/Zeilenumbruch und liest `\` als `/`: so wie der Browser auflösen
+  // Der URL-Parser entfernt Tab/Zeilenumbruch, liest `\` als `/` und löst `.`/`..` auf: so wie der Browser
   const resolved = new URL(target, PROBE_ORIGIN);
-  return resolved.origin === PROBE_ORIGIN ? target : '/';
+  // Ein normalisierter Pfad mit `//` am Anfang wäre beim nächsten Auflösen wieder ein fremder Host
+  if (resolved.origin !== PROBE_ORIGIN || resolved.pathname.startsWith('//')) return '/';
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }
