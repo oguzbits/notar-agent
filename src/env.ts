@@ -20,6 +20,8 @@ export const ServerEnvSchema = z.object({
   AI_MODEL: optionalTrimmedString.default('claude-haiku-5-5'),
   GEMINI_PARSE_MODEL: optionalTrimmedString.default('gemini-3.1-flash-lite'),
   GEMINI_PARSE_FALLBACK_MODEL: optionalTrimmedString.default('gemini-3.5-flash-lite'),
+  // Einbettungsmodell für die Vektorsuche; ohne Wert sucht die Pipeline nur im Volltext
+  EMBEDDING_MODEL_ID: optionalTrimmedString,
   AI_PROVIDER: optionalTrimmedString,
   MOCK_AI: z.preprocess(
     (val) => val === 'true' || val === true || val === '1',

@@ -39,6 +39,11 @@ export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[keyof typeof KNOWL
 /**
  * Kanzlei-Wissensdokument / DNotI-Gutachten / Präzedenzfall.
  */
+/** Dimension der Spalte knowledge_documents.embedding (vector(1536)). */
+export const EMBEDDING_DIMENSIONS = 1536;
+
+export const EmbeddingVectorSchema = z.array(z.number().finite()).length(EMBEDDING_DIMENSIONS);
+
 export const KnowledgeDocumentSchema = z.object({
   id: DbUuidSchema,
   organizationId: DbUuidSchema.nullable().describe(

@@ -12,6 +12,13 @@ describe('env validation', () => {
     process.env = { ...originalEnv };
   });
 
+  it('trimmt EMBEDDING_MODEL_ID und behandelt Leerwerte als nicht gesetzt', () => {
+    expect(validateEnv({ EMBEDDING_MODEL_ID: ' gemini-embedding-2 ' }).EMBEDDING_MODEL_ID).toBe(
+      'gemini-embedding-2'
+    );
+    expect(validateEnv({ EMBEDDING_MODEL_ID: '  ' }).EMBEDDING_MODEL_ID).toBeUndefined();
+  });
+
   it('validates default environment gracefully when variables are absent', () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.GEMINI_API_KEY;
@@ -26,6 +33,7 @@ describe('env validation', () => {
     expect(env.GEMINI_PARSE_MODEL).toBe('gemini-3.1-flash-lite');
     expect(env.GEMINI_PARSE_FALLBACK_MODEL).toBe('gemini-3.5-flash-lite');
     expect(env.MOCK_AI).toBe(false);
+    expect(env.EMBEDDING_MODEL_ID).toBeUndefined();
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     expect(env.GEMINI_API_KEY).toBeUndefined();
     expect(env.NEXT_SUPABASE_URL).toBeUndefined();
