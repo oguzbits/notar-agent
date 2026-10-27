@@ -40,7 +40,11 @@ describe('SupabaseDossierRepository (Fail-Fast SSOT)', () => {
     const mockSupabase = {
       from: vi.fn().mockReturnValue({
         update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: { message: 'Row lock failed' } }),
+          eq: vi.fn().mockReturnValue({
+            select: vi
+              .fn()
+              .mockResolvedValue({ data: null, error: { message: 'Row lock failed' } }),
+          }),
         }),
       }),
     };
@@ -50,6 +54,25 @@ describe('SupabaseDossierRepository (Fail-Fast SSOT)', () => {
 
     await expect(repo.update('doc-1', createMockDossier('Test'))).rejects.toThrow(
       'Supabase Dossier update fehlgeschlagen: Row lock failed'
+    );
+  });
+
+  it('wirft DossierNotFoundError, wenn der Update keine Zeile trifft', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    };
+
+    const { SupabaseDossierRepository, DossierNotFoundError } = await import('./repository');
+    const repo = new SupabaseDossierRepository(mockSupabase as never);
+
+    await expect(repo.update('doc-x', createMockDossier('Test'))).rejects.toBeInstanceOf(
+      DossierNotFoundError
     );
   });
 

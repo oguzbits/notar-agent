@@ -162,11 +162,12 @@ export class SupabaseDossierRepository implements IDossierRepository {
       query = query.eq('organization_id', organizationId);
     }
 
-    const { error } = await query;
+    const { data, error } = await query.select('id');
 
     if (error) {
       throw new Error(`Supabase Dossier update fehlgeschlagen: ${error.message}`);
     }
+    if (!data || data.length === 0) throw new DossierNotFoundError(id);
 
     return { success: true };
   }

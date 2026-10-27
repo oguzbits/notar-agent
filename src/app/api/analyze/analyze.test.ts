@@ -165,6 +165,20 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
     expect(res.status).toBe(400);
   });
 
+  it('PUT auf einen nicht getroffenen Vorgang liefert 404 statt Erfolg', async () => {
+    const { DossierNotFoundError } = await import('@/lib/supabase/repository');
+    vi.spyOn(mockDossierRepo, 'update').mockRejectedValueOnce(new DossierNotFoundError('doc-weg'));
+
+    const res = await PUT(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'PUT',
+        body: JSON.stringify({ documentId: 'doc-weg', dossier: createTestImmobilienDossier() }),
+      })
+    );
+
+    expect(res.status).toBe(404);
+  });
+
   it('PUT mit auditOverride verlangt OVERRIDE_FIELD_STATUS: ADMIN darf nicht, nichts wird gespeichert', async () => {
     vi.mocked(requirePermission).mockImplementation(fakeRequirePermission(NOTARY_ROLES.ADMIN));
     const updateSpy = vi.spyOn(mockDossierRepo, 'update');

@@ -9,6 +9,7 @@ import { carryOverReviews, checkStatusOverride } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
+import { DossierNotFoundError } from '@/lib/supabase/repository';
 import {
   getAuditRepository,
   getDossierRepository,
@@ -314,6 +315,9 @@ export async function PUT(req: NextRequest): Promise<Response> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
+    if (error instanceof DossierNotFoundError) {
+      return NextResponse.json({ error: 'Vorgang nicht gefunden.' }, { status: 404 });
+    }
     logFailure('error', 'analyse_update_fehlgeschlagen', error);
     const message = error instanceof Error ? error.message : 'Fehler beim Aktualisieren.';
     return NextResponse.json({ error: message }, { status: 500 });
