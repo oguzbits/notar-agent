@@ -410,7 +410,9 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
   it('sollte Status 429 liefern, wenn das Stundenkontingent der Kanzlei erreicht ist', async () => {
     const prevKey = process.env.GEMINI_API_KEY;
     process.env.GEMINI_API_KEY = 'test-key';
-    vi.mocked(mockJobRepo.countJobsSince).mockResolvedValueOnce(JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW);
+    vi.mocked(mockJobRepo.countAnalysisRunsSince).mockResolvedValueOnce(
+      JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW
+    );
     try {
       const req = new NextRequest('http://localhost:3000/api/analyze?async=true', {
         method: 'POST',
@@ -428,7 +430,9 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
   it('Kontingent gilt auch für den Live-Pfad (SSE): 429 ohne Analyse', async () => {
     const prevKey = process.env.GEMINI_API_KEY;
     process.env.GEMINI_API_KEY = 'test-key';
-    vi.mocked(mockJobRepo.countJobsSince).mockResolvedValueOnce(JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW);
+    vi.mocked(mockJobRepo.countAnalysisRunsSince).mockResolvedValueOnce(
+      JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW
+    );
     try {
       const res = await POST(
         new NextRequest('http://localhost:3000/api/analyze', {

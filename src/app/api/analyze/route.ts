@@ -81,8 +81,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     // Kontingent gilt für beide Wege (Hintergrund-Job und Live-Stream)
     const jobRepo = getJobRepository(authSupabase);
     const windowStart = new Date(Date.now() - JOB_RATE_LIMIT.WINDOW_MS).toISOString();
-    const recentJobs = await jobRepo.countJobsSince(resolvedOrgId, windowStart);
-    if (recentJobs >= JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW) {
+    const recentRuns = await jobRepo.countAnalysisRunsSince(resolvedOrgId, windowStart);
+    if (recentRuns >= JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW) {
       return NextResponse.json(
         {
           error:

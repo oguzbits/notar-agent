@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DB_TABLES } from '@/types/database';
 import { LLM_USAGE_STAGES } from '@/types/llm-usage';
-import { SupabaseLlmUsageRepository } from './usage-repository';
+import {
+  createUsageRecorder,
+  ILlmUsageRepository,
+  SupabaseLlmUsageRepository,
+} from './usage-repository';
 
 const entry = {
   organizationId: '11111111-1111-4111-8111-111111111111',
@@ -43,5 +47,28 @@ describe('SupabaseLlmUsageRepository', () => {
       new SupabaseLlmUsageRepository({ from } as never).record({ ...entry, inputTokens: -1 })
     ).rejects.toThrow();
     expect(from).not.toHaveBeenCalled();
+  });
+});
+
+describe('createUsageRecorder', () => {
+  const usage = { stage: LLM_USAGE_STAGES.EXTRACTION, model: 'm', inputTokens: 1, outputTokens: 1 };
+
+  it('ohne Job-ID trägt jeder Live-Lauf eine eigene Lauf-ID, damit er im Kontingent zählt', () => {
+    const record = vi.fn<ILlmUsageRepository['record']>().mockResolvedValue();
+    const firstRun = createUsageRecorder({ record }, entry.organizationId);
+    firstRun(usage);
+    firstRun(usage);
+    createUsageRecorder({ record }, entry.organizationId)(usage);
+
+    const ids = record.mock.calls.map(([e]) => e.jobId);
+    expect(ids[0]).toMatch(/^live:/);
+    expect(ids[1]).toBe(ids[0]);
+    expect(ids[2]).not.toBe(ids[0]);
+  });
+
+  it('übernimmt die Job-ID eines Hintergrund-Jobs', () => {
+    const record = vi.fn<ILlmUsageRepository['record']>().mockResolvedValue();
+    createUsageRecorder({ record }, entry.organizationId, 'job-1')(usage);
+    expect(record.mock.calls[0]?.[0].jobId).toBe('job-1');
   });
 });
