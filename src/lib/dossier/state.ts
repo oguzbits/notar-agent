@@ -1,3 +1,5 @@
+import { STATUS_OVERRIDE_TEXTS_DE } from '@/lib/dossier/constants';
+import { AuditOverrideDetails } from '@/types/audit';
 import {
   Dossier,
   GenericFieldDossier,
@@ -42,14 +44,62 @@ export function updateDossierFieldStatus(
   return cloned;
 }
 
-/**
- * Erkennt, ob sich der Status mindestens eines Feldes gegenüber dem gespeicherten Stand geändert hat.
- */
-export function hasFieldStatusChange(previous: Dossier, next: Dossier): boolean {
+interface FieldStatusChange {
+  fieldKey: string;
+  previousStatus?: FieldStatus;
+  newStatus?: FieldStatus;
+}
+
+/** Alle Felder, deren Status sich unterscheidet; hinzugefügte und entfernte Felder zählen mit. */
+function changedFieldStatuses(previous: Dossier, next: Dossier): FieldStatusChange[] {
   const before = getDossierFieldsRecord(previous);
-  return Object.entries(getDossierFieldsRecord(next)).some(
-    ([key, field]) => field?.status !== before[key]?.status
-  );
+  const after = getDossierFieldsRecord(next);
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  return [...keys]
+    .map((fieldKey) => ({
+      fieldKey,
+      previousStatus: before[fieldKey]?.status,
+      newStatus: after[fieldKey]?.status,
+    }))
+    .filter((c) => c.previousStatus !== c.newStatus);
+}
+
+export interface StatusOverrideCheck {
+  /** Statuswechsel oder Begründung liegt vor: verlangt das Recht OVERRIDE_FIELD_STATUS. */
+  requiresOverride: boolean;
+  error?: string;
+  /** Die zu auditierende Begründung; der bisherige Status stammt aus dem gespeicherten Stand. */
+  override?: AuditOverrideDetails;
+}
+
+/**
+ * Bindet die Begründung an den echten Wechsel: Erlaubt ist genau ein geändertes Feld, und zwar das
+ * begründete, auf den angegebenen Status. Ohne gespeicherten Stand gibt es keinen Wechsel.
+ */
+export function checkStatusOverride(
+  stored: Dossier | undefined,
+  next: Dossier,
+  claimed: AuditOverrideDetails | undefined
+): StatusOverrideCheck {
+  const changes = stored ? changedFieldStatuses(stored, next) : [];
+  if (!claimed) {
+    return changes.length === 0
+      ? { requiresOverride: false }
+      : { requiresOverride: true, error: STATUS_OVERRIDE_TEXTS_DE.REASON_REQUIRED };
+  }
+  const [change] = changes;
+  if (
+    changes.length !== 1 ||
+    change?.fieldKey !== claimed.fieldKey ||
+    change.newStatus !== claimed.newStatus ||
+    !change.previousStatus
+  ) {
+    return { requiresOverride: true, error: STATUS_OVERRIDE_TEXTS_DE.MISMATCH };
+  }
+  return {
+    requiresOverride: true,
+    override: { ...claimed, previousStatus: change.previousStatus },
+  };
 }
 
 /**

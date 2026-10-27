@@ -5,7 +5,7 @@ import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { createUsageRecorder } from '@/lib/ai/usage-repository';
 import { requirePermission } from '@/lib/auth/require-permission';
-import { carryOverReviews, hasFieldStatusChange } from '@/lib/dossier/state';
+import { carryOverReviews, checkStatusOverride } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
@@ -284,14 +284,11 @@ export async function PUT(req: NextRequest): Promise<Response> {
     const repo = getDossierRepository(authSupabase);
     // Ein Statuswechsel am Feld gilt als Override, auch wenn der Client `auditOverride` weglässt.
     const stored = await repo.findById(documentId, organizationId);
-    const statusChanged = stored !== null && hasFieldStatusChange(stored.content, dossier);
-    if (auditOverride || statusChanged) {
+    const check = checkStatusOverride(stored?.content, dossier, auditOverride);
+    if (check.requiresOverride) {
       await requirePermission(authSupabase, PERMISSION_ACTIONS.OVERRIDE_FIELD_STATUS, guardOptions);
     }
-    if (statusChanged && !auditOverride) {
-      const error = 'Ein Statuswechsel am Feld braucht eine Begründung für die Akte.';
-      return NextResponse.json({ error }, { status: 400 });
-    }
+    if (check.error) return NextResponse.json({ error: check.error }, { status: 400 });
     const updateRes = await repo.update(
       documentId,
       carryOverReviews(stored?.content, dossier),
@@ -303,11 +300,11 @@ export async function PUT(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error }, { status: 500 });
     }
 
-    if (auditOverride) {
+    if (check.override) {
       await appendOverrideAudit(authSupabase, {
         documentId,
         organizationId,
-        override: auditOverride,
+        override: check.override,
         dossier,
         sessionActor,
       });

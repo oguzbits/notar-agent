@@ -95,6 +95,12 @@ export const PRUEFPLAN_UI_TEXTS_DE = {
   START: 'Prüfung starten',
 } as const;
 
+export const STATUS_OVERRIDE_TEXTS_DE = {
+  REASON_REQUIRED: 'Ein Statuswechsel am Feld braucht eine Begründung für die Akte.',
+  MISMATCH:
+    'Die Begründung passt nicht zur Änderung: Pro Speichern darf sich genau das begründete Feld auf den angegebenen Status ändern.',
+} as const;
+
 export const DELETION_UI_TEXTS_DE = {
   FORMER_USER: 'Gelöschter Nutzer',
   DIALOG_TITLE: 'Vorgang endgültig löschen',

@@ -4,6 +4,7 @@ import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { updateDossierFieldStatus } from '@/lib/dossier/state';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import {
+  createMockAuditRepository,
   createMockJobRepository,
   createMockDossierRepository,
   createMockWorkflowRepository,
@@ -37,6 +38,7 @@ vi.mock('@/lib/supabase/server-auth', async () => {
 const mockJobRepo = createMockJobRepository();
 const mockDossierRepo = createMockDossierRepository();
 const mockWorkflowRepo = createMockWorkflowRepository();
+const mockAuditRepo = createMockAuditRepository();
 
 vi.mock('@/lib/supabase/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/supabase/server')>();
@@ -45,6 +47,7 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
     getJobRepository: () => mockJobRepo,
     getDossierRepository: () => mockDossierRepo,
     getWorkflowRepository: () => mockWorkflowRepo,
+    getAuditRepository: () => mockAuditRepo,
     getServerSupabase: vi.fn(),
   };
 });
@@ -232,6 +235,69 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain('Begründung');
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  describe('Begründung ist an den echten Wechsel gebunden', () => {
+    const orgId = 'a0000000-0000-4000-8000-000000000001';
+    const before = createTestImmobilienDossier({
+      fieldStatusMap: { verkaeufer: FIELD_STATUS.NEEDS_REVIEW, kaeufer: FIELD_STATUS.MISSING },
+    });
+    const claim = {
+      fieldKey: 'verkaeufer',
+      previousStatus: FIELD_STATUS.MISSING,
+      newStatus: FIELD_STATUS.VERIFIED,
+      reason: 'Original lag vor',
+    };
+    const put = (documentId: string, dossier: unknown, auditOverride = claim) =>
+      PUT(
+        new NextRequest('http://localhost:3000/api/analyze', {
+          method: 'PUT',
+          body: JSON.stringify({ documentId, dossier, auditOverride }),
+        })
+      );
+
+    it('Begründung für Feld A, zusätzlich Feld B geändert: 400, nichts gespeichert', async () => {
+      await mockDossierRepo.update('doc-a-und-b', before, orgId);
+      const updateSpy = vi.spyOn(mockDossierRepo, 'update');
+      updateSpy.mockClear();
+      const both = updateDossierFieldStatus(
+        updateDossierFieldStatus(before, 'verkaeufer', FIELD_STATUS.VERIFIED),
+        'kaeufer',
+        FIELD_STATUS.VERIFIED
+      );
+
+      const res = await put('doc-a-und-b', both);
+
+      expect(res.status).toBe(400);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    it('Begründung mit falschem Zielstatus: 400, nichts gespeichert', async () => {
+      await mockDossierRepo.update('doc-falscher-status', before, orgId);
+      const updateSpy = vi.spyOn(mockDossierRepo, 'update');
+      updateSpy.mockClear();
+      const changed = updateDossierFieldStatus(before, 'verkaeufer', FIELD_STATUS.OUTDATED);
+
+      const res = await put('doc-falscher-status', changed);
+
+      expect(res.status).toBe(400);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    it('passende Begründung: Audit mit bisherigem Status aus dem gespeicherten Stand', async () => {
+      await mockDossierRepo.update('doc-passend', before, orgId);
+      const changed = updateDossierFieldStatus(before, 'verkaeufer', FIELD_STATUS.VERIFIED);
+
+      const res = await put('doc-passend', changed);
+
+      expect(res.status).toBe(200);
+      const [entry] = await mockAuditRepo.getHistory('doc-passend');
+      expect(entry?.details.override).toMatchObject({
+        fieldKey: 'verkaeufer',
+        previousStatus: FIELD_STATUS.NEEDS_REVIEW,
+        newStatus: FIELD_STATUS.VERIFIED,
+      });
+    });
   });
 
   it('PUT ohne auditOverride verlangt UPLOAD_DOCUMENTS', async () => {

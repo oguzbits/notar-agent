@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { STATUS_OVERRIDE_TEXTS_DE } from '@/lib/dossier/constants';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import { Dossier, FIELD_STATUS, OVERALL_STATUS, isImmobilienDossier } from '@/types/dossier';
 import {
   carryOverReviews,
   confirmField,
+  checkStatusOverride,
   getDossierFieldsRecord,
-  hasFieldStatusChange,
   updateDossierFieldStatus,
 } from './state';
 
@@ -65,7 +66,10 @@ describe('Dossier State & Mutations (state.ts)', () => {
     expect(ready.overallStatus).toBe(OVERALL_STATUS.READY);
   });
 
-  describe('hasFieldStatusChange', () => {
+  describe('Statuswechsel erkennen (checkStatusOverride ohne Begründung)', () => {
+    const hasFieldStatusChange = (a: Dossier, b: Dossier) =>
+      checkStatusOverride(a, b, undefined).requiresOverride;
+
     it('erkennt die Änderung eines Feldstatus', () => {
       const before = createTestImmobilienDossier({
         fieldStatusMap: { verkaeufer: FIELD_STATUS.NEEDS_REVIEW },
@@ -81,6 +85,68 @@ describe('Dossier State & Mutations (state.ts)', () => {
       const after = updateDossierFieldStatus(before, 'verkaeufer', status, 'Nur eine Notiz');
 
       expect(hasFieldStatusChange(before, after)).toBe(false);
+    });
+
+    it('erkennt ein entferntes Feld als Statuswechsel', () => {
+      const before = createTestImmobilienDossier();
+      const after = structuredClone(before);
+      delete (after.fields as Record<string, unknown>).verkaeufer;
+
+      expect(hasFieldStatusChange(before, after)).toBe(true);
+    });
+  });
+
+  describe('checkStatusOverride', () => {
+    const stored = createTestImmobilienDossier({
+      fieldStatusMap: { verkaeufer: FIELD_STATUS.NEEDS_REVIEW, kaeufer: FIELD_STATUS.MISSING },
+    });
+    const claim = {
+      fieldKey: 'verkaeufer',
+      previousStatus: FIELD_STATUS.VERIFIED,
+      newStatus: FIELD_STATUS.VERIFIED,
+      reason: 'Original lag vor',
+    };
+    const changeVerkaeufer = updateDossierFieldStatus(stored, 'verkaeufer', FIELD_STATUS.VERIFIED);
+
+    it('ohne Statuswechsel und ohne Begründung: kein Override nötig', () => {
+      expect(checkStatusOverride(stored, structuredClone(stored), undefined)).toEqual({
+        requiresOverride: false,
+      });
+    });
+
+    it('Statuswechsel ohne Begründung wird abgelehnt', () => {
+      expect(checkStatusOverride(stored, changeVerkaeufer, undefined).error).toBe(
+        STATUS_OVERRIDE_TEXTS_DE.REASON_REQUIRED
+      );
+    });
+
+    it('Begründung für Feld A, aber zusätzlich Feld B geändert: abgelehnt', () => {
+      const both = updateDossierFieldStatus(changeVerkaeufer, 'kaeufer', FIELD_STATUS.VERIFIED);
+
+      expect(checkStatusOverride(stored, both, claim).error).toBe(
+        STATUS_OVERRIDE_TEXTS_DE.MISMATCH
+      );
+    });
+
+    it('Begründung mit anderem Zielstatus als der echte Wechsel: abgelehnt', () => {
+      const claimOutdated = { ...claim, newStatus: FIELD_STATUS.OUTDATED };
+
+      expect(checkStatusOverride(stored, changeVerkaeufer, claimOutdated).error).toBe(
+        STATUS_OVERRIDE_TEXTS_DE.MISMATCH
+      );
+    });
+
+    it('Begründung ohne echten Wechsel: abgelehnt', () => {
+      expect(checkStatusOverride(stored, structuredClone(stored), claim).error).toBe(
+        STATUS_OVERRIDE_TEXTS_DE.MISMATCH
+      );
+    });
+
+    it('passende Begründung: bisheriger Status kommt aus dem gespeicherten Stand', () => {
+      expect(checkStatusOverride(stored, changeVerkaeufer, claim)).toEqual({
+        requiresOverride: true,
+        override: { ...claim, previousStatus: FIELD_STATUS.NEEDS_REVIEW },
+      });
     });
   });
 });
