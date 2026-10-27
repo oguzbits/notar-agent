@@ -100,7 +100,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Start Supabase Local Containers (Docker)
-        run: supabase start
+        run: supabase start -x studio,edge-runtime,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,realtime
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -169,7 +169,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Start Supabase Local Containers (Docker)
-        run: supabase start
+        run: supabase start -x studio,edge-runtime,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,realtime
 
       - name: Verify Clean Migration Run & Reset
         run: supabase db reset
