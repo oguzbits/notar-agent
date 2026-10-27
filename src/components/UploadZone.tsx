@@ -225,7 +225,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                       </p>
                     </div>
                   </div>
-                  {!isAnalyzing && (
+                  {!isBusy && (
                     <button
                       type="button"
                       onClick={(e) => {

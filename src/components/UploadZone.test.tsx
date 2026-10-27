@@ -92,6 +92,17 @@ describe('UploadZone Upload', () => {
     expect(onFilesReady).toHaveBeenCalledWith([payload('a.pdf'), payload('b.pdf')]);
   });
 
+  it('sperrt das Entfernen während des Uploads, damit keine Datei zurückkehrt', async () => {
+    mockUpload.mockImplementation(() => new Promise(() => undefined));
+    const { input } = renderControlled([payload('alt.pdf')]);
+    expect(screen.getByRole('button', { name: 'Datei alt.pdf entfernen' })).toBeTruthy();
+
+    fireEvent.change(input, { target: { files: [pdf('neu.pdf')] } });
+
+    await screen.findByRole('status');
+    expect(screen.queryByRole('button', { name: 'Datei alt.pdf entfernen' })).toBeNull();
+  });
+
   it('lädt beim Hinzufügen nur die neuen Dateien hoch und behält die vorhandenen', async () => {
     mockUpload.mockResolvedValue([payload('neu.pdf')]);
     const { input, onFilesReady } = renderControlled([payload('alt.pdf')]);
