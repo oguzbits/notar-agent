@@ -485,10 +485,6 @@ export interface Database {
         Args: { p_document_id: string };
         Returns: Json;
       };
-      count_analysis_runs_since: {
-        Args: { p_organization_id: string; p_since: string };
-        Returns: number;
-      };
       list_retention_expired_dossiers: {
         Args: { p_limit: number };
         Returns: { id: string; organization_id: string }[];

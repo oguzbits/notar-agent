@@ -40,8 +40,7 @@ export interface IJobRepository {
     guard?: JobTransitionGuard
   ): Promise<DossierJob | null>;
   listJobs(organizationId?: string): Promise<DossierJob[]>;
-  /** Analyseläufe (Hintergrund-Jobs und Live-Läufe) seit sinceIso; gezählt in PostgreSQL. */
-  countAnalysisRunsSince(organizationId: string, sinceIso: string): Promise<number>;
+  countJobsSince(organizationId: string, sinceIso: string): Promise<number>;
   deleteJob(id: string, organizationId?: string): Promise<boolean>;
   pruneCompletedJobs(maxAgeMs?: number): Promise<number>;
   /** Setzt PENDING/PROCESSING-Jobs ohne Lebenszeichen (`updated_at`) auf FAILED; liefert die Anzahl. */
@@ -183,15 +182,16 @@ export class SupabaseJobRepository implements IJobRepository {
     return data.map((row) => this.mapRowToJob(row, { lightweight: true }));
   }
 
-  async countAnalysisRunsSince(organizationId: string, sinceIso: string): Promise<number> {
-    const { data, error } = await this.supabase.rpc('count_analysis_runs_since', {
-      p_organization_id: organizationId,
-      p_since: sinceIso,
-    });
+  async countJobsSince(organizationId: string, sinceIso: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from(DB_TABLES.DOSSIER_JOBS)
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .gte('created_at', sinceIso);
     if (error) {
-      throw new Error(`Supabase countAnalysisRunsSince fehlgeschlagen: ${error.message}`);
+      throw new Error(`Supabase countJobsSince fehlgeschlagen: ${error.message}`);
     }
-    return data ?? 0;
+    return count ?? 0;
   }
 
   private mapRowToJob(

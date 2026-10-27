@@ -24,14 +24,11 @@ export class SupabaseLlmUsageRepository implements ILlmUsageRepository {
   }
 }
 
-/**
- * Erfassung darf eine Analyse nie scheitern lassen: Fehler werden nur protokolliert.
- * Ohne Job (Live-Lauf) erhält der Lauf eine eigene ID, über die ihn das Stundenkontingent zählt.
- */
+/** Erfassung darf eine Analyse nie scheitern lassen: Fehler werden nur protokolliert. */
 export function createUsageRecorder(
   repo: ILlmUsageRepository,
   organizationId: string,
-  jobId = `live:${crypto.randomUUID()}`
+  jobId?: string
 ): StageUsageHandler {
   return (usage) => {
     repo.record({ organizationId, jobId, ...usage }).catch((err: unknown) => {

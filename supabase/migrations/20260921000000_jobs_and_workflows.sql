@@ -443,20 +443,3 @@ SELECT u.*,
        (u.input_tokens * p.input_usd_per_mtok + u.output_tokens * p.output_usd_per_mtok) / 1000000 AS cost_usd
 FROM llm_usage u
 LEFT JOIN model_prices p ON p.model = u.model;
-
--- Stundenkontingent: Analyseläufe einer Kanzlei seit p_since. Hintergrund-Jobs zählen über dossier_jobs,
--- Live-Läufe über ihre Lauf-ID in llm_usage.job_id (`live:<uuid>`); UNION zählt jeden Lauf genau einmal,
--- auch wenn ein Job eigene Verbrauchszeilen hat. SECURITY INVOKER: RLS bleibt wirksam.
--- shortcut: ein Live-Lauf zählt erst ab seiner ersten Verbrauchszeile (nach dem ersten Modellaufruf),
--- gleichzeitige Live-Starts können das Limit daher kurz überschreiten; bei Bedarf Lauf beim Start erfassen.
-CREATE OR REPLACE FUNCTION count_analysis_runs_since(p_organization_id UUID, p_since TIMESTAMPTZ)
-RETURNS INT LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public, pg_temp AS $$
-    SELECT count(*)::int FROM (
-        SELECT id FROM dossier_jobs WHERE organization_id = p_organization_id AND created_at >= p_since
-        UNION
-        SELECT job_id FROM llm_usage
-        WHERE organization_id = p_organization_id AND created_at >= p_since AND job_id IS NOT NULL
-    ) runs;
-$$;
-REVOKE EXECUTE ON FUNCTION count_analysis_runs_since(UUID, TIMESTAMPTZ) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION count_analysis_runs_since(UUID, TIMESTAMPTZ) TO authenticated;
