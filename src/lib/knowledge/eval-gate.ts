@@ -13,15 +13,28 @@ import {
  */
 export const GATE_TOLERANCE = 0.05;
 
+const isDigit = (char: string | undefined) => char !== undefined && char >= '0' && char <= '9';
+
+/** Teilstring-Treffer, dessen Ränder keine Ziffern sind: Ziffern würden eine andere Norm meinen (§ 185 gegen § 1850). */
+function containsStandalone(text: string, part: string): boolean {
+  for (let at = text.indexOf(part); at !== -1; at = text.indexOf(part, at + 1)) {
+    const before = text[at - 1];
+    const after = text[at + part.length];
+    if (!(isDigit(before) && isDigit(part[0])) && !(isDigit(after) && isDigit(part.at(-1)))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Das Dokument zu einer Rechtsgrundlage der Grundwahrheit: genaue Übereinstimmung zuerst, sonst genau
  * ein Dokument, das sie enthält. Mehrdeutig oder unbekannt wirft, damit keine Grundwahrheit still driftet.
  */
 export function resolveLegalBasis<T extends { legalBasis: string }>(docs: T[], basis: string): T {
   const exact = docs.filter((d) => d.legalBasis === basis);
-  // Ziffern an den Rändern des Treffers würden eine andere Norm meinen (§ 185 gegen § 1850).
-  const partial = new RegExp(`(?<!\\d)${basis.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!\\d)`);
-  const hits = exact.length === 1 ? exact : docs.filter((d) => partial.test(d.legalBasis));
+  const hits =
+    exact.length === 1 ? exact : docs.filter((d) => containsStandalone(d.legalBasis, basis));
   const [only] = hits;
   if (hits.length !== 1 || !only) {
     throw new Error(
