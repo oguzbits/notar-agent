@@ -124,13 +124,15 @@ describe('UploadZone Upload', () => {
     expect(onFilesReady).toHaveBeenCalledWith([payload('b.pdf')]);
   });
 
-  it('meldet einen Fehler und zeigt danach keinen Fortschritt mehr', async () => {
+  it('meldet einen Fehler mit den Dateinamen und zeigt danach keinen Fortschritt mehr', async () => {
     mockUpload.mockRejectedValue(new Error('Dienst nicht erreichbar'));
     const { input, onFilesReady } = renderControlled([]);
 
-    fireEvent.change(input, { target: { files: [pdf('a.pdf')] } });
+    fireEvent.change(input, { target: { files: [pdf('a.pdf'), pdf('b.pdf')] } });
 
-    expect(await screen.findByText('Fehler beim Einlesen einzelner Dateien.')).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Die Dateien „a.pdf“, „b.pdf“ konnten nicht eingelesen werden. Bitte versuchen Sie es erneut.'
+    );
     expect(screen.queryByRole('status')).toBeNull();
     expect(onFilesReady).not.toHaveBeenCalled();
   });

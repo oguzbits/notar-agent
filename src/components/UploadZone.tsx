@@ -82,7 +82,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       commitFiles([...displayedItems, ...uploaded]);
     } catch (err) {
       console.warn('Fehler beim Einlesen einzelner Dateien:', err);
-      setParseError('Fehler beim Einlesen einzelner Dateien.');
+      const names = incoming.map((f) => `„${f.name}“`).join(', ');
+      setParseError(
+        `${incoming.length === 1 ? 'Die Datei' : 'Die Dateien'} ${names} ${incoming.length === 1 ? 'konnte' : 'konnten'} nicht eingelesen werden. Bitte versuchen Sie es erneut.`
+      );
     } finally {
       setProgress(null);
     }
@@ -187,7 +190,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       </div>
 
       {parseError && (
-        <div className="border-destructive/20 bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg border p-3.5 text-base">
+        <div
+          role="alert"
+          className="border-destructive/20 bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg border p-3.5 text-base"
+        >
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{parseError}</span>
         </div>
