@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { buildKnowledgeSearchText } from '@/lib/knowledge/search-text';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { LLM_USAGE_STAGES } from '@/types/llm-usage';
-import { formatInternalNotes, runAnalysisPipeline } from './pipeline';
+import { formatInternalNotes } from './internal-notes';
+import { runAnalysisPipeline } from './pipeline';
 
 // Mock Supabase Server Knowledge Repository
 const mockKnowledgeSearch = vi.hoisted(() => vi.fn());

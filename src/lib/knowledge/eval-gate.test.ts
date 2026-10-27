@@ -120,6 +120,10 @@ describe('resolveLegalBasis', () => {
     expect(() => resolveLegalBasis(docs, 'BGB')).toThrow();
     expect(() => resolveLegalBasis(docs, '§ 999 XYZ')).toThrow();
   });
+  it('trifft keine längere Nummer, die nur mit der gesuchten beginnt oder endet', () => {
+    expect(() => resolveLegalBasis(docs, '§ 185')).toThrow();
+    expect(() => resolveLegalBasis([{ legalBasis: '§ 112 WEG' }], '12 WEG')).toThrow();
+  });
 });
 
 describe('Fixtures des Eval-Gates', () => {

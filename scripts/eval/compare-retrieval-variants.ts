@@ -21,7 +21,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { formatInternalNotes } from '@/lib/ai/pipeline';
+import { formatInternalNotes } from '@/lib/ai/internal-notes';
 import { calculateDynamicWeights } from '@/lib/knowledge/dynamic-weights';
 import { resolveLegalBasis } from '@/lib/knowledge/eval-gate';
 import { BENCHMARK_KNOWLEDGE_CORPUS as CORPUS } from '@/lib/knowledge/fixtures/benchmark-knowledge-corpus';

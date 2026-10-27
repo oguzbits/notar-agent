@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { formatInternalNotes } from '@/lib/ai/pipeline';
+import { formatInternalNotes } from '@/lib/ai/internal-notes';
 import {
   compareToBaseline,
   resolveLegalBasis,

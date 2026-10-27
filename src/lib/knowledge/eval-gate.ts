@@ -19,7 +19,9 @@ export const GATE_TOLERANCE = 0.05;
  */
 export function resolveLegalBasis<T extends { legalBasis: string }>(docs: T[], basis: string): T {
   const exact = docs.filter((d) => d.legalBasis === basis);
-  const hits = exact.length === 1 ? exact : docs.filter((d) => d.legalBasis.includes(basis));
+  // Ziffern an den Rändern des Treffers würden eine andere Norm meinen (§ 185 gegen § 1850).
+  const partial = new RegExp(`(?<!\\d)${basis.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!\\d)`);
+  const hits = exact.length === 1 ? exact : docs.filter((d) => partial.test(d.legalBasis));
   const [only] = hits;
   if (hits.length !== 1 || !only) {
     throw new Error(

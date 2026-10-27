@@ -1,6 +1,7 @@
 import { generateText, LanguageModel, SystemModelMessage } from 'ai';
 import { parseAuditorOutput } from '@/lib/ai/auditor-output';
 import { mergeDossierStages } from '@/lib/ai/dossier-merger';
+import { formatInternalNotes } from '@/lib/ai/internal-notes';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
 import { downgradeUnvalidatedFields, SourceDocumentText } from '@/lib/ai/verifiable-fact-checker';
@@ -19,7 +20,6 @@ import {
   Dossier,
   FIELD_STATUS,
   GenericFieldDossier,
-  NOTAR_DOCUMENT_TYPES,
   OverallStatus,
   UploadedFilePayload,
 } from '@/types/dossier';
@@ -51,37 +51,6 @@ export interface PipelineParams {
   onStageUsage?: StageUsageHandler;
   onTrace?: (trace: import('@/types/pipeline').PipelineTraceArtifacts) => void;
   knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
-}
-
-export function formatInternalNotes(
-  notes: string,
-  existingDossier?: Dossier
-): { noteList: string[]; notesSection: string } {
-  const noteList = notes
-    .split('\n\n')
-    .map((n) => n.trim())
-    .filter(Boolean);
-
-  if (noteList.length === 0) {
-    return { noteList, notesSection: '' };
-  }
-
-  const existingNoteCount =
-    existingDossier?.detectedDocuments?.filter((d) => d.fileName.toLowerCase().startsWith('notiz'))
-      .length || 0;
-
-  const formattedNotes = noteList
-    .map((text, i) => `[Notiz #${existingNoteCount + i + 1}]: "${text}"`)
-    .join('\n');
-
-  const notesSection = `=== INTERNE NOTIZEN / BEARBEITUNGSVERMERKE DER SACHBEARBEITUNG ===
-${formattedNotes}
-(WICHTIGE ANWEISUNG FÜR QUELLEN UND DOKUMENTE:
-- Belege aus diesen Notizen MÜSSEN als source.fileName prägnant den Bezeichner "Notiz #${existingNoteCount + 1}" (bzw. die entsprechende Nummer) erhalten.
-- Jede dieser Notizen MUSS zwingend auch in 'detectedDocuments' als Typ "${NOTAR_DOCUMENT_TYPES.BEARBEITUNGSNOTIZ}" mit aktuellem Tagesdatum aufgeführt werden.
-- Fasse diese Notizen NIEMALS zusammen oder kürze sie ab! Der Text muss exakt 1:1 im vollen Originalwortlaut wiedergegeben werden.)\n\n`;
-
-  return { noteList, notesSection };
 }
 
 function extractAuditorModifications(raw: Record<string, unknown>): {
@@ -403,7 +372,7 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
   const searchTerms = buildKnowledgeSearchText(caseType, notesSection, docNames);
 
   const knowledgeResults = await knowledgeRepo.search({
-    queryText: searchTerms || caseType,
+    queryText: searchTerms,
     organizationId,
     topK: 3,
   });
