@@ -299,15 +299,6 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 
--- Teamliste: Profile von Mitgliedern derselben Kanzlei lesbar (kein Platzhalter nötig).
-DROP POLICY IF EXISTS "Profile von Kollegen derselben Kanzlei lesbar" ON public.profiles;
-CREATE POLICY "Profile von Kollegen derselben Kanzlei lesbar" ON public.profiles FOR SELECT USING (
-    EXISTS (
-        SELECT 1 FROM public.organization_members theirs
-        WHERE theirs.user_id = profiles.id AND is_org_member(theirs.organization_id)
-    )
-);
-
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
