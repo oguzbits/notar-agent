@@ -66,8 +66,8 @@
 
 **Schnittstelle** (`src/lib/knowledge/embedder.ts`):
 
-- `interface IEmbedder { embedQuery(text: string): Promise<number[]>; embedDocuments(texts: string[]): Promise<number[][]> }`
-- `createGeminiEmbedder(modelId: string, apiKey: string): IEmbedder` in `src/lib/knowledge/gemini-embedder.ts`, nutzt `embed`/`embedMany` aus `ai` und `@ai-sdk/google`, `outputDimensionality: EMBEDDING_DIMENSIONS`, kein `taskType`, Stapelgröße begrenzt (Konstante, 100).
+- `interface IEmbedder { embedQuery(text: string): Promise<number[]>; embedDocuments(docs: { title: string; content: string }[]): Promise<number[][]> }`
+- `createEmbedder(model: EmbeddingModel): IEmbedder` und `createGeminiEmbedder(modelId, apiKey)` in derselben Datei, nutzt `embed`/`embedMany` aus `ai` und `@ai-sdk/google`, `outputDimensionality: EMBEDDING_DIMENSIONS`, kein `taskType`; die Stapelung übernimmt `embedMany` nach der Modellgrenze.
 
 **Regeln**
 
@@ -77,11 +77,11 @@
 **Testfälle** (Modell des SDK durch `MockEmbeddingModel` aus `ai/test` ersetzt, falls vorhanden, sonst durch injizierte Funktion)
 
 1. `embedQuery` ruft das Modell mit dem Anfrage-Präfix und der Dimension 1536 auf.
-2. `embedDocuments` teilt 250 Texte in Stapel zu 100, 100, 50 und behält die Reihenfolge.
+2. `embedDocuments` behält die Reihenfolge, auch wenn das Modell die Eingabe auf mehrere Aufrufe verteilt (Grenze 2, fünf Dokumente, drei Aufrufe).
 3. Vektor falscher Länge aus dem Modell wirft.
 4. Fehler des Modells wird weitergereicht (kein Ausweichwert).
 
-**Schutz gegen roten Test:** Stapelgrenze entfernen: Test 2; Schemaprüfung entfernen: Test 3; `try/catch` mit Ausweichwert: Test 4.
+**Schutz gegen roten Test:** Dokument-Präfix entfernen oder Ergebnisse umordnen: Test 2; Schemaprüfung entfernen: Test 3; `try/catch` mit Ausweichwert: Test 4.
 
 ## Aufgabe 3: Pipeline
 
