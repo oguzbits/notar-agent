@@ -6,6 +6,8 @@ import { LoginRequestSchema } from '@/types/auth';
 
 export const dynamic = 'force-dynamic';
 
+const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
@@ -22,26 +24,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const supabase = await createServerAuthClient();
 
     if (!supabase) {
-      return NextResponse.json(
-        { error: 'Authentifizierungsserver nicht verfügbar.' },
-        { status: 503 }
-      );
+      return fail('Authentifizierungsserver nicht verfügbar.', 503);
     }
 
     if (password) {
-      // E-Mail + Passwort
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        return NextResponse.json(
-          {
-            error: 'Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihre Anmeldedaten.',
-          },
-          { status: 401 }
-        );
+        logFailure('warn', 'auth_login_passwort_abgelehnt', error);
+        return fail('Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihre Anmeldedaten.', 401);
       }
 
       return NextResponse.json({
@@ -49,7 +43,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         user: data.user,
       });
     } else {
-      // Magic Link
       const origin = req.nextUrl.origin;
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -59,10 +52,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
 
       if (error) {
-        return NextResponse.json(
-          { error: 'Fehler beim Senden des Anmeldelinks.' },
-          { status: 400 }
-        );
+        logFailure('warn', 'auth_login_anmeldelink_fehlgeschlagen', error);
+        return fail('Fehler beim Senden des Anmeldelinks.', 400);
       }
 
       return NextResponse.json({

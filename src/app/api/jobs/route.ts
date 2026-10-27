@@ -133,7 +133,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    logFailure('error', 'jobs_fehlgeschlagen_2', error);
+    logFailure('error', 'job_wiederholung_fehlgeschlagen', error);
     return NextResponse.json({ error: 'Fehler bei der Job-Wiederholung.' }, { status: 500 });
   }
 }

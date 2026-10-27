@@ -5,6 +5,7 @@ import { POST as loginRoute } from '@/app/api/auth/login/route';
 import { POST as logoutRoute } from '@/app/api/auth/logout/route';
 import { GET as meRoute } from '@/app/api/auth/me/route';
 import { POST as registerRoute } from '@/app/api/auth/register/route';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES } from '@/types/organization';
@@ -14,6 +15,8 @@ vi.mock('@/lib/supabase/server-auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/supabase/server-auth')>()),
   createServerAuthClient: vi.fn(),
 }));
+
+vi.mock('@/lib/observability/logger', () => ({ logFailure: vi.fn() }));
 
 const mockCreateServerAuthClient = vi.mocked(createServerAuthClient);
 
@@ -57,6 +60,32 @@ describe('Auth API Routes', () => {
         email: 'test@notar.de',
         password: 'validPassword123',
       });
+    });
+
+    it('protokolliert den Originalfehler bei fehlgeschlagener Anmeldung (Passwort und Anmeldelink)', async () => {
+      const authError = { message: 'Invalid login credentials' };
+      const mockSupabase = {
+        auth: {
+          signInWithPassword: vi.fn().mockResolvedValue({ data: {}, error: authError }),
+          signInWithOtp: vi.fn().mockResolvedValue({ data: {}, error: authError }),
+        },
+      };
+      mockCreateServerAuthClient.mockResolvedValue(mockSupabase as never);
+      const post = (body: object) =>
+        loginRoute(
+          new NextRequest('http://localhost:3000/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify(body),
+          })
+        );
+
+      expect((await post({ email: 'test@notar.de', password: 'validPassword123' })).status).toBe(
+        401
+      );
+      expect(logFailure).toHaveBeenCalledTimes(1);
+      expect((await post({ email: 'test@notar.de' })).status).toBe(400);
+      expect(logFailure).toHaveBeenCalledTimes(2);
+      expect(logFailure).toHaveBeenLastCalledWith('warn', expect.any(String), authError);
     });
 
     it('sends magic link when password is not provided', async () => {

@@ -118,7 +118,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
     if (denied) return denied;
     const known = deletionErrorResponse(error);
     if (known) return known;
-    logFailure('error', 'documents_fehlgeschlagen_2', error);
+    logFailure('error', 'dossier_loeschen_fehlgeschlagen', error);
     return NextResponse.json({ error: 'Fehler beim Löschen des Vorgangs.' }, { status: 500 });
   }
 }
