@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { SupabaseJobRepository } from '@/lib/jobs/job-repository';
+import { JOB_LIST_LIMIT, SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import { DB_TABLES } from '@/types/database';
 import { CASE_TYPES } from '@/types/dossier';
 import { JOB_STAGES, JOB_STATUS } from '@/types/jobs';
@@ -144,5 +144,79 @@ describe('Heilung veralteter Jobs (recoverOrphanJobs)', () => {
     const failed = await repo.getJobById(staleProcessing.id, orgId);
     expect(failed?.lockedAt).toBeUndefined();
     expect(failed?.retryCount).toBe(0);
+  });
+});
+
+describe('Übersicht (listJobs)', () => {
+  it('liefert Anzeigefelder, aber weder Dateiinhalt noch Zwischenergebnis', async () => {
+    const job = await repo.createJob(
+      {
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        notes: 'Kaufvertrag Müller',
+        files: [
+          { name: 'a.pdf', type: 'application/pdf', size: 3, content: 'QUJD', isBase64: true },
+        ],
+        stage1Output: { geheim: 'Zwischenergebnis' },
+      },
+      orgId
+    );
+    const listed = (await repo.listJobs(orgId)).find((j) => j.id === job.id);
+    expect(listed?.payload.notes).toBe('Kaufvertrag Müller');
+    expect(listed?.payload.caseType).toBe(CASE_TYPES.IMMOBILIENKAUF);
+    expect(listed?.payload.files).toEqual([
+      { name: 'a.pdf', type: 'application/pdf', size: 3, isBase64: true },
+    ]);
+    expect(listed?.payload.stage1Output).toBeUndefined();
+  });
+
+  it('begrenzt die Anzahl auf JOB_LIST_LIMIT, neueste zuerst', async () => {
+    const ownerB = await harness.createUser();
+    const orgB = await harness.createOrganizationWithMember(ownerB.id, NOTARY_ROLES.NOTAR);
+    const repoB = new SupabaseJobRepository(ownerB.client);
+    const rows = Array.from({ length: JOB_LIST_LIMIT + 1 }, (_, i) => ({
+      id: randomUUID(),
+      organization_id: orgB,
+      status: JOB_STATUS.PENDING,
+      payload: { caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: `n${i}` },
+      created_at: new Date(Date.now() - (JOB_LIST_LIMIT - i) * 1000).toISOString(),
+    }));
+    const { error } = await harness.admin.from(DB_TABLES.DOSSIER_JOBS).insert(rows);
+    if (error) throw new Error(error.message);
+
+    const listed = await repoB.listJobs(orgB);
+    expect(listed).toHaveLength(JOB_LIST_LIMIT);
+    expect(listed[0]?.payload.notes).toBe(`n${JOB_LIST_LIMIT}`);
+  });
+});
+
+describe('Aufbewahrung beendeter Vorgänge (pruneCompletedJobs)', () => {
+  const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 60 * 60 * 1000).toISOString();
+  const setRow = async (id: string, row: Record<string, unknown>) => {
+    const { error } = await harness.admin.from(DB_TABLES.DOSSIER_JOBS).update(row).eq('id', id);
+    if (error) throw new Error(error.message);
+  };
+  const exists = async (id: string) => (await repo.getJobById(id, orgId)) !== null;
+
+  it('löscht nur alte Endzustände; frische, laufende und wiederholbare bleiben', async () => {
+    const [oldDone, oldCancelled, oldFailedFinal, freshDone, oldRunning, oldPending, oldRetryable] =
+      await Promise.all([newJob(), newJob(), newJob(), newJob(), newJob(), newJob(), newJob()]);
+    const old = { updated_at: daysAgo(30) };
+    await setRow(oldDone.id, { ...old, status: JOB_STATUS.COMPLETED });
+    await setRow(oldCancelled.id, { ...old, status: JOB_STATUS.CANCELLED });
+    await setRow(oldFailedFinal.id, { ...old, status: JOB_STATUS.FAILED, retry_count: 3 });
+    await setRow(freshDone.id, { status: JOB_STATUS.COMPLETED });
+    await setRow(oldRunning.id, { ...old, status: JOB_STATUS.PROCESSING });
+    await setRow(oldPending.id, old);
+    await setRow(oldRetryable.id, { ...old, status: JOB_STATUS.FAILED, retry_count: 1 });
+
+    const admin = new SupabaseJobRepository(harness.admin);
+    await admin.pruneCompletedJobs();
+
+    expect(
+      await Promise.all([oldDone, oldCancelled, oldFailedFinal].map((j) => exists(j.id)))
+    ).toEqual([false, false, false]);
+    expect(
+      await Promise.all([freshDone, oldRunning, oldPending, oldRetryable].map((j) => exists(j.id)))
+    ).toEqual([true, true, true, true]);
   });
 });

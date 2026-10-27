@@ -7,6 +7,7 @@ import {
   processDeletionTasks,
   runRetentionSweep,
 } from '@/lib/dossier/deletion-worker';
+import { SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import { createServiceRoleClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const admin = createServiceRoleClient();
     const retention = await runRetentionSweep(admin, { limit: DELETION_WORKER_DEFAULTS.batchSize });
     const tasks = await processDeletionTasks(admin, DELETION_WORKER_DEFAULTS);
+    const jobsPruned = await new SupabaseJobRepository(admin).pruneCompletedJobs();
     // Nur Anzahlen: Dateipfade und Fehlertexte können Mandantendaten enthalten
     const failedCount = tasks.failed + retention.failed.length;
     if (failedCount > 0) {
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         extra: { tasks: tasks.failed, retention: retention.failed.length },
       });
     }
-    return NextResponse.json({ tasks, retention });
+    return NextResponse.json({ tasks, retention, jobsPruned });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Löschlauf fehlgeschlagen.';
     return NextResponse.json({ error: msg }, { status: 500 });

@@ -9,12 +9,29 @@ import {
   CreateJobPayload,
   DossierJob,
   JobProgressDetails,
+  JOB_MAX_RETRIES,
   JOB_STATUS,
   JobStatus,
   JobStage,
   UpdateJobParams,
 } from '@/types/jobs';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
+
+/** Aufbewahrung beendeter Vorgänge samt Dateien (Mandantendaten), danach löscht der Cron. */
+export const JOB_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const JOB_PRUNE_BATCH = 100;
+
+/** Höchstzahl der Vorgänge je Abruf der Übersicht (neueste zuerst). */
+export const JOB_LIST_LIMIT = 100;
+
+// Übersicht ohne Zwischenergebnisse und Dateiinhalte: nur die angezeigten Payload-Felder (JSON-Pfad)
+const JOB_LIST_COLUMNS =
+  'id, organization_id, status, stage, progress_details, result_dossier_id, error_message, retry_count, max_retries, locked_at, created_at, updated_at, caseType:payload->caseType, notes:payload->notes, files:payload->files';
+
+function toListRow(row: Record<string, unknown>): Record<string, unknown> {
+  const { caseType, notes, files, ...rest } = row;
+  return { ...rest, payload: { caseType, notes, files } };
+}
 
 /** Zusatzbedingungen eines Übergangs; jede gesetzte Bedingung muss zutreffen. */
 export interface JobTransitionGuard {
@@ -60,7 +77,7 @@ export class SupabaseJobRepository implements IJobRepository {
       status: JOB_STATUS.PENDING,
       payload,
       retry_count: 0,
-      max_retries: 3,
+      max_retries: JOB_MAX_RETRIES,
       organization_id: organizationId ?? null,
     };
 
@@ -173,13 +190,16 @@ export class SupabaseJobRepository implements IJobRepository {
 
   async listJobs(organizationId?: string): Promise<DossierJob[]> {
     const query = applyOrganizationFilter(
-      this.supabase.from(DB_TABLES.DOSSIER_JOBS).select('*'),
+      this.supabase.from(DB_TABLES.DOSSIER_JOBS).select(JOB_LIST_COLUMNS),
       organizationId
     );
 
-    const data = await executeList(query.order('created_at', { ascending: false }), 'listJobs');
+    const data = await executeList(
+      query.order('created_at', { ascending: false }).limit(JOB_LIST_LIMIT),
+      'listJobs'
+    );
 
-    return data.map((row) => this.mapRowToJob(row, { lightweight: true }));
+    return data.map((row) => this.mapRowToJob(toListRow(row), { lightweight: true }));
   }
 
   async countJobsSince(organizationId: string, sinceIso: string): Promise<number> {
@@ -231,42 +251,61 @@ export class SupabaseJobRepository implements IJobRepository {
     };
   }
 
-  async pruneCompletedJobs(maxAgeMs = 24 * 60 * 60 * 1000): Promise<number> {
+  /**
+   * Entfernt Dateien im Speicher; ein Fehler bricht ab, bevor die Zeile gelöscht wird,
+   * damit keine Mandantendateien ohne Hinweis zurückbleiben.
+   */
+  private async removeStorageFiles(files: { storagePath?: string }[]): Promise<void> {
+    const paths = files
+      .map((f) => f.storagePath)
+      .filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
+    if (paths.length === 0) return;
+    const { error } = await this.supabase.storage
+      .from(STORAGE_BUCKET_NAMES.DOSSIER_FILES)
+      .remove(paths);
+    if (error) {
+      throw new Error(`Supabase Storage remove fehlgeschlagen: ${error.message}`);
+    }
+  }
+
+  async pruneCompletedJobs(maxAgeMs = JOB_RETENTION_MS): Promise<number> {
     const cutoffIso = new Date(Date.now() - maxAgeMs).toISOString();
+    // Nur Endzustände: abgeschlossen, abgebrochen oder fehlgeschlagen ohne weitere Wiederholung
+    const isPrunable = `status.in.(${JOB_STATUS.COMPLETED},${JOB_STATUS.CANCELLED}),and(status.eq.${JOB_STATUS.FAILED},retry_count.gte.${JOB_MAX_RETRIES})`;
+    const candidates = await executeList(
+      this.supabase
+        .from(DB_TABLES.DOSSIER_JOBS)
+        .select('id, files:payload->files')
+        .or(isPrunable)
+        .lt('updated_at', cutoffIso)
+        .order('updated_at', { ascending: true })
+        .limit(JOB_PRUNE_BATCH),
+      'pruneCompletedJobs'
+    );
+    if (candidates.length === 0) return 0;
+
+    await this.removeStorageFiles(
+      candidates.flatMap((c) => (Array.isArray(c.files) ? c.files : []))
+    );
+
     const { data, error } = await this.supabase
       .from(DB_TABLES.DOSSIER_JOBS)
       .delete()
-      .in('status', [JOB_STATUS.COMPLETED, JOB_STATUS.FAILED])
-      .lt('updated_at', cutoffIso)
+      .in(
+        'id',
+        candidates.map((c) => c.id)
+      )
+      .or(isPrunable)
       .select('id');
-
     if (error) {
       throw new Error(`Supabase pruneCompletedJobs fehlgeschlagen: ${error.message}`);
     }
-
-    return data ? data.length : 0;
+    return data?.length ?? 0;
   }
 
   async deleteJob(id: string, organizationId?: string): Promise<boolean> {
-    try {
-      const job = await this.getJobById(id, organizationId);
-      if (job) {
-        const files = job.payload?.files ?? [];
-        const storagePaths = files
-          .map((f) => f.storagePath)
-          .filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
-
-        if (storagePaths.length > 0 && this.supabase.storage) {
-          await this.supabase.storage.from(STORAGE_BUCKET_NAMES.DOSSIER_FILES).remove(storagePaths);
-        }
-      }
-    } catch (storageErr) {
-      console.warn(
-        '[deleteJob] Warnung beim Bereinigen von Storage-Dateien für Job:',
-        id,
-        storageErr
-      );
-    }
+    const job = await this.getJobById(id, organizationId);
+    if (job) await this.removeStorageFiles(job.payload?.files ?? []);
 
     let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).delete().eq('id', id);
 

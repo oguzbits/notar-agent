@@ -173,4 +173,39 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
       'Supabase deleteJob fehlgeschlagen: Foreign key violation'
     );
   });
+
+  it('wirft bei Fehler im Speicher und löscht die Zeile nicht (keine verwaisten Dateien)', async () => {
+    const del = vi.fn();
+    const mockSupabase = {
+      storage: {
+        from: vi.fn().mockReturnValue({
+          remove: vi
+            .fn()
+            .mockResolvedValue({ data: null, error: { message: 'Bucket nicht erreichbar' } }),
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                id: 'job-1',
+                payload: { files: [{ name: 'a.pdf', storagePath: 'org/a.pdf' }] },
+                created_at: 'x',
+                updated_at: 'x',
+              },
+              error: null,
+            }),
+          }),
+        }),
+        delete: del,
+      }),
+    };
+
+    const { SupabaseJobRepository } = await import('./job-repository');
+    const repo = new SupabaseJobRepository(mockSupabase as never);
+
+    await expect(repo.deleteJob('job-1')).rejects.toThrow('Bucket nicht erreichbar');
+    expect(del).not.toHaveBeenCalled();
+  });
 });

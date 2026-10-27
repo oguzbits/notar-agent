@@ -10,6 +10,9 @@ export const JOB_STATUS = {
   CANCELLED: 'CANCELLED',
 } as const;
 
+/** Anzahl erlaubter Wiederholungen je Vorgang. */
+export const JOB_MAX_RETRIES = 3;
+
 export const JobStatusSchema = z.enum([
   JOB_STATUS.PENDING,
   JOB_STATUS.PROCESSING,

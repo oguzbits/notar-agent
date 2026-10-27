@@ -6,6 +6,12 @@ import { GET } from './route';
 
 vi.mock('@sentry/nextjs', () => ({ captureMessage: vi.fn() }));
 vi.mock('@/env', () => ({ getEnv: () => ({ CRON_SECRET: process.env.TEST_CRON_SECRET }) }));
+const prune = vi.hoisted(() => vi.fn(async () => 2));
+vi.mock('@/lib/jobs/job-repository', () => ({
+  SupabaseJobRepository: class {
+    pruneCompletedJobs = prune;
+  },
+}));
 vi.mock('@/lib/supabase/admin', () => ({ createServiceRoleClient: vi.fn(() => ({})) }));
 vi.mock('@/lib/dossier/deletion-worker', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/dossier/deletion-worker')>()),
@@ -31,6 +37,7 @@ describe('GET /api/cron/deletion', () => {
     async (auth) => {
       expect((await call(auth)).status).toBe(401);
       expect(worker.processDeletionTasks).not.toHaveBeenCalled();
+      expect(prune).not.toHaveBeenCalled();
     }
   );
 
@@ -43,7 +50,11 @@ describe('GET /api/cron/deletion', () => {
   it('arbeitet Aufgaben und Fristen mit korrektem Secret ab', async () => {
     const res = await call('Bearer geheim');
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ tasks: { done: 1 }, retention: { deleted: 0 } });
+    expect(await res.json()).toMatchObject({
+      tasks: { done: 1 },
+      retention: { deleted: 0 },
+      jobsPruned: 2,
+    });
   });
 
   it('meldet dauerhaft fehlgeschlagene Löschaufgaben ohne Inhalte an Sentry', async () => {
