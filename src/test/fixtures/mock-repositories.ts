@@ -394,10 +394,10 @@ export function createMockKnowledgeRepository(
 
       return matches.map((document) => ({
         document,
-        bm25Score: 1.0,
+        textScore: 1.0,
         vectorScore: 1.0,
         combinedScore: 1.0,
-        matchSource: MATCH_SOURCES.BM25_EXACT,
+        matchSource: MATCH_SOURCES.TEXT_MATCH,
       }));
     }),
     save: vi.fn(async (doc: KnowledgeDocument) => {

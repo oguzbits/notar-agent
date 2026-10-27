@@ -74,7 +74,7 @@ export const KnowledgeDocumentSchema = z.object({
 export type KnowledgeDocument = z.infer<typeof KnowledgeDocumentSchema>;
 
 export const MATCH_SOURCES = {
-  BM25_EXACT: 'BM25_EXACT',
+  TEXT_MATCH: 'TEXT_MATCH',
   SEMANTIC_VECTOR: 'SEMANTIC_VECTOR',
   HYBRID_FUSION: 'HYBRID_FUSION',
 } as const;
@@ -82,15 +82,15 @@ export const MATCH_SOURCES = {
 export type MatchSource = (typeof MATCH_SOURCES)[keyof typeof MATCH_SOURCES];
 
 /**
- * Treffer-Struktur für hybride Suchläufe (BM25 Keyword + Vector Similarity + RRF Fusion).
+ * Treffer-Struktur für hybride Suchläufe (Volltext mit ts_rank_cd + Vector Similarity + RRF Fusion).
  */
 export const HybridSearchResultSchema = z.object({
   document: KnowledgeDocumentSchema,
-  bm25Score: z.number().min(0),
+  textScore: z.number().min(0),
   vectorScore: z.number().min(0).max(1),
   combinedScore: z.number().min(0),
   matchSource: z.enum([
-    MATCH_SOURCES.BM25_EXACT,
+    MATCH_SOURCES.TEXT_MATCH,
     MATCH_SOURCES.SEMANTIC_VECTOR,
     MATCH_SOURCES.HYBRID_FUSION,
   ]),

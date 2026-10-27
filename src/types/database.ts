@@ -515,7 +515,7 @@ export interface Database {
           title: string;
           content: string;
           trigger_keywords: string[];
-          bm25_score: number;
+          text_score: number;
           vector_score: number;
           combined_score: number;
           match_source: string;

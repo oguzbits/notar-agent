@@ -129,7 +129,7 @@ function searchHybridRRF(
 ): { docs: KnowledgeDocument[]; weights: ReturnType<typeof calculateDynamicWeights> } {
   const weights = calculateDynamicWeights(queryText);
 
-  // 1. Text-Rangfolge (Volltext / BM25)
+  // 1. Text-Rangfolge (Volltext ts_rank_cd)
   const textScored = corpus
     .map((doc) => {
       const qNorm = normalizeText(queryText);

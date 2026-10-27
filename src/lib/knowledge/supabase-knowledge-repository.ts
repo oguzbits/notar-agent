@@ -80,7 +80,7 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
 
     return rows.map((row) => ({
       document: rowToDocument(row),
-      bm25Score: Number(row.bm25_score ?? 0),
+      textScore: Number(row.text_score ?? 0),
       vectorScore: Number(row.vector_score ?? 0),
       combinedScore: Number(row.combined_score ?? 0),
       matchSource:

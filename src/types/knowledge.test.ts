@@ -66,7 +66,7 @@ describe('Knowledge Domain Types & Contracts', () => {
         createdAt: '2026-09-16T08:00:00.000Z',
         updatedAt: '2026-09-16T08:00:00.000Z',
       },
-      bm25Score: 4.5,
+      textScore: 4.5,
       vectorScore: 0.88,
       combinedScore: 5.38,
       matchSource: MATCH_SOURCES.HYBRID_FUSION,

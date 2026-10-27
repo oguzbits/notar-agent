@@ -24,7 +24,7 @@ const doc = (overrides: Partial<KnowledgeDocument>): KnowledgeDocument => ({
 
 const hit = (overrides: Partial<KnowledgeDocument>): HybridSearchResult => ({
   document: doc(overrides),
-  bm25Score: 1,
+  textScore: 1,
   vectorScore: 0,
   combinedScore: 1,
   matchSource: MATCH_SOURCES.HYBRID_FUSION,

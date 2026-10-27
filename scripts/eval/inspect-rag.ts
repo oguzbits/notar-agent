@@ -36,10 +36,10 @@ class LocalFixtureKnowledgeRepository implements IKnowledgeRepository {
       if (matchCount > 0) {
         results.push({
           document: doc,
-          bm25Score: matchCount,
+          textScore: matchCount,
           vectorScore: 0,
           combinedScore: matchCount,
-          matchSource: 'BM25_EXACT',
+          matchSource: 'TEXT_MATCH',
         });
       }
     }
@@ -265,7 +265,7 @@ async function runRagInspection() {
       topK: 2,
     });
 
-    console.log(`\n[Schritt 2: Hybrid Knowledge Search (BM25 + Vektor)]`);
+    console.log(`\n[Schritt 2: Hybrid Knowledge Search (Volltext + Vektor)]`);
     console.log(`-> Gefundene Gutachten/Präzedenzen: ${knowledgeResults.length}`);
     knowledgeResults.forEach((kr) => {
       console.log(

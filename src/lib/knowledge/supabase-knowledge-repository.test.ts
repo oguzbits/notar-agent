@@ -38,7 +38,7 @@ describe('SupabaseKnowledgeRepository', () => {
         title: doc.title,
         content: doc.content,
         trigger_keywords: doc.triggerKeywords,
-        bm25_score: 1.25,
+        text_score: 1.25,
         vector_score: 0.88,
         combined_score: 4.5,
         match_source: MATCH_SOURCES.HYBRID_FUSION,
@@ -173,10 +173,10 @@ describe('SupabaseKnowledgeRepository', () => {
       valid_until: null,
       version: 3,
       review_status: KNOWLEDGE_REVIEW_STATUS.GEPRUEFT,
-      bm25_score: 1,
+      text_score: 1,
       vector_score: 0,
       combined_score: 1,
-      match_source: MATCH_SOURCES.BM25_EXACT,
+      match_source: MATCH_SOURCES.TEXT_MATCH,
     };
     const repo = new SupabaseKnowledgeRepository({
       rpc: vi.fn().mockResolvedValue({ data: [row], error: null }),

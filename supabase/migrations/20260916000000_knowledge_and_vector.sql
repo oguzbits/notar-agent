@@ -139,7 +139,7 @@ RETURNS TABLE (
     valid_until DATE,
     version INT,
     review_status knowledge_review_status,
-    bm25_score FLOAT,
+    text_score FLOAT,
     vector_score FLOAT,
     combined_score FLOAT,
     match_source TEXT,
@@ -195,7 +195,7 @@ BEGIN
         SELECT
             kd.id,
             row_number() OVER (ORDER BY ts_rank_cd(kd.tsv, v_parsed_query) DESC, kd.id)::INT AS rank,
-            ts_rank_cd(kd.tsv, v_parsed_query)::FLOAT AS raw_bm25
+            ts_rank_cd(kd.tsv, v_parsed_query)::FLOAT AS raw_text
         FROM knowledge_documents kd
         WHERE
             (kd.organization_id IS NULL OR kd.organization_id = p_organization_id)
@@ -218,7 +218,7 @@ BEGIN
         SELECT
             c.id,
             sum(c.part)::FLOAT AS rrf_score,
-            max(c.raw_bm25) AS bm25_score,
+            max(c.raw_text) AS text_score,
             max(c.raw_vector) AS vector_score,
             min(c.text_rank) AS text_rank,
             min(c.vector_rank) AS vector_rank
@@ -226,7 +226,7 @@ BEGIN
             SELECT
                 vr.id,
                 (p_vector_weight::NUMERIC / (p_rrf_k + vr.rank))::FLOAT AS part,
-                0.0::FLOAT AS raw_bm25,
+                0.0::FLOAT AS raw_text,
                 vr.raw_vector,
                 NULL::INT AS text_rank,
                 vr.rank AS vector_rank
@@ -235,7 +235,7 @@ BEGIN
             SELECT
                 tr.id,
                 (p_text_weight::NUMERIC / (p_rrf_k + tr.rank))::FLOAT AS part,
-                tr.raw_bm25,
+                tr.raw_text,
                 0.0::FLOAT AS raw_vector,
                 tr.rank AS text_rank,
                 NULL::INT AS vector_rank
@@ -257,13 +257,13 @@ BEGIN
         kd.valid_until,
         kd.version,
         kd.review_status,
-        f.bm25_score,
+        f.text_score,
         f.vector_score,
         f.rrf_score AS combined_score,
         CASE
             WHEN f.text_rank IS NOT NULL AND f.vector_rank IS NOT NULL THEN 'HYBRID_FUSION'
             WHEN f.vector_rank IS NOT NULL THEN 'SEMANTIC_VECTOR'
-            ELSE 'BM25_EXACT'
+            ELSE 'TEXT_MATCH'
         END AS match_source,
         f.text_rank,
         f.vector_rank,

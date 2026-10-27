@@ -179,7 +179,7 @@ describe('RAG Knowledge Engine: selectApplicableKnowledge & formatKnowledgeForPr
         createdAt: '2026-09-16T08:00:00.000Z',
         updatedAt: '2026-09-16T08:00:00.000Z',
       },
-      bm25Score: 3.5,
+      textScore: 3.5,
       vectorScore: 0.9,
       combinedScore: 4.4,
       matchSource: MATCH_SOURCES.HYBRID_FUSION,
