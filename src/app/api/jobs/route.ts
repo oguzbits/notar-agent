@@ -10,6 +10,7 @@ import {
   getDossierRepository,
   getJobRepository,
   getKnowledgeRepository,
+  getLlmUsageRepository,
 } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS } from '@/types/auth';
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       dossierRepo: getDossierRepository(authSupabase),
       knowledgeRepo: getKnowledgeRepository(authSupabase),
       auditRepo: getAuditRepository(authSupabase),
+      usageRepo: getLlmUsageRepository(authSupabase),
     });
 
     return NextResponse.json(

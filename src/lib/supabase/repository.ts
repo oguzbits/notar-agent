@@ -27,6 +27,9 @@ const PG_INSUFFICIENT_PRIVILEGE = '42501';
 /** SQLSTATE `object_not_in_prerequisite_state`: für den Vorgang läuft noch eine Verarbeitung. */
 const PG_OBJECT_NOT_IN_PREREQUISITE_STATE = '55006';
 
+/** Höchstzahl der Vorgänge je Abruf der Dokumentliste (neueste zuerst). */
+export const DOCUMENT_LIST_LIMIT = 200;
+
 export class DossierNotFoundError extends Error {
   constructor(id: string) {
     super(`Vorgang nicht gefunden: ${id}`);
@@ -180,7 +183,10 @@ export class SupabaseDossierRepository implements IDossierRepository {
       organizationId
     );
 
-    const data = await executeList(query.order('created_at', { ascending: false }), 'Dossier list');
+    const data = await executeList(
+      query.order('created_at', { ascending: false }).limit(DOCUMENT_LIST_LIMIT),
+      'Dossier list'
+    );
 
     return data.map((doc) => {
       const caseType = typeof doc.caseType === 'string' ? doc.caseType : undefined;

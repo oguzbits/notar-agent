@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
+import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { getJobRepository } from '@/lib/supabase/server';
 import { resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import {
@@ -19,6 +20,11 @@ vi.mock('@/lib/auth/require-permission', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/auth/require-permission')>()),
   requirePermission: vi.fn(),
 }));
+
+vi.mock('@/lib/jobs/job-worker', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/jobs/job-worker')>();
+  return { ...actual, executeDossierJob: vi.fn(actual.executeDossierJob) };
+});
 
 vi.mock('@/lib/supabase/server-auth', async () => {
   const { NOTARY_ROLES } = await import('@/types/organization');
@@ -45,6 +51,7 @@ vi.mock('@/lib/supabase/server', async (importOriginal) => {
     getDossierRepository: () => mockDossierRepo,
     getKnowledgeRepository: () => createMockKnowledgeRepository(),
     getAuditRepository: () => createMockAuditRepository(),
+    getLlmUsageRepository: () => ({ recordLlmUsage: vi.fn() }),
     getServerSupabase: vi.fn(),
   };
 });
@@ -146,6 +153,23 @@ describe('API Route: /api/jobs (List & Retry)', () => {
 
     const updatedJob = await repo.getJobById(job.id);
     expect(updatedJob?.status).toBe(JOB_STATUS.PROCESSING);
+  });
+
+  it('POST /api/jobs erfasst beim Wiederholen den Tokenverbrauch (usageRepo)', async () => {
+    const job = await repo.createJob(
+      { caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: 'Verbrauch' },
+      TEST_ORG_ID
+    );
+    await repo.updateJobStatus(job.id, { status: JOB_STATUS.FAILED, retryCount: 1 });
+
+    await POST(
+      new NextRequest('http://localhost:3000/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ jobId: job.id }),
+      })
+    );
+
+    expect(vi.mocked(executeDossierJob).mock.lastCall?.[1]?.usageRepo).toBeDefined();
   });
 
   it.each([JOB_STATUS.PROCESSING, JOB_STATUS.COMPLETED, JOB_STATUS.PENDING])(
