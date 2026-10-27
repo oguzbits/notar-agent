@@ -139,5 +139,6 @@
 
 ## Ledger
 
-| Paket | Dauer | Subagent-Tokens | Commits | Bemerkung |
-| ----- | ----- | --------------- | ------- | --------- |
+| Paket         | Dauer                                           | Subagent-Tokens                    | Commits                   | Bemerkung                                                                                                                                                                                                                                                                                                          |
+| ------------- | ----------------------------------------------- | ---------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 Job-Zustand | 24 min (Umsetzung 12,5, Review 4,6, Nacharbeit) | 311.215 (205.283 + Review 105.932) | 1247308, 17e6878, ed76f38 | Review fand 4 Befunde (Abbruch beim Speichern, fehlende Lauf-Kennung, Controller-Aufräumen, Erfolgsmeldung trotz verlorenem Wettlauf), alle behoben mit roten Gegenproben. Offen als Hinweis: rohe Fehlertexte in `errorMessage` (Paket 5), wartende Jobs ohne Lebenszeichen werden nach 3 min FAILED (wie vorher) |

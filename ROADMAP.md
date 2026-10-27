@@ -83,7 +83,6 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
     - [x] Modulare Entflechtung von `domain-guardrails.ts` (Komplexität von 36 auf < 10 gesenkt via `party-guardrails.ts` und `arithmetic-guardrails.ts`), Ausrichtung an deklarativen `knowledge_documents`-Prüfnormen gem. `AGENTS.md`
 
 - [ ] **B.11 Antipattern-Bereinigung (Befunde vom 27.10.2026, Plan: [2026-10-27-antipattern-bereinigung.md](./docs/superpowers/plans/2026-10-27-antipattern-bereinigung.md)):**
-  - [ ] **B.11.1 Job-Zustand:** Abbruch wirkt und wird nicht überschrieben, keine falschen FAILED nach 3 Minuten, Sperre und Fehlermeldung werden freigegeben, `retryCount` einmal, ungültige Extraktion scheitert sichtbar.
   - [ ] **B.11.2 Sicherheit und Audit:** Open Redirect nach dem Login, Rollenänderungen im Team mit Audit und Schutz vor Selbständerung, Feld-Statuswechsel nur mit Grund, Kontingent auch im SSE-Pfad.
   - [ ] **B.11.3 Still kaputte Funktionen:** Einladung, Speichern ohne getroffene Zeile, Teamliste mit Platzhaltern, Rolle bei mehreren Kanzleien, Registrierung mit E-Mail-Bestätigung.
   - [ ] **B.11.4 UI-Zustände:** Fehler bei Job-Aktionen sichtbar, kein endloses Polling, Ladefehler mit Wiederholen, Export nicht still ohne Audit-Trail.
