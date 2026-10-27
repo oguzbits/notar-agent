@@ -89,7 +89,7 @@ export function createMockJobRepository(): IJobRepository {
       }
       return all;
     }),
-    countJobsSince: vi.fn(
+    countAnalysisRunsSince: vi.fn(
       async (organizationId: string, sinceIso: string) =>
         [...jobs.values()].filter(
           (j) => j.organizationId === organizationId && j.createdAt >= sinceIso
