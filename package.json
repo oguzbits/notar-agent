@@ -79,7 +79,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.6.0",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
@@ -118,7 +118,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vite": "^8.2.2",
+    "vite": "^8.3.5",
     "vitest": "^5.0.0",
     "vitest-axe": "^0.1.0",
     "zod-validation-error": "^5.0.0"
