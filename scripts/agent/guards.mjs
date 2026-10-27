@@ -5,7 +5,7 @@ const allow = { decision: 'allow', reason: '' };
 const deny = (reason) => ({ decision: 'deny', reason });
 const ask = (reason) => ({ decision: 'ask', reason });
 
-const ENV_FILE = /(^|[\s/'"=])\.env(?!\.example\b)(\.[\w.-]+)?(?=$|[\s'";|&)])/;
+const ENV_FILE = /(^|[\s/'"=])\.env(?!\.example\b)(\.[\w.-]+)?(?=$|[\s'";|&)*])/;
 
 export function evaluateCommand(command) {
   const cmd = (command ?? '').trim();
@@ -23,7 +23,7 @@ export function evaluateCommand(command) {
     return deny('Gefährliches rekursives Löschen.');
   }
   if (
-    /\b(cat|less|more|head|tail|grep|rg|sed|awk|cp|mv|base64|source|printenv|env)\b/.test(cmd) &&
+    /\b(cat|tac|nl|less|more|head|tail|grep|rg|sed|awk|cut|sort|uniq|wc|diff|xxd|od|strings|dd|tee|bat|cp|mv|ln|base64|source|printenv|env|node|python3?|perl|ruby)\b/.test(cmd) &&
     ENV_FILE.test(cmd)
   ) {
     return deny('Zugriff auf echte .env-Dateien ist verboten; .env.example ist lesbar.');

