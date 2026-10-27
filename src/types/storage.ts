@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DbUuidSchema } from './primitives';
+import { DbUuidSchema, PG_UUID_REGEX } from './primitives';
 
 export const STORAGE_BUCKET_NAMES = {
   DOSSIER_FILES: 'dossier-files',
@@ -21,3 +21,10 @@ export const CreateUploadUrlResponseSchema = z.object({
   token: z.string().optional(),
 });
 export type CreateUploadUrlResponse = z.infer<typeof CreateUploadUrlResponseSchema>;
+
+/** Upload-Pfad genau `<Kanzlei-UUID>/<Datei>`: ein Schrägstrich, kein `..` (Client-Eingabe, daher streng). */
+export const UploadStoragePathSchema = z
+  .string()
+  .max(512)
+  .regex(new RegExp(`^${PG_UUID_REGEX.source.slice(1, -1)}/[^/]+$`), 'Ungültiger Speicherpfad')
+  .refine((p) => !p.includes('..'), 'Ungültiger Speicherpfad');

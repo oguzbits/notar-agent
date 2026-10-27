@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { logFailure } from '@/lib/observability/logger';
+import { isOwnUploadPath } from '@/lib/storage/storage-path';
 import {
   applyOrganizationFilter,
   executeMaybeSingle,
@@ -253,20 +254,23 @@ export class SupabaseJobRepository implements IJobRepository {
   }
 
   /**
-   * Entfernt Dateien im Speicher; ein Fehler bricht ab, bevor die Zeile gelöscht wird,
-   * damit keine Mandantendateien ohne Hinweis zurückbleiben.
+   * Entfernt Dateien im Speicher; ein Fehler bricht ab, bevor die Zeile gelöscht wird.
+   * Pfade sind Client-Eingaben und der Cron löscht mit Service-Rolle: nur eigene Upload-Pfade.
    */
-  private async removeStorageFiles(files: { storagePath?: string }[]): Promise<void> {
-    const paths = files
-      .map((f) => f.storagePath)
-      .filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
-    if (paths.length === 0) return;
-    const { error } = await this.supabase.storage
-      .from(STORAGE_BUCKET_NAMES.DOSSIER_FILES)
-      .remove(paths);
-    if (error) {
-      throw new Error(`Supabase Storage remove fehlgeschlagen: ${error.message}`);
+  private async removeStorageFiles(
+    files: { storagePath?: string }[],
+    organizationId?: string | null
+  ): Promise<void> {
+    const all = files.flatMap((f) => (f.storagePath?.trim() ? [f.storagePath] : []));
+    const paths = all.filter((p) => organizationId && isOwnUploadPath(p, organizationId));
+    if (paths.length < all.length) {
+      const msg = `${all.length - paths.length} Pfade übersprungen`;
+      logFailure('warn', 'job_fremde_pfade_uebersprungen', new Error(msg));
     }
+    if (paths.length === 0) return;
+    const bucket = this.supabase.storage.from(STORAGE_BUCKET_NAMES.DOSSIER_FILES);
+    const { error } = await bucket.remove(paths);
+    if (error) throw new Error(`Supabase Storage remove fehlgeschlagen: ${error.message}`);
   }
 
   async pruneCompletedJobs(maxAgeMs = JOB_RETENTION_MS): Promise<number> {
@@ -276,7 +280,7 @@ export class SupabaseJobRepository implements IJobRepository {
     const candidates = await executeList(
       this.supabase
         .from(DB_TABLES.DOSSIER_JOBS)
-        .select('id, files:payload->files')
+        .select('id, organization_id, files:payload->files')
         .or(isPrunable)
         .lt('updated_at', cutoffIso)
         .order('updated_at', { ascending: true })
@@ -289,7 +293,7 @@ export class SupabaseJobRepository implements IJobRepository {
     const deletable: string[] = [];
     for (const c of candidates) {
       try {
-        await this.removeStorageFiles(Array.isArray(c.files) ? c.files : []);
+        await this.removeStorageFiles(Array.isArray(c.files) ? c.files : [], c.organization_id);
         deletable.push(c.id);
       } catch (err) {
         logFailure('warn', 'job_aufbewahrung_dateien_fehlgeschlagen', err);
@@ -311,7 +315,7 @@ export class SupabaseJobRepository implements IJobRepository {
 
   async deleteJob(id: string, organizationId?: string): Promise<boolean> {
     const job = await this.getJobById(id, organizationId);
-    if (job) await this.removeStorageFiles(job.payload?.files ?? []);
+    if (job) await this.removeStorageFiles(job.payload?.files ?? [], job.organizationId);
 
     let query = this.supabase.from(DB_TABLES.DOSSIER_JOBS).delete().eq('id', id);
 

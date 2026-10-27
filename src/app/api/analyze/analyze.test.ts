@@ -160,6 +160,36 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
   });
 });
 
+describe('API Route: POST /api/analyze Dateipfade', () => {
+  it('lehnt einen Dateipfad einer fremden Kanzlei ab (400), ohne Job anzulegen', async () => {
+    const spy = vi.spyOn(mockJobRepo, 'createJob');
+    const prevKey = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test-key';
+    try {
+      const req = new NextRequest('http://localhost:3000/api/analyze?async=true', {
+        method: 'POST',
+        body: JSON.stringify({
+          files: [
+            {
+              name: 'x.pdf',
+              type: 'application/pdf',
+              size: 1,
+              storagePath: 'b0000000-0000-4000-8000-000000000002/11111111-x.pdf',
+            },
+          ],
+          caseType: CASE_TYPES.IMMOBILIENKAUF,
+        }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      if (prevKey) process.env.GEMINI_API_KEY = prevKey;
+      else delete process.env.GEMINI_API_KEY;
+    }
+  });
+});
+
 describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
   it('sollte Status 400 liefern, wenn documentId oder dossier fehlen', async () => {
     const req = new NextRequest('http://localhost:3000/api/analyze', {

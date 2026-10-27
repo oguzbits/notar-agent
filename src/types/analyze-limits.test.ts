@@ -20,3 +20,22 @@ describe('AnalyzeRequestSchema Obergrenzen', () => {
     expect(AnalyzeRequestSchema.safeParse({ files: [file] }).success).toBe(true);
   });
 });
+
+describe('storagePath in Dateien', () => {
+  const org = 'a0000000-0000-4000-8000-000000000001';
+  const parse = (storagePath: string) =>
+    AnalyzeRequestSchema.safeParse({ files: [{ ...file, storagePath }] }).success;
+  it('akzeptiert <uuid>/<Datei>', () => {
+    expect(parse(`${org}/11111111-vertrag.pdf`)).toBe(true);
+  });
+  it.each([
+    `${org}/archive/akte/snapshot.json`,
+    `${org}/../b0000000-0000-4000-8000-000000000002/x.pdf`,
+    `${org}/..x.pdf`,
+    `${org}/`,
+    'org-1/datei.pdf',
+    '../x',
+  ])('lehnt %s ab', (path) => {
+    expect(parse(path)).toBe(false);
+  });
+});

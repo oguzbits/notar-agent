@@ -9,6 +9,7 @@ import { carryOverReviews, checkStatusOverride } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
+import { isOwnUploadPath } from '@/lib/storage/storage-path';
 import { DossierNotFoundError } from '@/lib/supabase/repository';
 import {
   getAuditRepository,
@@ -66,6 +67,11 @@ export async function POST(req: NextRequest): Promise<Response> {
         route: 'POST /api/analyze',
       }
     );
+
+    // Speicherpfade sind Client-Eingaben: nur Upload-Pfade der eigenen Kanzlei
+    if (files.some((f) => f.storagePath && !isOwnUploadPath(f.storagePath, resolvedOrgId))) {
+      return NextResponse.json({ error: 'Ungültiger Speicherpfad.' }, { status: 400 });
+    }
 
     // Prüfen, ob eine asynchrone Verarbeitung angefordert wurde (?async=true oder Header x-async: true)
     const isAsync =

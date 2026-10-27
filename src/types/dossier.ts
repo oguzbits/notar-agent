@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DbUuidSchema } from './primitives';
+import { UploadStoragePathSchema } from './storage';
 
 export const CASE_TYPES = {
   IMMOBILIENKAUF: 'IMMOBILIENKAUF',
@@ -611,7 +612,7 @@ export const UploadedFilePayloadSchema = z.object({
   size: z.number().nonnegative().max(ANALYZE_LIMITS.MAX_FILE_BYTES),
   content: z.string().max(ANALYZE_LIMITS.MAX_INLINE_CONTENT_CHARS).optional(),
   isBase64: z.boolean().optional(),
-  storagePath: z.string().optional(),
+  storagePath: UploadStoragePathSchema.optional(),
 });
 export type UploadedFilePayload = z.infer<typeof UploadedFilePayloadSchema>;
 

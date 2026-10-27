@@ -76,6 +76,7 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
                   maybeSingle: vi.fn().mockResolvedValue({
                     data: {
                       id: 'job-123',
+                      organization_id: 'org-1',
                       status: JOB_STATUS.COMPLETED,
                       payload: {
                         files: [
@@ -92,6 +93,7 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
                 maybeSingle: vi.fn().mockResolvedValue({
                   data: {
                     id: 'job-123',
+                    organization_id: 'org-1',
                     status: JOB_STATUS.COMPLETED,
                     payload: {
                       files: [
@@ -193,6 +195,7 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
             maybeSingle: vi.fn().mockResolvedValue({
               data: {
                 id: 'job-1',
+                organization_id: 'org',
                 payload: { files: [{ name: 'a.pdf', storagePath: 'org/a.pdf' }] },
                 created_at: 'x',
                 updated_at: 'x',
@@ -211,6 +214,31 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
     await expect(repo.deleteJob('job-1')).rejects.toThrow('Bucket nicht erreichbar');
     expect(del).not.toHaveBeenCalled();
   });
+  it('deleteJob entfernt fremde Pfade nicht aus dem Speicher', async () => {
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null });
+    const row = {
+      id: 'job-1',
+      organization_id: 'org',
+      payload: { files: [{ name: 'a', storagePath: 'fremd/a.pdf' }] },
+      created_at: 'x',
+      updated_at: 'x',
+    };
+    const mockSupabase = {
+      storage: { from: vi.fn().mockReturnValue({ remove }) },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: row, error: null }),
+          }),
+        }),
+        delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+      }),
+    };
+    const { SupabaseJobRepository } = await import('./job-repository');
+    await new SupabaseJobRepository(mockSupabase as never).deleteJob('job-1');
+    expect(remove).not.toHaveBeenCalled();
+  });
+
   describe('pruneCompletedJobs', () => {
     function setup(candidates: unknown[], removeImpl: (paths: string[]) => unknown) {
       const limit = vi.fn().mockResolvedValue({ data: candidates, error: null });
@@ -245,8 +273,8 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
     it('löscht Jobs mit Speicherfehler nicht, verarbeitet die übrigen weiter', async () => {
       const { supabase, deleteIn } = setup(
         [
-          { id: 'ok', files: [{ storagePath: 'org/ok.pdf' }] },
-          { id: 'kaputt', files: [{ storagePath: 'org/kaputt.pdf' }] },
+          { id: 'ok', organization_id: 'org', files: [{ storagePath: 'org/ok.pdf' }] },
+          { id: 'kaputt', organization_id: 'org', files: [{ storagePath: 'org/kaputt.pdf' }] },
         ],
         (paths) =>
           paths[0] === 'org/kaputt.pdf'
@@ -259,6 +287,50 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
       await expect(repo.pruneCompletedJobs()).resolves.toBe(1);
       expect(deleteIn).toHaveBeenCalledWith('id', ['ok']);
       expect(logFailure).toHaveBeenCalledWith('warn', expect.any(String), expect.any(Error));
+    });
+
+    it('entfernt nur eigene Upload-Pfade; fremde und Archivpfade bleiben, der Job wird trotzdem bereinigt', async () => {
+      const { supabase, deleteIn } = setup(
+        [
+          {
+            id: 'job',
+            organization_id: 'org',
+            files: [
+              { storagePath: 'org/eigen.pdf' },
+              { storagePath: 'fremd/x.pdf' },
+              { storagePath: 'org/archive/akte/snapshot-1.json' },
+              { storagePath: 'org/../fremd/x.pdf' },
+            ],
+          },
+        ],
+        () => ({ data: [], error: null })
+      );
+      const remove = vi.fn(async () => ({ data: [], error: null }));
+      supabase.storage.from.mockReturnValue({ remove });
+      const { SupabaseJobRepository } = await import('./job-repository');
+
+      await expect(new SupabaseJobRepository(supabase as never).pruneCompletedJobs()).resolves.toBe(
+        1
+      );
+      expect(remove).toHaveBeenCalledWith(['org/eigen.pdf']);
+      expect(deleteIn).toHaveBeenCalledWith('id', ['job']);
+      expect(logFailure).toHaveBeenCalledWith(
+        'warn',
+        'job_fremde_pfade_uebersprungen',
+        expect.any(Error)
+      );
+    });
+
+    it('ohne Kanzlei am Job wird nichts aus dem Speicher entfernt', async () => {
+      const { supabase } = setup(
+        [{ id: 'job', organization_id: null, files: [{ storagePath: 'org/x.pdf' }] }],
+        () => ({ data: [], error: null })
+      );
+      const remove = vi.fn(async () => ({ data: [], error: null }));
+      supabase.storage.from.mockReturnValue({ remove });
+      const { SupabaseJobRepository } = await import('./job-repository');
+      await new SupabaseJobRepository(supabase as never).pruneCompletedJobs();
+      expect(remove).not.toHaveBeenCalled();
     });
 
     it('fragt höchstens JOB_PRUNE_BATCH Kandidaten ab', async () => {
