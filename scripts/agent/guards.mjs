@@ -40,6 +40,25 @@ export function evaluateCommand(command) {
   return allow;
 }
 
+/** Geänderte, noch vorhandene Quelldateien (ts/tsx unter src/) aus `git status --porcelain`. */
+export function selectChangedSources(porcelain) {
+  return porcelain
+    .split('\n')
+    .filter((line) => line.length > 3 && !line.slice(0, 2).includes('D'))
+    .map((line) => line.slice(3).split(' -> ').pop().trim().replace(/^"|"$/g, ''))
+    .filter((file) => /^src\/.*\.(ts|tsx)$/.test(file));
+}
+
+/** Prüfschritte des Stop-Hooks für die geänderten Dateien; ohne Dateien keine Schritte. */
+export function buildStopSteps(files) {
+  if (files.length === 0) return [];
+  return [
+    ['npx', ['tsc', '--noEmit']],
+    ['npx', ['eslint', ...files]],
+    ['npx', ['vitest', 'related', '--run', '--passWithNoTests', ...files]],
+  ];
+}
+
 export function evaluateFileWrite(filePath) {
   const path = (filePath ?? '').replace(/\\/g, '/');
   const base = path.split('/').pop() ?? '';

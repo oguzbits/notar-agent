@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateCommand, evaluateFileWrite } from './guards.mjs';
+import {
+  buildStopSteps,
+  evaluateCommand,
+  evaluateFileWrite,
+  selectChangedSources,
+} from './guards.mjs';
 
 const d = (cmd) => evaluateCommand(cmd).decision;
 const f = (path) => evaluateFileWrite(path).decision;
@@ -63,5 +68,41 @@ describe('evaluateFileWrite', () => {
     ]) {
       expect(f(p), p).toBe('ask');
     }
+  });
+});
+
+describe('evaluateCommand (weitere Umgehungen)', () => {
+  it('verweigert -n am Commit und Force mit Lease, fragt bei git clean', () => {
+    expect(d('git commit -n -m x')).toBe('deny');
+    expect(d('git push --force-with-lease')).toBe('deny');
+    expect(d('git clean -fd')).toBe('ask');
+  });
+});
+
+describe('selectChangedSources', () => {
+  it('nimmt nur ts/tsx unter src auf', () => {
+    const porcelain =
+      ' M src/a.ts\n?? src/b/c.tsx\n M README.md\n M scripts/x.mjs\n M src/data.json\n';
+    expect(selectChangedSources(porcelain)).toEqual(['src/a.ts', 'src/b/c.tsx']);
+  });
+  it('behandelt Umbenennungen und Pfade mit Leerzeichen', () => {
+    const porcelain = 'R  src/alt.ts -> src/neu.ts\n?? "src/mit leer.ts"\n';
+    expect(selectChangedSources(porcelain)).toEqual(['src/neu.ts', 'src/mit leer.ts']);
+  });
+  it('überspringt gelöschte Dateien, weil eslint sie nicht öffnen kann', () => {
+    const porcelain = ' D src/weg.ts\nD  src/auch-weg.ts\n M src/da.ts\n';
+    expect(selectChangedSources(porcelain)).toEqual(['src/da.ts']);
+  });
+});
+
+describe('buildStopSteps', () => {
+  it('liefert ohne Dateien keine Schritte', () => {
+    expect(buildStopSteps([])).toEqual([]);
+  });
+  it('reicht die Dateien an eslint und vitest related weiter', () => {
+    const steps = buildStopSteps(['src/a.ts']);
+    expect(steps.map(([, args]) => args[0])).toEqual(['tsc', 'eslint', 'vitest']);
+    expect(steps[1][1]).toContain('src/a.ts');
+    expect(steps[2][1]).toContain('src/a.ts');
   });
 });

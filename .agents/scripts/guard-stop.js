@@ -1,70 +1,22 @@
 #!/usr/bin/env node
+// Stop: Prüfschritte wie beim Claude-Stop-Hook (scripts/agent/guards.mjs), bei Fehlern geht der Agent weiter.
+const { execFileSync, spawnSync } = require('child_process');
+const { runAdapter } = require('./adapter');
 
-/**
- * Stop Hook: Verification Gate
- *
- * Runs when the agent attempts to conclude its turn.
- * Ensures that if code files in the repo were modified, TypeScript type-check
- * passes without errors before the agent can stop.
- */
-
-const { execSync } = require('child_process');
-
-function readStdin() {
-  try {
-    const fs = require('fs');
-    return fs.readFileSync(0, 'utf-8');
-  } catch (err) {
-    process.stderr.write(`Failed to read stdin: ${err.message}\n`);
-    return '';
-  }
-}
-
-function respond(decision, reason) {
-  const payload = {
-    decision,
-    reason: reason || '',
-  };
-  process.stdout.write(JSON.stringify(payload) + '\n');
-  process.exit(0);
-}
-
-try {
-  const inputRaw = readStdin();
-  const payload = inputRaw ? JSON.parse(inputRaw) : {};
-
-  // If stopping due to user cancel or error, do not block
+runAdapter((payload, { buildStopSteps, selectChangedSources }) => {
   if (payload.terminationReason && payload.terminationReason !== 'model_stop') {
-    respond('allow');
+    return { decision: 'allow' };
   }
-
-  // Check if working tree has modified ts/tsx/js files
-  let statusOutput = '';
-  try {
-    statusOutput = execSync('git status --porcelain', { encoding: 'utf-8' });
-  } catch {
-    // If not in git or error, allow
-    respond('allow');
-  }
-
-  const hasCodeChanges = statusOutput
-    .split('\n')
-    .some((line) => /\.(ts|tsx|js|mjs)$/.test(line.trim()));
-
-  if (hasCodeChanges) {
-    // Perform quick type-check
-    try {
-      execSync('npx tsc --noEmit', { stdio: 'pipe', encoding: 'utf-8' });
-    } catch (tscErr) {
-      const output = tscErr.stdout || tscErr.stderr || tscErr.message;
-      respond(
-        'continue',
-        `Deterministic Verification Gate: TypeScript type-check failed. You must fix these compiler errors before completing the task:\n\n${output.slice(0, 1500)}`
-      );
+  const porcelain = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf-8' });
+  for (const [cmd, args] of buildStopSteps(selectChangedSources(porcelain))) {
+    const result = spawnSync(cmd, args, { encoding: 'utf-8', timeout: 90000 });
+    if (result.status !== 0) {
+      const out = `${result.stdout ?? ''}${result.stderr ?? ''}`.slice(-1500);
+      return {
+        decision: 'continue',
+        reason: `Verifikation fehlgeschlagen (${cmd} ${args.slice(0, 2).join(' ')}):\n${out}`,
+      };
     }
   }
-
-  respond('allow');
-} catch (err) {
-  respond('allow', `Hook error: ${err.message}`);
-}
+  return { decision: 'allow' };
+});

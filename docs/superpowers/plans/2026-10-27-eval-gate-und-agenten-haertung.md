@@ -36,7 +36,7 @@
 
 ## Aufgabe 1: Hook-Konfiguration und Stop-Hook
 
-**Befund:** `.agents/hooks.json` verweist auf `./scripts/guard-*.js`, die Dateien liegen unter `.agents/scripts/`. `hook-stop.mjs` hat keinen Test, seine Auswahl der Dateien und Schritte ist mit I/O vermischt.
+**Befund (nach Lesen korrigiert):** Die Pfade in `.agents/hooks.json` gelten relativ zu `.agents/` und sind korrekt. Der eigentliche Fehler: `.agents/scripts/guard-*.js` waren eigenständige Duplikate mit abweichender Regel (sie verboten jeden Commit und Push, entgegen `AGENTS.md`), das Stop-Gate prüfte nur `tsc`. `hook-stop.mjs` hatte keinen Test, Dateiauswahl und Schritte waren mit I/O vermischt. Umgesetzt: die Skripte sind dünne Protokoll-Adapter auf `guards.mjs`.
 
 **Verträge** (in [guards.mjs](../../../scripts/agent/guards.mjs), rein, ohne I/O):
 
