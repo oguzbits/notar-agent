@@ -17,7 +17,8 @@ export function sanitizeStorageFileName(rawFileName: string): string {
     .filter((segment) => segment !== '..' && segment !== '.')
     .join('-')
     .replace(/\s+/g, '-')
-    .replace(/[^a-zA-Z0-9.\-_()]/g, '');
+    .replace(/[^a-zA-Z0-9.\-_()]/g, '')
+    .replace(/\.{2,}/g, '.');
 
   const trimmed = normalized.replace(/^-+/, '').trim();
   return trimmed || 'document.bin';
@@ -69,41 +70,6 @@ export async function downloadFileBuffer(
 
   const arrayBuffer = await data.arrayBuffer();
   return Buffer.from(arrayBuffer);
-}
-
-/**
- * Löscht mehrere Dateien gebündelt aus dem Supabase Object Storage.
- */
-export async function deleteStorageFiles(
-  supabase: SupabaseClient<Database>,
-  storagePaths: string[]
-): Promise<boolean> {
-  const validPaths = storagePaths.filter(
-    (p): p is string => typeof p === 'string' && p.trim().length > 0
-  );
-  if (validPaths.length === 0) {
-    return true;
-  }
-
-  const { error } = await supabase.storage
-    .from(STORAGE_BUCKET_NAMES.DOSSIER_FILES)
-    .remove(validPaths);
-
-  if (error) {
-    throw new Error(`Storage Löschen fehlgeschlagen: ${error.message}`);
-  }
-
-  return true;
-}
-
-/**
- * Löscht eine Datei aus dem Supabase Object Storage.
- */
-export async function deleteStorageFile(
-  supabase: SupabaseClient<Database>,
-  storagePath: string
-): Promise<boolean> {
-  return deleteStorageFiles(supabase, [storagePath]);
 }
 
 /**
