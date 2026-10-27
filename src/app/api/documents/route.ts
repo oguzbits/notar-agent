@@ -50,8 +50,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const records = await fetchDossierRecords(orgId, authSupabase);
     return NextResponse.json({ documents: records });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Fehler beim Laden der Vorgänge.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'documents_fehlgeschlagen', error);
+    return NextResponse.json({ error: 'Fehler beim Laden der Vorgänge.' }, { status: 500 });
   }
 }
 
@@ -118,7 +118,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
     if (denied) return denied;
     const known = deletionErrorResponse(error);
     if (known) return known;
-    const msg = error instanceof Error ? error.message : 'Fehler beim Löschen des Vorgangs.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'documents_fehlgeschlagen_2', error);
+    return NextResponse.json({ error: 'Fehler beim Löschen des Vorgangs.' }, { status: 500 });
   }
 }

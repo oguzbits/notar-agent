@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { logFailure } from '@/lib/observability/logger';
 import { getAuditRepository, getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { LastNotarError, TeamSelfChangeError } from '@/lib/team/team-repository';
@@ -71,8 +72,8 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
   } catch (err: unknown) {
     const denied = authzErrorResponse(err) ?? teamChangeErrorResponse(err);
     if (denied) return denied;
-    const msg = err instanceof Error ? err.message : 'Fehler beim Ändern der Rolle.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'team_id_fehlgeschlagen', err);
+    return NextResponse.json({ error: 'Fehler beim Ändern der Rolle.' }, { status: 500 });
   }
 }
 
@@ -89,7 +90,7 @@ export async function DELETE(req: NextRequest, context: RouteContext): Promise<N
   } catch (err: unknown) {
     const denied = authzErrorResponse(err) ?? teamChangeErrorResponse(err);
     if (denied) return denied;
-    const msg = err instanceof Error ? err.message : 'Fehler beim Entfernen des Mitglieds.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'team_id_fehlgeschlagen_2', err);
+    return NextResponse.json({ error: 'Fehler beim Entfernen des Mitglieds.' }, { status: 500 });
   }
 }

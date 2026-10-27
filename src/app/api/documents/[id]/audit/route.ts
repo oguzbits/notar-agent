@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logFailure } from '@/lib/observability/logger';
 import { getAuditRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 
@@ -36,7 +37,7 @@ export async function GET(
       integrity,
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Fehler beim Laden des Audit-Trails.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'documents_id_audit_fehlgeschlagen', error);
+    return NextResponse.json({ error: 'Fehler beim Laden des Audit-Trails.' }, { status: 500 });
   }
 }

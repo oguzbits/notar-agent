@@ -351,16 +351,13 @@ async function runJobExecution(
       return requeued ?? (await jobRepo.getJobById(jobId));
     }
 
-    const errMsg =
-      error instanceof Error
-        ? error.message
-        : 'Unbekannter Fehler während der Hintergrundverarbeitung.';
-    console.error('[executeDossierJob] Fehler bei Job:', jobId, errMsg);
+    // Rohe Modell-/DB-Texte können Mandantendaten enthalten: Nutzer sehen eine feste Meldung
+    logFailure('error', 'job_fehlgeschlagen', error);
 
     // retryCount zählt allein der Requeue (POST /api/jobs)
     const failed = await whileProcessing({
       status: JOB_STATUS.FAILED,
-      errorMessage: errMsg,
+      errorMessage: 'Verarbeitung fehlgeschlagen. Bitte Vorgang erneut starten.',
       lockedAt: null,
     });
     return failed ?? (await jobRepo.getJobById(jobId));

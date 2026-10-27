@@ -87,7 +87,9 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     expect(failedJob?.status).toBe(JOB_STATUS.FAILED);
-    expect(failedJob?.errorMessage).toContain('Anthropic API 500');
+    expect(failedJob?.errorMessage).toBe(
+      'Verarbeitung fehlgeschlagen. Bitte Vorgang erneut starten.'
+    );
     expect(failedJob?.retryCount).toBe(0);
     expect(failedJob?.lockedAt).toBeUndefined();
   });

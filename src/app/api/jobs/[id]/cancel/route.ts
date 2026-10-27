@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { cancelDossierJob } from '@/lib/jobs/job-worker';
+import { logFailure } from '@/lib/observability/logger';
 import { getJobRepository } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS } from '@/types/auth';
@@ -71,7 +72,7 @@ export async function POST(
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    const msg = error instanceof Error ? error.message : 'Fehler beim Abbrechen des Vorgangs.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'jobs_id_cancel_fehlgeschlagen', error);
+    return NextResponse.json({ error: 'Fehler beim Abbrechen des Vorgangs.' }, { status: 500 });
   }
 }

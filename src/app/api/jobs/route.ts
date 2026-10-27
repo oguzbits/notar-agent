@@ -41,8 +41,8 @@ export async function GET(req?: NextRequest): Promise<Response> {
     const jobs = await repo.listJobs(orgId);
     return NextResponse.json({ jobs }, { status: 200 });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Fehler beim Laden der Jobs.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'jobs_fehlgeschlagen', error);
+    return NextResponse.json({ error: 'Fehler beim Laden der Jobs.' }, { status: 500 });
   }
 }
 
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    const msg = error instanceof Error ? error.message : 'Fehler bei der Job-Wiederholung.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'jobs_fehlgeschlagen_2', error);
+    return NextResponse.json({ error: 'Fehler bei der Job-Wiederholung.' }, { status: 500 });
   }
 }

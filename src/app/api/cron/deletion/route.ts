@@ -8,6 +8,7 @@ import {
   runRetentionSweep,
 } from '@/lib/dossier/deletion-worker';
 import { SupabaseJobRepository } from '@/lib/jobs/job-repository';
+import { logFailure } from '@/lib/observability/logger';
 import { createServiceRoleClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
     return NextResponse.json({ tasks, retention, jobsPruned });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Löschlauf fehlgeschlagen.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'cron_deletion_fehlgeschlagen', error);
+    return NextResponse.json({ error: 'Löschlauf fehlgeschlagen.' }, { status: 500 });
   }
 }

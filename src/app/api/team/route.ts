@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { logFailure } from '@/lib/observability/logger';
 import { getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS } from '@/types/auth';
@@ -42,8 +43,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const members = await session.repo.listMembers(session.orgId);
     return NextResponse.json({ members });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Fehler beim Laden des Kanzleiteams.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'team_fehlgeschlagen', err);
+    return NextResponse.json({ error: 'Fehler beim Laden des Kanzleiteams.' }, { status: 500 });
   }
 }
 
@@ -62,7 +63,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (err: unknown) {
     const denied = authzErrorResponse(err);
     if (denied) return denied;
-    const msg = err instanceof Error ? err.message : 'Fehler beim Einladen des Kanzleimitglieds.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'team_fehlgeschlagen_2', err);
+    return NextResponse.json(
+      { error: 'Fehler beim Einladen des Kanzleimitglieds.' },
+      { status: 500 }
+    );
   }
 }

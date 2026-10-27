@@ -56,6 +56,15 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     vi.mocked(requirePermission).mockImplementation(fakeRequirePermission());
   });
 
+  it('GET /api/jobs antwortet bei Datenbankfehler mit fester Meldung ohne Details', async () => {
+    vi.spyOn(repo, 'listJobs').mockRejectedValueOnce(new Error('connection to db.internal:5432'));
+
+    const res = await GET();
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: 'Fehler beim Laden der Jobs.' });
+  });
+
   it('POST /api/jobs verlangt UPLOAD_DOCUMENTS und fasst ohne Sitzung nichts an (401)', async () => {
     vi.mocked(requirePermission).mockRejectedValueOnce(
       new AuthzError(401, 'Nicht authentifiziert oder keine Kanzlei zugeordnet.')

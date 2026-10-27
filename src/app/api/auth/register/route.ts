@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { RegisterRequestSchema } from '@/types/auth';
 
@@ -40,10 +41,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (signUpError || !authData.user) {
-      return NextResponse.json(
-        { error: signUpError?.message || 'Registrierung fehlgeschlagen.' },
-        { status: 400 }
-      );
+      logFailure('warn', 'auth_register_provider_1', signUpError);
+      return NextResponse.json({ error: 'Registrierung fehlgeschlagen.' }, { status: 400 });
     }
 
     const userId = authData.user.id;
@@ -69,10 +68,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (orgError || !orgData) {
-      return NextResponse.json(
-        { error: orgError?.message || 'Kanzlei konnte nicht angelegt werden.' },
-        { status: 500 }
-      );
+      logFailure('warn', 'auth_register_provider_2', orgError);
+      return NextResponse.json({ error: 'Kanzlei konnte nicht angelegt werden.' }, { status: 500 });
     }
 
     return NextResponse.json(
@@ -89,7 +86,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 201 }
     );
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unerwarteter Fehler bei der Registrierung.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'auth_register_fehlgeschlagen', err);
+    return NextResponse.json(
+      { error: 'Unerwarteter Fehler bei der Registrierung.' },
+      { status: 500 }
+    );
   }
 }

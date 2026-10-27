@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { NextResponse } from 'next/server';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient, resolveSessionOrganizationId } from '@/lib/supabase/server-auth';
 
 export const dynamic = 'force-dynamic';
@@ -28,8 +29,10 @@ export async function GET(): Promise<NextResponse> {
     const data = JSON.parse(fileContent);
     return NextResponse.json(data);
   } catch (error: unknown) {
-    const msg =
-      error instanceof Error ? error.message : 'Fehler beim Laden des Evaluierungsberichts.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'eval_report_fehlgeschlagen', error);
+    return NextResponse.json(
+      { error: 'Fehler beim Laden des Evaluierungsberichts.' },
+      { status: 500 }
+    );
   }
 }

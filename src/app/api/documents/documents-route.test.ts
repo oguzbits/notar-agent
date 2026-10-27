@@ -115,7 +115,7 @@ describe('Documents API Route (/api/documents)', () => {
 
       expect(res.status).toBe(500);
       const json = await res.json();
-      expect(json.error).toBe('DB Timeout');
+      expect(json.error).toBe('Fehler beim Laden der Vorgänge.');
     });
   });
 
@@ -244,7 +244,7 @@ describe('Documents API Route (/api/documents)', () => {
       const res = await DELETE(deleteRequest());
 
       expect(res.status).toBe(500);
-      expect((await res.json()).error).toBe('DB down');
+      expect((await res.json()).error).toBe('Fehler beim Löschen des Vorgangs.');
     });
   });
 });

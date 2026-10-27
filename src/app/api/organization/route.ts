@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import {
   CreateOrganizationRequestSchema,
@@ -51,10 +52,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (orgError || !orgData) {
-      return NextResponse.json(
-        { error: orgError?.message || 'Kanzlei konnte nicht erstellt werden.' },
-        { status: 500 }
-      );
+      logFailure('warn', 'organization_provider_1', orgError);
+      return NextResponse.json({ error: 'Kanzlei konnte nicht erstellt werden.' }, { status: 500 });
     }
 
     return NextResponse.json(
@@ -66,9 +65,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 201 }
     );
   } catch (err: unknown) {
-    const msg =
-      err instanceof Error ? err.message : 'Unerwarteter Fehler beim Erstellen der Kanzlei.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'organization_fehlgeschlagen', err);
+    return NextResponse.json(
+      { error: 'Unerwarteter Fehler beim Erstellen der Kanzlei.' },
+      { status: 500 }
+    );
   }
 }
 
@@ -113,8 +114,9 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       .single();
 
     if (updateError || !updatedOrg) {
+      logFailure('warn', 'organization_provider_2', updateError);
       return NextResponse.json(
-        { error: updateError?.message || 'Kanzlei konnte nicht aktualisiert werden.' },
+        { error: 'Kanzlei konnte nicht aktualisiert werden.' },
         { status: 500 }
       );
     }
@@ -126,7 +128,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   } catch (err: unknown) {
     const denied = authzErrorResponse(err);
     if (denied) return denied;
-    const msg = err instanceof Error ? err.message : 'Fehler beim Aktualisieren der Kanzlei.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'organization_fehlgeschlagen_2', err);
+    return NextResponse.json({ error: 'Fehler beim Aktualisieren der Kanzlei.' }, { status: 500 });
   }
 }

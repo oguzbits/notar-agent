@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { safeRedirectPath } from '@/lib/auth/safe-redirect';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { SsoLoginRequestSchema } from '@/types/auth';
 
@@ -41,8 +42,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (error) {
+      logFailure('warn', 'auth_sso_provider_1', error);
       return NextResponse.json(
-        { error: error.message || 'Fehler beim Starten der SSO-Anmeldung.' },
+        { error: 'Fehler beim Starten der SSO-Anmeldung.' },
         { status: 400 }
       );
     }
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       url: data.url,
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unerwarteter Fehler beim SSO-Login.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'auth_sso_fehlgeschlagen', err);
+    return NextResponse.json({ error: 'Unerwarteter Fehler beim SSO-Login.' }, { status: 500 });
   }
 }

@@ -51,8 +51,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     try {
       aiConfig = getAiConfiguration();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Kein KI-API-Key konfiguriert.';
-      return NextResponse.json({ error: msg }, { status: 500 });
+      logFailure('error', 'analyze_fehlgeschlagen', err);
+      return NextResponse.json({ error: 'Kein KI-API-Key konfiguriert.' }, { status: 500 });
     }
 
     // Anmeldung ist Pflicht; die Kanzlei stammt aus der Mitgliedschaft der Sitzung
@@ -229,9 +229,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
     logFailure('error', 'analyse_fehlgeschlagen', error);
-    const message =
-      error instanceof Error ? error.message : 'Ein unerwarteter Fehler ist aufgetreten.';
-    return NextResponse.json({ error: `Analyse fehlgeschlagen: ${message}` }, { status: 500 });
+    return NextResponse.json({ error: 'Analyse fehlgeschlagen.' }, { status: 500 });
   }
 }
 
@@ -319,7 +317,6 @@ export async function PUT(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: 'Vorgang nicht gefunden.' }, { status: 404 });
     }
     logFailure('error', 'analyse_update_fehlgeschlagen', error);
-    const message = error instanceof Error ? error.message : 'Fehler beim Aktualisieren.';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Fehler beim Aktualisieren.' }, { status: 500 });
   }
 }

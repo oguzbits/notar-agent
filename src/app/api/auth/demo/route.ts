@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { safeRedirectPath } from '@/lib/auth/safe-redirect';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { demoUserCredentials } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
@@ -38,10 +39,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (anonError || !anonData?.user) {
-      return NextResponse.json(
-        { error: anonError?.message || 'Demo-Zugang nicht verfügbar.' },
-        { status: 503 }
-      );
+      logFailure('warn', 'auth_demo_provider_1', anonError);
+      return NextResponse.json({ error: 'Demo-Zugang nicht verfügbar.' }, { status: 503 });
     }
 
     const userId = anonData.user.id;
@@ -59,8 +58,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
 
       if (orgError || !orgData) {
+        logFailure('warn', 'auth_demo_provider_2', orgError);
         return NextResponse.json(
-          { error: orgError?.message || 'Demo-Kanzlei konnte nicht initialisiert werden.' },
+          { error: 'Demo-Kanzlei konnte nicht initialisiert werden.' },
           { status: 500 }
         );
       }
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ success: true, user: anonData.user, redirectTo });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unerwarteter Fehler beim Demo-Login.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'auth_demo_fehlgeschlagen', err);
+    return NextResponse.json({ error: 'Unerwarteter Fehler beim Demo-Login.' }, { status: 500 });
   }
 }

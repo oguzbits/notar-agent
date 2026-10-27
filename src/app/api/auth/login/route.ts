@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { safeRedirectPath } from '@/lib/auth/safe-redirect';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { LoginRequestSchema } from '@/types/auth';
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (error) {
         return NextResponse.json(
           {
-            error: error.message || 'Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihre Anmeldedaten.',
+            error: 'Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihre Anmeldedaten.',
           },
           { status: 401 }
         );
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       if (error) {
         return NextResponse.json(
-          { error: error.message || 'Fehler beim Senden des Anmeldelinks.' },
+          { error: 'Fehler beim Senden des Anmeldelinks.' },
           { status: 400 }
         );
       }
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
     }
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unerwarteter Fehler bei der Anmeldung.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'auth_login_fehlgeschlagen', err);
+    return NextResponse.json({ error: 'Unerwarteter Fehler bei der Anmeldung.' }, { status: 500 });
   }
 }

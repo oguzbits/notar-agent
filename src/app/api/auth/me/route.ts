@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient, pickOrganization } from '@/lib/supabase/server-auth';
 import { AuthSessionResponseSchema } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
@@ -93,7 +94,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(parsed.data);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Fehler beim Abrufen der Sitzungsdaten.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'auth_me_fehlgeschlagen', err);
+    return NextResponse.json({ error: 'Fehler beim Abrufen der Sitzungsdaten.' }, { status: 500 });
   }
 }

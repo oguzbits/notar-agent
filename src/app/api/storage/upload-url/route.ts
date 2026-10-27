@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { logFailure } from '@/lib/observability/logger';
 import { createSignedUploadUrl } from '@/lib/storage/storage-service';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS } from '@/types/auth';
@@ -61,8 +62,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (err: unknown) {
     const denied = authzErrorResponse(err);
     if (denied) return denied;
-    const msg =
-      err instanceof Error ? err.message : 'Fehler bei der Generierung der signierten Upload-URL.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'storage_upload_url_fehlgeschlagen', err);
+    return NextResponse.json(
+      { error: 'Fehler bei der Generierung der signierten Upload-URL.' },
+      { status: 500 }
+    );
   }
 }

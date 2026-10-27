@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logFailure } from '@/lib/observability/logger';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 
 export const dynamic = 'force-dynamic';
@@ -17,10 +18,8 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message || 'Fehler beim Abmelden.' },
-        { status: 500 }
-      );
+      logFailure('warn', 'auth_logout_provider_1', error);
+      return NextResponse.json({ error: 'Fehler beim Abmelden.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -28,7 +27,7 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
       message: 'Erfolgreich abgemeldet.',
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unerwarteter Fehler bei der Abmeldung.';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logFailure('error', 'auth_logout_fehlgeschlagen', err);
+    return NextResponse.json({ error: 'Unerwarteter Fehler bei der Abmeldung.' }, { status: 500 });
   }
 }
