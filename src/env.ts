@@ -56,6 +56,11 @@ export function validateEnv(rawEnv: Record<string, string | undefined>): Env {
     throw new Error('Ungültige Umgebungsvariablen-Konfiguration');
   }
 
+  // Der Mock-Modus liefert erfundene Dossiers und darf nie in Produktion laufen
+  if (parsed.data.MOCK_AI && rawEnv.NODE_ENV === 'production') {
+    throw new Error('MOCK_AI darf in Produktion nicht aktiviert sein');
+  }
+
   return parsed.data;
 }
 

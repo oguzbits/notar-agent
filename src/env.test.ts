@@ -56,6 +56,15 @@ describe('env validation', () => {
     expect(env.NEXT_SUPABASE_PUBLISHABLE_KEY).toBe('sb-anon-key');
   });
 
+  it('lehnt MOCK_AI in Produktion ab, erlaubt es sonst', () => {
+    expect(() => validateEnv({ NODE_ENV: 'production', MOCK_AI: 'true' })).toThrow(/MOCK_AI/);
+    expect(() => validateEnv({ NODE_ENV: 'production', MOCK_AI: '1' })).toThrow(/MOCK_AI/);
+    expect(validateEnv({ NODE_ENV: 'production', MOCK_AI: 'false' }).MOCK_AI).toBe(false);
+    expect(validateEnv({ NODE_ENV: 'production' }).MOCK_AI).toBe(false);
+    expect(validateEnv({ NODE_ENV: 'development', MOCK_AI: 'true' }).MOCK_AI).toBe(true);
+    expect(validateEnv({ NODE_ENV: 'test', MOCK_AI: 'true' }).MOCK_AI).toBe(true);
+  });
+
   it('exposes getEnv singleton function', () => {
     const env = getEnv();
     expect(typeof env).toBe('object');
