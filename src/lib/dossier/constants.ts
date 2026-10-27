@@ -101,6 +101,11 @@ export const UEBERSICHT_FEHLER_TEXTS_DE = {
   DISMISS: 'Meldung schließen',
 } as const;
 
+export const EXPORT_UI_TEXTS_DE = {
+  AUDIT_FEHLT:
+    'Der Prüfbericht wurde nicht erstellt, weil das Prüfprotokoll nicht geladen werden konnte. Bitte versuchen Sie es erneut.',
+} as const;
+
 export const STATUS_OVERRIDE_TEXTS_DE = {
   REASON_REQUIRED: 'Ein Statuswechsel am Feld braucht eine Begründung für die Akte.',
   MISMATCH:

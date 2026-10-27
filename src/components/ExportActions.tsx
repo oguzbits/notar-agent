@@ -1,5 +1,6 @@
 import { Download, FileCheck2, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
+import { EXPORT_UI_TEXTS_DE } from '@/lib/dossier/constants';
 import { downloadJsonFile, downloadTextFile, generatePruefberichtText } from '@/lib/export';
 import { Dossier } from '@/types/dossier';
 
@@ -8,8 +9,21 @@ interface ExportActionsProps {
   documentId?: string;
 }
 
+async function buildPruefbericht(dossier: Dossier, documentId?: string): Promise<string> {
+  if (!documentId) return generatePruefberichtText(dossier, undefined);
+  // Ohne Prüfprotokoll kein Bericht: ein Bericht ohne Protokoll wäre nicht revisionssicher
+  const res = await fetch(`/api/documents/${documentId}/audit`);
+  if (!res.ok) throw new Error(`Prüfprotokoll: HTTP ${res.status}`);
+  const data = await res.json();
+  return generatePruefberichtText(dossier, {
+    history: data.history,
+    integrityValid: data.integrity?.valid,
+  });
+}
+
 export const ExportActions: React.FC<ExportActionsProps> = ({ dossier, documentId }) => {
   const [isExportingReport, setIsExportingReport] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const downloadJson = () => {
     const fileName = `dossier_${dossier.caseTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
@@ -18,28 +32,14 @@ export const ExportActions: React.FC<ExportActionsProps> = ({ dossier, documentI
 
   const downloadPruefbericht = async () => {
     setIsExportingReport(true);
+    setExportError(null);
     try {
-      let auditOptions: Parameters<typeof generatePruefberichtText>[1] = undefined;
-
-      if (documentId) {
-        try {
-          const res = await fetch(`/api/documents/${documentId}/audit`);
-          if (res.ok) {
-            const data = await res.json();
-            auditOptions = {
-              history: data.history,
-              integrityValid: data.integrity?.valid,
-            };
-          }
-        } catch (err) {
-          console.warn('Audit-Trail konnte nicht für den Export geladen werden:', err);
-        }
-      }
-
-      const reportText = generatePruefberichtText(dossier, auditOptions);
+      const reportText = await buildPruefbericht(dossier, documentId);
       const safeTitle = (dossier.caseTitle || 'vorgang').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const fileName = `pruefbericht_${safeTitle}.txt`;
-      downloadTextFile(fileName, reportText);
+      downloadTextFile(`pruefbericht_${safeTitle}.txt`, reportText);
+    } catch (err) {
+      console.error('Prüfbericht-Export fehlgeschlagen:', err);
+      setExportError(EXPORT_UI_TEXTS_DE.AUDIT_FEHLT);
     } finally {
       setIsExportingReport(false);
     }
@@ -70,6 +70,12 @@ export const ExportActions: React.FC<ExportActionsProps> = ({ dossier, documentI
         <Download className="h-4 w-4" />
         <span>JSON-Export</span>
       </button>
+
+      {exportError && (
+        <p role="alert" className="text-destructive w-full text-base font-medium">
+          {exportError}
+        </p>
+      )}
     </div>
   );
 };
