@@ -337,7 +337,19 @@ test.describe('Notar Agent E2E Smoke Workflow (A.1)', () => {
       mimeType: 'text/plain',
       buffer: Buffer.from(SYNTHETIC_KAUFVERTRAG_RAW, 'utf-8'),
     };
+    // Upload-Anfrage anhalten, bis der Fortschritt geprüft ist
+    let releaseUpload: () => void = () => undefined;
+    const uploadGate = new Promise<void>((resolve) => (releaseUpload = resolve));
+    await page.route('*/**/api/storage/upload-url', async (route) => {
+      await uploadGate;
+      await route.continue();
+    });
     await page.setInputFiles('input[type="file"]', filePayload);
+
+    const uploadStatus = page.getByRole('status').filter({ hasText: /hochgeladen/ });
+    await expect(uploadStatus).toContainText('0 von 1');
+    releaseUpload();
+    await expect(uploadStatus).toBeHidden();
 
     // Überprüfen, dass die Datei in der Liste aufgeführt ist und der Submit-Button aktiv wird
     await expect(page.getByText('kaufvertrag_entwurf.txt')).toBeVisible();

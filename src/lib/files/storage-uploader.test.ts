@@ -87,4 +87,32 @@ describe('Storage Direct Uploader', () => {
     expect(results[0]?.storagePath).toBe('org-1/file1.pdf');
     expect(results[1]?.storagePath).toBe('org-1/file2.pdf');
   });
+
+  it('meldet nach jeder fertigen Datei die Anzahl der abgeschlossenen und aller Dateien', async () => {
+    const files = ['a', 'b', 'c'].map(
+      (n) => new File([n], `${n}.pdf`, { type: 'application/pdf' })
+    );
+    global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/storage/upload-url') {
+        const body = JSON.parse(init?.body as string);
+        return {
+          ok: true,
+          json: async () => ({
+            uploadUrl: `https://s/${body.fileName}`,
+            storagePath: body.fileName,
+          }),
+        } as Response;
+      }
+      return { ok: true } as Response;
+    });
+    const onProgress = vi.fn();
+
+    await uploadFilesDirectly(files, { onProgress });
+
+    expect(onProgress.mock.calls).toEqual([
+      [1, 3],
+      [2, 3],
+      [3, 3],
+    ]);
+  });
 });

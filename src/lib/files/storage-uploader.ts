@@ -5,7 +5,8 @@ import { CreateUploadUrlResponse } from '@/types/storage';
 
 export interface StorageUploadOptions {
   organizationId?: string;
-  onProgress?: (fileName: string, progress: number) => void;
+  /** Wird nach jeder fertigen Datei aufgerufen: abgeschlossene und alle Dateien. */
+  onProgress?: (completed: number, total: number) => void;
 }
 
 /**
@@ -73,5 +74,13 @@ export async function uploadFilesDirectly(
   files: File[],
   options?: StorageUploadOptions
 ): Promise<UploadedFilePayload[]> {
-  return Promise.all(files.map((file) => uploadFileDirectly(file, options)));
+  let completed = 0;
+  return Promise.all(
+    files.map(async (file) => {
+      const payload = await uploadFileDirectly(file, options);
+      completed += 1;
+      options?.onProgress?.(completed, files.length);
+      return payload;
+    })
+  );
 }

@@ -1,6 +1,13 @@
 'use client';
 
-import { UploadCloud, Trash2, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react';
+import {
+  UploadCloud,
+  Trash2,
+  AlertCircle,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+} from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { UploadNotes } from '@/components/UploadNotes';
 import { validateFiles } from '@/lib/files/file-preparer';
@@ -18,6 +25,13 @@ interface UploadZoneProps {
   isAnalyzing: boolean;
 }
 
+function zoneStateClass(isAnalyzing: boolean, isPreparing: boolean, dragOver: boolean) {
+  if (isAnalyzing) return 'border-border/60 bg-muted/10 cursor-not-allowed opacity-60';
+  if (isPreparing) return 'border-border bg-muted/20 cursor-wait';
+  if (dragOver) return 'border-notar-700 bg-notar-200/20 cursor-pointer';
+  return 'border-border bg-muted/20 hover:border-notar-600 cursor-pointer';
+}
+
 export const UploadZone: React.FC<UploadZoneProps> = ({
   files,
   onFilesReady,
@@ -27,12 +41,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 }) => {
   const auth = useOptionalAuth();
   const [dragOver, setDragOver] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [ownFiles, setOwnFiles] = useState<UploadedFilePayload[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [isPreparing, setIsPreparing] = useState(false);
+  const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const displayedItems = files !== undefined ? files : selectedFiles;
+  const displayedItems = files ?? ownFiles;
+  const isPreparing = progress !== null;
 
   const handleFilesAdded = async (filesToAdd: FileList | File[]) => {
     setParseError(null);
@@ -44,41 +59,32 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       return;
     }
 
-    const combined = [...selectedFiles, ...incomingFiles];
-    setSelectedFiles(combined);
-    await processAndDispatchFiles(combined);
+    await uploadAndAppend(incomingFiles);
   };
 
-  const removeFile = async (index: number) => {
-    if (files !== undefined) {
-      const updated = files.filter((_, i) => i !== index);
-      onFilesReady(updated);
-      setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-      return;
-    }
-
-    const updated = selectedFiles.filter((_, i) => i !== index);
-    setSelectedFiles(updated);
-    await processAndDispatchFiles(updated);
+  const commitFiles = (updated: UploadedFilePayload[]) => {
+    setOwnFiles(updated);
+    onFilesReady(updated);
   };
 
-  const processAndDispatchFiles = async (files: File[]) => {
-    if (files.length === 0) {
-      onFilesReady([]);
-      return;
-    }
+  const removeFile = (index: number) => {
+    commitFiles(displayedItems.filter((_, i) => i !== index));
+  };
 
-    setIsPreparing(true);
+  // Nur neue Dateien hochladen; bereits hochgeladene bleiben unverändert.
+  const uploadAndAppend = async (incoming: File[]) => {
+    setProgress({ completed: 0, total: incoming.length });
     try {
-      const prepared = await uploadFilesDirectly(files, {
+      const uploaded = await uploadFilesDirectly(incoming, {
         organizationId: auth?.organization?.id,
+        onProgress: (completed, total) => setProgress({ completed, total }),
       });
-      onFilesReady(prepared);
+      commitFiles([...displayedItems, ...uploaded]);
     } catch (err) {
       console.warn('Fehler beim Einlesen einzelner Dateien:', err);
       setParseError('Fehler beim Einlesen einzelner Dateien.');
     } finally {
-      setIsPreparing(false);
+      setProgress(null);
     }
   };
 
@@ -124,11 +130,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         }}
         className={cn(
           'focus-visible:ring-ring rounded-xl border-2 border-dashed p-8 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none',
-          isBusy
-            ? 'border-border/60 bg-muted/10 cursor-not-allowed opacity-60'
-            : dragOver
-              ? 'border-notar-700 bg-notar-200/20 cursor-pointer'
-              : 'border-border bg-muted/20 hover:border-notar-600 cursor-pointer'
+          zoneStateClass(isAnalyzing, isPreparing, dragOver)
         )}
       >
         <input
@@ -167,9 +169,19 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                 durchsuchen
               </span>
             </p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Alle gängigen Dokumenten- und Bildformate werden unterstützt
-            </p>
+            {progress ? (
+              <p
+                role="status"
+                className="text-foreground mt-1 flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Dokumente werden hochgeladen … {progress.completed} von {progress.total}
+              </p>
+            ) : (
+              <p className="text-muted-foreground mt-1 text-sm">
+                Alle gängigen Dokumenten- und Bildformate werden unterstützt
+              </p>
+            )}
           </div>
         </div>
       </div>
