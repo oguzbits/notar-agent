@@ -320,10 +320,12 @@ DROP POLICY IF EXISTS rls_org_members_select ON public.organization_members;
 CREATE POLICY rls_org_members_select ON public.organization_members FOR SELECT USING (is_org_member(organization_id) OR user_id = auth.uid());
 
 DROP POLICY IF EXISTS rls_org_members_insert ON public.organization_members;
-CREATE POLICY rls_org_members_insert ON public.organization_members FOR INSERT TO authenticated WITH CHECK (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
+-- Die Rolle NOTAR vergibt nur ein NOTAR (Anlegen und Befördern); ein ADMIN könnte sonst ein Zweitkonto zum NOTAR machen
+-- und so die Sperre gegen Selbständerung umgehen. Die erste Mitgliedschaft entsteht in create_new_organization.
+CREATE POLICY rls_org_members_insert ON public.organization_members FOR INSERT TO authenticated WITH CHECK (get_user_role(organization_id) = 'NOTAR' OR (get_user_role(organization_id) = 'ADMIN' AND role <> 'NOTAR'));
 
 DROP POLICY IF EXISTS rls_org_members_update ON public.organization_members;
-CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE TO authenticated USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN')) WITH CHECK (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
+CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE TO authenticated USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN')) WITH CHECK (get_user_role(organization_id) = 'NOTAR' OR (get_user_role(organization_id) = 'ADMIN' AND role <> 'NOTAR'));
 
 DROP POLICY IF EXISTS rls_org_members_delete ON public.organization_members;
 CREATE POLICY rls_org_members_delete ON public.organization_members FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));

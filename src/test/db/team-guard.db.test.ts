@@ -169,4 +169,60 @@ describe('Kanzleiteam: Selbständerung und letzter Notar', () => {
     expect(own.error).toBeNull();
     expect(other.error?.code).toBe('42501');
   });
+
+  describe('Rolle NOTAR vergibt nur ein NOTAR', () => {
+    const insertAs = async (client: TestUser['client'], role: NotaryRole) => {
+      const candidate = await harness.createUser();
+      return client
+        .from(DB_TABLES.ORGANIZATION_MEMBERS)
+        .insert({ organization_id: orgId, user_id: candidate.id, role });
+    };
+
+    it('ADMIN legt kein Mitglied als NOTAR an', async () => {
+      const res = await insertAs(admin.client, NOTARY_ROLES.NOTAR);
+      expect(res.error?.code).toBe('42501');
+      expect(await notarCount()).toBe(1);
+    });
+
+    it('ADMIN befördert kein Mitglied zum NOTAR', async () => {
+      const member = await addMember(NOTARY_ROLES.SACHBEARBEITER);
+      const res = await admin.client
+        .from(DB_TABLES.ORGANIZATION_MEMBERS)
+        .update({ role: NOTARY_ROLES.NOTAR })
+        .eq('id', member.memberId);
+      expect(res.error?.code).toBe('42501');
+      expect(await notarCount()).toBe(1);
+    });
+
+    it('ADMIN legt weiterhin Mitglieder anderer Rollen an', async () => {
+      const res = await insertAs(admin.client, NOTARY_ROLES.SACHBEARBEITER);
+      expect(res.error).toBeNull();
+    });
+
+    it('NOTAR legt ein Mitglied als NOTAR an und befördert', async () => {
+      const added = await insertAs(notar.client, NOTARY_ROLES.NOTAR);
+      const member = await addMember(NOTARY_ROLES.SACHBEARBEITER);
+      const promoted = await notar.client
+        .from(DB_TABLES.ORGANIZATION_MEMBERS)
+        .update({ role: NOTARY_ROLES.NOTAR })
+        .eq('id', member.memberId);
+      expect([added.error, promoted.error]).toEqual([null, null]);
+      expect(await notarCount()).toBe(3);
+    });
+
+    it('Anlage einer Kanzlei über die Funktion erzeugt weiterhin den ersten NOTAR', async () => {
+      const founder = await harness.createUser();
+      const res = await founder.client.rpc('create_new_organization', {
+        org_name: 'Neu',
+        org_seat: 'Test',
+        org_chamber: 'Test',
+      });
+      expect(res.error).toBeNull();
+      const members = await harness.admin
+        .from(DB_TABLES.ORGANIZATION_MEMBERS)
+        .select('role')
+        .eq('user_id', founder.id);
+      expect(members.data).toEqual([{ role: NOTARY_ROLES.NOTAR }]);
+    });
+  });
 });
