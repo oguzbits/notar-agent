@@ -3,10 +3,11 @@ import { TeamMember, InviteMemberRequest } from '@/types/auth';
 import { DB_TABLES, Database } from '@/types/database';
 import { NotaryRole } from '@/types/organization';
 
-/** SQLSTATE `insufficient_privilege`: Trigger organization_members_guard lehnt die eigene Mitgliedschaft ab. */
-const PG_INSUFFICIENT_PRIVILEGE = '42501';
-/** SQLSTATE `check_violation`: Trigger organization_members_guard lehnt das Entfernen des letzten NOTAR ab. */
-const PG_CHECK_VIOLATION = '23514';
+/** Eigene SQLSTATEs des Triggers organization_members_guard (Core-Migration); nur diese werden fachlich gedeutet. */
+export const TEAM_GUARD_SQLSTATE = {
+  SELF_CHANGE: 'TM001',
+  LAST_NOTAR: 'TM002',
+} as const;
 
 export class TeamSelfChangeError extends Error {
   constructor() {
@@ -27,8 +28,8 @@ export class LastNotarError extends Error {
 }
 
 function memberWriteError(error: { code?: string; message: string }, context: string): Error {
-  if (error.code === PG_INSUFFICIENT_PRIVILEGE) return new TeamSelfChangeError();
-  if (error.code === PG_CHECK_VIOLATION) return new LastNotarError();
+  if (error.code === TEAM_GUARD_SQLSTATE.SELF_CHANGE) return new TeamSelfChangeError();
+  if (error.code === TEAM_GUARD_SQLSTATE.LAST_NOTAR) return new LastNotarError();
   return new Error(`${context}: ${error.message}`);
 }
 

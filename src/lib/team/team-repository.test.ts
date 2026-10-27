@@ -2,7 +2,12 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { Database } from '@/types/database';
 import { NOTARY_ROLES } from '@/types/organization';
-import { LastNotarError, SupabaseTeamRepository, TeamSelfChangeError } from './team-repository';
+import {
+  LastNotarError,
+  SupabaseTeamRepository,
+  TEAM_GUARD_SQLSTATE,
+  TeamSelfChangeError,
+} from './team-repository';
 
 /** Abfragekette, die am Ende den Datenbankfehler des Triggers organization_members_guard liefert. */
 function clientFailingWith(code: string): SupabaseClient<Database> {
@@ -19,8 +24,8 @@ describe('SupabaseTeamRepository: Ablehnungen der Datenbank', () => {
   const org = 'a0000000-0000-4000-8000-000000000001';
 
   it.each([
-    ['42501', TeamSelfChangeError],
-    ['23514', LastNotarError],
+    [TEAM_GUARD_SQLSTATE.SELF_CHANGE, TeamSelfChangeError],
+    [TEAM_GUARD_SQLSTATE.LAST_NOTAR, LastNotarError],
   ])('SQLSTATE %s wird zu %O', async (code, ErrorClass) => {
     const repo = new SupabaseTeamRepository(clientFailingWith(code));
 
@@ -28,9 +33,15 @@ describe('SupabaseTeamRepository: Ablehnungen der Datenbank', () => {
     await expect(repo.removeMember('m1', org)).rejects.toThrow(ErrorClass);
   });
 
-  it('andere Fehler bleiben technische Fehler', async () => {
-    const repo = new SupabaseTeamRepository(clientFailingWith('XX000'));
+  it.each(['42501', '23514', 'XX000'])(
+    'allgemeine SQLSTATE %s (RLS, CHECK, sonstige) bleibt ein technischer Fehler',
+    async (code) => {
+      const repo = new SupabaseTeamRepository(clientFailingWith(code));
 
-    await expect(repo.removeMember('m1', org)).rejects.toThrow('Failed to remove member');
-  });
+      const error = await repo.removeMember('m1', org).catch((e: unknown) => e);
+      expect(error).not.toBeInstanceOf(TeamSelfChangeError);
+      expect(error).not.toBeInstanceOf(LastNotarError);
+      expect(String(error)).toContain('Failed to remove member');
+    }
+  );
 });

@@ -328,23 +328,30 @@ CREATE POLICY rls_org_members_update ON public.organization_members FOR UPDATE T
 DROP POLICY IF EXISTS rls_org_members_delete ON public.organization_members;
 CREATE POLICY rls_org_members_delete ON public.organization_members FOR DELETE USING (get_user_role(organization_id) IN ('NOTAR', 'ADMIN'));
 
--- Kanzleibesetzung: Niemand ändert oder entfernt die eigene Mitgliedschaft, und die Kanzlei behält mindestens
--- einen NOTAR. Gilt für angemeldete Nutzer (auth.uid()); Servicekonto und Kaskaden (Kanzlei/Konto löschen)
--- bleiben frei. Der Advisory-Lock je Kanzlei serialisiert parallele Änderungen, damit zwei gleichzeitige
--- Herabstufungen nicht beide den jeweils anderen NOTAR zählen.
+-- Über die REST-Schnittstelle ist an einer Mitgliedschaft nur die Rolle änderbar: Verschieben in eine andere
+-- Kanzlei oder Umschreiben auf einen anderen Nutzer würde den Schutz unten umgehen.
+REVOKE UPDATE ON organization_members FROM anon, authenticated;
+GRANT UPDATE (role) ON organization_members TO authenticated;
+
+-- Kanzleibesetzung: Niemand ändert oder entfernt die eigene Mitgliedschaft (SQLSTATE TM001), und die Kanzlei
+-- behält mindestens einen NOTAR (TM002). Die eigenen SQLSTATEs deutet nur die Anwendung (team-repository.ts).
+-- Gilt für direkte Änderungen angemeldeter Nutzer (auth.uid()). Frei bleiben das Servicekonto und Kaskaden
+-- (pg_trigger_depth() > 1, z. B. Kanzlei oder Konto löschen), auch wenn sie in einer Sitzung ausgelöst werden.
+-- Der Advisory-Lock je Kanzlei serialisiert parallele Änderungen, damit zwei gleichzeitige Herabstufungen nicht
+-- beide den jeweils anderen NOTAR zählen.
 CREATE OR REPLACE FUNCTION organization_members_guard() RETURNS TRIGGER AS $$
 BEGIN
-    IF auth.uid() IS NULL THEN
+    IF auth.uid() IS NULL OR pg_trigger_depth() > 1 THEN
         RETURN COALESCE(NEW, OLD);
     END IF;
     PERFORM pg_advisory_xact_lock(hashtextextended('organization_members:' || OLD.organization_id::text, 0));
     IF OLD.user_id = auth.uid() THEN
-        RAISE EXCEPTION 'Eigene Mitgliedschaft kann nicht geändert werden' USING ERRCODE = '42501';
+        RAISE EXCEPTION 'Eigene Mitgliedschaft kann nicht geändert werden' USING ERRCODE = 'TM001';
     END IF;
     IF OLD.role = 'NOTAR' AND (TG_OP = 'DELETE' OR NEW.role <> 'NOTAR')
        AND NOT EXISTS (SELECT 1 FROM organization_members
                        WHERE organization_id = OLD.organization_id AND role = 'NOTAR' AND id <> OLD.id) THEN
-        RAISE EXCEPTION 'Die Kanzlei braucht mindestens einen NOTAR' USING ERRCODE = '23514';
+        RAISE EXCEPTION 'Die Kanzlei braucht mindestens einen NOTAR' USING ERRCODE = 'TM002';
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;

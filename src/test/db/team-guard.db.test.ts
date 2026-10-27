@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { TEAM_GUARD_SQLSTATE } from '@/lib/team/team-repository';
 import { AUDIT_ACTIONS } from '@/types/audit';
 import { DB_TABLES } from '@/types/database';
 import { NOTARY_ROLES, NotaryRole } from '@/types/organization';
-import { createDbHarness, type DbHarness, type TestUser } from './db-harness';
+import { createDbHarness, runPrivilegedSql, type DbHarness, type TestUser } from './db-harness';
 
 /** Schutz der Kanzleibesetzung in der Datenbank (Trigger organization_members_guard). */
 describe('Kanzleiteam: Selbständerung und letzter Notar', () => {
@@ -47,26 +48,26 @@ describe('Kanzleiteam: Selbständerung und letzter Notar', () => {
     admin = (await addMember(NOTARY_ROLES.ADMIN)).user;
   });
 
-  it('eigene Rolle ändern wird abgelehnt (42501)', async () => {
+  it('eigene Rolle ändern wird abgelehnt', async () => {
     const res = await notar.client
       .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .update({ role: NOTARY_ROLES.ADMIN })
       .eq('id', await memberIdOf(notar.id));
 
-    expect(res.error?.code).toBe('42501');
+    expect(res.error?.code).toBe(TEAM_GUARD_SQLSTATE.SELF_CHANGE);
     expect(await notarCount()).toBe(1);
   });
 
-  it('sich selbst entfernen wird abgelehnt (42501)', async () => {
+  it('sich selbst entfernen wird abgelehnt', async () => {
     const res = await admin.client
       .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .delete()
       .eq('id', await memberIdOf(admin.id));
 
-    expect(res.error?.code).toBe('42501');
+    expect(res.error?.code).toBe(TEAM_GUARD_SQLSTATE.SELF_CHANGE);
   });
 
-  it('letzten Notar herabstufen oder entfernen wird abgelehnt (23514)', async () => {
+  it('letzten Notar herabstufen oder entfernen wird abgelehnt', async () => {
     const id = await memberIdOf(notar.id);
 
     const demoted = await admin.client
@@ -75,8 +76,45 @@ describe('Kanzleiteam: Selbständerung und letzter Notar', () => {
       .eq('id', id);
     const removed = await admin.client.from(DB_TABLES.ORGANIZATION_MEMBERS).delete().eq('id', id);
 
-    expect([demoted.error?.code, removed.error?.code]).toEqual(['23514', '23514']);
+    expect([demoted.error?.code, removed.error?.code]).toEqual([
+      TEAM_GUARD_SQLSTATE.LAST_NOTAR,
+      TEAM_GUARD_SQLSTATE.LAST_NOTAR,
+    ]);
     expect(await notarCount()).toBe(1);
+  });
+
+  it('Mitgliedschaft in eine andere Kanzlei verschieben oder umschreiben ist nicht möglich', async () => {
+    const otherNotar = await harness.createUser();
+    const otherOrg = await harness.createOrganizationWithMember(otherNotar.id, NOTARY_ROLES.NOTAR);
+    // Der ADMIN ist auch in der Zielkanzlei berechtigt, die RLS-Prüfung allein hielte ihn nicht auf
+    await harness.admin
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .insert({ organization_id: otherOrg, user_id: admin.id, role: NOTARY_ROLES.ADMIN });
+    const id = await memberIdOf(notar.id);
+
+    const moved = await admin.client
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .update({ organization_id: otherOrg })
+      .eq('id', id);
+    const rewritten = await admin.client
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .update({ user_id: otherNotar.id })
+      .eq('id', id);
+
+    expect([moved.error?.code, rewritten.error?.code]).toEqual(['42501', '42501']);
+    expect(await memberIdOf(notar.id)).toBe(id);
+    expect(await notarCount()).toBe(1);
+  });
+
+  it('Kaskade beim Löschen der Kanzlei bleibt möglich, auch mit angemeldetem Nutzer', () => {
+    const claims = JSON.stringify({ sub: notar.id, role: 'authenticated' });
+    // Simuliert eine Löschung im Kontext einer Sitzung (z. B. künftige RPC); die Kaskade trifft den letzten NOTAR
+    expect(() =>
+      runPrivilegedSql(
+        `BEGIN; SELECT set_config('request.jwt.claims', '${claims}', true); ` +
+          `DELETE FROM organizations WHERE id = '${orgId}'; COMMIT;`
+      )
+    ).not.toThrow();
   });
 
   it('einen von zwei Notaren herabstufen ist erlaubt', async () => {
