@@ -2,7 +2,11 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { getTeamRepository } from '@/lib/supabase/server';
-import { LastNotarError, TeamSelfChangeError } from '@/lib/team/team-repository';
+import {
+  LastNotarError,
+  TeamRoleNotPermittedError,
+  TeamSelfChangeError,
+} from '@/lib/team/team-repository';
 import {
   createMockAuditRepository,
   createMockTeamRepository,
@@ -148,6 +152,15 @@ describe('API Route: /api/team/[id]', () => {
 
     expect([self.status, last.status]).toEqual([403, 409]);
     expect((await last.json()).error).toContain('mindestens einen Notar');
+  });
+
+  it('PATCH: Rolle NOTAR durch einen ADMIN → 403 mit fachlicher Meldung statt 500', async () => {
+    vi.mocked(repo.updateMemberRole).mockRejectedValueOnce(new TeamRoleNotPermittedError());
+
+    const res = await patchRole();
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain('Notar');
   });
 
   it('DELETE des letzten Notars → 409, Mitglied bleibt', async () => {

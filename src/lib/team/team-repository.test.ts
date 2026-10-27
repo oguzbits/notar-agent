@@ -6,6 +6,7 @@ import {
   LastNotarError,
   SupabaseTeamRepository,
   TEAM_GUARD_SQLSTATE,
+  TeamRoleNotPermittedError,
   TeamSelfChangeError,
 } from './team-repository';
 
@@ -26,6 +27,7 @@ describe('SupabaseTeamRepository: Ablehnungen der Datenbank', () => {
   it.each([
     [TEAM_GUARD_SQLSTATE.SELF_CHANGE, TeamSelfChangeError],
     [TEAM_GUARD_SQLSTATE.LAST_NOTAR, LastNotarError],
+    ['42501', TeamRoleNotPermittedError],
   ])('SQLSTATE %s wird zu %O', async (code, ErrorClass) => {
     const repo = new SupabaseTeamRepository(clientFailingWith(code));
 
@@ -33,8 +35,8 @@ describe('SupabaseTeamRepository: Ablehnungen der Datenbank', () => {
     await expect(repo.removeMember('m1', org)).rejects.toThrow(ErrorClass);
   });
 
-  it.each(['42501', '23514', 'XX000'])(
-    'allgemeine SQLSTATE %s (RLS, CHECK, sonstige) bleibt ein technischer Fehler',
+  it.each(['23514', 'XX000'])(
+    'allgemeine SQLSTATE %s (CHECK, sonstige) bleibt ein technischer Fehler',
     async (code) => {
       const repo = new SupabaseTeamRepository(clientFailingWith(code));
 

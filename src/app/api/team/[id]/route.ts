@@ -4,7 +4,11 @@ import { requirePermission } from '@/lib/auth/require-permission';
 import { logFailure } from '@/lib/observability/logger';
 import { getAuditRepository, getTeamRepository } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
-import { LastNotarError, TeamSelfChangeError } from '@/lib/team/team-repository';
+import {
+  LastNotarError,
+  TeamRoleNotPermittedError,
+  TeamSelfChangeError,
+} from '@/lib/team/team-repository';
 import { changeMemberRole, removeMember, TeamServiceDeps } from '@/lib/team/team-service';
 import { PERMISSION_ACTIONS, UpdateMemberRoleRequestSchema } from '@/types/auth';
 
@@ -19,9 +23,9 @@ interface ResolvedTeamRequest {
   deps: TeamServiceDeps;
 }
 
-/** Abgelehnte Teamänderung: eigene Mitgliedschaft 403, letzter NOTAR 409; sonst `undefined`. */
+/** Abgelehnte Teamänderung: eigene Mitgliedschaft oder fehlende Rollenberechtigung 403, letzter NOTAR 409; sonst `undefined`. */
 function teamChangeErrorResponse(err: unknown): NextResponse | undefined {
-  if (err instanceof TeamSelfChangeError) {
+  if (err instanceof TeamSelfChangeError || err instanceof TeamRoleNotPermittedError) {
     return NextResponse.json({ error: err.message }, { status: 403 });
   }
   if (err instanceof LastNotarError) {

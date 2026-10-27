@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { NOTARY_ROLES } from '@/types/organization';
+import { ROLE_LABELS_DE } from '@/lib/auth/role-labels';
+import { NOTARY_ROLES, type NotaryRole } from '@/types/organization';
 import { TeamSettingsModal } from './TeamSettingsModal';
 
 const mockUpdateOrganization = vi.fn();
@@ -34,10 +35,12 @@ const mockTeamMembers = [
   },
 ];
 
+const session = { role: mockCurrentUser.role as NotaryRole };
+
 vi.mock('@/providers/AuthProvider', () => ({
   useAuth: () => ({
     organization: mockOrganization,
-    currentUser: mockCurrentUser,
+    currentUser: { ...mockCurrentUser, role: session.role },
     teamMembers: mockTeamMembers,
     updateOrganization: mockUpdateOrganization,
     inviteMember: mockInviteMember,
@@ -103,5 +106,19 @@ describe('TeamSettingsModal', () => {
     expect(screen.getByText('Max Mustermann')).toBeDefined();
     expect(screen.getByText('max@test.de')).toBeDefined();
     expect(screen.getByRole('button', { name: /Mitarbeiter einladen/i })).toBeDefined();
+  });
+
+  it.each([
+    [NOTARY_ROLES.NOTAR, true],
+    [NOTARY_ROLES.ADMIN, false],
+  ])('Rolle %s: Rolle Notar in der Auswahl angeboten = %s', (role, offered) => {
+    session.role = role;
+    render(<TeamSettingsModal isOpen={true} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Team & Rollen/i }));
+
+    const memberSelect = screen.getByDisplayValue(ROLE_LABELS_DE[NOTARY_ROLES.SACHBEARBEITER]);
+    const labels = Array.from(memberSelect.querySelectorAll('option')).map((o) => o.textContent);
+    expect(labels.includes(ROLE_LABELS_DE[NOTARY_ROLES.NOTAR])).toBe(offered);
+    session.role = NOTARY_ROLES.NOTAR;
   });
 });

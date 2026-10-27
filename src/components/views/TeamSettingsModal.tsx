@@ -49,6 +49,12 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
   const canEditOrg =
     currentUser?.role === NOTARY_ROLES.NOTAR || currentUser?.role === NOTARY_ROLES.ADMIN;
 
+  // Die Rolle Notar vergibt nur ein Notar (Datenbankregel); sonst nur anbieten, wenn sie schon gesetzt ist
+  const rolesOffered = (current?: NotaryRole) =>
+    (Object.keys(NOTARY_ROLES) as NotaryRole[]).filter(
+      (r) => r !== NOTARY_ROLES.NOTAR || currentUser?.role === NOTARY_ROLES.NOTAR || r === current
+    );
+
   const [activeTab, setActiveTab] = useState<'stammdaten' | 'team'>('stammdaten');
 
   // Stammdaten State
@@ -338,7 +344,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
                     onChange={(e) => setInviteRole(e.target.value as NotaryRole)}
                     className="border-input bg-background text-foreground focus:ring-notar-900 block min-h-11 w-full cursor-pointer rounded-lg border px-3 py-2.5 text-base focus:border-transparent focus:ring-2 focus:outline-none"
                   >
-                    {(Object.keys(NOTARY_ROLES) as NotaryRole[]).map((r) => (
+                    {rolesOffered().map((r) => (
                       <option key={r} value={r}>
                         {ROLE_LABELS_DE[r]}
                       </option>
@@ -421,7 +427,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
                           }
                           className="border-input bg-background text-foreground focus:ring-notar-900 cursor-pointer rounded-lg border px-3 py-1.5 text-base font-medium focus:ring-2 focus:outline-none"
                         >
-                          {(Object.keys(NOTARY_ROLES) as NotaryRole[]).map((r) => (
+                          {rolesOffered(member.role).map((r) => (
                             <option key={r} value={r}>
                               {ROLE_LABELS_DE[r]}
                             </option>
