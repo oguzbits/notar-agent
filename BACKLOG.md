@@ -746,7 +746,7 @@ graph TD
   - Grenzen: Fälle selbst geschrieben, Korpus klein, Rechtsgrundlage in den Dokument-Embeddings, ein Lauf. Wiedervorlage mit echten anonymisierten Notizen und größerem Korpus.
   - Voraussetzungen vor einem Vektorpfad: Schreibpfad für Dokumentvektoren, Query-Embedding in der Pipeline, Embedding-Modell in `src/env.ts` (vorher gegen aktuelle Doku prüfen), bezahlter API-Zugang für echte Mandantendaten, Migration in der Knowledge-Domäne.
   - Offen: Schlagwortauswahl lädt nur `GESETZLICHE_NORM`; DNotI-Gutachten und Kanzleirichtlinien erreichen den Prompt nicht über Schlagwörter.
-  - Umbenannt (Oktober 2026): RPC-Spalte `text_score`, `TEXT_MATCH`, `textScore`. **Offen:** Live-Datenbank noch nicht abgeglichen (`DROP FUNCTION` und neu anlegen, weil sich der Rückgabetyp ändert); nur mit Zustimmung.
+  - Umbenannt (Oktober 2026): RPC-Spalte `text_score`, `TEXT_MATCH`, `textScore`. Live-Datenbank (Projekt Notar-Partner-Prototyp) am 27.10.2026 abgeglichen: Funktion neu angelegt, Rechte unverändert (`authenticated`, `service_role`; kein `anon`).
 
 ---
 
