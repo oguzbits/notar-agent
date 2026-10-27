@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { safeRedirectPath } from '@/lib/auth/safe-redirect';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { demoUserCredentials } from '@/types/auth';
 import { DB_TABLES } from '@/types/database';
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       const body = await req.json();
       if (body?.redirectTo && typeof body.redirectTo === 'string') {
-        redirectTo = body.redirectTo;
+        redirectTo = safeRedirectPath(body.redirectTo);
       }
     } catch (parseErr: unknown) {
       // Leerer oder nicht-JSON Body ist valide, Fallback auf '/'

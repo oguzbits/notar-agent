@@ -15,11 +15,6 @@
       "count": 1
     }
   },
-  "src/app/api/auth/login/route.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/api/auth/me/route.ts": {
     "complexity": {
       "count": 1

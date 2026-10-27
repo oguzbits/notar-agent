@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { safeRedirectPath } from '@/lib/auth/safe-redirect';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { LoginRequestSchema } from '@/types/auth';
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: redirectTo || `${origin}/auth/callback`,
+          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeRedirectPath(redirectTo))}`,
         },
       });
 

@@ -30,6 +30,31 @@ describe('Auth Callback Route (GET /auth/callback)', () => {
     expect(res.headers.get('location')).toBe('http://localhost:3000/');
   });
 
+  it.each(['@evil.example', '//evil.example', '/\\evil.example', 'https://evil.example'])(
+    'leitet bei fremdem Ziel next=%s auf die Startseite der eigenen Anwendung',
+    async (next) => {
+      mockExchangeCodeForSession.mockResolvedValueOnce({ error: null });
+
+      const req = new NextRequest(
+        `http://localhost:3000/auth/callback?code=valid-code&next=${encodeURIComponent(next)}`
+      );
+      const res = await GET(req);
+
+      expect(res.headers.get('location')).toBe('http://localhost:3000/');
+    }
+  );
+
+  it('behält einen relativen Zielpfad bei', async () => {
+    mockExchangeCodeForSession.mockResolvedValueOnce({ error: null });
+
+    const req = new NextRequest(
+      `http://localhost:3000/auth/callback?code=valid-code&redirectTo=${encodeURIComponent('/vorgang?id=1')}`
+    );
+    const res = await GET(req);
+
+    expect(res.headers.get('location')).toBe('http://localhost:3000/vorgang?id=1');
+  });
+
   it('redirects to /login with error when code exchange fails', async () => {
     mockExchangeCodeForSession.mockResolvedValueOnce({
       error: { message: 'Ungültiger Code' },

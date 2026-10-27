@@ -7,10 +7,11 @@ import React, { Suspense, useState } from 'react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Button, Input, Card, CardContent, GoogleIcon } from '@/components/ui';
 import { useAuthActions } from '@/hooks/useAuthActions';
+import { safeRedirectPath } from '@/lib/auth/safe-redirect';
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/';
+  const redirectTo = safeRedirectPath(searchParams.get('redirectTo'));
   const urlError = searchParams.get('error');
 
   const initialError = React.useMemo(() => {

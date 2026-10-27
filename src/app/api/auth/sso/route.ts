@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { safeRedirectPath } from '@/lib/auth/safe-redirect';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { SsoLoginRequestSchema } from '@/types/auth';
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const forwardedHost = req.headers.get('x-forwarded-host');
     const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
     const origin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : req.nextUrl.origin;
-    const targetNext = redirectTo || '/';
+    const targetNext = safeRedirectPath(redirectTo);
     const callbackUrl = `${origin}/auth/callback?next=${encodeURIComponent(targetNext)}`;
 
     const { data, error } = await supabase.auth.signInWithOAuth({

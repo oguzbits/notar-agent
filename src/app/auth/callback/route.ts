@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { safeRedirectPath } from '@/lib/auth/safe-redirect';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 
 export const dynamic = 'force-dynamic';
@@ -6,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') || searchParams.get('redirectTo') || '/';
+  const next = safeRedirectPath(searchParams.get('next') || searchParams.get('redirectTo'));
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);

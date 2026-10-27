@@ -44,6 +44,21 @@ describe('SSO Route (POST /api/auth/sso)', () => {
     });
   });
 
+  it('fremdes Weiterleitungsziel wird vor der Rückleitung zu /', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({ data: { url: 'https://accounts.google.com' } });
+
+    await POST(
+      new NextRequest('http://localhost:3000/api/auth/sso', {
+        method: 'POST',
+        body: JSON.stringify({ provider: SSO_PROVIDERS.GOOGLE, redirectTo: '//evil.example' }),
+      })
+    );
+
+    expect(mockSignInWithOAuth.mock.calls[0]?.[0].options.redirectTo).toBe(
+      'http://localhost:3000/auth/callback?next=%2F'
+    );
+  });
+
   it('rejects invalid or unsupported providers', async () => {
     const req = new NextRequest('http://localhost:3000/api/auth/sso', {
       method: 'POST',

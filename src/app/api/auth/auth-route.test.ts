@@ -79,6 +79,22 @@ describe('Auth API Routes', () => {
       expect(json.magicLinkSent).toBe(true);
       expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalled();
     });
+
+    it('Anmeldelink führt immer über die eigene Rückleitung, fremde Ziele werden zu /', async () => {
+      const signInWithOtp = vi.fn().mockResolvedValue({ data: {}, error: null });
+      mockCreateServerAuthClient.mockResolvedValue({ auth: { signInWithOtp } } as never);
+
+      await loginRoute(
+        new NextRequest('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: 'test@notar.de', redirectTo: 'https://evil.example' }),
+        })
+      );
+
+      expect(signInWithOtp.mock.calls[0]?.[0].options.emailRedirectTo).toBe(
+        'http://localhost:3000/auth/callback?next=%2F'
+      );
+    });
   });
 
   describe('POST /api/auth/logout', () => {

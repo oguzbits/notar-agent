@@ -56,6 +56,33 @@ describe('POST /api/auth/demo (1-Klick Demo-Kanzlei Login)', () => {
     expect(mockSupabase.rpc).not.toHaveBeenCalled();
   });
 
+  it('gibt bei fremdem Weiterleitungsziel nur / zurück', async () => {
+    const mockSupabase = {
+      auth: {
+        signInAnonymously: vi.fn().mockResolvedValue({
+          data: { user: { id: 'demo-user-123' } },
+          error: null,
+        }),
+      },
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: { organization_id: 'o1' }, error: null }),
+      })),
+      rpc: vi.fn(),
+    };
+    mockCreateServerAuthClient.mockResolvedValueOnce(mockSupabase as never);
+
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/auth/demo', {
+        method: 'POST',
+        body: JSON.stringify({ redirectTo: '//evil.example' }),
+      })
+    );
+
+    expect((await res.json()).redirectTo).toBe('/');
+  });
+
   it('returns 500 when the demo organization cannot be created', async () => {
     const mockSupabase = {
       auth: {
