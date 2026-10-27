@@ -568,16 +568,29 @@ describe('job-worker (executeDossierJob)', () => {
       expect(auditRepo.appendEvent).not.toHaveBeenCalled();
     });
 
-    it('lässt den Job abgeschlossen, wenn der Audit-Eintrag scheitert (kein Doppel-Dossier bei Wiederholung)', async () => {
+    it('meldet den Job als fehlgeschlagen, wenn der Audit-Eintrag scheitert, und legt bei Wiederholung kein zweites Dossier an', async () => {
       const auditRepo = createMockAuditRepository();
       vi.mocked(auditRepo.appendEvent).mockRejectedValueOnce(
         new Error('Audit-DB nicht erreichbar')
       );
       const job = await jobRepo.createJob(payload, ORG_ID);
+      const deps = { jobRepo, dossierRepo, auditRepo, pipelineFn };
 
-      const done = await executeDossierJob(job.id, { jobRepo, dossierRepo, auditRepo, pipelineFn });
+      const failed = await executeDossierJob(job.id, deps);
 
-      expect(done?.status).toBe(JOB_STATUS.COMPLETED);
+      expect(failed?.status).toBe(JOB_STATUS.FAILED);
+      expect(failed?.resultDossierId).toBeDefined();
+
+      await jobRepo.transitionJob(job.id, [JOB_STATUS.FAILED], {
+        status: JOB_STATUS.PENDING,
+        errorMessage: null,
+      });
+      const retried = await executeDossierJob(job.id, deps);
+
+      expect(retried?.status).toBe(JOB_STATUS.COMPLETED);
+      expect(retried?.resultDossierId).toBe(failed?.resultDossierId);
+      expect(dossierRepo.save).toHaveBeenCalledTimes(1);
+      expect(auditRepo.appendEvent).toHaveBeenCalledTimes(2);
     });
   });
 });

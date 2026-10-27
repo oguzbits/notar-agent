@@ -175,7 +175,9 @@ async function runJobExecution(
   };
 
   try {
-    const { files, caseType, notes, documentId, existingDossier } = job.payload;
+    const { files, caseType, notes, existingDossier } = job.payload;
+    // Nach gescheitertem Audit zeigt die Wiederholung auf das schon gespeicherte Dossier (kein Doppel)
+    const documentId = job.payload.documentId ?? job.resultDossierId;
 
     const handleStepUpdate = (step: number, stepDetail: string) => {
       if (step === 1) {
@@ -329,6 +331,7 @@ async function runJobExecution(
 
     if (documentId) await dossierRepo.update(documentId, dossier, orgId);
     const resultDossierId = documentId ?? (await dossierRepo.save(dossier, orgId)).id;
+    await advance({ resultDossierId });
 
     await recordPruefgrundlage(deps, resultDossierId, orgId, job.payload);
 
