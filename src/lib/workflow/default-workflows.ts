@@ -1,10 +1,5 @@
 import { CASE_TYPES } from '@/types/dossier';
-import {
-  WORKFLOW_ACTORS,
-  WORKFLOW_STEP_TYPES,
-  STEP_CONDITION_OPERATORS,
-  WorkflowDefinition,
-} from '@/types/workflow';
+import { WORKFLOW_ACTORS, WORKFLOW_STEP_TYPES, WorkflowDefinition } from '@/types/workflow';
 
 /**
  * Standard-Workflow-Definition für Immobilienkaufverträge (§ 311b BGB, § 17 BeurkG).
@@ -33,22 +28,7 @@ export const DEFAULT_IMMOBILIENKAUF_WORKFLOW: WorkflowDefinition = {
       actor: WORKFLOW_ACTORS.SYSTEM,
       action: 'apply_guardrails',
       isOptional: false,
-      description:
-        'Prüfung von Fristen (10 Jahre GEG), Arithmetik (Parzellenflächen, Mieten) und Identitäten.',
-    },
-    {
-      id: 'step_gwg_gate',
-      title: 'Geldwäsche-Sonderprüfung (GWG)',
-      type: WORKFLOW_STEP_TYPES.CONDITIONAL_GATE,
-      actor: WORKFLOW_ACTORS.AGENT,
-      action: 'verify_gwg_threshold',
-      condition: {
-        field: 'kaufpreis',
-        operator: STEP_CONDITION_OPERATORS.GREATER_THAN,
-        value: 1000000,
-      },
-      isOptional: false,
-      description: 'Automatische Sonderprüfung bei Transaktionsvolumen über 1.000.000 €.',
+      description: 'Prüfung von Fristen, Arithmetik (Parzellenflächen, Mieten) und Identitäten.',
     },
     {
       id: 'step_notary_auditor',
@@ -98,8 +78,7 @@ export const DEFAULT_GMBH_GRUENDUNG_WORKFLOW: WorkflowDefinition = {
       actor: WORKFLOW_ACTORS.SYSTEM,
       action: 'apply_guardrails',
       isOptional: false,
-      description:
-        'Validierung des Mindeststammkapitals (25.000 € gem. § 5 GmbHG) und Bareinlagen.',
+      description: 'Validierung des Mindeststammkapitals und der Einlagen.',
     },
     {
       id: 'step_notary_auditor',
