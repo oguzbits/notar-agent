@@ -62,6 +62,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
     - [x] Lexikalische Volltext- und Trigram-Suche (`tsvector` / `pg_trgm`) für exakte Ziffernfolgen (Flurstücke, Gemarkungen, Aktenzeichen, Kaufpreise)
     - [x] Semantische Vektorsuche (`pgvector`) in der RPC angelegt; ohne Dokumentvektoren und Query-Embeddings nicht wirksam (Messbefund: [BACKLOG.md §19](./BACKLOG.md))
     - [x] Reciprocal Rank Fusion (RRF) Scorer zur deterministischen Zusammenführung vor Modell-Injektion
+  - [ ] **B.8.12 Neumessung Volltext, Vektor und Hybrid auf den Gate-Fällen:** `scripts/eval/compare-retrieval-variants.ts` mit eigenem Schlüssel und synthetischen Daten ausführen; Kriterien K1 bis K4 stehen vor dem Lauf fest (siehe [Plan](./docs/superpowers/plans/2026-10-27-eval-gate-und-agenten-haertung.md)). Bis dahin gilt die Zurückstellung der Vektorsuche als nicht belegt.
 - [ ] **B.9 k6 API- & Supabase-Lasttest-Suite:**
   - _(Detaillierte Spezifikation und Aufgabenplan in [BACKLOG.md §18](./BACKLOG.md#18-k6-api--supabase-lasttest-suite-benchmark-grafana-k6-enterprise-load-testing) hinterlegt)_
 - [x] **B.10 Enterprise Ingestion, Supabase Object Storage & System-Härtung:**
