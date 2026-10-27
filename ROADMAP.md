@@ -84,7 +84,6 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 
 - [ ] **B.11 Antipattern-Bereinigung (Befunde vom 27.10.2026, Plan: [2026-10-27-antipattern-bereinigung.md](./docs/superpowers/plans/2026-10-27-antipattern-bereinigung.md)):**
   - [ ] **B.11.2a Live-Migrationen der Pakete 2 und 3 (Freigabe nötig):** Live einspielen aus `supabase/migrations/20260915000000_core_multi_tenancy.sql`: `REVOKE UPDATE`/`GRANT UPDATE (role)` auf `organization_members`, Funktion und Trigger `organization_members_guard`, Policy `rls_audit_logs_insert`. Danach aus `20260921000000_jobs_and_workflows.sql` (Stand 86cdc0d) die Funktion `count_analysis_runs_since` einspielen und erst dann den Revert a1afd30 zurücknehmen (Live-Läufe zählen im Kontingent); umgekehrte Reihenfolge bricht `POST /api/analyze` in Produktion. Außerdem aus der Core-Migration (Stand b218fe2) die Policy „Profile von Kollegen derselben Kanzlei lesbar“ auf `profiles` einspielen und danach den Revert a5c57a5 zurücknehmen (Teamliste ohne Platzhalter).
-  - [ ] **B.11.5 Last, Aufbewahrung, Fehlertexte:** Job-Liste ohne Dateiinhalte, erledigte Jobs löschen, Speicherfehler beim Löschen, keine rohen Fehlertexte an den Browser.
   - [ ] **B.11.6 Fachregeln aus dem Code:** Schwellen und Fristen in die Wissensbasis, unverdrahteten GwG-Schritt bereinigen, `MOCK_AI` in Produktion ablehnen.
 
 ### Phase C: Enterprise Compliance & Ökosystem
