@@ -1,3 +1,3 @@
-npx --yes npm@10 ci --dry-run --ignore-scripts >/dev/null
+npx --yes npm@11 ci --dry-run --ignore-scripts >/dev/null
 npm test
 npm run audit:sast
