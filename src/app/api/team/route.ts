@@ -43,7 +43,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const members = await session.repo.listMembers(session.orgId);
     return NextResponse.json({ members });
   } catch (err: unknown) {
-    logFailure('error', 'team_fehlgeschlagen', err);
+    logFailure('error', 'team_laden_fehlgeschlagen', err);
     return NextResponse.json({ error: 'Fehler beim Laden des Kanzleiteams.' }, { status: 500 });
   }
 }
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (err: unknown) {
     const denied = authzErrorResponse(err);
     if (denied) return denied;
-    logFailure('error', 'team_fehlgeschlagen_2', err);
+    logFailure('error', 'team_einladen_fehlgeschlagen', err);
     return NextResponse.json(
       { error: 'Fehler beim Einladen des Kanzleimitglieds.' },
       { status: 500 }

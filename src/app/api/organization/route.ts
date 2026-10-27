@@ -52,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (orgError || !orgData) {
-      logFailure('warn', 'organization_provider_1', orgError);
+      logFailure('warn', 'organization_anlegen_abgelehnt', orgError);
       return NextResponse.json({ error: 'Kanzlei konnte nicht erstellt werden.' }, { status: 500 });
     }
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 201 }
     );
   } catch (err: unknown) {
-    logFailure('error', 'organization_fehlgeschlagen', err);
+    logFailure('error', 'organization_anlegen_fehlgeschlagen', err);
     return NextResponse.json(
       { error: 'Unerwarteter Fehler beim Erstellen der Kanzlei.' },
       { status: 500 }
@@ -114,7 +114,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       .single();
 
     if (updateError || !updatedOrg) {
-      logFailure('warn', 'organization_provider_2', updateError);
+      logFailure('warn', 'organization_aendern_abgelehnt', updateError);
       return NextResponse.json(
         { error: 'Kanzlei konnte nicht aktualisiert werden.' },
         { status: 500 }
@@ -128,7 +128,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   } catch (err: unknown) {
     const denied = authzErrorResponse(err);
     if (denied) return denied;
-    logFailure('error', 'organization_fehlgeschlagen_2', err);
+    logFailure('error', 'organization_aendern_fehlgeschlagen', err);
     return NextResponse.json({ error: 'Fehler beim Aktualisieren der Kanzlei.' }, { status: 500 });
   }
 }

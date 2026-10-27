@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Ne
   } catch (err: unknown) {
     const denied = authzErrorResponse(err) ?? teamChangeErrorResponse(err);
     if (denied) return denied;
-    logFailure('error', 'team_id_fehlgeschlagen', err);
+    logFailure('error', 'team_aendern_fehlgeschlagen', err);
     return NextResponse.json({ error: 'Fehler beim Ändern der Rolle.' }, { status: 500 });
   }
 }
@@ -90,7 +90,7 @@ export async function DELETE(req: NextRequest, context: RouteContext): Promise<N
   } catch (err: unknown) {
     const denied = authzErrorResponse(err) ?? teamChangeErrorResponse(err);
     if (denied) return denied;
-    logFailure('error', 'team_id_fehlgeschlagen_2', err);
+    logFailure('error', 'team_entfernen_fehlgeschlagen', err);
     return NextResponse.json({ error: 'Fehler beim Entfernen des Mitglieds.' }, { status: 500 });
   }
 }

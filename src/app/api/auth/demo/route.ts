@@ -39,7 +39,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (anonError || !anonData?.user) {
-      logFailure('warn', 'auth_demo_provider_1', anonError);
+      logFailure('warn', 'auth_demo_anmeldung_abgelehnt', anonError);
       return NextResponse.json({ error: 'Demo-Zugang nicht verfügbar.' }, { status: 503 });
     }
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
 
       if (orgError || !orgData) {
-        logFailure('warn', 'auth_demo_provider_2', orgError);
+        logFailure('warn', 'auth_demo_kanzlei_abgelehnt', orgError);
         return NextResponse.json(
           { error: 'Demo-Kanzlei konnte nicht initialisiert werden.' },
           { status: 500 }

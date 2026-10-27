@@ -41,7 +41,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (signUpError || !authData.user) {
-      logFailure('warn', 'auth_register_provider_1', signUpError);
+      logFailure('warn', 'auth_register_konto_abgelehnt', signUpError);
       return NextResponse.json({ error: 'Registrierung fehlgeschlagen.' }, { status: 400 });
     }
 
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (orgError || !orgData) {
-      logFailure('warn', 'auth_register_provider_2', orgError);
+      logFailure('warn', 'auth_register_kanzlei_abgelehnt', orgError);
       return NextResponse.json({ error: 'Kanzlei konnte nicht angelegt werden.' }, { status: 500 });
     }
 
