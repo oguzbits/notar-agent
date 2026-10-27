@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { TeamMember, InviteMemberRequest } from '@/types/auth';
+import { TeamMember } from '@/types/auth';
 import { DB_TABLES, Database } from '@/types/database';
 import { NotaryRole } from '@/types/organization';
 
@@ -41,7 +41,6 @@ export interface ITeamRepository {
     newRole: NotaryRole,
     organizationId: string
   ): Promise<TeamMember | null>;
-  inviteMember(data: InviteMemberRequest, organizationId: string): Promise<TeamMember>;
   removeMember(id: string, organizationId: string): Promise<boolean>;
 }
 
@@ -170,35 +169,6 @@ export class SupabaseTeamRepository implements ITeamRepository {
       name: profile?.full_name || 'Kanzleimitglied',
       email: profile?.email || 'mitarbeiter@kanzlei.de',
       title: profile?.title || undefined,
-    };
-  }
-
-  async inviteMember(data: InviteMemberRequest, organizationId: string): Promise<TeamMember> {
-    const generatedUserId = crypto.randomUUID();
-    const { data: inserted, error } = await this.supabase
-      .from(DB_TABLES.ORGANIZATION_MEMBERS)
-      .insert({
-        organization_id: organizationId,
-        user_id: generatedUserId,
-        role: data.role,
-        joined_at: new Date().toISOString(),
-      })
-      .select('id, organization_id, user_id, role, joined_at')
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to invite member: ${error.message}`);
-    }
-
-    return {
-      id: inserted.id,
-      organizationId: inserted.organization_id,
-      userId: inserted.user_id,
-      role: inserted.role,
-      joinedAt: inserted.joined_at,
-      name: data.name,
-      email: data.email,
-      title: data.title,
     };
   }
 

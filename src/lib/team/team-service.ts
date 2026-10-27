@@ -1,6 +1,6 @@
 import type { IAuditRepository } from '@/lib/audit/audit-repository';
 import { AUDIT_ACTIONS, AuditAction, AuditLogDetails } from '@/types/audit';
-import { InviteMemberRequest, SessionContext, TeamMember } from '@/types/auth';
+import { SessionContext, TeamMember } from '@/types/auth';
 import { NotaryRole } from '@/types/organization';
 import type { ITeamRepository } from './team-repository';
 
@@ -56,17 +56,4 @@ export async function removeMember(deps: TeamServiceDeps, memberId: string): Pro
     previousRole: before.role,
   });
   return true;
-}
-
-export async function inviteMember(
-  deps: TeamServiceDeps,
-  data: InviteMemberRequest
-): Promise<TeamMember> {
-  const member = await deps.repo.inviteMember(data, deps.session.organizationId);
-  await appendTeamEvent(deps, AUDIT_ACTIONS.MEMBER_INVITED, {
-    memberId: member.id,
-    userId: member.userId,
-    newRole: member.role,
-  });
-  return member;
 }

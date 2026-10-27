@@ -57,7 +57,7 @@ describe('API Route: /api/team/[id]', () => {
       await repo.removeMember(m.id, testOrgId);
     }
 
-    const created = await repo.inviteMember(
+    const created = mockTeamRepo.seedMember(
       {
         name: 'Mitarbeiter Test',
         email: 'mitarbeiter@test.de',

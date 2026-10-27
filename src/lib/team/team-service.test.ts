@@ -8,7 +8,7 @@ import { AUDIT_ACTIONS } from '@/types/audit';
 import { SessionContext } from '@/types/auth';
 import { NOTARY_ROLES } from '@/types/organization';
 import { LastNotarError } from './team-repository';
-import { changeMemberRole, inviteMember, removeMember } from './team-service';
+import { changeMemberRole, removeMember } from './team-service';
 
 const session: SessionContext = {
   userId: 'c0000000-0000-4000-8000-0000000000c1',
@@ -27,7 +27,7 @@ describe('Teamänderungen schreiben ein Audit-Ereignis', () => {
 
   beforeEach(async () => {
     deps = makeDeps();
-    const member = await deps.repo.inviteMember(
+    const member = deps.repo.seedMember(
       { name: 'Frau Akte', email: 'akte@kanzlei.de', role: NOTARY_ROLES.SACHBEARBEITER },
       TEST_ORG_ID
     );
@@ -60,19 +60,6 @@ describe('Teamänderungen schreiben ein Audit-Ereignis', () => {
     expect(await lastEvent()).toMatchObject({
       action: AUDIT_ACTIONS.MEMBER_REMOVED,
       details: { member: { memberId, previousRole: NOTARY_ROLES.SACHBEARBEITER } },
-    });
-  });
-
-  it('Einladen: neues Mitglied und Rolle', async () => {
-    const invited = await inviteMember(deps, {
-      name: 'Herr Vollzug',
-      email: 'vollzug@kanzlei.de',
-      role: NOTARY_ROLES.NOTAR,
-    });
-
-    expect(await lastEvent()).toMatchObject({
-      action: AUDIT_ACTIONS.MEMBER_INVITED,
-      details: { member: { memberId: invited.id, newRole: NOTARY_ROLES.NOTAR } },
     });
   });
 

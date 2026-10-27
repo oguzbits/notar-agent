@@ -114,7 +114,9 @@ function applyJobUpdate(job: DossierJob, update: UpdateJobParams): DossierJob {
 /**
  * Creates an isolated mock implementation of ITeamRepository using vi.fn()
  */
-export function createMockTeamRepository(): ITeamRepository {
+export function createMockTeamRepository(): ITeamRepository & {
+  seedMember: (data: InviteMemberRequest, organizationId: string) => TeamMember;
+} {
   const members = new Map<string, TeamMember>();
   let idCounter = 0;
 
@@ -135,7 +137,7 @@ export function createMockTeamRepository(): ITeamRepository {
       member.role = newRole;
       return member;
     }),
-    inviteMember: vi.fn(async (data: InviteMemberRequest, organizationId: string) => {
+    seedMember: (data: InviteMemberRequest, organizationId: string) => {
       const id = `member-${++idCounter}`;
       const member: TeamMember = {
         id,
@@ -148,7 +150,7 @@ export function createMockTeamRepository(): ITeamRepository {
       };
       members.set(id, member);
       return member;
-    }),
+    },
     removeMember: vi.fn(async (id: string, organizationId: string) => {
       const member = members.get(id);
       if (member && member.organizationId === organizationId) {

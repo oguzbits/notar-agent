@@ -193,6 +193,7 @@ graph TD
 - [ ] Lokale Draft-Sicherung im `StatusOverrideReasonModal`
 - [ ] `Last-Event-ID`-Unterstützung in `create-sse-stream.ts` und Client-Hooks
 - [ ] Retention- und Lösch-Skript für Altdaten gem. DONot
+- [ ] Echter Einladungsweg für Mitarbeitende (Auth-Einladung per E-Mail, Mitgliedschaft erst nach Annahme, Audit `MEMBER_INVITED`); bis dahin antwortet `POST /api/team` mit 501
 
 ---
 

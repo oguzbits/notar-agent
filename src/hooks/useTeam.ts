@@ -41,7 +41,8 @@ async function apiInviteMember(request: InviteMemberRequest): Promise<TeamMember
     body: JSON.stringify(request),
   });
   if (!res.ok) {
-    throw new Error('Mitarbeiter konnte nicht eingeladen werden.');
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error ?? 'Mitarbeiter konnte nicht eingeladen werden.');
   }
   const data = await res.json();
   return data.member as TeamMember;

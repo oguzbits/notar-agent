@@ -7,7 +7,6 @@ import {
   createMockTeamRepository,
 } from '@/test/fixtures/mock-repositories';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
-import { AUDIT_ACTIONS } from '@/types/audit';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { NOTARY_ROLES } from '@/types/organization';
 import { GET, POST } from './route';
@@ -67,45 +66,22 @@ describe('API Route: /api/team', () => {
     expect(data.members).toEqual([]);
   });
 
-  it('POST /api/team invites a new team member and persists it', async () => {
-    const invitePayload = {
-      name: 'Dr. Test Notar',
-      email: 'test@notariat.de',
-      role: NOTARY_ROLES.NOTAR,
-      title: 'Notar',
-    };
-
+  it('POST /api/team antwortet 501 mit deutscher Meldung und legt kein Mitglied an', async () => {
     const postReq = new NextRequest('http://localhost:3000/api/team', {
       method: 'POST',
-      headers: {
-        'x-organization-id': testOrgId,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(invitePayload),
+      headers: { 'x-organization-id': testOrgId, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Dr. Test Notar',
+        email: 'test@notariat.de',
+        role: NOTARY_ROLES.NOTAR,
+      }),
     });
 
     const res = await POST(postReq);
-    expect(res.status).toBe(201);
-    const data = await res.json();
-    expect(data.member).toBeDefined();
-    expect(data.member.name).toBe('Dr. Test Notar');
-    expect(data.member.email).toBe('test@notariat.de');
-    expect(data.member.role).toBe(NOTARY_ROLES.NOTAR);
 
-    // Verify GET returns the new member
-    const getReq = new NextRequest('http://localhost:3000/api/team', {
-      headers: { 'x-organization-id': testOrgId },
-    });
-    const listRes = await GET(getReq);
-    const listData = await listRes.json();
-    expect(listData.members).toHaveLength(1);
-    expect(listData.members[0].id).toBe(data.member.id);
-
-    const history = await mockAuditRepo.getHistory(`team:${testOrgId}`);
-    expect(history.at(-1)).toMatchObject({
-      action: AUDIT_ACTIONS.MEMBER_INVITED,
-      details: { member: { memberId: data.member.id, newRole: NOTARY_ROLES.NOTAR } },
-    });
+    expect(res.status).toBe(501);
+    expect((await res.json()).error).toContain('noch nicht verfügbar');
+    expect(await mockTeamRepo.listMembers(testOrgId)).toEqual([]);
   });
 
   it('POST /api/team verlangt MANAGE_TEAM und lädt für SACHBEARBEITER nicht ein', async () => {
@@ -131,21 +107,5 @@ describe('API Route: /api/team', () => {
       expect.objectContaining({ route: 'POST /api/team' })
     );
     expect(await repo.listMembers(testOrgId)).toHaveLength(0);
-  });
-
-  it('POST /api/team rejects invalid payload with 400', async () => {
-    const postReq = new NextRequest('http://localhost:3000/api/team', {
-      method: 'POST',
-      headers: {
-        'x-organization-id': testOrgId,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ name: '' }),
-    });
-
-    const res = await POST(postReq);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toBeDefined();
   });
 });
