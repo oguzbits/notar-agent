@@ -10,6 +10,7 @@ import {
   formatKnowledgeForPrompt,
   selectApplicableKnowledge,
 } from '@/lib/knowledge/rules/rule-selector';
+import { buildKnowledgeSearchText } from '@/lib/knowledge/search-text';
 import { errorClassOf, logEvent, timed } from '@/lib/observability/logger';
 import { getKnowledgeRepository } from '@/lib/supabase/server';
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
@@ -52,7 +53,7 @@ export interface PipelineParams {
   knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
 }
 
-function formatInternalNotes(
+export function formatInternalNotes(
   notes: string,
   existingDossier?: Dossier
 ): { noteList: string[]; notesSection: string } {
@@ -399,7 +400,7 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
   const statutoryRules = await knowledgeRepo.getStatutoryRules(organizationId);
   const relevantStatutory = selectApplicableKnowledge(statutoryRules, selectionContext);
 
-  const searchTerms = [caseType, notesSection, ...docNames].filter(Boolean).join(' ');
+  const searchTerms = buildKnowledgeSearchText(caseType, notesSection, docNames);
 
   const knowledgeResults = await knowledgeRepo.search({
     queryText: searchTerms || caseType,

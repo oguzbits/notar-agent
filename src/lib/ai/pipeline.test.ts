@@ -1,13 +1,15 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { buildKnowledgeSearchText } from '@/lib/knowledge/search-text';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { LLM_USAGE_STAGES } from '@/types/llm-usage';
-import { runAnalysisPipeline } from './pipeline';
+import { formatInternalNotes, runAnalysisPipeline } from './pipeline';
 
 // Mock Supabase Server Knowledge Repository
+const mockKnowledgeSearch = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/supabase/server', () => ({
   getKnowledgeRepository: () => ({
     getStatutoryRules: vi.fn().mockResolvedValue([]),
-    search: vi.fn().mockResolvedValue([]),
+    search: mockKnowledgeSearch,
   }),
 }));
 
@@ -22,6 +24,51 @@ vi.mock('ai', async (importOriginal) => {
 });
 
 describe('runAnalysisPipeline', () => {
+  beforeEach(() => {
+    mockKnowledgeSearch.mockReset().mockResolvedValue([]);
+  });
+
+  it('sucht in der Wissensbasis mit Vorgangstyp, Notizblock und erkannten Dateinamen', async () => {
+    mockGenerateText.mockReset();
+    mockGenerateText
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          caseTitle: 'T',
+          overallStatus: OVERALL_STATUS.READY,
+          fields: {},
+          detectedDocuments: [{ fileName: 'Vollmacht_Kopie.pdf' }],
+        }),
+      })
+      .mockResolvedValue({
+        text: JSON.stringify({
+          overallStatus: OVERALL_STATUS.READY,
+          fields: {},
+          reconciliationAuditTrail: [],
+        }),
+      });
+
+    await runAnalysisPipeline({
+      files: [],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notes: 'Verwalter hat noch nicht zugestimmt.',
+      model: {} as never,
+      extractionInstructions: { role: 'system', content: 'Extract' },
+      auditorInstructions: { role: 'system', content: 'Audit' },
+      onStep: () => undefined,
+    });
+
+    const queryText = mockKnowledgeSearch.mock.calls[0]?.[0]?.queryText as string;
+    expect(queryText).toBe(
+      buildKnowledgeSearchText(
+        CASE_TYPES.IMMOBILIENKAUF,
+        formatInternalNotes('Verwalter hat noch nicht zugestimmt.').notesSection,
+        ['Vollmacht_Kopie.pdf']
+      )
+    );
+    expect(queryText).toContain('Verwalter hat noch nicht zugestimmt.');
+    expect(queryText).toContain('Vollmacht_Kopie.pdf');
+  });
+
   it('triggers reflection pass when Stage 1 output fails initial schema validation and recovers', async () => {
     let callCount = 0;
     mockGenerateText.mockImplementation(async ({ messages }) => {

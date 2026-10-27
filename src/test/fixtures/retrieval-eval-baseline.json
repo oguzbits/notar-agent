@@ -1,0 +1,7 @@
+{
+  "cases": 48,
+  "promptCoverage": 0.8875,
+  "fullCoverageRate": 0.875,
+  "coverageWithoutIdentifier": 0.85,
+  "date": "2026-10-27"
+}

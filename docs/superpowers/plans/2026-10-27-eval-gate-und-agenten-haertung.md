@@ -72,9 +72,9 @@
 - `summarizeRetrievalEval(results: RetrievalEvalResult[]): RetrievalEvalSummary`.
 - `compareToBaseline(summary, baseline, tolerance = GATE_TOLERANCE): string[]` liefert die Maße, die mehr als die Toleranz unter der Baseline liegen, in Worten; leer heißt nicht schlechter. `GATE_TOLERANCE = 0.05`, Kommentar nennt den Grund (ein Fall von rund 40).
 
-**Fälle:** `src/lib/knowledge/fixtures/retrieval-eval-cases.ts` enthält die 48 Fälle der Runde 4 (synthetisch, im Kommentar so gekennzeichnet, mit Hinweis auf den Messbefund). Die Grundwahrheit wird über `legalBasis` des Benchmark-Korpus aufgelöst; jede Angabe muss genau ein Dokument treffen.
+**Fälle:** `src/test/fixtures/retrieval-eval-cases.ts` enthält die 48 Fälle der Runde 4 (synthetisch, im Kommentar so gekennzeichnet, mit Hinweis auf den Messbefund). Die Grundwahrheit wird über `legalBasis` des Benchmark-Korpus aufgelöst; jede Angabe muss genau ein Dokument treffen.
 
-**DB-Test** (`src/test/db/retrieval-eval.db.test.ts`): legt das Benchmark-Korpus an (wie `retrieval-quality.db.test.ts`), führt je Fall Schlagwortauswahl (`selectApplicableKnowledge`) und `repo.search({ topK: 3 })` mit `buildKnowledgeSearchText` aus, fasst zusammen und vergleicht mit `src/lib/knowledge/fixtures/retrieval-eval-baseline.json`. Die Baseline wird mit `UPDATE_EVAL_BASELINE=1` neu geschrieben, nie automatisch.
+**DB-Test** (`src/test/db/retrieval-eval.db.test.ts`): legt das Benchmark-Korpus an (wie `retrieval-quality.db.test.ts`), führt je Fall Schlagwortauswahl (`selectApplicableKnowledge`) und `repo.search({ topK: 3 })` mit `buildKnowledgeSearchText` aus, fasst zusammen und vergleicht mit `src/test/fixtures/retrieval-eval-baseline.json`. Die Baseline wird mit `UPDATE_EVAL_BASELINE=1` neu geschrieben, nie automatisch.
 
 **Testfälle:**
 
@@ -87,6 +87,8 @@
 **Schutz gegen roten Test:** Toleranz auf 1,0 oder Vergleich weglassen macht Fall 3 rot; `pipeline.ts` bildet den Suchtext selbst macht Fall 1 rot; mehrdeutige Rechtsgrundlage macht Fall 4 rot; Verschlechtern der Suche (zum Beispiel UND statt ODER-Verknüpfung testweise) lässt den DB-Test rot werden (einmal manuell prüfen, Ergebnis im Bericht).
 
 **Baseline:** Wert aus einem Lauf gegen die lokale Supabase (`supabase start`, `npm run test:db`). Das Ergebnis wird ehrlich eingetragen, auch wenn es unter den Werten der Scratchpad-Messung liegt (dort Volltext 0,96). Im Bericht wird der Unterschied zwischen Scratchpad (lokale Postgres-Kopie) und RPC-Lauf genannt.
+
+**Umsetzung (Abweichungen vom Entwurf):** `buildKnowledgeSearchText` liegt in `src/lib/knowledge/search-text.ts` (die Pipeline importiert sie, nicht aus dem Gate); `formatInternalNotes` ist aus `pipeline.ts` exportiert, weil die Produktivsuche den Notizblock samt Anweisungstext erhält, nicht die rohen Notizen; Fälle und Baseline liegen in `src/test/fixtures/` (Strukturgrenzen gelten dort nicht); `resolveLegalBasis` löst die Grundwahrheit auf. **Gemessene Baseline (echte RPC, mit Seed-Dokumenten, echtem Notizblock):** `promptCoverage` 0,8875, `fullCoverageRate` 0,875, `coverageWithoutIdentifier` 0,85; mit rohen Notizen 0,9125. Die Scratchpad-Werte (0,96) bildeten die Produktion nicht ab (sauberer Korpus ohne Seed-Dokumente, rohe Notizen). Das Gate ist verschlechterungsempfindlich (Suchtext nur Vorgangstyp: `coverageWithoutIdentifier` fällt auf 0,75 und löst aus), die Gesamtabdeckung bleibt dann aber innerhalb der Toleranz, weil die Schlagwortauswahl viel trägt.
 
 ## Aufgabe 3: Vergleichsskript Volltext/Vektor
 

@@ -76,6 +76,8 @@ _Ziel: Trennung zwischen Retrieval-Fehlern und LLM-Reasoning-Fehlern sowie konti
   - `npm run eval:retrieval:baseline`: Speichern des aktuellen Laufs als Referenz-Baseline (`reports/retrieval-baseline.json`).
   - `npm run eval:retrieval:compare`: Automatischer Baseline-Vergleich mit Delta-Prüfung und CI/CD-Quality-Gate.
 
+- **Eval-Gate der Produktivsuche (`npm run test:db`):** `src/test/db/retrieval-eval.db.test.ts` bildet den Pipeline-Weg gegen die echte RPC nach: Notizblock (`formatInternalNotes`), Schlagwortauswahl (`selectApplicableKnowledge`) und Suche (`buildKnowledgeSearchText`, Top 3). Gemessen wird der Anteil der einschlägigen Normen im Prompt (`promptCoverage`), der Anteil vollständig abgedeckter Fälle (`fullCoverageRate`) und die Abdeckung bei Fällen ohne Normkennung (`coverageWithoutIdentifier`) auf 48 synthetischen Vorgängen (`src/test/fixtures/retrieval-eval-cases.ts`). Das Gate schlägt an, wenn ein Maß mehr als `GATE_TOLERANCE` (0,05) unter `retrieval-eval-baseline.json` fällt. Die Baseline wird nur bewusst mit `UPDATE_EVAL_BASELINE=1` neu geschrieben. Die simulierten Werte von `eval:retrieval` bilden die Produktivsuche nicht ab.
+
 ### Phase 4: Token- & Kosten-Optimierung für Massen-Evals
 
 - **Prompt Caching:** Bei 100 Testfällen sind die Systemprompts identisch. Mit Prompt Caching sinken die Token-Kosten um bis zu 75 %.

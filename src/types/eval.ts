@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FieldStatusSchema } from './dossier';
+import { CaseTypeSchema, FieldStatusSchema } from './dossier';
 
 /**
  * Status eines Judge-Urteils (Deterministisch, LLM oder Jev System-1).
@@ -283,3 +283,64 @@ export const LiveEvalGateResultSchema = z.object({
   failures: z.array(z.string()),
 });
 export type LiveEvalGateResult = z.infer<typeof LiveEvalGateResultSchema>;
+
+/**
+ * Eval-Gate der Wissenssuche: produktionsnahe Vorgänge (Notizen, Dateinamen) gegen die Prüfgrundlage,
+ * die in den Prompt gelangt (Schlagwortauswahl plus Top 3 der Suche).
+ */
+export const RETRIEVAL_EVAL_CASE_KINDS = {
+  /** Notiz nennt Norm, Paragraf oder Kürzel. */
+  KENNUNG: 'KENNUNG',
+  /** Alltagssprache ohne Kennung. */
+  OHNE_KENNUNG: 'OHNE_KENNUNG',
+  /** Keine Norm der Wissensbasis einschlägig. */
+  OHNE_TREFFER: 'OHNE_TREFFER',
+} as const;
+
+export const RetrievalEvalCaseKindSchema = z.enum([
+  RETRIEVAL_EVAL_CASE_KINDS.KENNUNG,
+  RETRIEVAL_EVAL_CASE_KINDS.OHNE_KENNUNG,
+  RETRIEVAL_EVAL_CASE_KINDS.OHNE_TREFFER,
+]);
+export type RetrievalEvalCaseKind = z.infer<typeof RetrievalEvalCaseKindSchema>;
+
+export const RetrievalEvalCaseSchema = z
+  .object({
+    id: z.string().min(1),
+    kind: RetrievalEvalCaseKindSchema,
+    caseType: CaseTypeSchema,
+    notes: z.string().min(1),
+    fileNames: z.array(z.string()),
+    relevantLegalBases: z.array(z.string().min(1)),
+  })
+  .refine(
+    (c) =>
+      (c.kind === RETRIEVAL_EVAL_CASE_KINDS.OHNE_TREFFER) === (c.relevantLegalBases.length === 0),
+    {
+      message: 'relevantLegalBases ist genau bei OHNE_TREFFER leer',
+    }
+  );
+export type RetrievalEvalCase = z.infer<typeof RetrievalEvalCaseSchema>;
+
+/** Ergebnis je Fall: wie viele der einschlägigen Normen im Prompt landen. */
+export const RetrievalEvalResultSchema = z.object({
+  caseId: z.string().min(1),
+  kind: RetrievalEvalCaseKindSchema,
+  relevantCount: z.number().int().min(0),
+  coveredCount: z.number().int().min(0),
+});
+export type RetrievalEvalResult = z.infer<typeof RetrievalEvalResultSchema>;
+
+export const RetrievalEvalSummarySchema = z.object({
+  cases: z.number().int().positive(),
+  promptCoverage: z.number().min(0).max(1),
+  fullCoverageRate: z.number().min(0).max(1),
+  /** Nur Fälle ohne Kennung; null, wenn der Bestand keinen solchen Fall enthält. */
+  coverageWithoutIdentifier: z.number().min(0).max(1).nullable(),
+});
+export type RetrievalEvalSummary = z.infer<typeof RetrievalEvalSummarySchema>;
+
+export const RetrievalEvalBaselineSchema = RetrievalEvalSummarySchema.extend({
+  date: z.string().min(1),
+});
+export type RetrievalEvalBaseline = z.infer<typeof RetrievalEvalBaselineSchema>;
