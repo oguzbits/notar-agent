@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { logFailure } from '@/lib/observability/logger';
 import {
   applyOrganizationFilter,
   executeMaybeSingle,
@@ -19,7 +20,7 @@ import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 
 /** Aufbewahrung beendeter Vorgänge samt Dateien (Mandantendaten), danach löscht der Cron. */
 export const JOB_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
-const JOB_PRUNE_BATCH = 100;
+export const JOB_PRUNE_BATCH = 100;
 
 /** Höchstzahl der Vorgänge je Abruf der Übersicht (neueste zuerst). */
 export const JOB_LIST_LIMIT = 100;
@@ -284,17 +285,22 @@ export class SupabaseJobRepository implements IJobRepository {
     );
     if (candidates.length === 0) return 0;
 
-    await this.removeStorageFiles(
-      candidates.flatMap((c) => (Array.isArray(c.files) ? c.files : []))
-    );
+    // Ein defekter Job darf den Lauf nicht blockieren: Zeile bleibt, übrige werden gelöscht
+    const deletable: string[] = [];
+    for (const c of candidates) {
+      try {
+        await this.removeStorageFiles(Array.isArray(c.files) ? c.files : []);
+        deletable.push(c.id);
+      } catch (err) {
+        logFailure('warn', 'job_aufbewahrung_dateien_fehlgeschlagen', err);
+      }
+    }
+    if (deletable.length === 0) return 0;
 
     const { data, error } = await this.supabase
       .from(DB_TABLES.DOSSIER_JOBS)
       .delete()
-      .in(
-        'id',
-        candidates.map((c) => c.id)
-      )
+      .in('id', deletable)
       .or(isPrunable)
       .select('id');
     if (error) {

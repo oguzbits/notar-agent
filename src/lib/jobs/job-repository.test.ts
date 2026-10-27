@@ -1,8 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
+import { logFailure } from '@/lib/observability/logger';
 import { DB_TABLES } from '@/types/database';
 import { CASE_TYPES } from '@/types/dossier';
 import { CreateJobPayload, JOB_STATUS } from '@/types/jobs';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
+
+vi.mock('@/lib/observability/logger', () => ({ logFailure: vi.fn() }));
 
 describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
   const samplePayload: CreateJobPayload = {
@@ -207,5 +210,62 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
 
     await expect(repo.deleteJob('job-1')).rejects.toThrow('Bucket nicht erreichbar');
     expect(del).not.toHaveBeenCalled();
+  });
+  describe('pruneCompletedJobs', () => {
+    function setup(candidates: unknown[], removeImpl: (paths: string[]) => unknown) {
+      const limit = vi.fn().mockResolvedValue({ data: candidates, error: null });
+      const deleteSelect = vi
+        .fn()
+        .mockImplementation(() => Promise.resolve({ data: [], error: null }));
+      const deleteIn = vi
+        .fn()
+        .mockReturnValue({ or: vi.fn().mockReturnValue({ select: deleteSelect }) });
+      deleteSelect.mockImplementation(() =>
+        Promise.resolve({
+          data: deleteIn.mock.calls[0]?.[1]?.map((id: string) => ({ id })),
+          error: null,
+        })
+      );
+      const supabase = {
+        storage: {
+          from: vi.fn().mockReturnValue({ remove: vi.fn(async (p: string[]) => removeImpl(p)) }),
+        },
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            or: vi.fn().mockReturnValue({
+              lt: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit }) }),
+            }),
+          }),
+          delete: vi.fn().mockReturnValue({ in: deleteIn }),
+        }),
+      };
+      return { supabase, limit, deleteIn };
+    }
+
+    it('löscht Jobs mit Speicherfehler nicht, verarbeitet die übrigen weiter', async () => {
+      const { supabase, deleteIn } = setup(
+        [
+          { id: 'ok', files: [{ storagePath: 'org/ok.pdf' }] },
+          { id: 'kaputt', files: [{ storagePath: 'org/kaputt.pdf' }] },
+        ],
+        (paths) =>
+          paths[0] === 'org/kaputt.pdf'
+            ? { data: null, error: { message: 'Bucket nicht erreichbar' } }
+            : { data: [], error: null }
+      );
+      const { SupabaseJobRepository } = await import('./job-repository');
+      const repo = new SupabaseJobRepository(supabase as never);
+
+      await expect(repo.pruneCompletedJobs()).resolves.toBe(1);
+      expect(deleteIn).toHaveBeenCalledWith('id', ['ok']);
+      expect(logFailure).toHaveBeenCalledWith('warn', expect.any(String), expect.any(Error));
+    });
+
+    it('fragt höchstens JOB_PRUNE_BATCH Kandidaten ab', async () => {
+      const { supabase, limit } = setup([], () => ({ error: null }));
+      const { SupabaseJobRepository, JOB_PRUNE_BATCH } = await import('./job-repository');
+      await new SupabaseJobRepository(supabase as never).pruneCompletedJobs();
+      expect(limit).toHaveBeenCalledWith(JOB_PRUNE_BATCH);
+    });
   });
 });
