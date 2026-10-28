@@ -24,7 +24,18 @@ export const NOTARY_PDF_TRANSCRIPTION_PROMPT =
   'Fasse nichts zusammen, übersetze nichts, lasse nichts aus und füge keine Kommentare hinzu. ' +
   'Gib ausschließlich die Transkription aus.';
 
+export const NOTARY_IMAGE_TRANSCRIPTION_PROMPT =
+  'Transkribiere den gesamten sichtbaren Text dieses Bildes eines notariellen Dokuments wörtlich in Markdown. ' +
+  'Behalte die Lesereihenfolge exakt bei. ' +
+  'Rendere Tabellen vollständig als Markdown-Tabellen. ' +
+  'Erfasse Handschrift, Korrekturen, Streichungen (als ~~gestrichen~~), Stempel, Siegel und Vermerke wörtlich; ' +
+  'markiere unleserliche Stellen mit [unleserlich] und rate nicht. ' +
+  'Fasse nichts zusammen, übersetze nichts, lasse nichts aus und füge keine Kommentare hinzu. ' +
+  'Gib ausschließlich die Transkription aus.';
+
 export interface GeminiPdfParserOptions {
+  /** Medientyp der Datei; ohne Angabe wird er an den Magic Bytes erkannt (Standard: PDF). */
+  mediaType?: string;
   apiKey?: string;
   model?: string;
   fallbackModel?: string;
@@ -159,10 +170,14 @@ export async function parseDocumentWithGemini(
   const rawBytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   const base64Data = Buffer.from(rawBytes).toString('base64');
 
-  // Prüfe Mime-Type (Standard: application/pdf)
+  // Medientyp: explizit übergeben, sonst an den Magic Bytes erkannt (Standard: application/pdf)
   const isPng = rawBytes[0] === 0x89 && rawBytes[1] === 0x50 && rawBytes[2] === 0x4e;
   const isJpeg = rawBytes[0] === 0xff && rawBytes[1] === 0xd8;
-  const mimeType = isPng ? 'image/png' : isJpeg ? 'image/jpeg' : 'application/pdf';
+  const mimeType =
+    options.mediaType ?? (isPng ? 'image/png' : isJpeg ? 'image/jpeg' : 'application/pdf');
+  const prompt = mimeType.startsWith('image/')
+    ? NOTARY_IMAGE_TRANSCRIPTION_PROMPT
+    : NOTARY_PDF_TRANSCRIPTION_PROMPT;
 
   let candidate: GeminiCandidate;
   try {
@@ -171,7 +186,7 @@ export async function parseDocumentWithGemini(
       primaryModel,
       base64Data,
       mimeType,
-      NOTARY_PDF_TRANSCRIPTION_PROMPT,
+      prompt,
       timeoutMs,
       sleepFn
     );
@@ -189,7 +204,7 @@ export async function parseDocumentWithGemini(
         fallbackModel,
         base64Data,
         mimeType,
-        NOTARY_PDF_TRANSCRIPTION_PROMPT,
+        prompt,
         timeoutMs,
         sleepFn
       );
@@ -202,7 +217,7 @@ export async function parseDocumentWithGemini(
         fallbackModel,
         base64Data,
         mimeType,
-        NOTARY_PDF_TRANSCRIPTION_PROMPT,
+        prompt,
         timeoutMs,
         sleepFn
       );

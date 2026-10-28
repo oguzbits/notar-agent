@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GEMINI_FINISH_REASONS } from '@/types/document';
-import { parseDocumentWithGemini } from './gemini-pdf-parser';
+import {
+  NOTARY_IMAGE_TRANSCRIPTION_PROMPT,
+  NOTARY_PDF_TRANSCRIPTION_PROMPT,
+  parseDocumentWithGemini,
+} from './gemini-pdf-parser';
 
 describe('gemini-pdf-parser', () => {
   const originalEnv = { ...process.env };
@@ -24,6 +28,7 @@ describe('gemini-pdf-parser', () => {
     await expect(parseDocumentWithGemini(Buffer.from('fake-pdf'), { apiKey: '' })).rejects.toThrow(
       'Kein GEMINI_API_KEY verfügbar'
     );
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('parst ein PDF erfolgreich und erzeugt strukturierte Blöcke', async () => {
@@ -133,5 +138,33 @@ describe('gemini-pdf-parser', () => {
     expect(result.markdown).toBe('Nach Retry erfolgreich');
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(sleepMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('sendet den übergebenen Medientyp samt Bild-Prompt an Gemini', async () => {
+    process.env.GEMINI_API_KEY = 'test-api-key';
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'Text' }] } }] }),
+    });
+
+    await parseDocumentWithGemini(Buffer.from('RIFFxxxxWEBP'), { mediaType: 'image/webp' });
+
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1].body as string);
+    expect(body.contents[0].parts[0].inlineData.mimeType).toBe('image/webp');
+    expect(body.contents[0].parts[1].text).toBe(NOTARY_IMAGE_TRANSCRIPTION_PROMPT);
+  });
+
+  it('bleibt ohne Medientyp bei PDF und PDF-Prompt', async () => {
+    process.env.GEMINI_API_KEY = 'test-api-key';
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'Text' }] } }] }),
+    });
+
+    await parseDocumentWithGemini(Buffer.from('%PDF-1.4 test'));
+
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1].body as string);
+    expect(body.contents[0].parts[0].inlineData.mimeType).toBe('application/pdf');
+    expect(body.contents[0].parts[1].text).toBe(NOTARY_PDF_TRANSCRIPTION_PROMPT);
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { CASE_TYPES, DOCUMENT_RELIABILITY, OVERALL_STATUS } from '@/types/dossier';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 import {
@@ -7,6 +7,19 @@ import {
   sanitizeXmlDocumentContent,
   UploadedFilePayload,
 } from './payload-assembler';
+
+const { parseDocumentWithGemini, logFailure } = vi.hoisted(() => ({
+  parseDocumentWithGemini: vi.fn(),
+  logFailure: vi.fn(),
+}));
+vi.mock('@/lib/files/gemini-pdf-parser', () => ({ parseDocumentWithGemini }));
+vi.mock('@/lib/observability/logger', () => ({ logFailure, logEvent: vi.fn() }));
+
+beforeEach(() => {
+  parseDocumentWithGemini.mockReset();
+  parseDocumentWithGemini.mockRejectedValue(new Error('Kein GEMINI_API_KEY verfügbar'));
+  logFailure.mockReset();
+});
 
 describe('payload-assembler', () => {
   it('assembles base prompt with structured XML containers', async () => {
@@ -52,6 +65,7 @@ describe('payload-assembler', () => {
   });
 
   it('meldet je Datei den prüfbaren Text mit der Prompt-Nummer (Bild ohne Text)', async () => {
+    parseDocumentWithGemini.mockResolvedValue({ markdown: '' });
     const collected: Array<{ docIndex: number; fileName: string; textContent: string }> = [];
     await assembleExtractionPromptParts({
       files: [
@@ -384,6 +398,96 @@ Kaufpreis: 1.000.000 EUR
       (p) => p.type === 'text' && (p as { text: string }).text.startsWith('<document')
     ) as { type: 'text'; text: string };
     expect(docTextPart.text).toContain('Grundbuchauszug Inhalt');
+  });
+
+  describe('Bild-Transkription für den Beleg-Abgleich', () => {
+    const image = (name: string, type = 'image/png') => ({
+      name,
+      type,
+      size: 10,
+      isBase64: true,
+      content: `data:${type};base64,AQID`,
+    });
+    const run = (files: UploadedFilePayload[], collected: unknown[] = []) =>
+      assembleExtractionPromptParts({
+        files,
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        notesSection: '',
+        onSourceText: (doc) => collected.push(doc),
+      });
+
+    it('transkribiert Bilder mit Medientyp und kurzem Timeout und meldet den Text als Quelltext', async () => {
+      parseDocumentWithGemini.mockResolvedValue({ markdown: 'Kaufpreis 450.000 Euro' });
+      const collected: unknown[] = [];
+
+      const parts = await run([image('scan.webp', 'image/webp')], collected);
+
+      expect(parseDocumentWithGemini).toHaveBeenCalledWith(Buffer.from([1, 2, 3]), {
+        mediaType: 'image/webp',
+        timeoutMs: 25000,
+      });
+      expect(collected).toEqual([
+        { docIndex: 1, fileName: 'scan.webp', textContent: 'Kaufpreis 450.000 Euro' },
+      ]);
+      // Das Bild selbst geht weiter ins Modell, der Transkript-Text nicht
+      expect(parts).toContainEqual(expect.objectContaining({ type: 'file', data: 'AQID' }));
+      expect(JSON.stringify(parts)).not.toContain('Kaufpreis 450.000 Euro');
+    });
+
+    it('transkribiert mehrere Bilder parallel', async () => {
+      const releases: Array<() => void> = [];
+      parseDocumentWithGemini.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            releases.push(() => resolve({ markdown: 'x' }));
+          })
+      );
+
+      const done = run([image('a.png'), image('b.png')]);
+      await vi.waitFor(() => expect(parseDocumentWithGemini).toHaveBeenCalledTimes(2));
+      releases.forEach((release) => release());
+      await done;
+    });
+
+    it('fällt bei Fehlern auf leeren Quelltext zurück und warnt ohne Dateiinhalt', async () => {
+      parseDocumentWithGemini.mockRejectedValue(new Error('HTTP 500 geheimer Inhalt'));
+      const collected: unknown[] = [];
+
+      await expect(run([image('scan.png')], collected)).resolves.toBeDefined();
+
+      expect(collected).toEqual([{ docIndex: 1, fileName: 'scan.png', textContent: '' }]);
+      expect(logFailure).toHaveBeenCalledWith(
+        'warn',
+        'bild_transkription_fehlgeschlagen',
+        expect.any(Error)
+      );
+    });
+
+    it('lässt Download-Fehler laut bleiben und transkribiert dann nicht', async () => {
+      await expect(
+        run([{ name: 'a.png', type: 'image/png', size: 10, storagePath: 'org/a.png' }])
+      ).rejects.toThrow(/Sitzungs-Client/);
+      expect(parseDocumentWithGemini).not.toHaveBeenCalled();
+    });
+
+    it('transkribiert auch Bilder aus dem Speicher', async () => {
+      parseDocumentWithGemini.mockResolvedValue({ markdown: 'Text' });
+      const download = vi.fn().mockResolvedValue({
+        data: { arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer },
+        error: null,
+      });
+      const collected: unknown[] = [];
+
+      await assembleExtractionPromptParts({
+        files: [{ name: 'a.png', type: 'image/png', size: 10, storagePath: 'org/a.png' }],
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        notesSection: '',
+        storageClient: { storage: { from: () => ({ download }) } } as never,
+        onSourceText: (doc) => collected.push(doc),
+      });
+
+      expect(collected).toEqual([{ docIndex: 1, fileName: 'a.png', textContent: 'Text' }]);
+    });
   });
 
   it('lädt Bilder aus dem Speicher mit dem übergebenen Sitzungs-Client', async () => {

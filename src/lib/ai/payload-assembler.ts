@@ -6,6 +6,7 @@ import {
 } from '@/lib/files/document-triage';
 import { routeAndWindowDocument } from '@/lib/files/document-windowing';
 import { parseDocxDocument, DocxExtractedImage } from '@/lib/files/docx-document-parser';
+import { parseDocumentWithGemini } from '@/lib/files/gemini-pdf-parser';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
 import { PdfStreamType, PDF_STREAM_TYPES } from '@/lib/files/pdf-stream-classifier';
@@ -20,6 +21,9 @@ import {
   UploadedFilePayload,
 } from '@/types/dossier';
 import type { SourceDocumentText } from './source-document-resolver';
+
+/** Kürzer als der Standard, weil die Analyse in 60 s fertig sein muss und Bilder parallel laufen. */
+const IMAGE_TRANSCRIPTION_TIMEOUT_MS = 25000;
 
 export interface AssembledFilePayload extends UploadedFilePayload {
   streamType?: PdfStreamType;
@@ -41,10 +45,35 @@ export interface AssembleExtractionPromptOptions {
     overallStatus: string;
     detectedDocuments: DetectedDocument[];
   };
-  /** Meldet je Datei den maschinenlesbaren Text (leer bei Scans und Bildern) für die Belegprüfung. */
+  /** Meldet je Datei den prüfbaren Text (bei Bildern die Transkription, leer wenn sie fehlschlägt; bei PDF-Scans leer) für die Belegprüfung. */
   onSourceText?: (doc: SourceDocumentText & { docIndex: number }) => void;
   /** Client der ausführenden Sitzung; Pflicht für Dateien mit storagePath (RLS gilt nur für Mitglieder). */
   storageClient?: SupabaseClient<Database> | null;
+}
+
+/**
+ * Lädt ein Bild und transkribiert es in einem unabhängigen zweiten Durchgang. Der Text dient nur dem
+ * Beleg-Abgleich und der Triage, nie dem Prompt. Download-Fehler bleiben laut; scheitert die
+ * Transkription (auch ohne Schlüssel), bleibt der Quelltext leer und der Beleg-Abgleich fail-closed.
+ */
+async function loadImageWithTranscript(
+  file: UploadedFilePayload,
+  storageClient: SupabaseClient<Database> | null | undefined
+): Promise<{ base64: string; transcript: string }> {
+  const base64 =
+    file.content && file.isBase64
+      ? file.content.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '')
+      : (await resolveFileBuffer(file, storageClient)).toString('base64');
+  try {
+    const parsed = await parseDocumentWithGemini(Buffer.from(base64, 'base64'), {
+      mediaType: file.type || 'image/jpeg',
+      timeoutMs: IMAGE_TRANSCRIPTION_TIMEOUT_MS,
+    });
+    return { base64, transcript: parsed.markdown };
+  } catch (err: unknown) {
+    logFailure('warn', 'bild_transkription_fehlgeschlagen', err);
+    return { base64, transcript: '' };
+  }
 }
 
 /**
@@ -134,29 +163,31 @@ ${notesSection}${
   const triageList: DocumentTriageResult[] = [];
   const filePromptParts: MultimodalPromptPart[] = [];
 
+  // Bilder parallel laden und transkribieren (Zeitbudget der Analyse); Download-Fehler brechen ab
+  const images = await Promise.all(
+    files.map((f) =>
+      f.type.startsWith('image/') && (f.storagePath || f.content)
+        ? loadImageWithTranscript(f, storageClient)
+        : undefined
+    )
+  );
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     if (!file) continue;
     const docIndex = i + 1;
+    const image = images[i];
 
-    const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     const isDocx =
       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.name.toLowerCase().endsWith('.docx');
     const hasSource = Boolean(file.storagePath || file.content);
 
-    if (isImage && hasSource) {
-      let rawBase64 = '';
-      if (file.content && file.isBase64) {
-        rawBase64 = file.content.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
-      } else {
-        const buffer = await resolveFileBuffer(file, storageClient);
-        rawBase64 = buffer.toString('base64');
-      }
+    if (image) {
       filePromptParts.push({
         type: 'file',
-        data: rawBase64,
+        data: image.base64,
         mediaType: file.type || 'image/jpeg',
         filename: file.name,
       });
@@ -164,10 +195,11 @@ ${notesSection}${
         type: 'text',
         text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="${escapeXmlAttr(file.type)}" source="image">\n[Obiges Bild gehört zu Datei: "${file.name}"]\n</document>`,
       });
-      onSourceText?.({ docIndex, fileName: file.name, textContent: '' });
+      onSourceText?.({ docIndex, fileName: file.name, textContent: image.transcript });
       triageList.push(
         triageDocument({
           fileName: file.name,
+          textContent: image.transcript,
         })
       );
     } else if (isPdf && hasSource) {
