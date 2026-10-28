@@ -289,7 +289,6 @@ graph LR
 - [ ] Kanzlei-Dashboard-Page mit Volltextsuche und Filter-Facets
 - [ ] Vorgangs-Zuweisung (`assigned_notary_id`, `assigned_clerk_id`) im Datenmodell
 - [ ] Kollisions-Prüfmodul für Sozietäten und Anwaltsnotariate
-- [ ] Scans (Bilddateien) ohne Textebene setzen nach dem Beleg-Abgleich fast alle Felder auf „Prüfung nötig“ (fail-closed); für die Demo und den Alltag eine Texterkennung vor dem Beleg-Abgleich erwägen
 
 ---
 

@@ -32,12 +32,13 @@ graph TD
 ```
 
 1. **Digital-Born PDF (Reiner Textlayer, keine Rasterbilder):**
-   - Extrahiert den Text über Google Gemini Vision (`gemini-3.1-flash-lite`) bzw. im Offline-Fallback nativ via Deflate/Zlib-Streamextraktion (`< 20 ms`).
+   - Extrahiert den Text über Google Gemini Vision (`gemini-3.5-flash-lite`) bzw. im Offline-Fallback nativ via Deflate/Zlib-Streamextraktion (`< 20 ms`).
    - Geometrische Bounding-Box-Korrelation für Formularfelder, Annotationen und Skalen-Zeiger.
    - Keine visuellen Tokens nötig: 100 % Token- und Kostenersparnis.
 
 2. **Scans / Bildträger (Reine Bildseiten, kein nutzbarer Text):**
-   - Natives multimodales Ingestieren des PDFs direkt über Gemini Vision (`gemini-3.1-flash-lite`).
+   - Natives multimodales Ingestieren des PDFs direkt über Gemini Vision (`gemini-3.5-flash-lite`).
+   - Bilddateien (png, jpeg, webp) werden zusätzlich parallel transkribiert; der Text speist nur den Beleg-Abgleich und die Triage, das Bild geht unverändert ins Modell.
    - Übergabe der gerenderten PNG-Seiten direkt als Multimodal-Vision-Part (`image/png`) an das LLM.
    - Maximales Kontextverständnis bei Handschriften, Notarsiegeln und Stempeln ohne fehleranfälliges lokales Tesseract-OCR.
 
