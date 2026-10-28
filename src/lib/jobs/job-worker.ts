@@ -32,6 +32,8 @@ export interface WorkerDependencies {
   auditRepo?: IAuditRepository;
   /** Verbrauchserfassung; ohne Repository wird nichts erfasst */
   usageRepo?: ILlmUsageRepository;
+  /** Sitzungs-Client für den Dateidownload (RLS: nur Kanzleimitglieder); ohne ihn scheitern Speicherdateien */
+  storageClient?: PipelineParams['storageClient'];
   pipelineFn?: (params: PipelineParams) => Promise<Dossier>;
   extractionFn?: (params: ExtractionStageParams) => Promise<ExtractionStageResult>;
   auditorFn?: (params: AuditorStageParams) => Promise<Dossier>;
@@ -277,6 +279,7 @@ async function runJobExecution(
           onStep: handleStepUpdate,
           onStageUsage,
           abortSignal,
+          storageClient: deps.storageClient,
         });
 
         stage1Output = extractionResult.parsedExtractionRaw;

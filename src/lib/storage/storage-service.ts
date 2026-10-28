@@ -74,17 +74,19 @@ export async function downloadFileBuffer(
 
 /**
  * Löst den Byte-Buffer einer Datei deterministisch auf:
- * - Primär über Supabase Object Storage (wenn storagePath vorhanden)
+ * - Primär über Supabase Object Storage (wenn storagePath vorhanden; der Client der Sitzung ist Pflicht)
  * - Fallback auf Base64 / Text-Content (für Legacy-Jobs oder lokale Test-Fixtures)
  */
 export async function resolveFileBuffer(
   file: { name: string; content?: string; isBase64?: boolean; storagePath?: string },
-  supabase?: SupabaseClient<Database>
+  supabase?: SupabaseClient<Database> | null
 ): Promise<Buffer> {
   if (file.storagePath) {
+    // Kein Rückfall auf einen Client ohne Sitzung: RLS gibt Dateien nur Mitgliedern der Kanzlei frei
     if (!supabase) {
-      const { getServerSupabase } = await import('@/lib/supabase/server');
-      supabase = getServerSupabase();
+      throw new Error(
+        `Datei "${file.name}" liegt im Speicher, aber es wurde kein Sitzungs-Client für den Download übergeben.`
+      );
     }
     return downloadFileBuffer(supabase, file.storagePath);
   }

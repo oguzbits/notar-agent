@@ -130,6 +130,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       knowledgeRepo: getKnowledgeRepository(authSupabase),
       auditRepo: getAuditRepository(authSupabase),
       usageRepo: getLlmUsageRepository(authSupabase),
+      storageClient: authSupabase,
     });
 
     return NextResponse.json(

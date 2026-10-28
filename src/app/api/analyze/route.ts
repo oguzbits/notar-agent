@@ -103,6 +103,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         knowledgeRepo: getKnowledgeRepository(authSupabase),
         auditRepo: getAuditRepository(authSupabase),
         usageRepo: getLlmUsageRepository(authSupabase),
+        storageClient: authSupabase,
       };
 
       // Starte Hintergrund-Worker entkoppelt und serverless-sicher via Next.js after()
@@ -135,6 +136,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         existingDossier,
         organizationId: resolvedOrgId,
         knowledgeRepo: getKnowledgeRepository(authSupabase),
+        storageClient: authSupabase,
         onStageUsage: createUsageRecorder(getLlmUsageRepository(authSupabase), resolvedOrgId),
         model: aiConfig.model,
         extractionInstructions: aiConfig.extractionInstructions,

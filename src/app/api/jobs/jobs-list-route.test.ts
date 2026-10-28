@@ -171,6 +171,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     );
 
     expect(vi.mocked(executeDossierJob).mock.lastCall?.[1]?.usageRepo).toBeDefined();
+    expect(vi.mocked(executeDossierJob).mock.lastCall?.[1]?.storageClient).toBeDefined();
   });
 
   it.each([JOB_STATUS.PROCESSING, JOB_STATUS.COMPLETED, JOB_STATUS.PENDING])(

@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   DocumentTriageResult,
   formatTriageManifestForPrompt,
@@ -10,6 +11,7 @@ import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
 import { PdfStreamType, PDF_STREAM_TYPES } from '@/lib/files/pdf-stream-classifier';
 import { logFailure } from '@/lib/observability/logger';
 import { resolveFileBuffer } from '@/lib/storage/storage-service';
+import type { Database } from '@/types/database';
 import { DocumentParsedContent } from '@/types/document';
 import {
   DOCUMENT_RELIABILITY,
@@ -41,6 +43,8 @@ export interface AssembleExtractionPromptOptions {
   };
   /** Meldet je Datei den maschinenlesbaren Text (leer bei Scans und Bildern) für die Belegprüfung. */
   onSourceText?: (doc: SourceDocumentText & { docIndex: number }) => void;
+  /** Client der ausführenden Sitzung; Pflicht für Dateien mit storagePath (RLS gilt nur für Mitglieder). */
+  storageClient?: SupabaseClient<Database> | null;
 }
 
 /**
@@ -85,7 +89,7 @@ export function sanitizeXmlDocumentContent(content: string): string {
 export async function assembleExtractionPromptParts(
   options: AssembleExtractionPromptOptions
 ): Promise<MultimodalPromptPart[]> {
-  const { files, caseType, notesSection, existingDossier, onSourceText } = options;
+  const { files, caseType, notesSection, existingDossier, onSourceText, storageClient } = options;
 
   let contextHeader = '';
   if (existingDossier) {
@@ -147,7 +151,7 @@ ${notesSection}${
       if (file.content && file.isBase64) {
         rawBase64 = file.content.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
       } else {
-        const buffer = await resolveFileBuffer(file);
+        const buffer = await resolveFileBuffer(file, storageClient);
         rawBase64 = buffer.toString('base64');
       }
       filePromptParts.push({
@@ -167,7 +171,7 @@ ${notesSection}${
         })
       );
     } else if (isPdf && hasSource) {
-      const pdfBuffer = await resolveFileBuffer(file);
+      const pdfBuffer = await resolveFileBuffer(file, storageClient);
 
       // Serverseitige Analyse: Entlastet den Client vollständig von unpdf / PDF.js
       const assembledFile = file as Partial<AssembledFilePayload>;
@@ -321,7 +325,7 @@ ${notesSection}${
       let docxMarkdown = '';
       let docxImages: DocxExtractedImage[] = [];
       try {
-        const buffer = await resolveFileBuffer(file);
+        const buffer = await resolveFileBuffer(file, storageClient);
         const parsed = await parseDocxDocument(buffer);
         docxMarkdown = parsed.markdown;
         docxImages = parsed.extractedImages;
@@ -372,7 +376,7 @@ ${notesSection}${
       let textContent = file.content;
       if (!textContent && file.storagePath) {
         try {
-          const buffer = await resolveFileBuffer(file);
+          const buffer = await resolveFileBuffer(file, storageClient);
           textContent = buffer.toString('utf-8');
         } catch (err: unknown) {
           logFailure('warn', 'storage_textextraktion_fehlgeschlagen', err);

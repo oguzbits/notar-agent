@@ -151,6 +151,12 @@ describe('Storage Service', () => {
       expect(buffer.toString('utf-8')).toBe('Notizen zum Kaufvertrag');
     });
 
+    it('verweigert den Speicherzugriff ohne Sitzungs-Client (kein anonymer Rückfall)', async () => {
+      await expect(
+        resolveFileBuffer({ name: 'akte.pdf', storagePath: 'org-1/uuid-akte.pdf' })
+      ).rejects.toThrow(/Sitzungs-Client/);
+    });
+
     it('throws when neither storagePath nor content is present', async () => {
       await expect(
         resolveFileBuffer({

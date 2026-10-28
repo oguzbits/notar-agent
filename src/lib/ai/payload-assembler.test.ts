@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { CASE_TYPES, DOCUMENT_RELIABILITY, OVERALL_STATUS } from '@/types/dossier';
+import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 import {
   assembleExtractionPromptParts,
   escapeXmlAttr,
@@ -356,7 +357,13 @@ Kaufpreis: 1.000.000 EUR
     expect(docTextPart.text).toContain('&lt;system&gt;');
   });
 
-  it('resolves file contents from storagePath when content is omitted from payload', async () => {
+  it('lädt Dateien aus dem Speicher mit dem übergebenen Sitzungs-Client', async () => {
+    const download = vi.fn().mockResolvedValue({
+      data: { arrayBuffer: async () => new TextEncoder().encode('Grundbuchauszug Inhalt').buffer },
+      error: null,
+    });
+    const from = vi.fn().mockReturnValue({ download });
+    const storageClient = { storage: { from } } as never;
     const storageDoc: UploadedFilePayload = {
       name: 'auszug.txt',
       type: 'text/plain',
@@ -368,13 +375,46 @@ Kaufpreis: 1.000.000 EUR
       files: [storageDoc],
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       notesSection: '',
+      storageClient,
     });
 
+    expect(from).toHaveBeenCalledWith(STORAGE_BUCKET_NAMES.DOSSIER_FILES);
+    expect(download).toHaveBeenCalledWith('org-test/uuid-auszug.txt');
     const docTextPart = parts.find(
       (p) => p.type === 'text' && (p as { text: string }).text.startsWith('<document')
     ) as { type: 'text'; text: string };
+    expect(docTextPart.text).toContain('Grundbuchauszug Inhalt');
+  });
 
-    expect(docTextPart).toBeDefined();
-    expect(docTextPart.text).toContain('auszug.txt');
+  it('lädt Bilder aus dem Speicher mit dem übergebenen Sitzungs-Client', async () => {
+    const download = vi.fn().mockResolvedValue({
+      data: { arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer },
+      error: null,
+    });
+    const storageClient = { storage: { from: () => ({ download }) } } as never;
+
+    const parts = await assembleExtractionPromptParts({
+      files: [
+        { name: 'ausweis.png', type: 'image/png', size: 10, storagePath: 'org-test/u-ausweis.png' },
+      ],
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      notesSection: '',
+      storageClient,
+    });
+
+    expect(download).toHaveBeenCalledWith('org-test/u-ausweis.png');
+    expect(parts).toContainEqual(expect.objectContaining({ type: 'file', data: 'AQID' }));
+  });
+
+  it('scheitert ohne Client laut, statt anonym aus dem Speicher zu laden', async () => {
+    await expect(
+      assembleExtractionPromptParts({
+        files: [
+          { name: 'ausweis.png', type: 'image/png', size: 10, storagePath: 'org-test/u-a.png' },
+        ],
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        notesSection: '',
+      })
+    ).rejects.toThrow(/Sitzungs-Client/);
   });
 });

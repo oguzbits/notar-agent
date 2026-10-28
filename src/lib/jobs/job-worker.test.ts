@@ -109,6 +109,22 @@ describe('job-worker (executeDossierJob)', () => {
       validationSuccess: true,
     });
 
+    it('reicht den Sitzungs-Client der Ausführenden an Stufe 1 weiter', async () => {
+      const job = await jobRepo.createJob(payload);
+      const storageClient = { storage: {} } as never;
+      const spy = vi.fn(extractionFn);
+
+      await executeDossierJob(job.id, {
+        jobRepo,
+        dossierRepo,
+        storageClient,
+        extractionFn: spy,
+        auditorFn: async () => mockResultDossier,
+      });
+
+      expect(spy.mock.calls[0]?.[0].storageClient).toBe(storageClient);
+    });
+
     it('Abbruch während Stufe 2: Signal erreicht die Stufe, kein Dossier, Status bleibt CANCELLED', async () => {
       const job = await jobRepo.createJob(payload);
       let auditorSignal: AbortSignal | undefined;

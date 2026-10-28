@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateText, LanguageModel, SystemModelMessage } from 'ai';
 import { parseAuditorOutput } from '@/lib/ai/auditor-output';
 import { mergeDossierStages } from '@/lib/ai/dossier-merger';
@@ -16,6 +17,7 @@ import { buildKnowledgeSearchText } from '@/lib/knowledge/search-text';
 import { errorClassOf, logEvent, timed } from '@/lib/observability/logger';
 import { getKnowledgeRepository } from '@/lib/supabase/server';
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
+import type { Database } from '@/types/database';
 import {
   CaseType,
   Dossier,
@@ -58,6 +60,8 @@ export interface PipelineParams {
   abortSignal?: AbortSignal;
   onTrace?: (trace: import('@/types/pipeline').PipelineTraceArtifacts) => void;
   knowledgeRepo?: import('@/lib/knowledge/knowledge-repository').IKnowledgeRepository;
+  /** Client der ausführenden Sitzung für den Download der Originaldateien (RLS: nur Kanzleimitglieder). */
+  storageClient?: SupabaseClient<Database> | null;
   /** Fehlt er, gilt die Konfiguration (EMBEDDING_MODEL_ID); ohne beides sucht die Pipeline nur im Volltext. */
   embedder?: import('@/lib/knowledge/embedder').IEmbedder;
 }
@@ -98,6 +102,7 @@ export interface ExtractionStageParams {
   onUsage?: (usage: PipelineTokenUsage) => void;
   onStageUsage?: StageUsageHandler;
   abortSignal?: AbortSignal;
+  storageClient?: SupabaseClient<Database> | null;
 }
 
 export interface ExtractionStageResult {
@@ -151,6 +156,7 @@ export async function runExtractionStage(
     onUsage,
     onStageUsage,
     abortSignal,
+    storageClient,
   } = params;
 
   let totalPromptTokens = 0;
@@ -167,6 +173,7 @@ export async function runExtractionStage(
     files,
     caseType,
     notesSection,
+    storageClient,
     onSourceText: (doc) => fileSourceTexts.push(doc),
     existingDossier: existingDossier
       ? {

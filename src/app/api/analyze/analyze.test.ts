@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { updateDossierFieldStatus } from '@/lib/dossier/state';
+import { executeDossierJob } from '@/lib/jobs/job-worker';
+import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { createTestImmobilienDossier } from '@/test/fixtures/dossier-factory';
 import {
   createMockAuditRepository,
@@ -34,6 +36,11 @@ vi.mock('@/lib/supabase/server-auth', async () => {
       .fn()
       .mockResolvedValue({ label: 'Test Notar', role: NOTARY_ROLES.NOTAR }),
   };
+});
+
+vi.mock('@/lib/jobs/job-worker', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/jobs/job-worker')>();
+  return { ...actual, executeDossierJob: vi.fn(actual.executeDossierJob) };
 });
 
 vi.mock('@/lib/ai/pipeline', async (importOriginal) => ({
@@ -150,6 +157,10 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
       expect(data.jobId).toBeDefined();
       expect(data.status).toBe(JOB_STATUS.PENDING);
       expect(data.pollUrl).toBe(`/api/jobs/${data.jobId}`);
+      // Der Download der Originaldateien läuft mit der Sitzung der Nutzerin bzw. des Nutzers
+      expect(vi.mocked(executeDossierJob).mock.lastCall?.[1]?.storageClient).toBe(
+        await createServerAuthClient()
+      );
     } finally {
       if (prevKey) {
         process.env.GEMINI_API_KEY = prevKey;
@@ -468,6 +479,13 @@ describe('API Route: POST /api/analyze Live-Pfad (SSE) Ablaufverfolgung', () => 
 
   beforeEach(() => {
     process.env.GEMINI_API_KEY = 'test-key';
+  });
+
+  it('übergibt der Pipeline den Sitzungs-Client für den Dateidownload', async () => {
+    await runLive();
+    expect(vi.mocked(runAnalysisPipeline).mock.lastCall?.[0].storageClient).toBe(
+      await createServerAuthClient()
+    );
   });
 
   it('meldet einen Fehler der Ablaufverfolgung im Ergebnis, ohne Fehlertext durchzureichen', async () => {
