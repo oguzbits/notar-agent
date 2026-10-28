@@ -179,8 +179,8 @@ async function runBenchmark() {
     const t1 = performance.now();
     try {
       const parsed = await parseDocumentWithGemini(fileBuffer, {
-        model: process.env.GEMINI_PARSE_MODEL || 'gemini-3.1-flash-lite',
-        fallbackModel: process.env.GEMINI_PARSE_FALLBACK_MODEL || 'gemini-3.5-flash-lite',
+        model: process.env.GEMINI_PARSE_MODEL || 'gemini-3.5-flash-lite',
+        fallbackModel: process.env.GEMINI_PARSE_FALLBACK_MODEL || 'gemini-3.1-flash-lite',
       });
       geminiDuration = Math.round(performance.now() - t1);
       geminiText = parsed.markdown;
@@ -226,7 +226,7 @@ async function runBenchmark() {
 
 > **Datum:** ${new Date().toISOString()}  
 > **Kontext:** Validierung der Erkenntnisse aus dem Modell-Spike an authentischen notariellen Testakten  
-> **Modelle:** \`LiteParse\` (lokal) vs. Google Gemini Vision (\`${process.env.GEMINI_PARSE_MODEL || 'gemini-3.1-flash-lite'}\` / \`${process.env.GEMINI_PARSE_FALLBACK_MODEL || 'gemini-3.5-flash-lite'}\`)
+> **Modelle:** \`LiteParse\` (lokal) vs. Google Gemini Vision (\`${process.env.GEMINI_PARSE_MODEL || 'gemini-3.5-flash-lite'}\` / \`${process.env.GEMINI_PARSE_FALLBACK_MODEL || 'gemini-3.1-flash-lite'}\`)
 
 ---
 
@@ -265,7 +265,7 @@ async function runBenchmark() {
 ## 3. Architektur-Entscheidung für Notar-Agent
 
 1. **Hybrides Ingestion-Modell (Best of both worlds):**
-   - **Primär:** Gemini Vision (\`gemini-3.1-flash-lite\`) für Scans, Bilder, Grundbücher und tabellarische Urkunden mit höchster semantischer Treue.
+   - **Primär:** Gemini Vision (\`gemini-3.5-flash-lite\`) für Scans, Bilder, Grundbücher und tabellarische Urkunden mit höchster semantischer Treue.
    - **Fallback & Zero-Config:** Automatische Rückstufung auf den nativen Stream-Parser bei fehlendem API-Key, Netzausfällen oder im lokalen Testbetrieb.
 `;
 

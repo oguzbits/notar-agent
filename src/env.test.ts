@@ -30,8 +30,8 @@ describe('env validation', () => {
 
     const env = validateEnv(process.env);
     expect(env.AI_MODEL).toBe('claude-haiku-5-5');
-    expect(env.GEMINI_PARSE_MODEL).toBe('gemini-3.1-flash-lite');
-    expect(env.GEMINI_PARSE_FALLBACK_MODEL).toBe('gemini-3.5-flash-lite');
+    expect(env.GEMINI_PARSE_MODEL).toBe('gemini-3.5-flash-lite');
+    expect(env.GEMINI_PARSE_FALLBACK_MODEL).toBe('gemini-3.1-flash-lite');
     expect(env.MOCK_AI).toBe(false);
     expect(env.EMBEDDING_MODEL_ID).toBeUndefined();
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();

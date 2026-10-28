@@ -95,8 +95,8 @@ describe('gemini-pdf-parser', () => {
     });
 
     const result = await parseDocumentWithGemini(Buffer.from('%PDF-1.4 test'), {
-      model: 'gemini-3.1-flash-lite',
-      fallbackModel: 'gemini-3.5-flash-lite',
+      model: 'gemini-3.5-flash-lite',
+      fallbackModel: 'gemini-3.1-flash-lite',
       sleep: vi.fn().mockResolvedValue(undefined),
     });
 
