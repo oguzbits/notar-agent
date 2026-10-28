@@ -1,3 +1,4 @@
+import { escapeXmlAttr } from '@/lib/files/xml-escape';
 import {
   DOCUMENT_RELIABILITY,
   DocumentReliability,
@@ -201,7 +202,7 @@ export function formatTriageManifestForPrompt(triageResults: DocumentTriageResul
 
   const lines = triageResults.map((r, i) => {
     const dateStr = r.detectedDate ? `, Datum: ${r.detectedDate}` : '';
-    return `[Dokument #${i + 1}]: "${r.fileName}" -> Typ: ${r.documentType} (Verlässlichkeit: ${r.reliability}${dateStr})\n   Hinweis: ${r.summary}`;
+    return `[Dokument #${i + 1}]: "${escapeXmlAttr(r.fileName)}" -> Typ: ${r.documentType} (Verlässlichkeit: ${r.reliability}${dateStr})\n   Hinweis: ${r.summary}`;
   });
 
   return `=== VORAB GEPRÜFTES AKTEN-INHALTSVERZEICHNIS (PRE-FLIGHT TRIAGE) ===\nFolgende Dokumente wurden im Aktenbestand vorab deterministisch verifiziert und typisiert:\n${lines.join('\n')}\n\n(NUTZUNG IM EXTRAKTIONS-PROZESS: Extrahiere Fakten gezielt aus den jeweils dafür zuständigen amtlichen Dokumenttypen!)\n`;

@@ -10,6 +10,7 @@ import { parseDocumentWithGemini } from '@/lib/files/gemini-pdf-parser';
 import { parseDocumentLayoutStructure } from '@/lib/files/layout-structure-parser';
 import { parsePdfDocument } from '@/lib/files/pdf-document-parser';
 import { PdfStreamType, PDF_STREAM_TYPES } from '@/lib/files/pdf-stream-classifier';
+import { escapeXmlAttr } from '@/lib/files/xml-escape';
 import { logFailure } from '@/lib/observability/logger';
 import { resolveFileBuffer } from '@/lib/storage/storage-service';
 import type { Database } from '@/types/database';
@@ -89,18 +90,6 @@ async function loadImageWithTranscript(
 }
 
 /**
- * Escapes XML attribute values to prevent attribute injection or syntax corruption.
- */
-export function escapeXmlAttr(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/**
  * Sanitizes untrusted document content before embedding into LLM XML prompt containers.
  * Neutralizes container boundary escape attempts (e.g. </document>, <system>, <instruction>)
  * and XML comments / CDATA while preserving standard legal comparisons (< 500.000 EUR, > 100 m²).
@@ -161,7 +150,7 @@ ${notesSection}${
         files
           .map(
             (f, i) =>
-              `[Dokument #${i + 1}]: "${f.name}" (${f.type || 'unbekannt'}, ${Math.round(f.size / 1024)} KB)`
+              `[Dokument #${i + 1}]: "${escapeXmlAttr(f.name)}" (${escapeXmlAttr(f.type || 'unbekannt')}, ${Math.round(f.size / 1024)} KB)`
           )
           .join('\n') +
         '\n\n--- DOKUMENTENINHALTE (ALLE DATEIEN SORGFÄLTIG UND VOLLSTÄNDIG PRÜFEN) ---\n' +
@@ -205,7 +194,7 @@ ${notesSection}${
       });
       filePromptParts.push({
         type: 'text',
-        text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="${escapeXmlAttr(file.type)}" source="image">\n[Obiges Bild gehört zu Datei: "${file.name}"]\n</document>`,
+        text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="${escapeXmlAttr(file.type)}" source="image">\n[Obiges Bild gehört zu Datei: "${escapeXmlAttr(file.name)}"]\n</document>`,
       });
       onSourceText?.({ docIndex, fileName: file.name, textContent: image.transcript });
       triageList.push(
@@ -285,7 +274,7 @@ ${notesSection}${
             )
             .join('\n');
 
-          markdownContent += `\n\n### In "${file.name}" erkannte grafische Elemente & Stempel/Siegel:\n${imageManifest}\n`;
+          markdownContent += `\n\n### In "${escapeXmlAttr(file.name)}" erkannte grafische Elemente & Stempel/Siegel:\n${imageManifest}\n`;
         }
 
         const sanitized = sanitizeXmlDocumentContent(markdownContent);
@@ -302,13 +291,13 @@ ${notesSection}${
           for (const win of routed.windows) {
             filePromptParts.push({
               type: 'text',
-              text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="unicode-textlayer" window="${win.windowIndex}/${win.totalWindows}"${layoutAttr}>\n<!-- DIREKTER UNICODE-TEXTLAYER AUS "${file.name}" (${win.label})${headerInfo} -->\n${win.content}\n</document>`,
+              text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="unicode-textlayer" window="${win.windowIndex}/${win.totalWindows}"${layoutAttr}>\n<!-- DIREKTER UNICODE-TEXTLAYER AUS "${escapeXmlAttr(file.name)}" (${win.label})${headerInfo} -->\n${win.content}\n</document>`,
             });
           }
         } else {
           filePromptParts.push({
             type: 'text',
-            text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="unicode-textlayer"${layoutAttr}>\n<!-- DIREKTER UNICODE-TEXTLAYER AUS "${file.name}"${headerInfo} -->\n${sanitized}\n</document>`,
+            text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="unicode-textlayer"${layoutAttr}>\n<!-- DIREKTER UNICODE-TEXTLAYER AUS "${escapeXmlAttr(file.name)}"${headerInfo} -->\n${sanitized}\n</document>`,
           });
         }
       }
@@ -327,7 +316,7 @@ ${notesSection}${
           });
           filePromptParts.push({
             type: 'text',
-            text: `<document-graphic parent-file="${escapeXmlAttr(file.name)}" page="${img.pageNumber}" id="${escapeXmlAttr(img.id)}">\n[Obiges Bild gehört zu: "${file.name}" | Seite ${img.pageNumber} | Koordinaten: x: ${Math.round(img.bbox.x)}, y: ${Math.round(img.bbox.y)}, w: ${Math.round(img.bbox.width)}, h: ${Math.round(img.bbox.height)}]\n</document-graphic>`,
+            text: `<document-graphic parent-file="${escapeXmlAttr(file.name)}" page="${img.pageNumber}" id="${escapeXmlAttr(img.id)}">\n[Obiges Bild gehört zu: "${escapeXmlAttr(file.name)}" | Seite ${img.pageNumber} | Koordinaten: x: ${Math.round(img.bbox.x)}, y: ${Math.round(img.bbox.y)}, w: ${Math.round(img.bbox.width)}, h: ${Math.round(img.bbox.height)}]\n</document-graphic>`,
           });
         }
       }
@@ -345,7 +334,7 @@ ${notesSection}${
         }
         filePromptParts.push({
           type: 'text',
-          text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="scan-screenshots">\n[Obige gerenderte Seiten-Screenshots gehören zum Scan: "${file.name}"]\n</document>`,
+          text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="scan-screenshots">\n[Obige gerenderte Seiten-Screenshots gehören zum Scan: "${escapeXmlAttr(file.name)}"]\n</document>`,
         });
       } else if (!extractedText || extractedText.trim().length === 0) {
         // Fallback: Weder Text noch Screenshots extrahiert -> Original PDF übergeben
@@ -357,12 +346,12 @@ ${notesSection}${
         });
         filePromptParts.push({
           type: 'text',
-          text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="raw-pdf">\n[Obiges PDF-Dokument: "${file.name}" | Modus: ${streamType}]\n</document>`,
+          text: `<document index="${docIndex}" filename="${escapeXmlAttr(file.name)}" type="application/pdf" source="raw-pdf">\n[Obiges PDF-Dokument: "${escapeXmlAttr(file.name)}" | Modus: ${streamType}]\n</document>`,
         });
       } else {
         filePromptParts.push({
           type: 'text',
-          text: `<document-meta filename="${escapeXmlAttr(file.name)}" type="application/pdf" mode="${streamType}" embedded-graphics="${parsedImages.length}">\n[PDF-Dokument: "${file.name}" erfolgreich verarbeitet | Modus: ${streamType} | Eingebettete Grafiken: ${parsedImages.length}]\n</document-meta>`,
+          text: `<document-meta filename="${escapeXmlAttr(file.name)}" type="application/pdf" mode="${streamType}" embedded-graphics="${parsedImages.length}">\n[PDF-Dokument: "${escapeXmlAttr(file.name)}" erfolgreich verarbeitet | Modus: ${streamType} | Eingebettete Grafiken: ${parsedImages.length}]\n</document-meta>`,
         });
       }
     } else if (isDocx && hasSource) {
@@ -405,7 +394,7 @@ ${notesSection}${
           });
           filePromptParts.push({
             type: 'text',
-            text: `<document-graphic parent-file="${escapeXmlAttr(file.name)}" id="${escapeXmlAttr(img.id)}">\n[Obiges Bild stammt aus Word-Dokument: "${file.name}" | ID: ${img.id}]\n</document-graphic>`,
+            text: `<document-graphic parent-file="${escapeXmlAttr(file.name)}" id="${escapeXmlAttr(img.id)}">\n[Obiges Bild stammt aus Word-Dokument: "${escapeXmlAttr(file.name)}" | ID: ${img.id}]\n</document-graphic>`,
           });
         }
       }
