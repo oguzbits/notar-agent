@@ -46,6 +46,14 @@ export async function POST(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: validationError.toString() }, { status: 400 });
     }
 
+    // Zwischenergebnisse entstehen nur im Server-Worker; vom Client geliefert würden sie Stufe 1 samt Beleg-Abgleich überspringen
+    if (parseResult.data.stage1Output !== undefined) {
+      return NextResponse.json(
+        { error: 'Zwischenergebnisse dürfen nicht übermittelt werden.' },
+        { status: 400 }
+      );
+    }
+
     const { files, caseType, notes, documentId, existingDossier } = parseResult.data;
 
     let aiConfig;

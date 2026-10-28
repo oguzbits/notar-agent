@@ -104,7 +104,7 @@ interface ProvenancedFact<T> {
 
 Die Trennung von deterministischer Mathematik und semantischer Rechtsauslegung:
 
-Rangfolge der Entscheidung: Beanstandet der deterministische Beleg-Abgleich ein Feld (Zitat nicht nachweisbar, Quelle ohne lesbaren Text), merkt Stufe 1 den Feldschlüssel im Zwischenergebnis vor (`verificationFlaggedFields`, `src/types/pipeline.ts`). Der Auditor sieht die Dokumente nicht und kann ein solches Feld beim Zusammenführen ([`dossier-merger.ts`](../../src/lib/ai/dossier-merger.ts)) nicht auf „bestätigt" setzen; Daten und Hinweise darf er weiter ergänzen, Zurückstufen bleibt möglich.
+Rangfolge der Entscheidung: Beanstandet der deterministische Beleg-Abgleich ein Feld (Zitat nicht nachweisbar, Quelle ohne lesbaren Text), merkt Stufe 1 den Feldschlüssel im Zwischenergebnis vor (`verificationFlaggedFields`, `src/types/pipeline.ts`). Der Auditor sieht die Dokumente nicht und kann ein solches Feld beim Zusammenführen ([`dossier-merger.ts`](../../src/lib/ai/dossier-merger.ts)) nicht auf „bestätigt" setzen; Daten und Hinweise darf er weiter ergänzen, Zurückstufen bleibt möglich. Ein beanstandetes, nicht bestätigtes Feld verhindert zudem die Gesamtfreigabe (`overallStatus` wird von „bereit“ auf „Handlungsbedarf“ gesetzt). Das Zwischenergebnis entsteht nur im Server-Worker: `POST /api/analyze` lehnt ein vom Client geliefertes `stage1Output` mit 400 ab, weil es Stufe 1 samt Beleg-Abgleich überspringen würde. Checkpoints aus der Zeit vor dieser Änderung tragen den Vermerk nicht; sie leben nur bis zur Job-Aufbewahrung (7 Tage).
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

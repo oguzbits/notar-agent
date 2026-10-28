@@ -171,6 +171,8 @@ describe('dossier-merger', () => {
     expect(dossier.fields.grundbuch.data.isCurrent).toBe(true);
     // Nicht beanstandet: der Auditor darf weiterhin bestätigen
     expect(dossier.fields.kaeufer.status).toBe(FIELD_STATUS.VERIFIED);
+    // Ein offen gebliebenes beanstandetes Feld verhindert die Gesamtfreigabe des Auditors
+    expect(dossier.overallStatus).toBe(OVERALL_STATUS.ACTION_REQUIRED);
   });
 
   it('preserves and augments existing dossier documents and fields in delta/update mode', () => {

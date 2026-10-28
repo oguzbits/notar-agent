@@ -138,6 +138,23 @@ describe('API Route: POST /api/analyze Guardrails & Validation', () => {
     }
   });
 
+  it('lehnt ein vom Client geliefertes Zwischenergebnis ab (400), ohne Job anzulegen', async () => {
+    const spy = vi.spyOn(mockJobRepo, 'createJob');
+    const req = new NextRequest('http://localhost:3000/api/analyze?async=true', {
+      method: 'POST',
+      body: JSON.stringify({
+        files: [{ name: 'test.pdf', type: 'application/pdf', size: 100, content: 'data' }],
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        stage1Output: { fields: { kaufpreis: { status: FIELD_STATUS.VERIFIED } } },
+      }),
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(400);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('sollte Status 202 Accepted mit jobId liefern, wenn async=true übergeben wird', async () => {
     const prevKey = process.env.GEMINI_API_KEY;
     process.env.GEMINI_API_KEY = 'test-key';

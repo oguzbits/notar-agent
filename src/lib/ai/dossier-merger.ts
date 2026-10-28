@@ -149,6 +149,15 @@ export function mergeDossierStages(params: MergeDossierParams): Dossier {
     }
   }
 
+  // Ein beanstandetes, nicht bestätigtes Feld verhindert die Gesamtfreigabe, auch wenn der Auditor „bereit“ meldet
+  const hasOpenFlaggedField = [...flaggedKeys].some(
+    (key) => mergedFieldsRecord[key] && mergedFieldsRecord[key].status !== FIELD_STATUS.VERIFIED
+  );
+  const overallStatus: OverallStatus =
+    hasOpenFlaggedField && rawOverallStatus === OVERALL_STATUS.READY
+      ? OVERALL_STATUS.ACTION_REQUIRED
+      : rawOverallStatus;
+
   const rawInquiriesList =
     auditorInquiries ||
     (Array.isArray(parsedExtractionRaw.inquiries) ? parsedExtractionRaw.inquiries : []);
@@ -168,7 +177,7 @@ export function mergeDossierStages(params: MergeDossierParams): Dossier {
       : [],
     fields: mergedFields,
     inquiries: normalizedInquiries,
-    overallStatus: rawOverallStatus,
+    overallStatus,
     executiveSummary: rawExecutiveSummary || 'Analyse abgeschlossen.',
   };
 
