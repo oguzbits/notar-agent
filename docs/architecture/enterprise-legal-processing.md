@@ -104,6 +104,8 @@ interface ProvenancedFact<T> {
 
 Die Trennung von deterministischer Mathematik und semantischer Rechtsauslegung:
 
+Rangfolge der Entscheidung: Beanstandet der deterministische Beleg-Abgleich ein Feld (Zitat nicht nachweisbar, Quelle ohne lesbaren Text), merkt Stufe 1 den Feldschlüssel im Zwischenergebnis vor (`verificationFlaggedFields`, `src/types/pipeline.ts`). Der Auditor sieht die Dokumente nicht und kann ein solches Feld beim Zusammenführen ([`dossier-merger.ts`](../../src/lib/ai/dossier-merger.ts)) nicht auf „bestätigt" setzen; Daten und Hinweise darf er weiter ergänzen, Zurückstufen bleibt möglich.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DUAL-ENGINE VERIFICATION                     │

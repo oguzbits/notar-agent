@@ -84,6 +84,9 @@ export type AuditorStageOutput = z.infer<typeof AuditorStageOutputSchema>;
 /**
  * Status der deterministischen Zitat-Verifikation (B.8.2).
  */
+/** Zwischenergebnis Stufe 1: Feldschlüssel, die der Beleg-Abgleich beanstandet hat (der Auditor darf sie nicht bestätigen). */
+export const VERIFICATION_FLAGGED_FIELDS_KEY = 'verificationFlaggedFields';
+
 export const CITATION_MATCH_STATUS = {
   EXACT: 'EXACT',
   FUZZY_MATCH: 'FUZZY_MATCH',

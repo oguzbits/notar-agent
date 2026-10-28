@@ -13,7 +13,9 @@ import {
   INQUIRY_RECIPIENT,
   INQUIRY_PRIORITY,
   ImmobilienDossierSchema,
+  FIELD_STATUS,
 } from '@/types/dossier';
+import { VERIFICATION_FLAGGED_FIELDS_KEY } from '@/types/pipeline';
 
 export interface MergeDossierParams {
   caseType: CaseType;
@@ -129,11 +131,20 @@ export function mergeDossierStages(params: MergeDossierParams): Dossier {
     }
   }
 
+  // Fail-closed: Der Auditor sieht die Dokumente nicht und darf eine Beanstandung des Beleg-Abgleichs nie aufheben
+  const flaggedRaw = parsedExtractionRaw[VERIFICATION_FLAGGED_FIELDS_KEY];
+  const flaggedKeys = new Set(
+    Array.isArray(flaggedRaw) ? flaggedRaw.filter((k): k is string => typeof k === 'string') : []
+  );
+
   for (const [key, modField] of Object.entries(parsedAuditorModifications)) {
     if (mergedFieldsRecord[key]) {
+      const patch = modField as Partial<GenericFieldDossier<Record<string, unknown>>>;
       mergedFieldsRecord[key] = mergeField(
         mergedFieldsRecord[key],
-        modField as Partial<GenericFieldDossier<Record<string, unknown>>>
+        flaggedKeys.has(key) && patch.status === FIELD_STATUS.VERIFIED
+          ? { ...patch, status: undefined }
+          : patch
       );
     }
   }

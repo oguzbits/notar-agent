@@ -27,7 +27,7 @@ import {
   UploadedFilePayload,
 } from '@/types/dossier';
 import { LLM_USAGE_STAGES, StageUsageHandler } from '@/types/llm-usage';
-import { ExtractionStageOutputSchema } from '@/types/pipeline';
+import { ExtractionStageOutputSchema, VERIFICATION_FLAGGED_FIELDS_KEY } from '@/types/pipeline';
 import { WORKFLOW_STEP_TYPES } from '@/types/workflow';
 
 function modelIdOf(model: LanguageModel): string {
@@ -302,6 +302,9 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     referenceDate: new Date(),
   });
   parsedExtractionRaw.fields = verified.fields;
+  parsedExtractionRaw[VERIFICATION_FLAGGED_FIELDS_KEY] = [
+    ...new Set(verified.verificationIssues.map((issue) => issue.fieldKey)),
+  ];
 
   const usage: PipelineTokenUsage = {
     promptTokens: totalPromptTokens,

@@ -11,6 +11,7 @@ import {
   Dossier,
   isImmobilienDossier,
 } from '@/types/dossier';
+import { VERIFICATION_FLAGGED_FIELDS_KEY } from '@/types/pipeline';
 import { mergeDossierStages } from './dossier-merger';
 
 describe('dossier-merger', () => {
@@ -137,6 +138,39 @@ describe('dossier-merger', () => {
     expect(gbField.data.isCurrent).toBe(true);
     expect(gbField.note).toBe('Löschungsbewilligung für Abteilung II wurde in Anlage B bestätigt.');
     expect(gbField.actionRequired).toBe('false');
+  });
+
+  it('lässt den Auditor ein vom Beleg-Abgleich beanstandetes Feld nicht auf VERIFIED setzen', () => {
+    const stage1Extraction = {
+      overallStatus: OVERALL_STATUS.ACTION_REQUIRED,
+      [VERIFICATION_FLAGGED_FIELDS_KEY]: ['grundbuch'],
+      fields: {
+        grundbuch: {
+          status: FIELD_STATUS.NEEDS_REVIEW,
+          data: { amtsgericht: 'Amtsgericht München' },
+          note: 'Automatische Verifikation: Quelldokument ohne maschinenlesbaren Text (z. B. Scan)',
+        },
+        kaeufer: { status: FIELD_STATUS.NEEDS_REVIEW, data: { companyName: 'Muster GmbH' } },
+      },
+    };
+
+    const dossier = mergeDossierStages({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      parsedExtractionRaw: stage1Extraction,
+      parsedAuditorModifications: {
+        grundbuch: { status: FIELD_STATUS.VERIFIED, data: { isCurrent: true } },
+        kaeufer: { status: FIELD_STATUS.VERIFIED },
+      },
+      auditorOverallStatus: OVERALL_STATUS.READY,
+    });
+
+    expect(isImmobilienDossier(dossier)).toBe(true);
+    if (!isImmobilienDossier(dossier)) return;
+    // Beanstandet: Status bleibt, Daten des Auditors werden weiter ergänzt
+    expect(dossier.fields.grundbuch.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
+    expect(dossier.fields.grundbuch.data.isCurrent).toBe(true);
+    // Nicht beanstandet: der Auditor darf weiterhin bestätigen
+    expect(dossier.fields.kaeufer.status).toBe(FIELD_STATUS.VERIFIED);
   });
 
   it('preserves and augments existing dossier documents and fields in delta/update mode', () => {

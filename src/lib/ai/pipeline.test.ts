@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { buildKnowledgeSearchText } from '@/lib/knowledge/search-text';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { LLM_USAGE_STAGES } from '@/types/llm-usage';
+import { VERIFICATION_FLAGGED_FIELDS_KEY } from '@/types/pipeline';
 import { formatInternalNotes } from './internal-notes';
 import { EXTRACTION_INVALID_MESSAGE, runAnalysisPipeline } from './pipeline';
 
@@ -346,6 +347,14 @@ describe('runExtractionStage: Beleg-Prüfung', () => {
   it('stuft ein Zitat ab, das nur im anderen Dokument steht', async () => {
     const result = await run(stageOutput(verifiedField(2, 'Kaufpreis 450.000 Euro')));
     expect(statusOf(result)).toBe(FIELD_STATUS.NEEDS_REVIEW);
+  });
+
+  it('vermerkt vom Beleg-Abgleich beanstandete Felder im Zwischenergebnis für den Auditor', async () => {
+    const flagged = await run(stageOutput(verifiedField(2, 'Kaufpreis 450.000 Euro')));
+    expect(flagged.parsedExtractionRaw[VERIFICATION_FLAGGED_FIELDS_KEY]).toEqual(['kaufpreis']);
+
+    const clean = await run(stageOutput(verifiedField(1, 'Kaufpreis 450.000 Euro')));
+    expect(clean.parsedExtractionRaw[VERIFICATION_FLAGGED_FIELDS_KEY]).toEqual([]);
   });
 
   it('wirft, wenn die Ausgabe auch nach der Korrektur das Schema verletzt (kein Checkpoint)', async () => {
