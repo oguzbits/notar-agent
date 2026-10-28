@@ -188,6 +188,13 @@ describe('Prüfvermerk je Feld', () => {
     expect(seller(carryOverReviews(base, status)).review).toBeUndefined();
   });
 
+  it('behält den Vermerk auch bei anderer Schlüsselreihenfolge der Daten', () => {
+    const base = confirmField(verified(), 'verkaeufer', review);
+    const reordered = structuredClone(base);
+    seller(reordered).data = Object.fromEntries(Object.entries(seller(base).data).reverse());
+    expect(seller(carryOverReviews(base, reordered)).review).toEqual(review);
+  });
+
   it('übernimmt keinen vom Client mitgeschickten Vermerk', () => {
     const stored = verified();
     const forged = structuredClone(stored);

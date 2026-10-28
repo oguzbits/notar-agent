@@ -1,3 +1,4 @@
+import { guardAuditorPatch } from '@/lib/ai/auditor-patch-guard';
 import { carryOverReviews } from '@/lib/dossier/state';
 import { createEmptyImmobilienFields } from '@/lib/dossier-defaults';
 import { logEvent } from '@/lib/observability/logger';
@@ -131,30 +132,27 @@ export function mergeDossierStages(params: MergeDossierParams): Dossier {
     }
   }
 
-  // Fail-closed: Der Auditor sieht die Dokumente nicht und darf eine Beanstandung des Beleg-Abgleichs nie aufheben
+  // Fail-closed: Der Auditor sieht die Dokumente nicht. Bestätigt ist nur, was der Beleg-Abgleich in Stufe 1
+  // belegt hat; eine Beanstandung hebt er nie auf, und umgeschriebene Belege gelten nicht mehr als geprüft.
   const flaggedRaw = parsedExtractionRaw[VERIFICATION_FLAGGED_FIELDS_KEY];
   const flaggedKeys = new Set(
     Array.isArray(flaggedRaw) ? flaggedRaw.filter((k): k is string => typeof k === 'string') : []
   );
 
   for (const [key, modField] of Object.entries(parsedAuditorModifications)) {
-    if (mergedFieldsRecord[key]) {
-      const patch = modField as Partial<GenericFieldDossier<Record<string, unknown>>>;
-      mergedFieldsRecord[key] = mergeField(
-        mergedFieldsRecord[key],
-        flaggedKeys.has(key) && patch.status === FIELD_STATUS.VERIFIED
-          ? { ...patch, status: undefined }
-          : patch
-      );
-    }
+    const base = mergedFieldsRecord[key];
+    if (!base) continue;
+    const patch = modField as Partial<GenericFieldDossier<Record<string, unknown>>>;
+    const guarded = guardAuditorPatch(base, patch, flaggedKeys.has(key));
+    mergedFieldsRecord[key] = mergeField(base, guarded);
   }
 
-  // Ein beanstandetes, nicht bestätigtes Feld verhindert die Gesamtfreigabe, auch wenn der Auditor „bereit“ meldet
-  const hasOpenFlaggedField = [...flaggedKeys].some(
-    (key) => mergedFieldsRecord[key] && mergedFieldsRecord[key].status !== FIELD_STATUS.VERIFIED
+  // Freigabe („bereit“) setzt voraus, dass alle Felder belegt sind, auch wenn der Auditor „bereit“ meldet
+  const hasOpenField = Object.values(mergedFieldsRecord).some(
+    (field) => field.status !== FIELD_STATUS.VERIFIED
   );
   const overallStatus: OverallStatus =
-    hasOpenFlaggedField && rawOverallStatus === OVERALL_STATUS.READY
+    hasOpenField && rawOverallStatus === OVERALL_STATUS.READY
       ? OVERALL_STATUS.ACTION_REQUIRED
       : rawOverallStatus;
 

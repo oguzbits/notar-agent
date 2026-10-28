@@ -125,14 +125,15 @@ describe('dossier-merger', () => {
       auditorExecutiveSummary: 'Reconciliation erfolgreich: Alle Punkte bereinigt.',
     });
 
-    expect(dossier.overallStatus).toBe(OVERALL_STATUS.READY);
+    // Der Auditor sieht die Dokumente nicht: die Hochstufung auf VERIFIED wird verworfen
+    expect(dossier.overallStatus).toBe(OVERALL_STATUS.ACTION_REQUIRED);
     expect(dossier.executiveSummary).toBe('Reconciliation erfolgreich: Alle Punkte bereinigt.');
 
     expect(isImmobilienDossier(dossier)).toBe(true);
     if (!isImmobilienDossier(dossier)) return;
 
     const gbField = dossier.fields.grundbuch;
-    expect(gbField.status).toBe(FIELD_STATUS.VERIFIED);
+    expect(gbField.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     // Data aus Stage 1 und Stage 2 müssen zusammengeführt sein
     expect(gbField.data.amtsgericht).toBe('Amtsgericht München');
     expect(gbField.data.isCurrent).toBe(true);
@@ -169,10 +170,54 @@ describe('dossier-merger', () => {
     // Beanstandet: Status bleibt, Daten des Auditors werden weiter ergänzt
     expect(dossier.fields.grundbuch.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(dossier.fields.grundbuch.data.isCurrent).toBe(true);
-    // Nicht beanstandet: der Auditor darf weiterhin bestätigen
-    expect(dossier.fields.kaeufer.status).toBe(FIELD_STATUS.VERIFIED);
+    // Auch ohne Beanstandung: bestätigt ist nur, was Stufe 1 belegt hat
+    expect(dossier.fields.kaeufer.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     // Ein offen gebliebenes beanstandetes Feld verhindert die Gesamtfreigabe des Auditors
     expect(dossier.overallStatus).toBe(OVERALL_STATUS.ACTION_REQUIRED);
+  });
+
+  it('stuft ein belegtes Feld herab, wenn der Auditor Daten oder Fundstelle umschreibt', () => {
+    const verified = (data: Record<string, unknown>) => ({
+      status: FIELD_STATUS.VERIFIED,
+      data,
+      source: { fileName: 'kv.pdf', snippet: 'Kaufpreis 650.000,00 EUR' },
+    });
+    const run = (kaufpreisPatch: Record<string, unknown>) => {
+      const dossier = mergeDossierStages({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        parsedExtractionRaw: {
+          overallStatus: OVERALL_STATUS.READY,
+          fields: {
+            kaufpreis: verified({ amountInFigures: 650000 }),
+            grundbuch: verified({ amtsgericht: 'Amtsgericht München' }),
+          },
+        },
+        parsedAuditorModifications: { kaufpreis: kaufpreisPatch },
+        auditorOverallStatus: OVERALL_STATUS.READY,
+      });
+      if (!isImmobilienDossier(dossier)) throw new Error('Immobiliendossier erwartet');
+      return dossier;
+    };
+
+    // Beleg bleibt gültig: eine ergänzte Angabe oder ein Hinweis ändert den Status nicht
+    expect(run({ data: { currency: 'EUR' }, note: 'Hinweis' }).fields.kaufpreis.status).toBe(
+      FIELD_STATUS.VERIFIED
+    );
+    // Beleg ist hinfällig: geänderter Wert bzw. andere Fundstelle
+    expect(run({ data: { amountInFigures: 1 } }).fields.kaufpreis.status).toBe(
+      FIELD_STATUS.NEEDS_REVIEW
+    );
+    expect(run({ source: { snippet: 'erfunden' } }).fields.kaufpreis.status).toBe(
+      FIELD_STATUS.NEEDS_REVIEW
+    );
+    // Umgeschriebener Beleg bei gleichzeitig gemeldetem VERIFIED wird ebenfalls herabgestuft
+    expect(
+      run({ status: FIELD_STATUS.VERIFIED, data: { amountInFigures: 1 } }).fields.kaufpreis.status
+    ).toBe(FIELD_STATUS.NEEDS_REVIEW);
+    // Gesamtfreigabe nicht bei einem herabgestuften Feld
+    expect(run({ data: { amountInFigures: 1 } }).overallStatus).toBe(
+      OVERALL_STATUS.ACTION_REQUIRED
+    );
   });
 
   it('preserves and augments existing dossier documents and fields in delta/update mode', () => {

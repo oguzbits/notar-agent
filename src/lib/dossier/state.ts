@@ -64,6 +64,33 @@ function changedFieldStatuses(previous: Dossier, next: Dossier): FieldStatusChan
     .filter((c) => c.previousStatus !== c.newStatus);
 }
 
+/** JSON-Gleichheit unabhängig von der Schlüsselreihenfolge (Schema-Parsing und Datenbank sortieren unterschiedlich). */
+function isSameJson(a: unknown, b: unknown): boolean {
+  const canonical = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(canonical)
+      : value && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value)
+              .sort(([x], [y]) => x.localeCompare(y))
+              .map(([k, v]) => [k, canonical(v)])
+          )
+        : value;
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+}
+
+/** Daten oder Fundstelle eines vorhandenen Feldes weichen vom gespeicherten Stand ab. */
+function hasChangedFieldEvidence(previous: Dossier, next: Dossier): boolean {
+  const before = getDossierFieldsRecord(previous);
+  return Object.entries(getDossierFieldsRecord(next)).some(([key, field]) => {
+    const old = before[key];
+    return (
+      old !== undefined &&
+      (!isSameJson(old.data, field.data) || !isSameJson(old.source, field.source))
+    );
+  });
+}
+
 export interface StatusOverrideCheck {
   /** Statuswechsel oder Begründung liegt vor: verlangt das Recht OVERRIDE_FIELD_STATUS. */
   requiresOverride: boolean;
@@ -75,8 +102,30 @@ export interface StatusOverrideCheck {
 /**
  * Bindet die Begründung an den echten Wechsel: Erlaubt ist genau ein geändertes Feld, und zwar das
  * begründete, auf den angegebenen Status. Ohne gespeicherten Stand gibt es keinen Wechsel.
+ * Daten und Fundstellen sind Ergebnis der Analyse: nur Status und Notiz sind bearbeitbar.
  */
 export function checkStatusOverride(
+  stored: Dossier | undefined,
+  next: Dossier,
+  claimed: AuditOverrideDetails | undefined
+): StatusOverrideCheck {
+  const check = checkStatusChange(stored, next, claimed);
+  const error = stored && lockedChangeError(stored, next);
+  return error ? { requiresOverride: check.requiresOverride, error } : check;
+}
+
+/** Vom Client nicht änderbar: Daten, Fundstellen und die Freigabe („bereit“) bei offenen Feldern. */
+function lockedChangeError(stored: Dossier, next: Dossier): string | undefined {
+  if (hasChangedFieldEvidence(stored, next)) return STATUS_OVERRIDE_TEXTS_DE.EVIDENCE_LOCKED;
+  const newlyReady =
+    next.overallStatus === OVERALL_STATUS.READY && stored.overallStatus !== OVERALL_STATUS.READY;
+  const allVerified = Object.values(getDossierFieldsRecord(next)).every(
+    (f) => f.status === FIELD_STATUS.VERIFIED
+  );
+  return newlyReady && !allVerified ? STATUS_OVERRIDE_TEXTS_DE.READY_REQUIRES_VERIFIED : undefined;
+}
+
+function checkStatusChange(
   stored: Dossier | undefined,
   next: Dossier,
   claimed: AuditOverrideDetails | undefined
@@ -129,8 +178,8 @@ export function carryOverReviews(previous: Dossier | undefined, next: Dossier): 
     const unchanged =
       old?.review &&
       old.status === field.status &&
-      JSON.stringify(old.data) === JSON.stringify(field.data) &&
-      JSON.stringify(old.source) === JSON.stringify(field.source);
+      isSameJson(old.data, field.data) &&
+      isSameJson(old.source, field.source);
     if (unchanged) field.review = old.review;
     else delete field.review;
   }

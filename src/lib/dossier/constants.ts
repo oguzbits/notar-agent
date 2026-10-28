@@ -119,6 +119,9 @@ export const STATUS_OVERRIDE_TEXTS_DE = {
   REASON_REQUIRED: 'Ein Statuswechsel am Feld braucht eine Begründung für die Akte.',
   MISMATCH:
     'Die Begründung passt nicht zur Änderung: Pro Speichern darf sich genau das begründete Feld auf den angegebenen Status ändern.',
+  READY_REQUIRES_VERIFIED: 'Der Vorgang gilt erst als bereit, wenn alle Felder bestätigt sind.',
+  EVIDENCE_LOCKED:
+    'Angaben und Fundstellen der Felder stammen aus der Analyse und lassen sich nicht nachträglich ändern.',
 } as const;
 
 export const DELETION_UI_TEXTS_DE = {

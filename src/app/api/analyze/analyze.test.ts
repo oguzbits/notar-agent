@@ -14,7 +14,7 @@ import {
 } from '@/test/fixtures/mock-repositories';
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { PERMISSION_ACTIONS } from '@/types/auth';
-import { CASE_TYPES, FIELD_STATUS } from '@/types/dossier';
+import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { JOB_RATE_LIMIT, JOB_STATUS } from '@/types/jobs';
 import { NOTARY_ROLES } from '@/types/organization';
 import { POST, PUT } from './route';
@@ -293,6 +293,62 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
+  it('PUT mit geänderten Daten oder Fundstelle eines Feldes: 400, nichts gespeichert', async () => {
+    const orgId = 'a0000000-0000-4000-8000-000000000001';
+    const before = createTestImmobilienDossier();
+    await mockDossierRepo.update('doc-daten-guard', before, orgId);
+    const updateSpy = vi.spyOn(mockDossierRepo, 'update');
+    updateSpy.mockClear();
+    const put = (dossier: unknown) =>
+      PUT(
+        new NextRequest('http://localhost:3000/api/analyze', {
+          method: 'PUT',
+          body: JSON.stringify({ documentId: 'doc-daten-guard', dossier }),
+        })
+      );
+
+    const changedData = structuredClone(before);
+    changedData.fields.kaufpreis.data = {
+      ...changedData.fields.kaufpreis.data,
+      amountInFigures: 1,
+    };
+    const changedSource = structuredClone(before);
+    changedSource.fields.kaufpreis.source = {
+      fileName: 'x.pdf',
+      pageNumber: 1,
+      snippet: 'erfunden',
+    };
+
+    expect((await put(changedData)).status).toBe(400);
+    expect((await put(changedSource)).status).toBe(400);
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('PUT: Freigabe „bereit“ bei offenen Feldern: 400; umsortierte Schlüssel sind keine Änderung', async () => {
+    const orgId = 'a0000000-0000-4000-8000-000000000001';
+    const before = createTestImmobilienDossier({
+      fieldStatusMap: { verkaeufer: FIELD_STATUS.NEEDS_REVIEW },
+    });
+    before.overallStatus = OVERALL_STATUS.ACTION_REQUIRED;
+    await mockDossierRepo.update('doc-bereit-guard', before, orgId);
+    const put = (dossier: unknown) =>
+      PUT(
+        new NextRequest('http://localhost:3000/api/analyze', {
+          method: 'PUT',
+          body: JSON.stringify({ documentId: 'doc-bereit-guard', dossier }),
+        })
+      );
+
+    const ready = { ...structuredClone(before), overallStatus: OVERALL_STATUS.READY };
+    expect((await put(ready)).status).toBe(400);
+
+    const reordered = structuredClone(before);
+    reordered.fields.grundbuch.data = Object.fromEntries(
+      Object.entries(reordered.fields.grundbuch.data).reverse()
+    ) as typeof reordered.fields.grundbuch.data;
+    expect((await put(reordered)).status).toBe(200);
+  });
+
   it('PUT mit geändertem Feldstatus ohne auditOverride: 400, nichts gespeichert', async () => {
     const orgId = 'a0000000-0000-4000-8000-000000000001';
     const before = createTestImmobilienDossier({
@@ -473,6 +529,90 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
       if (prevKey) process.env.GEMINI_API_KEY = prevKey;
       else delete process.env.GEMINI_API_KEY;
     }
+  });
+});
+
+describe('API Route: POST /api/analyze Bestandsstand stammt vom Server', () => {
+  function storedAndForged() {
+    const stored = createTestImmobilienDossier();
+    const forged = structuredClone(stored);
+    forged.fields.kaufpreis.status = FIELD_STATUS.VERIFIED;
+    forged.fields.kaufpreis.review = {
+      confirmedAt: '2026-01-01T00:00:00Z',
+      confirmedBy: 'Notar X',
+    };
+    return { stored, forged };
+  }
+
+  beforeEach(() => {
+    process.env.GEMINI_API_KEY = 'test-key';
+  });
+
+  it('Live-Pfad: übergibt der Pipeline den gespeicherten Stand statt des Client-Dossiers', async () => {
+    const { stored, forged } = storedAndForged();
+    vi.mocked(mockDossierRepo.findById).mockResolvedValueOnce({
+      id: 'doc-1',
+      content: stored,
+    } as Awaited<ReturnType<typeof mockDossierRepo.findById>>);
+    vi.mocked(runAnalysisPipeline).mockResolvedValueOnce(createTestImmobilienDossier());
+
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Nachtrag', documentId: 'doc-1', existingDossier: forged }),
+      })
+    );
+    await res.text();
+
+    expect(vi.mocked(runAnalysisPipeline).mock.lastCall?.[0].existingDossier).toEqual(stored);
+  });
+
+  it('Hintergrund-Pfad: legt den Job mit dem gespeicherten Stand an', async () => {
+    const { stored, forged } = storedAndForged();
+    vi.mocked(mockDossierRepo.findById).mockResolvedValueOnce({
+      id: 'doc-1',
+      content: stored,
+    } as Awaited<ReturnType<typeof mockDossierRepo.findById>>);
+    const spy = vi.spyOn(mockJobRepo, 'createJob');
+
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/analyze?async=true', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Nachtrag', documentId: 'doc-1', existingDossier: forged }),
+      })
+    );
+
+    expect(res.status).toBe(202);
+    expect(spy.mock.lastCall?.[0].existingDossier).toEqual(stored);
+  });
+
+  it('lehnt ein Bestandsdossier ohne documentId ab (400)', async () => {
+    const { forged } = storedAndForged();
+    vi.mocked(runAnalysisPipeline).mockClear();
+
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Nachtrag', existingDossier: forged }),
+      })
+    );
+
+    expect(res.status).toBe(400);
+    expect(runAnalysisPipeline).not.toHaveBeenCalled();
+  });
+
+  it('liefert 404 bei unbekanntem documentId, ohne Analyse', async () => {
+    vi.mocked(runAnalysisPipeline).mockClear();
+
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Nachtrag', documentId: 'doc-unbekannt' }),
+      })
+    );
+
+    expect(res.status).toBe(404);
+    expect(runAnalysisPipeline).not.toHaveBeenCalled();
   });
 });
 

@@ -4,6 +4,7 @@ import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { getAiConfiguration } from '@/lib/ai/ai-provider';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { createUsageRecorder } from '@/lib/ai/usage-repository';
+import { appendOverrideAudit } from '@/lib/audit/override-audit';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { carryOverReviews, checkStatusOverride } from '@/lib/dossier/state';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
@@ -22,17 +23,16 @@ import {
 } from '@/lib/supabase/server';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { DEFAULT_WORKFLOWS_BY_CASE_TYPE } from '@/lib/workflow/default-workflows';
-import { AUDIT_ACTIONS } from '@/types/audit';
-import { PERMISSION_ACTIONS, SessionContext } from '@/types/auth';
+import { syncAnalysisWorkflow } from '@/lib/workflow/sync-analysis-workflow';
+import { PERMISSION_ACTIONS } from '@/types/auth';
 import {
   AnalyzeRequestSchema,
   UpdateDossierRequestSchema,
-  UpdateDossierRequest,
   Dossier,
   STORAGE_TYPES,
 } from '@/types/dossier';
 import { JOB_RATE_LIMIT } from '@/types/jobs';
-import { WORKFLOW_STEP_STATUS, WORKFLOW_STEP_TYPES } from '@/types/workflow';
+import { WORKFLOW_STEP_STATUS, WorkflowInstance } from '@/types/workflow';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       );
     }
 
-    const { files, caseType, notes, documentId, existingDossier } = parseResult.data;
+    const { files, caseType, notes, documentId } = parseResult.data;
 
     let aiConfig;
     try {
@@ -81,6 +81,21 @@ export async function POST(req: NextRequest): Promise<Response> {
       return NextResponse.json({ error: 'Ungültiger Speicherpfad.' }, { status: 400 });
     }
 
+    // Der Bestandsstand (samt Prüfvermerken) stammt nur aus der Datenbank: ein vom Client gelieferter
+    // Stand könnte Status und Prüfvermerke fälschen und würde ohne Override-Recht und Audit gespeichert
+    if (parseResult.data.existingDossier && !documentId) {
+      return NextResponse.json(
+        { error: 'Ein bestehender Stand setzt einen gespeicherten Vorgang voraus.' },
+        { status: 400 }
+      );
+    }
+    let existingDossier: Dossier | undefined;
+    if (documentId) {
+      const stored = await getDossierRepository(authSupabase).findById(documentId, resolvedOrgId);
+      if (!stored) return NextResponse.json({ error: 'Vorgang nicht gefunden.' }, { status: 404 });
+      existingDossier = stored.content;
+    }
+
     // Prüfen, ob eine asynchrone Verarbeitung angefordert wurde (?async=true oder Header x-async: true)
     const isAsync =
       req.nextUrl.searchParams.get('async') === 'true' ||
@@ -104,7 +119,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       // Der Hintergrund-Pfad legt bewusst keine Workflow-Instanz an: der Worker hat kein
       // Workflow-Repository und kein Client liest den Ablaufstand eines Jobs.
       const dossierRepo = getDossierRepository(authSupabase);
-      const job = await jobRepo.createJob(parseResult.data, resolvedOrgId);
+      const job = await jobRepo.createJob({ ...parseResult.data, existingDossier }, resolvedOrgId);
       const workerDeps = {
         jobRepo,
         dossierRepo,
@@ -175,47 +190,15 @@ export async function POST(req: NextRequest): Promise<Response> {
 
       // Workflow-Definition und Instanz in PostgreSQL synchronisieren
       const activeWorkflow = DEFAULT_WORKFLOWS_BY_CASE_TYPE[caseType];
-      let workflowInstance = null;
+      let workflowInstance: WorkflowInstance | null = null;
       let workflowError: string | undefined;
       if (persistenceResult.id) {
         try {
-          const workflowRepo = getWorkflowRepository(authSupabase);
-          await workflowRepo.saveDefinition(activeWorkflow, resolvedOrgId);
-          let existingInstance = await workflowRepo.getInstanceByCaseId(persistenceResult.id);
-          if (!existingInstance) {
-            existingInstance = await workflowRepo.createInstance({
-              workflowDefinitionId: activeWorkflow.id,
-              caseId: persistenceResult.id,
-              organizationId: resolvedOrgId || 'org-default',
-            });
-          }
-
-          // Schritte nach erfolgreicher Analyse als abgeschlossen markieren
-          const extractionStep = activeWorkflow.steps[0];
-          if (extractionStep) {
-            existingInstance = await workflowRepo.updateStepState({
-              instanceId: existingInstance.id,
-              stepId: extractionStep.id,
-              status: WORKFLOW_STEP_STATUS.COMPLETED,
-              executedBy: extractionStep.actor,
-              metadata: { completedAt: new Date().toISOString() },
-            });
-          }
-
-          const auditorStep = activeWorkflow.steps.find(
-            (s) => s.type === WORKFLOW_STEP_TYPES.AUDITOR
-          );
-          if (auditorStep) {
-            existingInstance = await workflowRepo.updateStepState({
-              instanceId: existingInstance.id,
-              stepId: auditorStep.id,
-              status: WORKFLOW_STEP_STATUS.COMPLETED,
-              executedBy: auditorStep.actor,
-              metadata: { completedAt: new Date().toISOString() },
-            });
-          }
-
-          workflowInstance = existingInstance;
+          workflowInstance = await syncAnalysisWorkflow(getWorkflowRepository(authSupabase), {
+            workflow: activeWorkflow,
+            caseId: persistenceResult.id,
+            organizationId: resolvedOrgId,
+          });
         } catch (workflowErr: unknown) {
           logFailure('error', 'workflow_instanzierung_fehlgeschlagen', workflowErr);
           workflowError = 'Der Ablauf des Vorgangs konnte nicht gespeichert werden.';
@@ -252,27 +235,6 @@ export async function POST(req: NextRequest): Promise<Response> {
     logFailure('error', 'analyse_fehlgeschlagen', error);
     return NextResponse.json({ error: 'Analyse fehlgeschlagen.' }, { status: 500 });
   }
-}
-
-// Revisionssicherer Audit-Trail (§ 17 ff. BeurkG)
-async function appendOverrideAudit(
-  authSupabase: Awaited<ReturnType<typeof createServerAuthClient>>,
-  params: {
-    documentId: string;
-    organizationId: string;
-    override: NonNullable<UpdateDossierRequest['auditOverride']>;
-    dossier: Dossier;
-    sessionActor: SessionContext;
-  }
-): Promise<void> {
-  const { documentId, organizationId, override, dossier, sessionActor } = params;
-  await getAuditRepository(authSupabase).appendEvent({
-    documentId,
-    organizationId,
-    action: AUDIT_ACTIONS.USER_STATUS_OVERRIDE,
-    actor: sessionActor.actorLabel,
-    details: { override, caseTitle: dossier.caseTitle, actorRole: sessionActor.role },
-  });
 }
 
 export async function PUT(req: NextRequest): Promise<Response> {
