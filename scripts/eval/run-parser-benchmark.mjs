@@ -85,6 +85,22 @@ const TEST_CASES = [
     ],
     expectsTable: true,
   },
+  {
+    id: 'fall-03',
+    title: 'Kaufvertrag mit handschriftlicher Preiskorrektur (Bild-Scan)',
+    subfolder: 'fall-03-vertragsaenderung-handschrift',
+    filename: 'Kaufvertrag_Scan.png',
+    type: 'Scan / PNG mit Handschrift und Streichung',
+    requiredTokens: ['450.000', '425.000', 'Kaufpreis'],
+  },
+  {
+    id: 'fall-10',
+    title: 'Grundbuchauszug Hannover (JPG-Scan)',
+    subfolder: 'fall-10-grundbuchauszug-hannover',
+    filename: 'Grundbuchauszug_Hannover_Linden_Blatt2043.jpg',
+    type: 'Scan / JPG Bilddokument',
+    requiredTokens: ['2043', 'Linden'],
+  },
 ];
 
 function countTableLines(markdown) {
@@ -178,7 +194,14 @@ async function runBenchmark() {
 
     const t1 = performance.now();
     try {
+      // Bilder wie in der Analyse: expliziter Medientyp und Gesamtfrist je Anfrage von 25 s
       const parsed = await parseDocumentWithGemini(fileBuffer, {
+        ...(isImage
+          ? {
+              mediaType: tc.filename.endsWith('.png') ? 'image/png' : 'image/jpeg',
+              timeoutMs: 25000,
+            }
+          : {}),
         model: process.env.GEMINI_PARSE_MODEL || 'gemini-3.5-flash-lite',
         fallbackModel: process.env.GEMINI_PARSE_FALLBACK_MODEL || 'gemini-3.1-flash-lite',
       });
