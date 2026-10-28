@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { isDossierEntwurfsreif, normalizeDossier } from '@/lib/dossier';
+import { formatCaseTitle, getCaseParties } from '@/lib/dossier/case-title';
 import { createEmptyImmobilienFields, createEmptyImmobilienDossier } from '@/lib/dossier-defaults';
 import {
   applyOrganizationFilter,
@@ -64,10 +65,8 @@ export interface IDossierRepository {
   delete(id: string, reason: DeletionReason): Promise<DeletionReceipt>;
 }
 
-export function getUniformCaseTitle(caseType?: string, docId?: string): string {
-  const typeLabel = caseType || 'Vorgang';
-  const shortId = docId ? docId.slice(0, 8) : 'Entwurf';
-  return `${typeLabel} - ${shortId}`;
+export function getUniformCaseTitle(dossier: Dossier, date?: string): string {
+  return formatCaseTitle({ caseType: dossier.caseType, parties: getCaseParties(dossier), date });
 }
 
 export function computeDocumentStatus(dossier: Dossier): CaseStatus {
@@ -93,10 +92,11 @@ export class SupabaseDossierRepository implements IDossierRepository {
     }
 
     const rawContent = data.content;
-    const uniformTitle = getUniformCaseTitle(rawContent?.caseType, data.id);
     const normalizedContent = rawContent
-      ? normalizeDossier({ ...rawContent, caseTitle: uniformTitle })
-      : createEmptyImmobilienDossier(uniformTitle);
+      ? normalizeDossier(rawContent)
+      : createEmptyImmobilienDossier();
+    const uniformTitle = getUniformCaseTitle(normalizedContent, data.created_at);
+    normalizedContent.caseTitle = uniformTitle;
 
     return {
       id: data.id,
@@ -110,8 +110,9 @@ export class SupabaseDossierRepository implements IDossierRepository {
 
   async save(dossier: Dossier, organizationId?: string): Promise<PersistenceResult> {
     const newId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
     const normalized = normalizeDossier(dossier);
-    const title = getUniformCaseTitle(normalized.caseType, newId);
+    const title = getUniformCaseTitle(normalized, createdAt);
     normalized.caseTitle = title;
     const status = computeDocumentStatus(normalized);
 
@@ -120,8 +121,8 @@ export class SupabaseDossierRepository implements IDossierRepository {
       title,
       status,
       content: normalized,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: createdAt,
+      updated_at: createdAt,
       ...(organizationId ? { organization_id: organizationId } : {}),
     };
 
@@ -147,7 +148,7 @@ export class SupabaseDossierRepository implements IDossierRepository {
 
   async update(id: string, dossier: Dossier, organizationId?: string): Promise<UpdateResult> {
     const normalized = normalizeDossier(dossier);
-    const title = getUniformCaseTitle(normalized.caseType, id);
+    const title = getUniformCaseTitle(normalized, normalized.analysisTimestamp);
     normalized.caseTitle = title;
     const status = computeDocumentStatus(normalized);
 
@@ -179,7 +180,9 @@ export class SupabaseDossierRepository implements IDossierRepository {
     const query = applyOrganizationFilter(
       this.supabase
         .from(DB_TABLES.DOCUMENTS)
-        .select('id, title, status, created_at, updated_at, caseType:content->>caseType'),
+        .select(
+          'id, status, created_at, updated_at, caseType:content->>caseType, seller:content->fields->verkaeufer->data->>name, buyer:content->fields->kaeufer->data->>companyName, company:content->fields->firma->data->>companyName'
+        ),
       organizationId
     );
 
@@ -190,10 +193,12 @@ export class SupabaseDossierRepository implements IDossierRepository {
 
     return data.map((doc) => {
       const caseType = typeof doc.caseType === 'string' ? doc.caseType : undefined;
-      const uniformTitle = getUniformCaseTitle(caseType, doc.id);
+      const parties = [doc.seller, doc.buyer, doc.company].filter(
+        (name): name is string => typeof name === 'string'
+      );
       return {
         id: doc.id,
-        title: doc.title || uniformTitle,
+        title: formatCaseTitle({ caseType, parties, date: doc.created_at }),
         caseType,
         status: (doc.status as CaseStatus) || CASE_STATUS.IN_PROGRESS,
         created_at: doc.created_at,

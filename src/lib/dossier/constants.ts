@@ -41,6 +41,15 @@ export const CASE_TYPE_CORE_FIELDS: Record<CaseType, CaseTypeCoreConfig> = {
   },
 };
 
+export const CASE_TYPE_LABELS_DE: Record<CaseType, string> = {
+  [CASE_TYPES.IMMOBILIENKAUF]: 'Immobilienkauf',
+  [CASE_TYPES.GMBH_GRUENDUNG]: 'GmbH-Gründung',
+};
+
+/** Bezeichnung, wenn die Vorgangsart unbekannt ist. */
+export const CASE_TITLE_FALLBACK_DE: string = 'Vorgang';
+export const CASE_TITLE_PARTY_SEPARATOR_DE = ' ./. ';
+
 export const STATUS_LABELS_DE: Record<FieldStatus, string> = {
   [FIELD_STATUS.VERIFIED]: 'Belegt',
   [FIELD_STATUS.NEEDS_REVIEW]: 'Prüfung nötig',

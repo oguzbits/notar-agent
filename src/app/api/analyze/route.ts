@@ -154,7 +154,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       let persistenceResult;
       if (documentId) {
         const updateRes = await repo.update(documentId, dossier, resolvedOrgId);
-        const uniformTitle = getUniformCaseTitle(dossier.caseType, documentId);
+        const uniformTitle = getUniformCaseTitle(dossier, dossier.analysisTimestamp);
         persistenceResult = {
           persisted: updateRes.success,
           storageType: STORAGE_TYPES.SUPABASE,
