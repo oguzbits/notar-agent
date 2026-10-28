@@ -79,7 +79,8 @@ export default class NotarAgentPipelineProvider {
         };
       }
 
-      isAnthropic = Boolean(anthropicKey);
+      // EVAL_PROVIDER=gemini erzwingt Gemini, auch wenn ein Anthropic-Schlüssel hinterlegt ist (kostenfreier Lauf)
+      isAnthropic = Boolean(anthropicKey) && process.env.EVAL_PROVIDER !== 'gemini';
 
       if (isAnthropic && anthropicKey) {
         const modelName = process.env.EVAL_ANTHROPIC_AI_MODEL || process.env.AI_MODEL;
@@ -111,7 +112,8 @@ export default class NotarAgentPipelineProvider {
       model = createMockEvalModel(testCase);
     }
 
-    const knowledgeRepo = isLive ? undefined : createOfflineKnowledgeRepository();
+    // Auch live offline: der anonyme Zugriff auf die Wissensdatenbank ist per RLS gesperrt
+    const knowledgeRepo = createOfflineKnowledgeRepository();
 
     try {
       const dossier = await runAnalysisPipeline({
