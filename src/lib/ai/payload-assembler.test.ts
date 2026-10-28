@@ -463,6 +463,27 @@ Kaufpreis: 1.000.000 EUR
       );
     });
 
+    it('bricht die Transkription nach der Gesamtfrist ab (Retries und Ausweichmodell eingerechnet)', async () => {
+      vi.useFakeTimers();
+      try {
+        parseDocumentWithGemini.mockImplementation(() => new Promise(() => {}));
+        const collected: unknown[] = [];
+
+        const done = run([image('scan.png')], collected);
+        await vi.advanceTimersByTimeAsync(25000);
+        await done;
+
+        expect(collected).toEqual([{ docIndex: 1, fileName: 'scan.png', textContent: '' }]);
+        expect(logFailure).toHaveBeenCalledWith(
+          'warn',
+          'bild_transkription_fehlgeschlagen',
+          expect.any(Error)
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('lässt Download-Fehler laut bleiben und transkribiert dann nicht', async () => {
       await expect(
         run([{ name: 'a.png', type: 'image/png', size: 10, storagePath: 'org/a.png' }])

@@ -22,7 +22,7 @@ import {
 } from '@/types/dossier';
 import type { SourceDocumentText } from './source-document-resolver';
 
-/** Kürzer als der Standard, weil die Analyse in 60 s fertig sein muss und Bilder parallel laufen. */
+/** Gesamtfrist je Bild (Versuche, Wiederholungen, Ausweichmodell): die Analyse muss in 60 s fertig sein, Bilder laufen parallel. */
 const IMAGE_TRANSCRIPTION_TIMEOUT_MS = 25000;
 
 export interface AssembledFilePayload extends UploadedFilePayload {
@@ -52,7 +52,7 @@ export interface AssembleExtractionPromptOptions {
 }
 
 /**
- * Lädt ein Bild und transkribiert es in einem unabhängigen zweiten Durchgang. Der Text dient nur dem
+ * Lädt ein Bild und transkribiert es in einem zweiten Durchgang. Der Text dient nur dem
  * Beleg-Abgleich und der Triage, nie dem Prompt. Download-Fehler bleiben laut; scheitert die
  * Transkription (auch ohne Schlüssel), bleibt der Quelltext leer und der Beleg-Abgleich fail-closed.
  */
@@ -64,15 +64,27 @@ async function loadImageWithTranscript(
     file.content && file.isBase64
       ? file.content.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '')
       : (await resolveFileBuffer(file, storageClient)).toString('base64');
+  // Gesamtfrist je Bild: die Parser-Frist gilt je HTTP-Versuch, Retries und Ausweichmodell würden sie sprengen
+  let deadline: ReturnType<typeof setTimeout> | undefined;
   try {
-    const parsed = await parseDocumentWithGemini(Buffer.from(base64, 'base64'), {
-      mediaType: file.type || 'image/jpeg',
-      timeoutMs: IMAGE_TRANSCRIPTION_TIMEOUT_MS,
-    });
+    const parsed = await Promise.race([
+      parseDocumentWithGemini(Buffer.from(base64, 'base64'), {
+        mediaType: file.type || 'image/jpeg',
+        timeoutMs: IMAGE_TRANSCRIPTION_TIMEOUT_MS,
+      }),
+      new Promise<never>((_, reject) => {
+        deadline = setTimeout(
+          () => reject(new Error('Bild-Transkription: Gesamtfrist überschritten')),
+          IMAGE_TRANSCRIPTION_TIMEOUT_MS
+        );
+      }),
+    ]);
     return { base64, transcript: parsed.markdown };
   } catch (err: unknown) {
     logFailure('warn', 'bild_transkription_fehlgeschlagen', err);
     return { base64, transcript: '' };
+  } finally {
+    clearTimeout(deadline);
   }
 }
 
