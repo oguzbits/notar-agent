@@ -4,7 +4,7 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%2017-3FCF8E?logo=supabase&logoColor=white)
-![Node](https://img.shields.io/badge/Node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)
+![Node](https://img.shields.io/badge/Node-%E2%89%A524-339933?logo=nodedotjs&logoColor=white)
 
 Ein Assistent für Notariate, der unstrukturierte Unterlagen zu **Immobilienkaufverträgen** prüft, ordnet und auf Lücken untersucht – und jede Angabe mit Datei, Seite und Originalzitat belegt.
 
@@ -96,6 +96,7 @@ Die vollständigen Regeln stehen in [AGENTS.md](AGENTS.md).
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
 | `npm run check`                            | Typen, Lint, Dependency Cruiser, Knip, Magic Strings, Duplikate, Repo-Health ≥ 90 |
 | `npm test`                                 | Vitest-Unit- und Integrationstests                                                |
+| `npm run test:db`                          | Datenbanktests (RLS, Trigger, Speicherrechte) gegen die lokale Supabase           |
 | `npm run eval:smoke` / `npm run eval:live` | Promptfoo gegen die Testakten                                                     |
 
 Pre-Commit- und Pre-Push-Hooks (Husky, Semgrep) laufen automatisch und werden nie umgangen.
@@ -118,7 +119,7 @@ Pre-Commit- und Pre-Push-Hooks (Husky, Semgrep) laufen automatisch und werden ni
 
 ## 💻 Lokal ausführen
 
-**Voraussetzungen:** Node.js ≥ 22, npm, Docker Desktop (lokale Supabase).
+**Voraussetzungen:** Node.js ≥ 24, npm, Docker Desktop (lokale Supabase).
 
 ```bash
 git clone <repository-url>
@@ -139,6 +140,8 @@ AI_MODEL="claude-haiku-5-5"
 NEXT_SUPABASE_URL="http://127.0.0.1:54321"
 NEXT_SUPABASE_PUBLISHABLE_KEY="<lokaler-anon-key>"
 ```
+
+Für den Löschlauf (`/api/cron/deletion`) braucht Produktion `CRON_SECRET`; `MOCK_AI=true` wird in Produktion abgelehnt (der Build bricht ab).
 
 Weitere DB-Befehle: `npm run db:reset` (Migrationen frisch anwenden), `npm run db:status`, `npm run db:lint`, `npm run db:stop`.
 

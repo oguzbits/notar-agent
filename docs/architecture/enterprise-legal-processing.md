@@ -152,5 +152,5 @@ Wo die 5 Stufen im Code liegen. Offene Aufgaben stehen in [ROADMAP.md](../../ROA
 - **Schritt 2 (Dual-Stream Ingestion):** Introspektion auf Byte-Ebene (`pdf-stream-classifier.ts`) und multimodale Dokumenten-Extraktion via Google Gemini Vision und nativer Stream-Fallback (`pdf-document-parser.ts`, `gemini-pdf-parser.ts`).
 - **Schritt 3 (Deterministische Guardrails & Fact Checking):** Mathematische Prüfungen (Zahlungsraten, Stammkapital) und Zitationsabgleich via `verifiable-fact-checker.ts`.
 - **Schritt 4 (Audit-Trail & Revisionssicherheit):** Append-Only Event-Tabelle (`audit_logs`) mit SHA-256 Hash-Chaining (§ 17 ff. BeurkG).
-- **Schritt 5 (Hybrid Search):** `pgvector`-Embeddings + BM25 Volltextsuche via `src/lib/knowledge/hybrid-search.ts`.
+- **Schritt 5 (Hybrid Search):** `pgvector`-Embeddings + BM25 Volltextsuche über die Rangfusion in [`src/lib/knowledge/rrf-fusion.ts`](../../src/lib/knowledge/rrf-fusion.ts) und die RPC des Wissens-Repositories.
 - **Nächster Ausbauschritt:** Serverless-Native Ingestion & Stufe-1-Overhaul (Vercel AI SDK Core Refactoring, flache Sub-Schemas, Gemini Ephemeral Context Caching & diff-match-patch Zitat-Grounding). Details siehe [ROADMAP.md § B.8](../../ROADMAP.md).
