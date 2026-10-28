@@ -17,6 +17,7 @@ import { PERMISSION_ACTIONS } from '@/types/auth';
 import { JOB_STATUS, RetryJobRequestSchema, type DossierJob } from '@/types/jobs';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Wiederholung läuft im Hintergrund der Anfrage, gleiches Limit wie die Analyse
 
 export async function GET(req?: NextRequest): Promise<Response> {
   try {
