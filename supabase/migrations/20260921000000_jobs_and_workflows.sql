@@ -102,6 +102,20 @@ AFTER INSERT OR UPDATE ON dossier_jobs
 FOR EACH ROW
 EXECUTE FUNCTION notify_dossier_job_pending();
 
+-- Zwischenergebnisse (stage1Output) entstehen nur im Server-Worker und werden per UPDATE als Checkpoint gespeichert.
+-- Ein neu angelegter Job darf sie nicht mitbringen: sie würden Stufe 1 samt Beleg-Abgleich überspringen.
+CREATE OR REPLACE FUNCTION dossier_jobs_guard_checkpoint() RETURNS TRIGGER AS $$
+BEGIN
+    IF auth.uid() IS NOT NULL AND NEW.payload ? 'stage1Output' THEN
+        RAISE EXCEPTION 'Zwischenergebnisse dürfen nicht übermittelt werden' USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+DROP TRIGGER IF EXISTS trg_dossier_jobs_guard_checkpoint ON dossier_jobs;
+CREATE TRIGGER trg_dossier_jobs_guard_checkpoint BEFORE INSERT ON dossier_jobs
+    FOR EACH ROW EXECUTE FUNCTION dossier_jobs_guard_checkpoint();
+
 -- 2. Tabelle für versionierte Workflow-Definitionen (Ablaufpläne pro Falltyp)
 CREATE TABLE IF NOT EXISTS workflow_definitions (
     id TEXT PRIMARY KEY,

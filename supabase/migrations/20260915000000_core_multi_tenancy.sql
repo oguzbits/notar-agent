@@ -438,6 +438,37 @@ DROP TRIGGER IF EXISTS trg_documents_guard_retention_anchor ON documents;
 CREATE TRIGGER trg_documents_guard_retention_anchor BEFORE UPDATE ON documents
     FOR EACH ROW EXECUTE FUNCTION documents_guard_retention_anchor();
 
+-- Der Prüfvermerk (Bestätigung durch die Notarin bzw. den Notar) darf direkt über die Datenbank-Schnittstelle nur
+-- von Rollen mit dem Recht zur Statusänderung gesetzt oder geändert werden (Spiegel von OVERRIDE_FIELD_STATUS in rbac.ts).
+-- Ein unverändert mitgeführter Vermerk bleibt für alle Mitglieder erlaubt (neue Analyse einer bestätigten Akte).
+-- Ohne Sitzung (Service-Rolle, Cron) greift die Sperre nicht.
+CREATE OR REPLACE FUNCTION documents_guard_review() RETURNS TRIGGER AS $$
+DECLARE
+    field_key TEXT;
+    field_review JSONB;
+    previous_review JSONB;
+BEGIN
+    IF auth.uid() IS NULL
+       OR COALESCE(get_user_role(NEW.organization_id)::text, '') IN ('NOTAR', 'NOTARASSESSOR', 'SACHBEARBEITER', 'ANWALTSNOTAR_RA')
+       OR jsonb_typeof(NEW.content->'fields') IS DISTINCT FROM 'object' THEN
+        RETURN NEW;
+    END IF;
+    FOR field_key, field_review IN
+        SELECT key, value->'review' FROM jsonb_each(NEW.content->'fields')
+        WHERE jsonb_typeof(value) = 'object' AND value ? 'review'
+    LOOP
+        previous_review := CASE WHEN TG_OP = 'UPDATE' THEN OLD.content->'fields'->field_key->'review' END;
+        IF field_review IS DISTINCT FROM previous_review THEN
+            RAISE EXCEPTION 'Keine Berechtigung für den Prüfvermerk' USING ERRCODE = '42501';
+        END IF;
+    END LOOP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+DROP TRIGGER IF EXISTS trg_documents_guard_review ON documents;
+CREATE TRIGGER trg_documents_guard_review BEFORE INSERT OR UPDATE ON documents
+    FOR EACH ROW EXECUTE FUNCTION documents_guard_review();
+
 DROP POLICY IF EXISTS rls_audit_logs_select ON audit_logs;
 CREATE POLICY rls_audit_logs_select ON audit_logs FOR SELECT USING (is_org_member(organization_id));
 
