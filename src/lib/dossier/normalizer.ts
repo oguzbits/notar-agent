@@ -1,6 +1,7 @@
 import { applyNotaryDomainGuardrails } from '@/lib/knowledge/domain-guardrails';
 import { Dossier, DOCUMENT_RELIABILITY, NOTAR_DOCUMENT_TYPES } from '@/types/dossier';
 import { getDossierFieldsRecord } from './state';
+import { localizeStatusWords } from './status-wording';
 import { cleanSourceFileName, parseSourceLocations } from './ui-mapper';
 
 export interface NormalizeDossierOptions {
@@ -36,6 +37,9 @@ export function normalizeDossier(
   if (cloned.fields && typeof cloned.fields === 'object') {
     const fieldsObj = getDossierFieldsRecord(cloned);
     for (const field of Object.values(fieldsObj)) {
+      // Modelltexte zeigen nie technische Statusnamen (Domain-Sprache); Notiztexte der Sachbearbeitung bleiben unberührt.
+      if (field?.note) field.note = localizeStatusWords(field.note);
+      if (field?.actionRequired) field.actionRequired = localizeStatusWords(field.actionRequired);
       if (field && field.source && field.source.fileName) {
         const originalName = field.source.fileName;
         const cleaned = cleanSourceFileName(originalName);
@@ -57,6 +61,15 @@ export function normalizeDossier(
 
     // 1b. Fachlich-juristische Konsistenz- & Plausibilitäts-Guardrails anwenden
     applyNotaryDomainGuardrails(fieldsObj, { referenceDate });
+  }
+
+  if (typeof cloned.executiveSummary === 'string') {
+    cloned.executiveSummary = localizeStatusWords(cloned.executiveSummary);
+  }
+  for (const inquiry of Array.isArray(cloned.inquiries) ? cloned.inquiries : []) {
+    inquiry.subject = localizeStatusWords(inquiry.subject);
+    inquiry.message = localizeStatusWords(inquiry.message);
+    inquiry.justification = localizeStatusWords(inquiry.justification);
   }
 
   // 2. detectedDocuments bereinigen

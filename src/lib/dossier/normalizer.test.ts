@@ -6,11 +6,15 @@ import {
   NotaryNumberSchema,
   KaufpreisDataSchema,
   FIELD_STATUS,
+  INQUIRY_PRIORITY,
+  INQUIRY_RECIPIENT,
   OVERALL_STATUS,
   DOCUMENT_RELIABILITY,
   NOTAR_DOCUMENT_TYPES,
 } from '@/types/dossier';
+import { STATUS_LABELS_DE } from './constants';
 import { normalizeDossier } from './normalizer';
+import { getDossierFieldsRecord } from './state';
 
 describe('Dossier Normalization & Integrity Guardrails', () => {
   it('should preserve canonical field data and ensure correct document sorting and normalization', () => {
@@ -209,5 +213,46 @@ describe('Dossier Normalization & Integrity Guardrails', () => {
     const noteDoc = normalized.detectedDocuments.find((d) => d.fileName === 'Notiz #1');
     expect(noteDoc).toBeDefined();
     expect(noteDoc?.date).toBe('2025-05-15');
+  });
+
+  it('ersetzt technische Statusnamen in Modelltexten, nicht in Notiztexten der Sachbearbeitung', () => {
+    const base = createTestImmobilienDossier();
+    const dossier = createTestImmobilienDossier({
+      executiveSummary: 'Kaufpreis NEEDS_REVIEW.',
+      inquiries: [
+        {
+          id: 'inq-1',
+          fieldKey: 'kaufpreis',
+          recipient: INQUIRY_RECIPIENT.VERKAEUFER,
+          priority: INQUIRY_PRIORITY.HIGH,
+          subject: 'Status MISSING',
+          message: 'Beleg ist OUTDATED.',
+          justification: 'Feld steht auf NEEDS_REVIEW.',
+          resolved: false,
+        },
+      ],
+      userNotes: ['Bitte VERIFIED lassen'],
+      fields: {
+        kaufpreis: {
+          ...base.fields.kaufpreis,
+          note: 'Befund: NEEDS_REVIEW wegen Abweichung',
+          actionRequired: 'MISSING klären',
+        },
+      },
+    });
+
+    const result = normalizeDossier(dossier);
+    const kaufpreis = getDossierFieldsRecord(result).kaufpreis;
+
+    expect(kaufpreis?.note).toBe(`Befund: ${STATUS_LABELS_DE.NEEDS_REVIEW} wegen Abweichung`);
+    expect(kaufpreis?.actionRequired).toBe(`${STATUS_LABELS_DE.MISSING} klären`);
+    expect(result.executiveSummary).toBe(`Kaufpreis ${STATUS_LABELS_DE.NEEDS_REVIEW}.`);
+    expect(result.inquiries[0]?.subject).toBe(`Status ${STATUS_LABELS_DE.MISSING}`);
+    expect(result.inquiries[0]?.message).toBe(`Beleg ist ${STATUS_LABELS_DE.OUTDATED}.`);
+    expect(result.inquiries[0]?.justification).toBe(
+      `Feld steht auf ${STATUS_LABELS_DE.NEEDS_REVIEW}.`
+    );
+    expect(result.userNotes).toContain('Bitte VERIFIED lassen');
+    expect(kaufpreis?.status).toBe(base.fields.kaufpreis.status);
   });
 });
