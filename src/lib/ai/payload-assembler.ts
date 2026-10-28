@@ -324,8 +324,9 @@ ${notesSection}${
     } else if (isDocx && hasSource) {
       let docxMarkdown = '';
       let docxImages: DocxExtractedImage[] = [];
+      // Ein fehlgeschlagener Download bricht ab (kein leeres Dokument); nur das Parsen ist tolerant
+      const buffer = await resolveFileBuffer(file, storageClient);
       try {
-        const buffer = await resolveFileBuffer(file, storageClient);
         const parsed = await parseDocxDocument(buffer);
         docxMarkdown = parsed.markdown;
         docxImages = parsed.extractedImages;
@@ -375,12 +376,7 @@ ${notesSection}${
     } else if (hasSource) {
       let textContent = file.content;
       if (!textContent && file.storagePath) {
-        try {
-          const buffer = await resolveFileBuffer(file, storageClient);
-          textContent = buffer.toString('utf-8');
-        } catch (err: unknown) {
-          logFailure('warn', 'storage_textextraktion_fehlgeschlagen', err);
-        }
+        textContent = (await resolveFileBuffer(file, storageClient)).toString('utf-8');
       }
       const sanitized = sanitizeXmlDocumentContent(textContent || '');
       filePromptParts.push({

@@ -417,4 +417,30 @@ Kaufpreis: 1.000.000 EUR
       })
     ).rejects.toThrow(/Sitzungs-Client/);
   });
+
+  it.each([
+    ['Textdatei', 'auszug.txt', 'text/plain'],
+    [
+      'DOCX-Datei',
+      'vertrag.docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ],
+  ])(
+    'scheitert laut, wenn der Download einer %s fehlschlägt (kein leeres Dokument)',
+    async (_l, name, type) => {
+      const download = vi
+        .fn()
+        .mockResolvedValue({ data: null, error: { message: 'Object not found' } });
+      const storageClient = { storage: { from: () => ({ download }) } } as never;
+
+      await expect(
+        assembleExtractionPromptParts({
+          files: [{ name, type, size: 10, storagePath: 'org-test/u-datei' }],
+          caseType: CASE_TYPES.IMMOBILIENKAUF,
+          notesSection: '',
+          storageClient,
+        })
+      ).rejects.toThrow(/Storage Download fehlgeschlagen/);
+    }
+  );
 });
