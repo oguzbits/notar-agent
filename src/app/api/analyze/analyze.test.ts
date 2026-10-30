@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { runAnalysisPipeline } from '@/lib/ai/pipeline';
 import { AuthzError, requirePermission } from '@/lib/auth/require-permission';
 import { updateDossierFieldStatus } from '@/lib/dossier/state';
@@ -15,7 +15,7 @@ import {
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
-import { JOB_RATE_LIMIT, JOB_STATUS } from '@/types/jobs';
+import { DEMO_ANALYSIS_LIMIT, JOB_RATE_LIMIT, JOB_STATUS } from '@/types/jobs';
 import { NOTARY_ROLES } from '@/types/organization';
 import { POST, PUT } from './route';
 
@@ -529,6 +529,55 @@ describe('API Route: PUT /api/analyze Guardrails & Validation', () => {
       if (prevKey) process.env.GEMINI_API_KEY = prevKey;
       else delete process.env.GEMINI_API_KEY;
     }
+  });
+});
+
+describe('API Route: POST /api/analyze Tageskontingent der Demo-Kanzleien', () => {
+  const analyze = () =>
+    POST(
+      new NextRequest('http://localhost:3000/api/analyze?async=true', {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+      })
+    );
+
+  beforeEach(() => {
+    vi.stubEnv('GEMINI_API_KEY', 'test-key');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ['Kontingent der Demo-Kanzlei', DEMO_ANALYSIS_LIMIT.MAX_PER_ORGANIZATION, 0],
+    ['globale Obergrenze über alle Demo-Kanzleien', 0, DEMO_ANALYSIS_LIMIT.MAX_TOTAL],
+  ])('Demo-Kanzlei: 429 bei erreichtem %s', async (_name, organizationRuns, totalRuns) => {
+    vi.mocked(mockJobRepo.getDemoAnalysisUsage).mockResolvedValueOnce({
+      isDemo: true,
+      organizationRuns,
+      totalRuns,
+    });
+    const res = await analyze();
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBeDefined();
+  });
+
+  it('Demo-Kanzlei unter beiden Grenzen wird angenommen', async () => {
+    vi.mocked(mockJobRepo.getDemoAnalysisUsage).mockResolvedValueOnce({
+      isDemo: true,
+      organizationRuns: DEMO_ANALYSIS_LIMIT.MAX_PER_ORGANIZATION - 1,
+      totalRuns: DEMO_ANALYSIS_LIMIT.MAX_TOTAL - 1,
+    });
+    expect((await analyze()).status).not.toBe(429);
+  });
+
+  it('reguläre Kanzlei ist von den Demo-Grenzen nicht betroffen', async () => {
+    vi.mocked(mockJobRepo.getDemoAnalysisUsage).mockResolvedValueOnce({
+      isDemo: false,
+      organizationRuns: DEMO_ANALYSIS_LIMIT.MAX_PER_ORGANIZATION,
+      totalRuns: DEMO_ANALYSIS_LIMIT.MAX_TOTAL,
+    });
+    expect((await analyze()).status).not.toBe(429);
   });
 });
 

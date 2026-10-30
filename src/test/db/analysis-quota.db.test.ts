@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import { DB_TABLES } from '@/types/database';
 import { CASE_TYPES } from '@/types/dossier';
-import { JOB_RATE_LIMIT } from '@/types/jobs';
+import { DEMO_ANALYSIS_LIMIT, JOB_RATE_LIMIT } from '@/types/jobs';
 import { LLM_USAGE_STAGES } from '@/types/llm-usage';
 import { NOTARY_ROLES } from '@/types/organization';
 import { createDbHarness, type TestUser } from './db-harness';
@@ -67,5 +67,41 @@ describe('Kontingent der Analysen je Kanzlei', () => {
     await recordRun(otherOrg, `live:${randomUUID()}`, other.client);
 
     expect(await repo.countAnalysisRunsSince(orgId, since())).toBe(0);
+  });
+
+  describe('Demo-Kanzleien (anonyme Mitglieder)', () => {
+    const daySince = () => new Date(Date.now() - DEMO_ANALYSIS_LIMIT.WINDOW_MS).toISOString();
+
+    it('reguläre Kanzlei ist keine Demo-Kanzlei, ihre Läufe zählen nicht in die Obergrenze', async () => {
+      await recordRun(orgId, `live:${randomUUID()}`);
+
+      expect(await repo.getDemoAnalysisUsage(orgId, daySince())).toEqual({
+        isDemo: false,
+        organizationRuns: 0,
+        totalRuns: expect.any(Number),
+      });
+    });
+
+    it('anonyme Kanzlei: zählt eigene Läufe und die Läufe aller Demo-Kanzleien', async () => {
+      const demo = await harness.createAnonymousUser();
+      const demoOrg = await harness.createOrganizationWithMember(demo.id, NOTARY_ROLES.NOTAR);
+      const before = (
+        await new SupabaseJobRepository(demo.client).getDemoAnalysisUsage(demoOrg, daySince())
+      ).totalRuns;
+      await recordRun(demoOrg, `live:${randomUUID()}`, demo.client);
+      await recordRun(demoOrg, `live:${randomUUID()}`, demo.client);
+
+      expect(
+        await new SupabaseJobRepository(demo.client).getDemoAnalysisUsage(demoOrg, daySince())
+      ).toEqual({
+        isDemo: true,
+        organizationRuns: 2,
+        totalRuns: before + 2,
+      });
+    });
+
+    it('fremde Kanzlei: kein Zugriff auf Demo-Status und Zähler', async () => {
+      await expect(repo.getDemoAnalysisUsage(randomUUID(), daySince())).rejects.toThrow();
+    });
   });
 });

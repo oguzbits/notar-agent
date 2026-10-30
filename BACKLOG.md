@@ -188,6 +188,7 @@ graph TD
 ### Geplante Aufgaben
 
 - [ ] Rate-Limiting Middleware für `/api/analyze` und `/api/jobs`
+- [ ] **CAPTCHA vor dem Demo-Zugang (vor Veröffentlichung der Demo):** Cloudflare Turnstile; das Token geht als `captchaToken` an `signInAnonymously` in `src/app/api/auth/demo/route.ts`, Secret im Supabase-Dashboard (Auth, Bot and Abuse Protection), Site-Key in der Umgebung, CSP um `challenges.cloudflare.com` erweitern. Supabase schaltet CAPTCHA projektweit: vorher prüfen, ob Login und Registrierung ebenfalls ein Token brauchen. Ergänzt das Tageskontingent (ROADMAP B.11.8), das nur die Kosten deckelt, nicht die Anlage anonymer Nutzer.
 - [ ] Magic-Byte-Validierung & Upload-Stream-Begrenzung im API-Layer
 - [ ] Security-Header-Konfiguration (`headers()` in `next.config.ts`)
 - [ ] Lokale Draft-Sicherung im `StatusOverrideReasonModal`

@@ -489,6 +489,10 @@ export interface Database {
         Args: { p_organization_id: string; p_since: string };
         Returns: number;
       };
+      demo_analysis_usage_since: {
+        Args: { p_organization_id: string; p_since: string };
+        Returns: { is_demo: boolean; organization_runs: number; total_runs: number }[];
+      };
       list_retention_expired_dossiers: {
         Args: { p_limit: number };
         Returns: { id: string; organization_id: string }[];

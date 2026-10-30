@@ -31,7 +31,7 @@ import {
   Dossier,
   STORAGE_TYPES,
 } from '@/types/dossier';
-import { JOB_RATE_LIMIT } from '@/types/jobs';
+import { DEMO_ANALYSIS_LIMIT, JOB_RATE_LIMIT } from '@/types/jobs';
 import { WORKFLOW_STEP_STATUS, WorkflowInstance } from '@/types/workflow';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
@@ -111,6 +111,22 @@ export async function POST(req: NextRequest): Promise<Response> {
           error:
             'Das Kontingent an Analysen pro Stunde ist erreicht. Bitte später erneut versuchen.',
         },
+        { status: 429, headers: { 'Retry-After': '3600' } }
+      );
+    }
+
+    // Demo-Kanzleien: Tageskontingent je Kanzlei und harte Obergrenze über alle (jede anonyme Sitzung legt eine neue Kanzlei an)
+    const demoUsage = await jobRepo.getDemoAnalysisUsage(
+      resolvedOrgId,
+      new Date(Date.now() - DEMO_ANALYSIS_LIMIT.WINDOW_MS).toISOString()
+    );
+    if (
+      demoUsage.isDemo &&
+      (demoUsage.organizationRuns >= DEMO_ANALYSIS_LIMIT.MAX_PER_ORGANIZATION ||
+        demoUsage.totalRuns >= DEMO_ANALYSIS_LIMIT.MAX_TOTAL)
+    ) {
+      return NextResponse.json(
+        { error: 'Das Tageskontingent der Demo ist erreicht. Bitte später erneut versuchen.' },
         { status: 429, headers: { 'Retry-After': '3600' } }
       );
     }

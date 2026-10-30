@@ -143,3 +143,18 @@ export const JOB_RATE_LIMIT = {
   MAX_JOBS_PER_WINDOW: 30,
   WINDOW_MS: 60 * 60 * 1000,
 } as const;
+
+// Demo-Kanzleien (anonyme Sitzungen) haben ein Tageskontingent; MAX_TOTAL ist die harte Kostengrenze über alle Demo-Kanzleien
+export const DEMO_ANALYSIS_LIMIT = {
+  MAX_PER_ORGANIZATION: 10,
+  MAX_TOTAL: 200,
+  WINDOW_MS: 24 * 60 * 60 * 1000,
+} as const;
+
+export const DemoAnalysisUsageSchema = z.object({
+  isDemo: z.boolean(),
+  organizationRuns: z.number().int().nonnegative(),
+  totalRuns: z.number().int().nonnegative(),
+});
+
+export type DemoAnalysisUsage = z.infer<typeof DemoAnalysisUsageSchema>;

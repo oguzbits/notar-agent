@@ -9,6 +9,7 @@ import {
 import { DB_TABLES, Database, TableInsert, TableUpdate } from '@/types/database';
 import {
   CreateJobPayload,
+  DemoAnalysisUsage,
   DossierJob,
   JobProgressDetails,
   JOB_MAX_RETRIES,
@@ -18,6 +19,7 @@ import {
   UpdateJobParams,
 } from '@/types/jobs';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
+import { countAnalysisRunsSince, getDemoAnalysisUsage } from './analysis-quota';
 
 /** Aufbewahrung beendeter Vorgänge samt Dateien (Mandantendaten), danach löscht der Cron. */
 export const JOB_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -61,6 +63,8 @@ export interface IJobRepository {
   listJobs(organizationId?: string): Promise<DossierJob[]>;
   /** Analyseläufe (Hintergrund-Jobs und Live-Läufe) seit sinceIso; gezählt in PostgreSQL. */
   countAnalysisRunsSince(organizationId: string, sinceIso: string): Promise<number>;
+  /** Demo-Status der Kanzlei und Analyseläufe seit sinceIso (je Kanzlei und über alle Demo-Kanzleien); gezählt in PostgreSQL. */
+  getDemoAnalysisUsage(organizationId: string, sinceIso: string): Promise<DemoAnalysisUsage>;
   deleteJob(id: string, organizationId?: string): Promise<boolean>;
   pruneCompletedJobs(maxAgeMs?: number): Promise<number>;
   /** Setzt PENDING/PROCESSING-Jobs ohne Lebenszeichen (`updated_at`) auf FAILED; liefert die Anzahl. */
@@ -205,15 +209,12 @@ export class SupabaseJobRepository implements IJobRepository {
     return data.map((row) => this.mapRowToJob(toListRow(row), { lightweight: true }));
   }
 
-  async countAnalysisRunsSince(organizationId: string, sinceIso: string): Promise<number> {
-    const { data, error } = await this.supabase.rpc('count_analysis_runs_since', {
-      p_organization_id: organizationId,
-      p_since: sinceIso,
-    });
-    if (error) {
-      throw new Error(`Supabase countAnalysisRunsSince fehlgeschlagen: ${error.message}`);
-    }
-    return data ?? 0;
+  countAnalysisRunsSince(organizationId: string, sinceIso: string): Promise<number> {
+    return countAnalysisRunsSince(this.supabase, organizationId, sinceIso);
+  }
+
+  getDemoAnalysisUsage(organizationId: string, sinceIso: string): Promise<DemoAnalysisUsage> {
+    return getDemoAnalysisUsage(this.supabase, organizationId, sinceIso);
   }
 
   private mapRowToJob(

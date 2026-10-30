@@ -473,3 +473,30 @@ RETURNS INT LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public, pg_te
 $$;
 REVOKE EXECUTE ON FUNCTION count_analysis_runs_since(UUID, TIMESTAMPTZ) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION count_analysis_runs_since(UUID, TIMESTAMPTZ) TO authenticated;
+
+-- Demo-Kanzleien (mindestens ein anonymes Mitglied): Tageskontingent je Kanzlei und Obergrenze über alle
+-- Demo-Kanzleien, weil jede anonyme Sitzung eine neue Kanzlei mit frischem Kontingent anlegt.
+-- SECURITY DEFINER, weil die Obergrenze fremde Kanzleien zählt; nach außen gehen nur Zähler, und nur für Mitglieder
+-- der abgefragten Kanzlei (sonst keine Zeile). Zählweise der Läufe wie in count_analysis_runs_since (gleiche shortcut-Grenze).
+CREATE OR REPLACE FUNCTION demo_analysis_usage_since(p_organization_id UUID, p_since TIMESTAMPTZ)
+RETURNS TABLE (is_demo BOOLEAN, organization_runs INT, total_runs INT)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+    WITH demo_orgs AS (
+        SELECT DISTINCT m.organization_id
+        FROM organization_members m JOIN auth.users u ON u.id = m.user_id
+        WHERE u.is_anonymous
+    ), runs AS (
+        SELECT organization_id, id AS run_id FROM dossier_jobs WHERE created_at >= p_since
+        UNION
+        SELECT organization_id, job_id FROM llm_usage WHERE created_at >= p_since AND job_id IS NOT NULL
+    ), usage AS (
+        SELECT
+            EXISTS (SELECT 1 FROM demo_orgs WHERE organization_id = p_organization_id) AS is_demo,
+            (count(*) FILTER (WHERE r.organization_id = p_organization_id))::int AS organization_runs,
+            count(*)::int AS total_runs
+        FROM runs r JOIN demo_orgs d ON d.organization_id = r.organization_id
+    )
+    SELECT usage.is_demo, usage.organization_runs, usage.total_runs FROM usage WHERE is_org_member(p_organization_id);
+$$;
+REVOKE EXECUTE ON FUNCTION demo_analysis_usage_since(UUID, TIMESTAMPTZ) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION demo_analysis_usage_since(UUID, TIMESTAMPTZ) TO authenticated;
