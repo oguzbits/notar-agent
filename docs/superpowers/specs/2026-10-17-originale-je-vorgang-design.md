@@ -11,7 +11,7 @@ Das Cockpit zeigt je Feld Quelle, Seite und Zitat. Die Seite selbst sieht der No
 - Originale liegen nur in der Job-Nutzlast (`dossier_jobs.payload.files`), entweder inline (`content`) oder im Bucket `dossier-files` (`storagePath`, Pfad `<Kanzlei>/<uuid>-<Name>`).
 - `pruneCompletedJobs` entfernt abgeschlossene Jobs nach 24 Stunden; `deleteJob` entfernt zugehörige Storage-Dateien. Inline-Dateien liegen nie im Storage.
 - Keine Route liefert ein Original aus. Die Löschpipeline (`deletion_tasks`, `_purge_dossier`) kennt nur Job-Pfade und das Archivpräfix `<Kanzlei>/archive/<Vorgang>/`.
-- Aufbewahrung und Fristen sind rechtlich nicht geklärt ([BACKLOG](../../../BACKLOG.md) §20).
+- Aufbewahrung und Fristen sind rechtlich nicht geklärt ([BACKLOG](../../BACKLOG.md) §20).
 
 ## Entscheidungen
 

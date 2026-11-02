@@ -13,11 +13,11 @@ const files = execFileSync('git', ['ls-files', '-co', '--exclude-standard', '*.m
 // AGENTS.md nennt die verbotenen Muster als Beispiel und ist von der Pfadprüfung ausgenommen
 const ABSOLUTE_PATH = /(file:\/\/\/|\/Users\/[\w.-]+\/|[A-Z]:\\Users\\)/;
 const TASK_BOX = /^\s*[-*]\s+\[[ xX]\]\s/m;
-// Aufgabenlisten gehören ausschließlich in ROADMAP.md, BACKLOG.md, CHANGELOG.md und Arbeitsdokumente
+// Aufgabenlisten gehören ausschließlich in docs/ROADMAP.md, docs/BACKLOG.md, docs/CHANGELOG.md und Arbeitsdokumente
 const SPEC_FILES = (f) =>
   f === 'AGENTS.md' ||
-  f === 'PRD.md' ||
-  f === 'DESIGN.md' ||
+  f === 'docs/PRD.md' ||
+  f === 'docs/DESIGN.md' ||
   f === 'docs/overview.md' ||
   f.startsWith('docs/architecture/');
 const LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;
@@ -31,7 +31,9 @@ for (const file of files) {
   if (abs) problems.push(`${file}: absoluter Maschinenpfad "${abs[0]}" (Invariante 7)`);
 
   if (SPEC_FILES(file) && TASK_BOX.test(withoutCode) && file !== 'AGENTS.md') {
-    problems.push(`${file}: Aufgabenliste in Spezifikation (Invariante 11); gehört in ROADMAP.md`);
+    problems.push(
+      `${file}: Aufgabenliste in Spezifikation (Invariante 11); gehört in docs/ROADMAP.md`
+    );
   }
 
   for (const [, target] of withoutCode.matchAll(LINK)) {

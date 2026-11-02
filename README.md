@@ -149,9 +149,9 @@ Weitere DB-Befehle: `npm run db:reset` (Migrationen frisch anwenden), `npm run d
 
 ## 🗺 Weiterführend
 
-- [PRD.md](PRD.md) – was gebaut wird und für wen
-- [DESIGN.md](DESIGN.md) – Design-System und UI-Regeln
-- [ROADMAP.md](ROADMAP.md) – offene Aufgaben
-- [BACKLOG.md](BACKLOG.md) – bewusst nicht gebaute Ideen
-- [CHANGELOG.md](CHANGELOG.md) – abgeschlossene Meilensteine
+- [PRD.md](docs/PRD.md) – was gebaut wird und für wen
+- [DESIGN.md](docs/DESIGN.md) – Design-System und UI-Regeln
+- [ROADMAP.md](docs/ROADMAP.md) – offene Aufgaben
+- [BACKLOG.md](docs/BACKLOG.md) – bewusst nicht gebaute Ideen
+- [CHANGELOG.md](docs/CHANGELOG.md) – abgeschlossene Meilensteine
 - [docs/overview.md](docs/overview.md) – Architektur im Detail

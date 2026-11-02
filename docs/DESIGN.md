@@ -1,6 +1,6 @@
 # Notar Agent — Design-System
 
-> **Zweck:** Verbindliche Gestaltungsregeln für jede Oberfläche. Die Werte stammen aus [src/app/globals.css](src/app/globals.css) und [src/components/ui/](src/components/ui/); bei Abweichung gilt der Code. Die Regeln werden per `@shadcn/lint` in [eslint.config.mjs](eslint.config.mjs) erzwungen.
+> **Zweck:** Verbindliche Gestaltungsregeln für jede Oberfläche. Die Werte stammen aus [src/app/globals.css](../src/app/globals.css) und [src/components/ui/](../src/components/ui/); bei Abweichung gilt der Code. Die Regeln werden per `@shadcn/lint` in [eslint.config.mjs](../eslint.config.mjs) erzwungen.
 
 ## Charakter
 
@@ -10,11 +10,11 @@ Sachlich, ruhig, belegorientiert. Das Notar-Cockpit ist ein Arbeitswerkzeug für
 
 - Nur semantische Tokens: `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary`, `text-destructive` und die `notar-*`-Akzentskala (50–950, Grün, Primärton `notar-500`).
 - Keine rohen Tailwind-Palettenfarben (`bg-slate-100`, `text-blue-500`) in Feature-Views.
-- Statusfarben kommen ausschließlich über `StatusBadge` ([src/components/ui/StatusBadge.tsx](src/components/ui/StatusBadge.tsx)).
+- Statusfarben kommen ausschließlich über `StatusBadge` ([src/components/ui/StatusBadge.tsx](../src/components/ui/StatusBadge.tsx)).
 
 ## Typografie
 
-- Schriften: Geist Sans (Text) und Geist Mono (Zitate, Kennungen), geladen in [src/app/layout.tsx](src/app/layout.tsx).
+- Schriften: Geist Sans (Text) und Geist Mono (Zitate, Kennungen), geladen in [src/app/layout.tsx](../src/app/layout.tsx).
 - Fließtext, Bedienelemente, Eingaben und Beschriftungen mindestens `text-base` (16 px).
 - `text-sm` nur für Hilfetexte, Zeitstempel und kompakte Tabellenzellen. `text-xs` nur in kompakten Status-Pills und Badges, nie für Text oder Beschriftungen.
 - Überschriften: `text-xl`, `text-2xl` oder `text-3xl`, immer mit `font-bold` und `tracking-tight`.
@@ -36,7 +36,7 @@ Jede asynchrone Ansicht behandelt alle vier Zustände:
 
 ## Sprache
 
-Sichtbare Texte nutzen die kanonische deutsche Notarterminologie aus [src/lib/dossier/constants.ts](src/lib/dossier/constants.ts), ohne Denglisch. Technische KI-Begriffe (RAG, Vektor, Token, Embedding, Pipeline-Stufen) erscheinen nie in der Oberfläche.
+Sichtbare Texte nutzen die kanonische deutsche Notarterminologie aus [src/lib/dossier/constants.ts](../src/lib/dossier/constants.ts), ohne Denglisch. Technische KI-Begriffe (RAG, Vektor, Token, Embedding, Pipeline-Stufen) erscheinen nie in der Oberfläche.
 
 ## Durchsetzung
 

@@ -100,7 +100,7 @@ Tastatur- und Screenreader-Blocker, Kontraste, Fehlerzustände, Terminologie, Pr
 
 ## Offen für den Betreiber
 
-Betreiberaufgaben (Live-Abgleich der Datenbank, Anon-Key-Rotation, Prüfung der Live-Protokolle) stehen in [BACKLOG.md §21](../../../BACKLOG.md). Der frühere Widerspruch in der AGENTS.md zu Agenten-Commits ist behoben.
+Betreiberaufgaben (Live-Abgleich der Datenbank, Anon-Key-Rotation, Prüfung der Live-Protokolle) stehen in [BACKLOG.md §21](../../BACKLOG.md). Der frühere Widerspruch in der AGENTS.md zu Agenten-Commits ist behoben.
 
 ## Fragen an Fachjuristen (nicht Teil dieser Bewertung)
 

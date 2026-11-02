@@ -68,7 +68,7 @@ Die zunächst offenen Fragen (Semgrep lokal, Grenzwerte, Stop-Hook, Branch-Prote
 
 ## Nicht enthalten
 
-Folgearbeiten stehen in [BACKLOG.md §21](../../../BACKLOG.md).
+Folgearbeiten stehen in [BACKLOG.md §21](../../BACKLOG.md).
 
 ## Wirkung und Nachweis
 

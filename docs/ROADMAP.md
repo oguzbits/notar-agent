@@ -1,7 +1,7 @@
 # Notar Agent — Roadmap & Aktiver Arbeitsplan
 
 > **Zweck:** Zentrale, schlanke Arbeitsplanung und Phasenstatus für Entwickler und KI-Agenten.  
-> **Architektur-Spezifikationen:** Tiefgehendes System- und Schichtenwissen liegt entkoppelt unter [docs/architecture/](./docs/architecture/) und [docs/overview.md](./docs/overview.md).  
+> **Architektur-Spezifikationen:** Tiefgehendes System- und Schichtenwissen liegt entkoppelt unter [docs/architecture/](./architecture/) und [docs/overview.md](./overview.md).  
 > **Historischer Nachweis:** Alle fertiggestellten Meilensteine sind archiviert in [CHANGELOG.md](./CHANGELOG.md).  
 > **Feature-Backlog:** Nachgelagerte Zusatzmodule liegen in [BACKLOG.md](./BACKLOG.md).
 
@@ -21,12 +21,12 @@
 
 Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 
-- 🏛️ **Gesamtsystem & Schichten:** [docs/overview.md](./docs/overview.md)
-- ⚖️ **5-Stufen Enterprise Legal Processing:** [docs/architecture/enterprise-legal-processing.md](./docs/architecture/enterprise-legal-processing.md)
-- 📄 **Dual-Stream Ingestion (Unicode + Vision):** [docs/architecture/dual-stream-ingestion.md](./docs/architecture/dual-stream-ingestion.md)
-- ⚡ **Asynchrone Job-Orchestrierung (`after()`):** [docs/architecture/job-orchestration.md](./docs/architecture/job-orchestration.md)
-- 🔒 **Mandantenfähigkeit & RLS (§ 203 StGB):** [docs/architecture/multi-tenancy-compliance.md](./docs/architecture/multi-tenancy-compliance.md)
-- 🧪 **Eval- & Benchmark-Framework:** [docs/architecture/evaluation-framework.md](./docs/architecture/evaluation-framework.md)
+- 🏛️ **Gesamtsystem & Schichten:** [docs/overview.md](./overview.md)
+- ⚖️ **5-Stufen Enterprise Legal Processing:** [docs/architecture/enterprise-legal-processing.md](./architecture/enterprise-legal-processing.md)
+- 📄 **Dual-Stream Ingestion (Unicode + Vision):** [docs/architecture/dual-stream-ingestion.md](./architecture/dual-stream-ingestion.md)
+- ⚡ **Asynchrone Job-Orchestrierung (`after()`):** [docs/architecture/job-orchestration.md](./architecture/job-orchestration.md)
+- 🔒 **Mandantenfähigkeit & RLS (§ 203 StGB):** [docs/architecture/multi-tenancy-compliance.md](./architecture/multi-tenancy-compliance.md)
+- 🧪 **Eval- & Benchmark-Framework:** [docs/architecture/evaluation-framework.md](./architecture/evaluation-framework.md)
 
 ---
 
@@ -35,7 +35,7 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 ### Phase A: Evaluation & Skalierung
 
 - [ ] **A.4.3 Skalierbares Benchmark-System (100+ synthetische Fälle & RAGAS):**
-  - _(Detaillierter 4-Phasen-Architekturplan in [docs/architecture/evaluation-framework.md](./docs/architecture/evaluation-framework.md) hinterlegt)_
+  - _(Detaillierter 4-Phasen-Architekturplan in [docs/architecture/evaluation-framework.md](./architecture/evaluation-framework.md) hinterlegt)_
   - [ ] Parametrisierter Akten-Generator (`scripts/eval/generate-dataset.ts`) zur Erzeugung von 50+ synthetischen Fällen mit Ground Truth
   - [ ] Visuelle Perturbation-Matrix via `sharp` (Blur- und Rotations-Stufen zur Härtung gegen Scan-Artefakte)
   - [ ] RAGAS-Metriken im Scorer (`context_recall`, `context_precision`, `faithfulness`)
@@ -82,9 +82,9 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
     - [x] Zerlegung von `verifiable-fact-checker.ts` (Komplexität von 51 auf < 20 gesenkt via `number-verifier.ts` und `source-document-resolver.ts`)
     - [x] Modulare Entflechtung von `domain-guardrails.ts` (Komplexität von 36 auf < 10 gesenkt via `party-guardrails.ts` und `arithmetic-guardrails.ts`), Ausrichtung an deklarativen `knowledge_documents`-Prüfnormen gem. `AGENTS.md`
 
-- [ ] **B.11 Antipattern-Bereinigung (Befunde vom 27.10.2026, Plan: [2026-10-27-antipattern-bereinigung.md](./docs/superpowers/plans/2026-10-27-antipattern-bereinigung.md)):**
+- [ ] **B.11 Antipattern-Bereinigung (Befunde vom 27.10.2026, Plan: [2026-10-27-antipattern-bereinigung.md](./superpowers/plans/2026-10-27-antipattern-bereinigung.md)):**
   - [ ] **B.11.7 Offene Befunde der Gesamtprüfung (Rest):** (1) Dateien von Vorgängen ohne Kanzlei oder mit fremdem Pfad bleiben beim Aufräumen im Speicher (nur Warn-Log): Reste regelmäßig abgleichen. (2) `recoverOrphanJobs` setzt Vorgänge nach 3 Minuten ohne Fortschritt auf FAILED, ohne `locked_at` zu beachten; läuft jetzt im Cron für alle Kanzleien, gegen die Worker-Laufzeit prüfen. (3) Rollenwechsel durch das Servicekonto oder Kaskaden erzeugt keinen Audit-Eintrag (Trigger prüft `auth.uid()`), Entfernen eines Mitglieds (`MEMBER_REMOVED`) ist weiter nicht atomar, Rollenwechsel hat keine Begründung im API. (4) SQLSTATE `42501` in `team-repository.ts` als Konstante neben `TEAM_GUARD_SQLSTATE`; Select-Primitive in `src/components/ui` anlegen (zwei rohe `<select>` in `TeamSettingsModal.tsx`). (5) Ein ADMIN kann weiterhin einen NOTAR herabstufen oder entfernen (RLS erlaubt es; nur der letzte NOTAR ist geschützt).
-  - [ ] **B.11.8 Demo-Tageskontingent live einspielen:** Code und Migration stehen ([CHANGELOG.md](./CHANGELOG.md)); offen ist das Einspielen von `demo_analysis_usage_since` aus [20260921000000_jobs_and_workflows.sql](./supabase/migrations/20260921000000_jobs_and_workflows.sql) im Projekt Notar-Partner-Prototyp (Freigabe beim Nutzer). Erst danach den Commit pushen, sonst bricht `POST /api/analyze` in Produktion (jeder Aufruf ruft die Funktion). Danach Grenzwerte `DEMO_ANALYSIS_LIMIT` am Tagesbudget und den Kosten je Analyse (`llm_usage`) abgleichen.
+  - [ ] **B.11.8 Demo-Tageskontingent live einspielen:** Code und Migration stehen ([CHANGELOG.md](./CHANGELOG.md)); offen ist das Einspielen von `demo_analysis_usage_since` aus [20260921000000_jobs_and_workflows.sql](../supabase/migrations/20260921000000_jobs_and_workflows.sql) im Projekt Notar-Partner-Prototyp (Freigabe beim Nutzer). Erst danach den Commit pushen, sonst bricht `POST /api/analyze` in Produktion (jeder Aufruf ruft die Funktion). Danach Grenzwerte `DEMO_ANALYSIS_LIMIT` am Tagesbudget und den Kosten je Analyse (`llm_usage`) abgleichen.
 
 ### Phase C: Enterprise Compliance & Ökosystem
 

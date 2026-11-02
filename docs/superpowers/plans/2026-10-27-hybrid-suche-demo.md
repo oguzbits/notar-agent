@@ -4,7 +4,7 @@
 
 **Ziel:** Die Pipeline kann optional die Anfrage einbetten und über die vorhandene RPC `match_knowledge_documents` hybrid suchen; Dokumentvektoren entstehen über ein Befüllskript. Ohne Konfiguration bleibt das Verhalten unverändert (nur Volltext).
 
-**Herkunft:** Messbefund in [BACKLOG.md §19](../../../BACKLOG.md): Abdeckung Volltext 0,89, Hybrid 0,96; ohne Kennung 0,85 gegen 1,00. Vorab festgelegte Schwelle K1 (+0,08) knapp verfehlt (+0,07), K3 für Fälle ohne Kennung erfüllt. Entscheidung des Nutzers (27.10.2026): Free Tier, Demo, Datenschutz derzeit bewusst nachrangig. Deshalb Einführung als abschaltbarer Demo-Pfad, nicht als bewiesener Standard.
+**Herkunft:** Messbefund in [BACKLOG.md §19](../../BACKLOG.md): Abdeckung Volltext 0,89, Hybrid 0,96; ohne Kennung 0,85 gegen 1,00. Vorab festgelegte Schwelle K1 (+0,08) knapp verfehlt (+0,07), K3 für Fälle ohne Kennung erfüllt. Entscheidung des Nutzers (27.10.2026): Free Tier, Demo, Datenschutz derzeit bewusst nachrangig. Deshalb Einführung als abschaltbarer Demo-Pfad, nicht als bewiesener Standard.
 
 ## Pre-Flight (AGENTS.md 4A)
 

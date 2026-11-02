@@ -1,6 +1,6 @@
 # Notar Agent — Produktanforderungen
 
-> **Zweck:** Was gebaut wird und für wen. Das Wie steht in [docs/overview.md](docs/overview.md), die Regeln in [AGENTS.md](AGENTS.md), die offenen Aufgaben in [ROADMAP.md](ROADMAP.md).
+> **Zweck:** Was gebaut wird und für wen. Das Wie steht in [docs/overview.md](overview.md), die Regeln in [AGENTS.md](../AGENTS.md), die offenen Aufgaben in [ROADMAP.md](ROADMAP.md).
 
 ## Problem
 
@@ -19,7 +19,7 @@ Notariate in Deutschland, die Immobilienkaufverträge vorbereiten. Rollen im Pro
 
 ## Kernfunktionen
 
-Dashboard der Vorgänge, zehn Pflichtfelder im Ampelsystem, Prüfplan vor dem Lauf, Nachreichen von Unterlagen ohne Verlust belegter Felder, Übersteuern mit Begründung, Export als Prüfbericht und JSON. Der Funktionsumfang im Detail steht in der [README.md](README.md).
+Dashboard der Vorgänge, zehn Pflichtfelder im Ampelsystem, Prüfplan vor dem Lauf, Nachreichen von Unterlagen ohne Verlust belegter Felder, Übersteuern mit Begründung, Export als Prüfbericht und JSON. Der Funktionsumfang im Detail steht in der [README.md](../README.md).
 
 ## Nicht-Ziele
 
@@ -33,10 +33,10 @@ Dashboard der Vorgänge, zehn Pflichtfelder im Ampelsystem, Prüfplan vor dem La
 - Berufsgeheimnis (§ 203 StGB): strikte Mandantentrennung, serverseitige Identität, Löschfristen als Daten.
 - Nachvollziehbarkeit (§ 17 BeurkG): Übersteuerungen und Exporte stehen in einem Append-only-Protokoll mit Hash-Kette.
 - Rechtsregeln, Fristen und Kriterien sind Daten in der Datenbank, nie Konstanten im Code.
-- Fachsprache der Oberfläche: kanonische deutsche Notarterminologie aus [src/lib/dossier/constants.ts](src/lib/dossier/constants.ts).
+- Fachsprache der Oberfläche: kanonische deutsche Notarterminologie aus [src/lib/dossier/constants.ts](../src/lib/dossier/constants.ts).
 
 ## Erfolgskriterien
 
-- Belegtreue: Keine Angabe ohne nachprüfbare Fundstelle; das messen die Eval-Läufe ([docs/architecture/evaluation-framework.md](docs/architecture/evaluation-framework.md)).
-- Der Standardfall der Testakten ([test-akten/](test-akten/)) liefert alle zehn Felder als belegt, die Stolperfallen-Akten liefern „Prüfung nötig“.
+- Belegtreue: Keine Angabe ohne nachprüfbare Fundstelle; das messen die Eval-Läufe ([docs/architecture/evaluation-framework.md](architecture/evaluation-framework.md)).
+- Der Standardfall der Testakten ([test-akten/](../test-akten/)) liefert alle zehn Felder als belegt, die Stolperfallen-Akten liefern „Prüfung nötig“.
 - Kein Mandant sieht Daten eines anderen (RLS-Tests gegen echtes Postgres, `npm run test:db`).

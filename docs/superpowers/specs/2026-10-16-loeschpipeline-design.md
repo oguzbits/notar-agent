@@ -79,7 +79,7 @@ fail-closed bei fehlender Frist → Test 7; Outbox-Wiederholung → Test 5.
 
 ## Außerhalb des Umfangs
 
-Rechte-Editor, Löschanfragen Betroffener, Backups und Point-in-Time-Recovery: siehe [BACKLOG.md §21](../../../BACKLOG.md). Observability und Kostenerfassung sind eigene Specs.
+Rechte-Editor, Löschanfragen Betroffener, Backups und Point-in-Time-Recovery: siehe [BACKLOG.md §21](../../BACKLOG.md). Observability und Kostenerfassung sind eigene Specs.
 
 ## Dokumentation
 

@@ -4,7 +4,7 @@
 
 **Ziel:** (1) Die Retrieval-Messung wird als reproduzierbares Eval-Gate mit Baseline ins Repo übernommen, (2) die Agenten-Leitplanken werden vollständig getestet und konsistent, (3) Mutationstests prüfen die Aussagekraft der Tests an den Kernmodulen, (4) die Doku bleibt in Parität.
 
-**Herkunft:** Messbefund Volltext gegen Vektor ([BACKLOG.md §19](../../../BACKLOG.md)); Vorbild ist das Eval-Gate und die Hook-Struktur im Nachbarprojekt notebooklm-klon (Konzept, kein Code kopiert).
+**Herkunft:** Messbefund Volltext gegen Vektor ([BACKLOG.md §19](../../BACKLOG.md)); Vorbild ist das Eval-Gate und die Hook-Struktur im Nachbarprojekt notebooklm-klon (Konzept, kein Code kopiert).
 
 ## Pre-Flight (AGENTS.md 4A)
 
@@ -111,7 +111,7 @@
 
 ## Aufgabe 5: Generierte Doku prüfen
 
-Zeitbox 20 Minuten: Welche Fakten in `docs/` sind aus dem Code ableitbar (API-Routen, Umgebungsvariablen, Tabellen, Enum-Werte)? Umsetzung eines `docs:generate --check` nur bei mindestens drei solchen Blöcken (Rule of Three); sonst ein Eintrag mit Befund in [BACKLOG.md](../../../BACKLOG.md). Kein Aufbau auf Verdacht.
+Zeitbox 20 Minuten: Welche Fakten in `docs/` sind aus dem Code ableitbar (API-Routen, Umgebungsvariablen, Tabellen, Enum-Werte)? Umsetzung eines `docs:generate --check` nur bei mindestens drei solchen Blöcken (Rule of Three); sonst ein Eintrag mit Befund in [BACKLOG.md](../../BACKLOG.md). Kein Aufbau auf Verdacht.
 
 ## Aufgabe 6: Docs-Parität und Abschluss
 
