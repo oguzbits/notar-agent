@@ -1,6 +1,6 @@
 # Notar Agent — Produktanforderungen
 
-> **Zweck:** Was gebaut wird und für wen. Das Wie steht in [docs/overview.md](overview.md), die Regeln in [AGENTS.md](../AGENTS.md), die offenen Aufgaben in [ROADMAP.md](ROADMAP.md).
+> **Zweck:** Was gebaut wird und für wen. Das Wie steht in [docs/ARCHITECTURE.md](ARCHITECTURE.md), die Regeln in [AGENTS.md](../AGENTS.md), die offenen Aufgaben in [ROADMAP.md](ROADMAP.md).
 
 ## Problem
 

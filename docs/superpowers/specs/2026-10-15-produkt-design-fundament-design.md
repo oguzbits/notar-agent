@@ -12,7 +12,7 @@ Produkt und Software auf Premium-Industriestandard für Legal-Tech heben. Dieses
 2. **PRODUCT.md.** Zielnutzer (Notar, Notarfachangestellte, Reviewer), Positionierung („jede Aussage mit Beleg"), Produktprinzipien, Abgrenzung.
 3. **DESIGN.md.** Nordstern, Farb-, Typografie-, Radius-, Dichte- und Zustandsregeln, Do's and Don'ts. Die Design-Sprache wird aus einer ausführlichen Studie der Legal-AI-Marktführer Harvey und Legora (Produktseiten, Demos, Screenshots, Hilfe-Center) und dem Audit der Ist-UI abgeleitet.
 4. **Token-Umbau.** Die Markenpalette `notar-*` (Limettengrün) wird durch eine warme Neutralpalette nach Harvey-Vorbild ersetzt (Ivory-Flächen, Ink-Text, kein Markenakzent; Farbe nur für Status und Fokus); Serif für Akten- und Dokumenttitel, Mono für Aktenzeichen; Typo-Skala nach AGENTS.md Abschnitt 3. Keine Feature-Änderungen.
-5. **Docs-Parität.** [docs/overview.md](../../overview.md) verweist auf PRODUCT.md und DESIGN.md; ROADMAP.md erhält die Phasen 2 bis 5.
+5. **Docs-Parität.** [docs/overview.md](../../ARCHITECTURE.md) verweist auf PRODUCT.md und DESIGN.md; ROADMAP.md erhält die Phasen 2 bis 5.
 
 ## Entscheidungen
 

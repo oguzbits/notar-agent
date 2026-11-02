@@ -8,7 +8,7 @@
 
 Ein Assistent für Notariate, der unstrukturierte Unterlagen zu **Immobilienkaufverträgen** prüft, ordnet und auf Lücken untersucht – und jede Angabe mit Datei, Seite und Originalzitat belegt.
 
-> Tiefergehende Architektur, Safety-Hooks und Quality Gates: [docs/overview.md](docs/overview.md)
+> Tiefergehende Architektur, Safety-Hooks und Quality Gates: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ---
 
@@ -154,4 +154,4 @@ Weitere DB-Befehle: `npm run db:reset` (Migrationen frisch anwenden), `npm run d
 - [ROADMAP.md](docs/ROADMAP.md) – offene Aufgaben
 - [BACKLOG.md](docs/BACKLOG.md) – bewusst nicht gebaute Ideen
 - [CHANGELOG.md](docs/CHANGELOG.md) – abgeschlossene Meilensteine
-- [docs/overview.md](docs/overview.md) – Architektur im Detail
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – Architektur im Detail

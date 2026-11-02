@@ -56,12 +56,12 @@ Every feature and modification must satisfy these technical invariants:
    - Legal codes or paragraph references (e.g. § 203 StGB, DSGVO) must not be displayed as decorative marketing slogans in UI headers or badges.
 7. **Strict Document Portability & Relative Paths (Zero Absolute Environment Leaks):**
    - Documentation files, markdown documents, comments, configuration templates, and repository artifacts MUST NEVER contain machine-specific absolute file URLs or local user home directories (e.g. `file:///Users/...`, `/Users/...`, `C:\Users\...`).
-   - Repository-internal links MUST always use standard relative Markdown links (e.g. `[AGENTS.md](AGENTS.md)` or `[Overview](docs/overview.md)`). Absolute machine paths or URI schemes are strictly prohibited to ensure portable, leak-free repositories.
+   - Repository-internal links MUST always use standard relative Markdown links (e.g. `[AGENTS.md](AGENTS.md)` or `[Overview](docs/ARCHITECTURE.md)`). Absolute machine paths or URI schemes are strictly prohibited to ensure portable, leak-free repositories.
 8. **Consolidated Database Migrations (Zero Migration Fragmentation):**
    - Database migrations in `supabase/migrations/` MUST be consolidated into coherent, domain-bounded schema files.
    - Do NOT create fragmented one-line patch migrations or isolated micro-seed files. Schema definitions, policies, indexes, and their corresponding seed knowledge documents belong in their canonical domain migration file (`core`, `knowledge`, `workflows`). New rules or entities should be consolidated into the appropriate domain migration.
 9. **Continuous Architecture & Documentation Parity (Zero Stale Docs):**
-   - Whenever an architectural change, new subsystem, new schema/contracts domain, or major evaluation pattern is introduced or refactored (e.g. in `src/types/`, `src/lib/`, `config/`), the canonical architecture documentation in `docs/` (specifically `docs/overview.md` and related architecture specs) MUST be kept strictly up to date within the same changeset.
+   - Whenever an architectural change, new subsystem, new schema/contracts domain, or major evaluation pattern is introduced or refactored (e.g. in `src/types/`, `src/lib/`, `config/`), the canonical architecture documentation in `docs/` (specifically `docs/ARCHITECTURE.md` and related architecture specs) MUST be kept strictly up to date within the same changeset.
    - Documentation must accurately reflect the codebase's current structure, layer dependencies, contracts, and evaluation mechanisms without outdated or drifting descriptions.
 10. **Zero Stale Knowledge & Mandatory Real-Time Verification (Models, APIs & Libraries):**
 
@@ -76,7 +76,7 @@ Every feature and modification must satisfy these technical invariants:
   2.  **Active Work Plan (`docs/ROADMAP.md`):** The **singular Single Source of Truth** for open phases and upcoming tasks of the active development cycle. No secondary or parallel roadmap file is permitted. Completed tasks (`[x]`) are immediately moved to the revision history.
   3.  **Ideas & Feature Backlog (`docs/BACKLOG.md`):** Unscheduled follow-up modules, future extension concepts, and out-of-scope ideas kept outside the active execution focus.
   4.  **Revision History (`docs/CHANGELOG.md`):** Complete, chronological archive of all finished milestones and verifiable implementation receipts.
-  5.  **Timeless Architecture Specifications (`docs/architecture/*.md`, `docs/overview.md`):** Explain the _"why"_, system boundaries, schemas, and data flow. Specifications must **never contain task checklists or to-do boxes**; tasks belong exclusively in `docs/ROADMAP.md`.
+  5.  **Timeless Architecture Specifications (`docs/architecture/*.md`, `docs/ARCHITECTURE.md`):** Explain the _"why"_, system boundaries, schemas, and data flow. Specifications must **never contain task checklists or to-do boxes**; tasks belong exclusively in `docs/ROADMAP.md`.
   6.  **Product & Design Intent (`docs/PRD.md`, `docs/DESIGN.md`):** `docs/PRD.md` states what is built and for whom (audience, non-goals, constraints); `docs/DESIGN.md` is the SSOT for UI rules. Zero task lists or checklists in either.
 
 ---

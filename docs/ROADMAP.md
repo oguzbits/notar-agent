@@ -1,7 +1,7 @@
 # Notar Agent — Roadmap & Aktiver Arbeitsplan
 
 > **Zweck:** Zentrale, schlanke Arbeitsplanung und Phasenstatus für Entwickler und KI-Agenten.  
-> **Architektur-Spezifikationen:** Tiefgehendes System- und Schichtenwissen liegt entkoppelt unter [docs/architecture/](./architecture/) und [docs/overview.md](./overview.md).  
+> **Architektur-Spezifikationen:** Tiefgehendes System- und Schichtenwissen liegt entkoppelt unter [docs/architecture/](./architecture/) und [docs/ARCHITECTURE.md](./ARCHITECTURE.md).  
 > **Historischer Nachweis:** Alle fertiggestellten Meilensteine sind archiviert in [CHANGELOG.md](./CHANGELOG.md).  
 > **Feature-Backlog:** Nachgelagerte Zusatzmodule liegen in [BACKLOG.md](./BACKLOG.md).
 
@@ -21,7 +21,7 @@
 
 Detaillierte technische Spezifikationen, Diagramme und Invarianten:
 
-- 🏛️ **Gesamtsystem & Schichten:** [docs/overview.md](./overview.md)
+- 🏛️ **Gesamtsystem & Schichten:** [docs/ARCHITECTURE.md](./ARCHITECTURE.md)
 - ⚖️ **5-Stufen Enterprise Legal Processing:** [docs/architecture/enterprise-legal-processing.md](./architecture/enterprise-legal-processing.md)
 - 📄 **Dual-Stream Ingestion (Unicode + Vision):** [docs/architecture/dual-stream-ingestion.md](./architecture/dual-stream-ingestion.md)
 - ⚡ **Asynchrone Job-Orchestrierung (`after()`):** [docs/architecture/job-orchestration.md](./architecture/job-orchestration.md)

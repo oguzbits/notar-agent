@@ -18,7 +18,7 @@ const SPEC_FILES = (f) =>
   f === 'AGENTS.md' ||
   f === 'docs/PRD.md' ||
   f === 'docs/DESIGN.md' ||
-  f === 'docs/overview.md' ||
+  f === 'docs/ARCHITECTURE.md' ||
   f.startsWith('docs/architecture/');
 const LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;
 
