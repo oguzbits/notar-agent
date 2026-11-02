@@ -86,7 +86,7 @@ const eslintConfig = defineConfig([
       shadcn: {
         ui: '@/components/ui',
         mergeFunctions: ['cn'],
-        note: 'Befolge die AGENTS.md Design-System-Regeln: Nutze ausschließlich semantische Tokens und Primitives aus @/components/ui.',
+        note: 'Befolge die Design-System-Regeln aus DESIGN.md: Nutze ausschließlich semantische Tokens und Primitives aus @/components/ui.',
       },
     },
     rules: {
@@ -141,7 +141,7 @@ const eslintConfig = defineConfig([
       // Deterministische Durchsetzung von Design-Tokens & Best Practices
       'no-restricted-syntax': ['error', ...baseRestrictedSyntax],
 
-      // @shadcn/lint: Design System & Primitive-First Enforcement (AGENTS.md Section 3)
+      // @shadcn/lint: Design System & Primitive-First Enforcement (DESIGN.md)
       'shadcn/require-static-classes': 'error',
       'shadcn/no-inline-styles': 'error',
       'shadcn/no-arbitrary-values': ['error', { allow: ['[overflow-wrap:anywhere]'] }],

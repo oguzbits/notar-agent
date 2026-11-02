@@ -15,7 +15,11 @@ const ABSOLUTE_PATH = /(file:\/\/\/|\/Users\/[\w.-]+\/|[A-Z]:\\Users\\)/;
 const TASK_BOX = /^\s*[-*]\s+\[[ xX]\]\s/m;
 // Aufgabenlisten gehören ausschließlich in ROADMAP.md, BACKLOG.md, CHANGELOG.md und Arbeitsdokumente
 const SPEC_FILES = (f) =>
-  f === 'AGENTS.md' || f === 'docs/overview.md' || f.startsWith('docs/architecture/');
+  f === 'AGENTS.md' ||
+  f === 'PRD.md' ||
+  f === 'DESIGN.md' ||
+  f === 'docs/overview.md' ||
+  f.startsWith('docs/architecture/');
 const LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;
 
 const problems = [];

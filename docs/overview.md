@@ -199,6 +199,8 @@ Die Datei [`AGENTS.md`](../AGENTS.md) definiert verbindliche Richtlinien für je
 - **Keine eigenständigen Git-Commits:** Agenten führen niemals autonom `git commit` oder `git push` aus.
 - **Definition of Done (DoD) Quittung:** Formelle Verifikation nach jedem Feature vor Abschluss.
 
+Ergänzend halten [`PRD.md`](../PRD.md) fest, was gebaut wird und für wen, und [`DESIGN.md`](../DESIGN.md) die verbindlichen UI-Regeln. Aufgaben stehen ausschließlich in [`ROADMAP.md`](../ROADMAP.md), abgeschlossene Meilensteine in [`CHANGELOG.md`](../CHANGELOG.md).
+
 ### 2.3 Agentic Safety-Hooks ([`.agents/hooks.json`](../.agents/hooks.json))
 
 Automatisierte Pre-Tool- und Post-Tool-Lifecycle-Hooks sichern das System gegen Fehlbedienungen ab:

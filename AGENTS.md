@@ -71,7 +71,7 @@ Every feature and modification must satisfy these technical invariants:
 
 11. **Documentation Hierarchy & Lifecycle (Zero Roadmap Drift & Strict Separation of Concerns):**
 
-- Documentation strictly adheres to the **4-Tier Agentic Documentation Standard**:
+- Documentation strictly adheres to the **4-Tier Agentic Documentation Standard**: 0. **Product & Design Intent (`PRD.md`, `DESIGN.md`):** `PRD.md` states what is built and for whom (audience, non-goals, constraints); `DESIGN.md` is the SSOT for UI rules. Zero task lists or checklists in either.
   1.  **System Constitution (`AGENTS.md`):** System rules, invariants, and enforcement mechanisms. Zero task lists, checklists, or progress tracking.
   2.  **Active Work Plan (`ROADMAP.md`):** The **singular Single Source of Truth** for open phases and upcoming tasks of the active development cycle. No secondary or parallel roadmap file is permitted. Completed tasks (`[x]`) are immediately moved to the revision history.
   3.  **Ideas & Feature Backlog (`BACKLOG.md`):** Unscheduled follow-up modules, future extension concepts, and out-of-scope ideas kept outside the active execution focus.
@@ -82,17 +82,7 @@ Every feature and modification must satisfy these technical invariants:
 
 ## 3. Design System & UI Standards
 
-- **Primitive First (Zero Ad-Hoc HTML):**
-  - Never write raw `<input>`, `<select>`, `<label>`, or custom card wrapper divs in feature views (`src/app/`, `src/components/views/`). Always compose from reusable primitives in `src/components/ui/` (`<Input>`, `<Button>`, `<Card>`, etc.).
-- **Base Typography Standard:**
-  - Standard scale: All primary body copy, interactive controls, form inputs, and labels MUST default to `text-base` (16px / 1rem minimum).
-  - Restricted scale: `text-sm` (14px) is strictly reserved for secondary helper captions, timestamps, and compact table cells. `text-xs` is forbidden for body text and labels (only allowed for compact status pills/badges).
-  - Headings must use standard scale (`text-xl`, `text-2xl`, `text-3xl`) with `font-bold` and `tracking-tight`.
-- **Strict Semantic Tokens & Automated Enforcement (`@shadcn/lint`):**
-  - Never use raw Tailwind palette colors (e.g. `bg-slate-100`, `text-blue-500`) in feature views. Exclusively use semantic theme tokens (`bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, and `notar-*` accents).
-  - Enforced automatically via `@shadcn/lint` (`shadcn/no-raw-colors`, `shadcn/no-restyle`, `shadcn/no-arbitrary-values`, `shadcn/no-inline-styles`, `shadcn/require-static-classes`). Never introduce new raw palette colors or bypass `@/components/ui` primitives.
-- **Single Source of Action (Anti-Redundancy):**
-  - For any distinct user intent within a view, there must exist exactly one canonical trigger. Competing or duplicate interaction paths for the same outcome are prohibited. Dead controls must be purged immediately.
+Verbindlich und vollständig in [DESIGN.md](DESIGN.md): Primitive first, Typografie-Skala, semantische Tokens (per `@shadcn/lint` erzwungen), Single Source of Action, vollständiges Zustandsquadrat. Jede UI-Änderung hält sich daran.
 
 ---
 
