@@ -62,6 +62,8 @@ Every feature and modification must satisfy these technical invariants:
    - Do NOT create fragmented one-line patch migrations or isolated micro-seed files. Schema definitions, policies, indexes, and their corresponding seed knowledge documents belong in their canonical domain migration file (`core`, `knowledge`, `workflows`). New rules or entities should be consolidated into the appropriate domain migration.
 9. **Continuous Architecture & Documentation Parity (Zero Stale Docs):**
    - Whenever an architectural change, new subsystem, new schema/contracts domain, or major evaluation pattern is introduced or refactored (e.g. in `src/types/`, `src/lib/`, `config/`), the canonical architecture documentation in `docs/` (specifically `docs/ARCHITECTURE.md` and related architecture specs) MUST be kept strictly up to date within the same changeset.
+   - Enforced by `npm run audit:docs:drift` (pre-push and CI): every spec under `docs/` lists the code it describes in its `covers:` front matter (path prefixes). A changeset that touches non-test code under those prefixes must also touch the spec, or the commit message states `Docs: unverändert` on its own line.
+   - Token economy: load a spec only when its `covers:` prefixes match the files being changed; never `@`-import specs into `CLAUDE.md`/`AGENTS.md`.
    - Documentation must accurately reflect the codebase's current structure, layer dependencies, contracts, and evaluation mechanisms without outdated or drifting descriptions.
 10. **Zero Stale Knowledge & Mandatory Real-Time Verification (Models, APIs & Libraries):**
 

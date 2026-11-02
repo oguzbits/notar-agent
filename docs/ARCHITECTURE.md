@@ -1,3 +1,11 @@
+---
+covers:
+  - config/dependency-cruiser.js
+  - scripts/agent/
+  - .agents/
+  - .github/workflows/
+---
+
 # Notar Agent – Technische Features & Agentic Software Engineering Setup
 
 Dieses Dokument beschreibt die Implementierungsdetails der **technischen Kern-Features** von **Notar Agent** sowie das dahinterliegende **Agentic Software Engineering Setup** (Entwicklungsregeln, Best-Practice-Mapping, Safety-Hooks, Skills, MCP und deterministische Quality Gates).
@@ -249,6 +257,7 @@ Alle Änderungen durchlaufen den zentralen Prüfbefehl `npm run check`:
 - **Dependency Cruiser (`npm run depcruise`):** Verhindert verbotene Importe zwischen Domäne, UI und Typen sowie zirkuläre Abhängigkeiten ([`config/dependency-cruiser.js`](../config/dependency-cruiser.js)).
 - **Knip (`npm run knip`):** Erkennt ungenutzte Exporte, Typen, Dateien und Dependencies (YAGNI).
 - **Code Duplication Guard (`jscpd`):** Deckt redundante Code-Duplikate in `src/` ab einem Schwellenwert von 2 % auf (`npm run audit:duplication`).
+- **Doku-Drift (`npm run audit:docs:drift`):** Jede Spezifikation nennt im Kopf (`covers:`) die Pfadpräfixe des Codes, den sie beschreibt ([`scripts/audit/docs-drift.mjs`](../scripts/audit/docs-drift.mjs)). Ändert ein Änderungssatz Nicht-Testcode unter diesen Pfaden, muss er die Spezifikation mitändern oder im Commit-Text die Zeile `Docs: unverändert` tragen. Läuft im Pre-Push-Hook und in der CI (Basis: Ziel-Branch bzw. vorheriger Stand).
 - **Codebase Health Auditor (`npm run audit:health` & `npm run audit:health:digest`):** Deterministischer Gesamtrepository-Scanner ([`scripts/audit/repo-health.mjs`](../scripts/audit/repo-health.mjs)), der die gesamte Codebase in unter 5 Sekunden ohne LLM-Tokenkosten prüft, einen Scorecard-Report erzeugt (`reports/codebase-health.md`), einen kompakten LLM-Action-Digest bereitstellt und **harte Quality Gates** erzwingt:
   - **Mindest-Health-Score >= 90/100:** Schlägt bei Unterschreitung in CI/`npm run check` mit Exit-Code 1 fehl.
   - **PII-Logging-Schutz (§ 203 StGB):** Strikter AST-Scan gegen versehentliches Mandantendaten-Logging via `console.log` im Produktionscode.

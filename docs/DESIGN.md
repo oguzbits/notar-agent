@@ -89,6 +89,9 @@ components:
     textColor: '{colors.primary-ink}'
     rounded: '{rounded.md}'
     padding: '6px 12px'
+covers:
+  - src/app/globals.css
+  - src/components/ui/
 ---
 
 # Design System: Notar Agent

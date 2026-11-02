@@ -1,3 +1,11 @@
+---
+covers:
+  - src/lib/ai/
+  - src/lib/knowledge/
+  - src/lib/dossier/
+  - src/lib/workflow/
+---
+
 # Enterprise Legal Document Processing Architecture
 
 ## Architekturstandard für hochregulierte KI-Dokumentenverarbeitung (LegalTech & Notariat)

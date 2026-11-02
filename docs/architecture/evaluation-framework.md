@@ -1,3 +1,10 @@
+---
+covers:
+  - src/lib/evals/
+  - scripts/eval/
+  - config/promptfoo.yaml
+---
+
 # Strategischer Architekturplan: Skalierbares Goldstandard-Evaluation-Framework
 
 ## 1. Ausgangslage & Zielsetzung

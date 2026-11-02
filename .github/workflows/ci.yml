@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,6 +35,11 @@ jobs:
 
       - name: Run Complete Quality Gate (Type-Check, Lint, Depcruise, Knip, Magic Strings, Production Audit, Duplication)
         run: npm run check
+
+      - name: Doku-Drift (Code geändert, Spezifikation nicht)
+        run: npm run audit:docs:drift -- --base "${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
 
   unit-and-integration-tests:
     name: Vitest Unit- & Integration Tests (100% Isolated)

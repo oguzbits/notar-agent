@@ -1,3 +1,15 @@
+---
+covers:
+  - src/lib/auth/
+  - src/lib/audit/
+  - src/lib/team/
+  - src/lib/supabase/
+  - supabase/migrations/
+  - src/app/api/auth/
+  - src/app/api/team/
+  - src/app/api/organization/
+---
+
 # Mandantenfähigkeit & Kanzlei-Isolation (§ 203 StGB)
 
 > **Architektur-Spezifikation:** Kernel-Level Row-Level Security & Revisionssicherheit  
@@ -59,3 +71,5 @@ CREATE POLICY tenant_isolation_policy ON dossiers
 - **Aufbewahrungsfristen als Daten:** `knowledge_documents.retention_years` (geprüfte, gültige Einträge, längste Frist gilt) und `documents.retention_anchor_at`. `list_retention_expired_dossiers` ermittelt fällige Dossiers in PostgreSQL, `delete_dossier_system` löscht sie. Ohne Fristeintrag oder Anker wird nie automatisch gelöscht.
 - **Wächter gegen Umgehung der Routen:** Die Datenbank-Schnittstelle ist mit der Sitzung jedes Mitglieds erreichbar, also auch an den Routenprüfungen vorbei. `documents_guard_review` (BEFORE INSERT/UPDATE auf `documents`) erlaubt das Setzen oder Ändern eines Prüfvermerks nur Rollen mit `OVERRIDE_FIELD_STATUS` (Spiegel der Matrix, geprüft in [`rbac-sql-parity.test.ts`](../../src/lib/auth/rbac-sql-parity.test.ts)); ein unverändert mitgeführter Vermerk bleibt für alle Mitglieder erlaubt, das Entfernen ebenso (die Analyse verwirft ihn bei geänderten Daten). `dossier_jobs_guard_checkpoint` lehnt einen neuen Job mit `stage1Output` ab; der Server-Worker schreibt den Checkpoint per UPDATE. Ohne Sitzung (Service-Rolle, Cron) greifen beide nicht. Restrisiko: Status, Daten und Audit-Einträge kann ein Mitglied direkt weiter schreiben, weil Analyse und Fälschung für die Datenbank gleich aussehen; das schließt nur ein Schreiben ausschließlich über die Service-Rolle. Die Szenarien liegen in [`scripts/db/guard-scenarios.sql`](../../scripts/db/guard-scenarios.sql).
 - **Grenzen:** Freitext in `note`, `override.reason` und `caseTitle` kann Personenbezug enthalten und bleibt in der Kette. Ob Pseudonymisierung den notariellen Aufbewahrungs- und Löschpflichten genügt, ist rechtlich offen.
+
+- **Zähler für Demo-Kanzleien:** `demo_analysis_usage_since` (`SECURITY DEFINER`) liest den Demo-Status aus `auth.users.is_anonymous`, liefert nur Zähler und nur an Mitglieder der eigenen Kanzlei; Details in [job-orchestration.md](job-orchestration.md).

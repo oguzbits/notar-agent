@@ -9,7 +9,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.test.{ts,tsx}', 'scripts/agent/**/*.test.mjs'],
+    include: [
+      'src/**/*.test.{ts,tsx}',
+      'scripts/agent/**/*.test.mjs',
+      'scripts/audit/**/*.test.mjs',
+    ],
     exclude: ['node_modules', 'e2e/**', 'src/**/*.db.test.ts'],
     coverage: {
       provider: 'v8',

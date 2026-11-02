@@ -1,3 +1,9 @@
+---
+covers:
+  - src/lib/files/
+  - src/lib/ai/parsers/
+---
+
 # Dual-Stream Ingestion Pipeline
 
 > **Architektur-Spezifikation:** Verlustfreie Zeichenintegrität & Multimodal Vision  

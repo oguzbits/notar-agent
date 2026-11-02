@@ -1,3 +1,11 @@
+---
+covers:
+  - src/lib/jobs/
+  - src/app/api/jobs/
+  - src/app/api/analyze/
+  - src/app/api/cron/
+---
+
 # Asynchrone Job-Orchestrierung
 
 > **Architektur-Spezifikation:** Asynchrone Hintergrundverarbeitung im 24/7-Kanzleibetrieb  
@@ -81,3 +89,7 @@ Für Uploads und Analysen aus der Web-Applikation (`POST /api/analyze?async=true
 - **Tokenverbrauch:** Erstlauf (`POST /api/analyze`) und Wiederholung (`POST /api/jobs`) erfassen den Verbrauch gleichermaßen über `usageRepo`. Die Dokumentliste (`GET /api/documents`) liefert höchstens 200 Vorgänge, die Jobliste höchstens 100 (jeweils neueste zuerst, Begrenzung in PostgreSQL).
 - **Audit der Prüfgrundlage:** Scheitert der Audit-Eintrag nach dem Speichern, wird der Job FAILED (sichtbar); `resultDossierId` ist bereits gesetzt, die Wiederholung aktualisiert dieses Dossier statt ein zweites anzulegen.
 - **Feste Fehlermeldungen:** `error_message` des Jobs und die 500-Antworten der API enthalten feste deutsche Texte; Modell-, Datenbank- und Providertexte (können Mandantendaten enthalten) gehen nur als Fehlerklasse ins Log.
+
+### Analyse-Kontingent
+
+`POST /api/analyze` prüft vor der Wahl zwischen Hintergrund-Job und Live-Stream das Kontingent der Kanzlei ([`src/lib/jobs/analysis-quota.ts`](../../src/lib/jobs/analysis-quota.ts)); gezählt wird in PostgreSQL, nicht im Prozess. Demo-Kanzleien (jede anonyme Sitzung legt eine neue an) haben zusätzlich ein Tageskontingent und eine Obergrenze über alle Demo-Kanzleien als harte Kostengrenze; überschritten antwortet die Route mit 429. Die Zahlen sind Konfiguration, die Berechnung steht in [ARCHITECTURE.md](../ARCHITECTURE.md).
