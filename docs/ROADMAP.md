@@ -95,3 +95,11 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] Schema-valider XML-Export (XJustiz 3.4.1+) für Fachverfahren (TriNotar, NoRA, Notar 4.0, RA-MICRO)
 - [ ] **C.6 Enterprise Styling Grundattribute & Design Tokens:**
   - _(Detaillierte Spezifikation und Aufgabenplan in [BACKLOG.md §15](./BACKLOG.md#15-enterprise-styling-grundattribute--design-tokens-benchmark-linear-clerk--supabase) hinterlegt)_
+- [ ] **C.7 Enterprise-Betrieb (Befund vom 02.11.2026, Stand und Fakten: [runbook.md](./betrieb/runbook.md), [auftragsverarbeitung.md](./betrieb/auftragsverarbeitung.md)):**
+  - [ ] **Staging und Datensicherung:** Entscheidung offen, Supabase steht im Free-Plan (kein Branching, keine Backups, 2 Projekte belegt). Mit Pro-Plan: Branching je PR, tägliche Backups, Restore-Test durchführen und im Runbook festhalten. Bis dahin Datensicherung nur manuell (`supabase db dump`).
+  - [ ] **Alarmierung:** Sentry-Alarmregel „neue Issue“ anlegen; externer Erreichbarkeits-Check auf `GET /api/health` (braucht ein Konto bei einem Anbieter).
+  - [ ] **Vercel-Region live prüfen:** Nach dem nächsten Produktions-Deployment bestätigen, dass die Funktionen in `fra1` laufen (Vercel → Deployment → Functions).
+  - [ ] **Auftragsverarbeitung klären:** AVV/DPA ablegen, Anthropic-ZDR und EU-Frage entscheiden, Gemini-Schlüssel auf bezahlten Zugang prüfen (siehe [auftragsverarbeitung.md](./betrieb/auftragsverarbeitung.md)).
+  - [ ] **Rate-Limit je Route:** Auth-Routen stützen sich auf die Grenzen von Supabase Auth, `/api/storage/upload-url` hat keine eigene Grenze. Bewerten, ob ein PostgreSQL-gestützter Zähler (Migration in `core`) nötig ist, bevor ein externer Dienst angebunden wird.
+  - [ ] **Request-Kennung und Tracing:** `x-request-id` in [src/proxy.ts](../src/proxy.ts) erzeugen, in Logs und Sentry-Tags führen; Kosten je Lauf liegen bereits in `llm_usage`.
+  - [ ] **Lasttests:** siehe B.9 (k6).
