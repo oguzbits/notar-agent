@@ -83,7 +83,7 @@ CREATE OR REPLACE FUNCTION count_recent_uploads(p_organization_id UUID, p_window
 RETURNS INT LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public, pg_temp AS $$
     SELECT count(*)::int FROM storage.objects o
     WHERE o.bucket_id = 'dossier-files'
-      AND (storage.foldername(o.name))[1] = p_organization_id::text
+      AND o.name LIKE p_organization_id::text || '/%'
       AND o.created_at >= now() - p_window;
 $$;
 REVOKE EXECUTE ON FUNCTION count_recent_uploads(UUID, INTERVAL) FROM PUBLIC, anon;
