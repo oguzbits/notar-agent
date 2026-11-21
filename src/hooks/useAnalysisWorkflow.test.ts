@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CASE_TYPES } from '@/types/dossier';
+import { IDEMPOTENCY_KEY_HEADER } from '@/types/jobs';
 import { useAnalysisWorkflow } from './useAnalysisWorkflow';
 
 describe('useAnalysisWorkflow', () => {
@@ -38,6 +39,29 @@ describe('useAnalysisWorkflow', () => {
     expect(result.current.isAnalyzing).toBe(false);
     expect(result.current.errorMessage).toBeNull();
     expect(enqueuedJobId).toBe('job-12345');
+  });
+
+  it('sendet je Absenden einen frischen Idempotency-Key (UUID)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ jobId: 'job-1' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useAnalysisWorkflow());
+    const files = [{ name: 'doc.pdf', size: 100, type: 'application/pdf', content: 'test' }];
+
+    await act(async () => {
+      await result.current.startAsyncAnalysis(files, CASE_TYPES.IMMOBILIENKAUF, '', () => {});
+      await result.current.startAsyncAnalysis(files, CASE_TYPES.IMMOBILIENKAUF, '', () => {});
+    });
+
+    const keys = fetchMock.mock.calls.map(
+      ([, init]) => (init as { headers: Record<string, string> }).headers[IDEMPOTENCY_KEY_HEADER]
+    );
+    expect(keys[0]).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    );
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('handles server error response during startAsyncAnalysis properly', async () => {

@@ -48,7 +48,7 @@ describe('job-worker (executeDossierJob)', () => {
       return mockResultDossier;
     };
 
-    const job = await jobRepo.createJob({
+    const { job } = await jobRepo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [{ name: 'scan.pdf', size: 100, type: 'application/pdf', content: 'test' }],
       notes: '',
@@ -74,7 +74,7 @@ describe('job-worker (executeDossierJob)', () => {
       throw new Error('Anthropic API 500');
     };
 
-    const job = await jobRepo.createJob({
+    const { job } = await jobRepo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: '',
@@ -110,7 +110,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('reicht den Sitzungs-Client der Ausführenden an Stufe 1 weiter', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       const storageClient = { storage: {} } as never;
       const spy = vi.fn(extractionFn);
 
@@ -126,7 +126,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('Abbruch während Stufe 2: Signal erreicht die Stufe, kein Dossier, Status bleibt CANCELLED', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       let auditorSignal: AbortSignal | undefined;
 
       const done = await executeDossierJob(job.id, {
@@ -148,7 +148,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('Abbruch aus einer anderen Instanz beim Speichern: Abschluss überschreibt CANCELLED nicht', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       vi.mocked(dossierRepo.save).mockImplementationOnce(async () => {
         // Kein AbortController in diesem Prozess: nur der Datenbankstatus ändert sich
         await jobRepo.transitionJob(job.id, [JOB_STATUS.PROCESSING], {
@@ -174,7 +174,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('Abbruch aus einer anderen Instanz während Stufe 2: kein Dossier gespeichert', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
 
       const done = await executeDossierJob(job.id, {
         jobRepo,
@@ -193,7 +193,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('Abbruch aus einer anderen Instanz während Stufe 1: kein Checkpoint, Stufe 2 läuft nicht', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       const auditorFn = vi.fn(async () => mockResultDossier);
 
       const done = await executeDossierJob(job.id, {
@@ -214,7 +214,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('ein abgeschlossener Job lässt sich nicht mehr abbrechen', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       await executeDossierJob(job.id, {
         jobRepo,
         dossierRepo,
@@ -229,7 +229,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('Abbruch während des Speicherns wird abgelehnt: Dossier und Job bleiben stimmig', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       let statusAfterCancel: string | undefined;
       vi.mocked(dossierRepo.save).mockImplementationOnce(async () => {
         statusAfterCancel = (await cancelDossierJob(job.id, { jobRepo }))?.status;
@@ -254,7 +254,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('ein abgelöster Lauf (Heilung und Neustart) speichert nichts und ändert den neuen Lauf nicht', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       const newRunLock = '2099-01-01T00:00:00.000Z';
 
       const done = await executeDossierJob(job.id, {
@@ -274,7 +274,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('ein abgelöster Lauf entfernt beim Ende nicht den Abbruch-Zugriff des neuen Laufs', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       let releaseOld!: () => void;
       let releaseNew!: () => void;
       let markOldInStage2!: () => void;
@@ -326,7 +326,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('Shutdown-Signal zwischen den Stufen: kein Dossier, Job wartet wieder', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       const shutdown = new AbortController();
 
       const done = await executeDossierJob(job.id, {
@@ -345,7 +345,7 @@ describe('job-worker (executeDossierJob)', () => {
     });
 
     it('reicht das Abbruchsignal an die Extraktion durch', async () => {
-      const job = await jobRepo.createJob(payload);
+      const { job } = await jobRepo.createJob(payload);
       const extraction = vi.fn(extractionFn);
 
       await executeDossierJob(job.id, {
@@ -362,7 +362,7 @@ describe('job-worker (executeDossierJob)', () => {
   describe('Fortschritt', () => {
     it('ein verspätetes Fortschritts-Update ändert einen abgeschlossenen Job nicht', async () => {
       let lateStep: ((step: number, detail: string) => void) | undefined;
-      const job = await jobRepo.createJob({
+      const { job } = await jobRepo.createJob({
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
         notes: '',
@@ -392,7 +392,7 @@ describe('job-worker (executeDossierJob)', () => {
         if (update.stage === JOB_STAGES.EXTRACTION) throw new Error('Datenbank nicht erreichbar');
         return original(id, from, update, org);
       });
-      const job = await jobRepo.createJob({
+      const { job } = await jobRepo.createJob({
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
         notes: '',
@@ -423,7 +423,7 @@ describe('job-worker (executeDossierJob)', () => {
       return mockResultDossier;
     };
 
-    const job = await jobRepo.createJob({
+    const { job } = await jobRepo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [{ name: 'doc.pdf', size: 100, type: 'application/pdf', content: 'test' }],
       notes: 'Abbruch-Test',
@@ -459,7 +459,7 @@ describe('job-worker (executeDossierJob)', () => {
     const auditorMock = vi.fn(async () => mockResultDossier);
     const sessionKnowledgeRepo = createMockKnowledgeRepository();
 
-    const job = await jobRepo.createJob({
+    const { job } = await jobRepo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [{ name: 'kaufvertrag.pdf', size: 200, type: 'application/pdf', content: 'test' }],
       notes: 'Testnotiz',
@@ -493,7 +493,7 @@ describe('job-worker (executeDossierJob)', () => {
     const extractionMock = vi.fn();
     const auditorMock = vi.fn(async () => mockResultDossier);
 
-    const job = await jobRepo.createJob({
+    const { job } = await jobRepo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: '',
@@ -522,7 +522,7 @@ describe('job-worker (executeDossierJob)', () => {
 
   it('führt einen nicht wartenden Job nicht aus (kein Doppellauf)', async () => {
     const pipeline = vi.fn(async () => mockResultDossier);
-    const job = await jobRepo.createJob({
+    const { job } = await jobRepo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: '',
@@ -547,7 +547,7 @@ describe('job-worker (executeDossierJob)', () => {
       const auditRepo = createMockAuditRepository();
       const knowledgeRepo = createMockKnowledgeRepository();
       const rules = await knowledgeRepo.getStatutoryRules(ORG_ID);
-      const job = await jobRepo.createJob(payload, ORG_ID);
+      const { job } = await jobRepo.createJob(payload, ORG_ID);
 
       const done = await executeDossierJob(job.id, {
         jobRepo,
@@ -570,7 +570,7 @@ describe('job-worker (executeDossierJob)', () => {
 
     it('schreibt bei einem fehlgeschlagenen Lauf keinen Eintrag', async () => {
       const auditRepo = createMockAuditRepository();
-      const job = await jobRepo.createJob(payload, ORG_ID);
+      const { job } = await jobRepo.createJob(payload, ORG_ID);
 
       await executeDossierJob(job.id, {
         jobRepo,
@@ -589,7 +589,7 @@ describe('job-worker (executeDossierJob)', () => {
       vi.mocked(auditRepo.appendEvent).mockRejectedValueOnce(
         new Error('Audit-DB nicht erreichbar')
       );
-      const job = await jobRepo.createJob(payload, ORG_ID);
+      const { job } = await jobRepo.createJob(payload, ORG_ID);
       const deps = { jobRepo, dossierRepo, auditRepo, pipelineFn };
 
       const failed = await executeDossierJob(job.id, deps);

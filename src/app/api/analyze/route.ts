@@ -7,8 +7,10 @@ import { createUsageRecorder } from '@/lib/ai/usage-repository';
 import { appendOverrideAudit } from '@/lib/audit/override-audit';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { carryOverReviews, checkStatusOverride } from '@/lib/dossier/state';
+import { JobIdConflictError } from '@/lib/jobs/job-repository';
 import { executeDossierJob } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
+import { REQUEST_ID_HEADER } from '@/lib/observability/request-id';
 import { createSseStream } from '@/lib/sse/create-sse-stream';
 import { isOwnUploadPath } from '@/lib/storage/storage-path';
 import { DossierNotFoundError } from '@/lib/supabase/repository';
@@ -31,12 +33,19 @@ import {
   Dossier,
   STORAGE_TYPES,
 } from '@/types/dossier';
-import { DEMO_ANALYSIS_LIMIT, JOB_RATE_LIMIT } from '@/types/jobs';
+import {
+  DEMO_ANALYSIS_LIMIT,
+  IDEMPOTENCY_KEY_HEADER,
+  IdempotencyKeySchema,
+  JOB_RATE_LIMIT,
+} from '@/types/jobs';
 import { WORKFLOW_STEP_STATUS, WorkflowInstance } from '@/types/workflow';
+import { enqueuedResponse } from './enqueued-response';
 
 export const maxDuration = 60; // Erlaube bis zu 60s Laufzeit für Dokumentenanalysen
 
 export async function POST(req: NextRequest): Promise<Response> {
+  const requestId = req.headers.get(REQUEST_ID_HEADER);
   try {
     const rawBody: unknown = await req.json().catch(() => ({}));
     const parseResult = AnalyzeRequestSchema.safeParse(rawBody);
@@ -60,7 +69,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     try {
       aiConfig = getAiConfiguration();
     } catch (err: unknown) {
-      logFailure('error', 'analyze_fehlgeschlagen', err);
+      logFailure('error', 'analyze_fehlgeschlagen', err, requestId);
       return NextResponse.json({ error: 'Kein KI-API-Key konfiguriert.' }, { status: 500 });
     }
 
@@ -101,8 +110,22 @@ export async function POST(req: NextRequest): Promise<Response> {
       req.nextUrl.searchParams.get('async') === 'true' ||
       req.headers.get('x-async-mode') === 'true';
 
-    // Kontingent gilt für beide Wege (Hintergrund-Job und Live-Stream)
     const jobRepo = getJobRepository(authSupabase);
+
+    // Wiederholung mit gleichem Schlüssel: vorhandenen Job zurückgeben, vor Kontingent und Worker-Start
+    let idempotencyKey: string | undefined;
+    const rawKey = req.headers.get(IDEMPOTENCY_KEY_HEADER);
+    if (isAsync && rawKey !== null) {
+      const parsedKey = IdempotencyKeySchema.safeParse(rawKey);
+      if (!parsedKey.success) {
+        return NextResponse.json({ error: 'Ungültiger Idempotency-Key.' }, { status: 400 });
+      }
+      idempotencyKey = parsedKey.data;
+      const existing = await jobRepo.getJobById(idempotencyKey, resolvedOrgId);
+      if (existing) return enqueuedResponse(existing);
+    }
+
+    // Kontingent gilt für beide Wege (Hintergrund-Job und Live-Stream)
     const windowStart = new Date(Date.now() - JOB_RATE_LIMIT.WINDOW_MS).toISOString();
     const recentRuns = await jobRepo.countAnalysisRunsSince(resolvedOrgId, windowStart);
     if (recentRuns >= JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW) {
@@ -135,7 +158,13 @@ export async function POST(req: NextRequest): Promise<Response> {
       // Der Hintergrund-Pfad legt bewusst keine Workflow-Instanz an: der Worker hat kein
       // Workflow-Repository und kein Client liest den Ablaufstand eines Jobs.
       const dossierRepo = getDossierRepository(authSupabase);
-      const job = await jobRepo.createJob({ ...parseResult.data, existingDossier }, resolvedOrgId);
+      const { job, created } = await jobRepo.createJob(
+        { ...parseResult.data, existingDossier },
+        resolvedOrgId,
+        idempotencyKey
+      );
+      // Gleichzeitige Anfrage mit demselben Schlüssel war schneller: deren Worker läuft bereits
+      if (!created) return enqueuedResponse(job);
       const workerDeps = {
         jobRepo,
         dossierRepo,
@@ -152,19 +181,11 @@ export async function POST(req: NextRequest): Promise<Response> {
         });
       } catch (afterErr: unknown) {
         // Fallback falls after() im aktuellen Laufzeit-/Testkontext nicht aktiv ist
-        logFailure('info', 'after_nicht_verfuegbar', afterErr);
+        logFailure('info', 'after_nicht_verfuegbar', afterErr, requestId);
         void executeDossierJob(job.id, workerDeps);
       }
 
-      return NextResponse.json(
-        {
-          message: 'Job erfolgreich eingereiht.',
-          jobId: job.id,
-          status: job.status,
-          pollUrl: `/api/jobs/${job.id}`,
-        },
-        { status: 202 }
-      );
+      return enqueuedResponse(job);
     }
 
     return createSseStream(async (emitter) => {
@@ -216,7 +237,7 @@ export async function POST(req: NextRequest): Promise<Response> {
             organizationId: resolvedOrgId,
           });
         } catch (workflowErr: unknown) {
-          logFailure('error', 'workflow_instanzierung_fehlgeschlagen', workflowErr);
+          logFailure('error', 'workflow_instanzierung_fehlgeschlagen', workflowErr, requestId);
           workflowError = 'Der Ablauf des Vorgangs konnte nicht gespeichert werden.';
         }
       }
@@ -248,12 +269,16 @@ export async function POST(req: NextRequest): Promise<Response> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    logFailure('error', 'analyse_fehlgeschlagen', error);
+    if (error instanceof JobIdConflictError) {
+      return NextResponse.json({ error: 'Idempotency-Key bereits vergeben.' }, { status: 409 });
+    }
+    logFailure('error', 'analyse_fehlgeschlagen', error, requestId);
     return NextResponse.json({ error: 'Analyse fehlgeschlagen.' }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest): Promise<Response> {
+  const requestId = req.headers.get(REQUEST_ID_HEADER);
   try {
     const rawBody: unknown = await req.json().catch(() => ({}));
     const parseResult = UpdateDossierRequestSchema.safeParse(rawBody);
@@ -315,7 +340,7 @@ export async function PUT(req: NextRequest): Promise<Response> {
     if (error instanceof DossierNotFoundError) {
       return NextResponse.json({ error: 'Vorgang nicht gefunden.' }, { status: 404 });
     }
-    logFailure('error', 'analyse_update_fehlgeschlagen', error);
+    logFailure('error', 'analyse_update_fehlgeschlagen', error, requestId);
     return NextResponse.json({ error: 'Fehler beim Aktualisieren.' }, { status: 500 });
   }
 }

@@ -47,7 +47,7 @@ describe('API Route: POST /api/jobs/[id]/cancel', () => {
   });
 
   it('verlangt UPLOAD_DOCUMENTS und bricht ohne Sitzung nichts ab (401)', async () => {
-    const job = await repo.createJob({
+    const { job } = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: 'Läuft weiter',
@@ -82,7 +82,7 @@ describe('API Route: POST /api/jobs/[id]/cancel', () => {
   });
 
   it('returns 400 when job is already completed or failed', async () => {
-    const job = await repo.createJob({
+    const { job } = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: 'Completed Job',
@@ -103,7 +103,7 @@ describe('API Route: POST /api/jobs/[id]/cancel', () => {
   });
 
   it('cancels active job and returns 200 with cancelled job details', async () => {
-    const job = await repo.createJob({
+    const { job } = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: 'Active Job to Cancel',
@@ -128,7 +128,11 @@ describe('API Route: POST /api/jobs/[id]/cancel', () => {
   });
 
   it('meldet 409, wenn der Job schon gespeichert wird, und lässt ihn weiterlaufen', async () => {
-    const job = await repo.createJob({ caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: '' });
+    const { job } = await repo.createJob({
+      caseType: CASE_TYPES.IMMOBILIENKAUF,
+      files: [],
+      notes: '',
+    });
     await repo.updateJobStatus(job.id, {
       status: JOB_STATUS.PROCESSING,
       stage: JOB_STAGES.PERSISTING,

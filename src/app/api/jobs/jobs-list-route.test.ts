@@ -93,7 +93,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   });
 
   it('GET /api/jobs returns list of all jobs', async () => {
-    const job = await repo.createJob(
+    const { job } = await repo.createJob(
       {
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
@@ -126,7 +126,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   });
 
   it('POST /api/jobs retries a failed job', async () => {
-    const job = await repo.createJob(
+    const { job } = await repo.createJob(
       {
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
@@ -157,7 +157,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   });
 
   it('POST /api/jobs erfasst beim Wiederholen den Tokenverbrauch (usageRepo)', async () => {
-    const job = await repo.createJob(
+    const { job } = await repo.createJob(
       { caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: 'Verbrauch' },
       TEST_ORG_ID
     );
@@ -177,7 +177,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   it.each([JOB_STATUS.PROCESSING, JOB_STATUS.COMPLETED, JOB_STATUS.PENDING])(
     'POST /api/jobs verweigert Wiederholung eines Jobs im Status %s mit 409',
     async (status) => {
-      const job = await repo.createJob({
+      const { job } = await repo.createJob({
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
         notes: 'x',
@@ -196,7 +196,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   );
 
   it('POST /api/jobs verweigert Wiederholung nach Ausschöpfen der Versuche mit 409', async () => {
-    const job = await repo.createJob({
+    const { job } = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: 'x',
@@ -213,7 +213,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   });
 
   it('POST /api/jobs lehnt die Wiederholung nach Ablauf der Aufbewahrungsfrist mit 409 ab', async () => {
-    const job = await repo.createJob(
+    const { job } = await repo.createJob(
       { caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: 'x' },
       TEST_ORG_ID
     );
@@ -239,7 +239,7 @@ describe('API Route: /api/jobs (List & Retry)', () => {
   });
 
   it('POST /api/jobs zählt jede Wiederholung', async () => {
-    const job = await repo.createJob(
+    const { job } = await repo.createJob(
       {
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],

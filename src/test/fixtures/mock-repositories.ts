@@ -1,7 +1,11 @@
 import { vi } from 'vitest';
 import { calculateAuditRecordHash, GENESIS_HASH, verifyAuditChain } from '@/lib/audit/audit-crypto';
 import type { IAuditRepository, AppendAuditParams } from '@/lib/audit/audit-repository';
-import type { IJobRepository, JobTransitionGuard } from '@/lib/jobs/job-repository';
+import {
+  JobIdConflictError,
+  type IJobRepository,
+  type JobTransitionGuard,
+} from '@/lib/jobs/job-repository';
 import type { IKnowledgeRepository } from '@/lib/knowledge/knowledge-repository';
 import {
   DossierNotFoundError,
@@ -46,8 +50,13 @@ export function createMockJobRepository(): IJobRepository {
   let idCounter = 0;
 
   return {
-    createJob: vi.fn(async (payload: CreateJobPayload, organizationId?: string) => {
-      const id = `job-${++idCounter}`;
+    createJob: vi.fn(async (payload: CreateJobPayload, organizationId?: string, jobId?: string) => {
+      const known = jobId ? jobs.get(jobId) : undefined;
+      if (known) {
+        if (known.organizationId !== organizationId) throw new JobIdConflictError();
+        return { job: known, created: false };
+      }
+      const id = jobId ?? `job-${++idCounter}`;
       const job: DossierJob = {
         id,
         status: JOB_STATUS.PENDING,
@@ -59,9 +68,15 @@ export function createMockJobRepository(): IJobRepository {
         organizationId,
       };
       jobs.set(id, job);
-      return job;
+      return { job, created: true };
     }),
-    getJobById: vi.fn(async (id: string) => jobs.get(id) ?? null),
+    getJobById: vi.fn(async (id: string, organizationId?: string) => {
+      const job = jobs.get(id);
+      // Jobs ohne Kanzlei (ältere Fixtures) bleiben für jede Kanzlei lesbar
+      const foreign =
+        job?.organizationId && organizationId && job.organizationId !== organizationId;
+      return job && !foreign ? job : null;
+    }),
     transitionJob: vi.fn(
       async (
         id: string,

@@ -15,7 +15,12 @@ import {
 import { fakeRequirePermission } from '@/test/fixtures/session-context';
 import { PERMISSION_ACTIONS } from '@/types/auth';
 import { CASE_TYPES, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
-import { DEMO_ANALYSIS_LIMIT, JOB_RATE_LIMIT, JOB_STATUS } from '@/types/jobs';
+import {
+  DEMO_ANALYSIS_LIMIT,
+  IDEMPOTENCY_KEY_HEADER,
+  JOB_RATE_LIMIT,
+  JOB_STATUS,
+} from '@/types/jobs';
 import { NOTARY_ROLES } from '@/types/organization';
 import { POST, PUT } from './route';
 
@@ -707,5 +712,145 @@ describe('API Route: POST /api/analyze Live-Pfad (SSE) Ablaufverfolgung', () => 
   it('meldet bei erfolgreicher Ablaufverfolgung keinen Fehler', async () => {
     const result = await runLive();
     expect(result.workflowError).toBeUndefined();
+  });
+});
+
+describe('API Route: POST /api/analyze Idempotency-Key (Hintergrund-Pfad)', () => {
+  const KEY = '7c1d9f0e-3b6a-4d52-9a3e-1f2b4c6d8e0a';
+  const FOREIGN_ORG = 'b0000000-0000-4000-8000-000000000002';
+
+  const enqueue = (key?: string) =>
+    POST(
+      new NextRequest('http://localhost:3000/api/analyze?async=true', {
+        method: 'POST',
+        headers: key === undefined ? {} : { [IDEMPOTENCY_KEY_HEADER]: key },
+        body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+      })
+    );
+
+  beforeEach(() => {
+    vi.stubEnv('GEMINI_API_KEY', 'test-key');
+    vi.mocked(executeDossierJob).mockClear();
+    vi.mocked(mockJobRepo.countAnalysisRunsSince).mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('verwendet den Schlüssel als Job-ID', async () => {
+    const res = await enqueue(KEY);
+    expect(res.status).toBe(202);
+    expect((await res.json()).jobId).toBe(KEY);
+  });
+
+  it('lehnt einen Schlüssel ohne UUID-Format ab (400), ohne Job anzulegen', async () => {
+    const spy = vi.spyOn(mockJobRepo, 'createJob');
+    spy.mockClear();
+    const res = await enqueue('kein-uuid');
+    expect(res.status).toBe(400);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('Wiederholung mit gleichem Schlüssel: gleicher Job, kein Kontingent, kein zweiter Worker', async () => {
+    const key = '8d2e0a1f-4c7b-4e63-8b4f-2a3c5d7e9f1b';
+    const first = await enqueue(key);
+    expect(first.status).toBe(202);
+    const runsAfterFirst = vi.mocked(mockJobRepo.countAnalysisRunsSince).mock.calls.length;
+    expect(vi.mocked(executeDossierJob)).toHaveBeenCalledTimes(1);
+
+    // Das Kontingent wäre bei einer neuen Anfrage erschöpft: die Wiederholung darf es nicht prüfen
+    vi.mocked(mockJobRepo.countAnalysisRunsSince).mockResolvedValue(
+      JOB_RATE_LIMIT.MAX_JOBS_PER_WINDOW
+    );
+    try {
+      const second = await enqueue(key);
+      expect(second.status).toBe(202);
+      expect((await second.json()).jobId).toBe(key);
+      expect(vi.mocked(mockJobRepo.countAnalysisRunsSince).mock.calls.length).toBe(runsAfterFirst);
+      expect(vi.mocked(executeDossierJob)).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.mocked(mockJobRepo.countAnalysisRunsSince).mockReset();
+    }
+  });
+
+  it('gleichzeitige Anfrage (Job entsteht zwischen Nachschlagen und Anlegen): kein zweiter Worker', async () => {
+    const existing = await mockJobRepo.createJob(
+      { notes: 'x', caseType: CASE_TYPES.IMMOBILIENKAUF, files: [] },
+      'a0000000-0000-4000-8000-000000000001',
+      '9e3f1b2a-5d8c-4f74-9c50-3b4d6e8f0a2c'
+    );
+    vi.mocked(mockJobRepo.getJobById).mockResolvedValueOnce(null);
+    const res = await enqueue(existing.job.id);
+    expect(res.status).toBe(202);
+    expect(vi.mocked(executeDossierJob)).not.toHaveBeenCalled();
+  });
+
+  it('Schlüssel einer fremden Kanzlei: 409 ohne Inhalt des fremden Jobs, kein Worker', async () => {
+    const foreign = await mockJobRepo.createJob(
+      { notes: 'GEHEIM-FREMD', caseType: CASE_TYPES.IMMOBILIENKAUF, files: [] },
+      FOREIGN_ORG,
+      'af4a2c3b-6e9d-4a85-8d61-4c5e7f9a1b3d'
+    );
+    const res = await enqueue(foreign.job.id);
+    expect(res.status).toBe(409);
+    expect(JSON.stringify(await res.json())).not.toContain('GEHEIM-FREMD');
+    expect(vi.mocked(executeDossierJob)).not.toHaveBeenCalled();
+  });
+
+  it('ohne Header bleibt das Verhalten unverändert (neue Job-ID, Worker startet)', async () => {
+    const res = await enqueue();
+    expect(res.status).toBe(202);
+    expect(vi.mocked(executeDossierJob)).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('API Route: POST /api/analyze Request-Kennung in Logs', () => {
+  const REQ_ID = 'req-test-12345678';
+  const post = (url: string, headers: Record<string, string>) =>
+    POST(
+      new NextRequest(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+      })
+    );
+
+  beforeEach(() => {
+    vi.stubEnv('GEMINI_API_KEY', 'test-key');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('trägt die Kennung im Fehlerlog der Analyse (500)', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(mockJobRepo.countAnalysisRunsSince).mockRejectedValueOnce(new Error('db'));
+    const res = await post('http://localhost:3000/api/analyze', { 'x-request-id': REQ_ID });
+    expect(res.status).toBe(500);
+    const lines = spy.mock.calls.map((c) => JSON.parse(String(c[0])));
+    expect(lines).toContainEqual(
+      expect.objectContaining({ event: 'analyse_fehlgeschlagen', requestId: REQ_ID })
+    );
+  });
+
+  it('trägt die Kennung im Log des Hintergrund-Pfads', async () => {
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    await post('http://localhost:3000/api/analyze?async=true', { 'x-request-id': REQ_ID });
+    const lines = spy.mock.calls.map((c) => JSON.parse(String(c[0])));
+    expect(lines).toContainEqual(
+      expect.objectContaining({ event: 'after_nicht_verfuegbar', requestId: REQ_ID })
+    );
+  });
+
+  it('verwirft eine ungültige Kennung im Log', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(mockJobRepo.countAnalysisRunsSince).mockRejectedValueOnce(new Error('db'));
+    const res = await post('http://localhost:3000/api/analyze', { 'x-request-id': 'zu kurz' });
+    expect(res.status).toBe(500);
+    const lines = spy.mock.calls.map((c) => JSON.parse(String(c[0])));
+    expect(lines.every((l) => l.requestId === undefined)).toBe(true);
   });
 });

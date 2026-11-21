@@ -51,7 +51,7 @@ describe('Kontingent der Analysen je Kanzlei', () => {
   });
 
   it('ein Hintergrund-Job zählt einmal, auch mit eigenen Verbrauchszeilen', async () => {
-    const job = await repo.createJob(
+    const { job } = await repo.createJob(
       { caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: 'Kontingent' },
       orgId
     );

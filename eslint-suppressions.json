@@ -387,11 +387,6 @@
       "count": 1
     }
   },
-  "src/lib/jobs/job-repository.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/lib/jobs/job-worker.ts": {
     "complexity": {
       "count": 1

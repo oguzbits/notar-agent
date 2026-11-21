@@ -138,6 +138,10 @@ export type RetryJobRequest = z.infer<typeof RetryJobRequestSchema>;
 
 export type DossierJob = z.infer<typeof DossierJobSchema>;
 
+/** Wiederholungsschutz des Hintergrund-Pfads: der Schlüssel (UUID) ist zugleich die Job-ID. */
+export const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key';
+export const IdempotencyKeySchema = DbUuidSchema;
+
 // Begrenzung der Analyse-Aufträge je Kanzlei (schützt KI-Kosten und Verfügbarkeit)
 export const JOB_RATE_LIMIT = {
   MAX_JOBS_PER_WINDOW: 30,

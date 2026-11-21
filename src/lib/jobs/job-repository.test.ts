@@ -35,6 +35,86 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
     );
   });
 
+  describe('createJob mit Idempotency-Key als Job-ID', () => {
+    const JOB_ID = '11111111-2222-4333-8444-555555555555';
+    const ORG_ID = 'a0000000-0000-4000-8000-000000000001';
+    const existingRow = {
+      id: JOB_ID,
+      organization_id: ORG_ID,
+      status: JOB_STATUS.PENDING,
+      payload: samplePayload,
+      retry_count: 0,
+      max_retries: 3,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    };
+
+    function buildSupabase(insertError: object | null, existing: object | null) {
+      const insert = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi
+            .fn()
+            .mockResolvedValue(
+              insertError
+                ? { data: null, error: insertError }
+                : { data: { ...existingRow, id: JOB_ID }, error: null }
+            ),
+        }),
+      });
+      const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
+      const eq = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle }) });
+      return {
+        from: vi.fn().mockReturnValue({ insert, select: vi.fn().mockReturnValue({ eq }) }),
+        insert,
+      };
+    }
+
+    it('legt den Job mit der übergebenen ID an (created: true)', async () => {
+      const supabase = buildSupabase(null, null);
+      const { SupabaseJobRepository } = await import('./job-repository');
+      const repo = new SupabaseJobRepository(supabase as never);
+
+      const result = await repo.createJob(samplePayload, ORG_ID, JOB_ID);
+
+      expect(result.created).toBe(true);
+      expect(result.job.id).toBe(JOB_ID);
+      expect(supabase.insert).toHaveBeenCalledWith(expect.objectContaining({ id: JOB_ID }));
+    });
+
+    it('liefert bei Primärschlüssel-Verletzung (23505) den vorhandenen Job der eigenen Kanzlei (created: false)', async () => {
+      const supabase = buildSupabase({ code: '23505', message: 'duplicate key' }, existingRow);
+      const { SupabaseJobRepository } = await import('./job-repository');
+      const repo = new SupabaseJobRepository(supabase as never);
+
+      const result = await repo.createJob(samplePayload, ORG_ID, JOB_ID);
+
+      expect(result.created).toBe(false);
+      expect(result.job.id).toBe(JOB_ID);
+    });
+
+    it('wirft JobIdConflictError, wenn die ID einer fremden (nicht lesbaren) Kanzlei gehört', async () => {
+      const supabase = buildSupabase({ code: '23505', message: 'duplicate key' }, null);
+      const { SupabaseJobRepository, JobIdConflictError } = await import('./job-repository');
+      const repo = new SupabaseJobRepository(supabase as never);
+
+      await expect(repo.createJob(samplePayload, ORG_ID, JOB_ID)).rejects.toBeInstanceOf(
+        JobIdConflictError
+      );
+    });
+
+    it('wirft bei anderen Datenbankfehlern weiterhin den allgemeinen Fehler', async () => {
+      const supabase = buildSupabase({ code: '08006', message: 'Connection Timeout' }, existingRow);
+      const { SupabaseJobRepository, JobIdConflictError } = await import('./job-repository');
+      const repo = new SupabaseJobRepository(supabase as never);
+
+      const attempt = repo.createJob(samplePayload, ORG_ID, JOB_ID);
+      await expect(attempt).rejects.toThrow(
+        'Supabase createJob fehlgeschlagen: Connection Timeout'
+      );
+      await expect(attempt).rejects.not.toBeInstanceOf(JobIdConflictError);
+    });
+  });
+
   it('fails fast and throws when Supabase query encounters an error in getJobById', async () => {
     const mockSupabase = {
       from: vi.fn().mockReturnValue({

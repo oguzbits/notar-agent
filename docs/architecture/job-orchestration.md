@@ -90,6 +90,10 @@ Für Uploads und Analysen aus der Web-Applikation (`POST /api/analyze?async=true
 - **Audit der Prüfgrundlage:** Scheitert der Audit-Eintrag nach dem Speichern, wird der Job FAILED (sichtbar); `resultDossierId` ist bereits gesetzt, die Wiederholung aktualisiert dieses Dossier statt ein zweites anzulegen.
 - **Feste Fehlermeldungen:** `error_message` des Jobs und die 500-Antworten der API enthalten feste deutsche Texte; Modell-, Datenbank- und Providertexte (können Mandantendaten enthalten) gehen nur als Fehlerklasse ins Log.
 
+### Wiederholungsschutz (Idempotency-Key)
+
+Der Hintergrund-Pfad nimmt den Header `Idempotency-Key` (UUID) entgegen; der Client erzeugt je Absenden einen frischen Schlüssel. Der Schlüssel ist zugleich die Job-ID (`dossier_jobs.id`, `TEXT PRIMARY KEY`), eine eigene Spalte oder Migration entfällt. Die Route schlägt den Schlüssel vor der Kontingentprüfung in der eigenen Kanzlei nach: eine Wiederholung liefert denselben Job mit `202`, verbraucht kein Kontingent und startet keinen zweiten Worker. Kommen zwei Anfragen gleichzeitig, entscheidet die Primärschlüssel-Verletzung (SQLSTATE `23505`) im Repository: genau eine legt an (`created: true`), die andere erhält den vorhandenen Job. Ist die ID nicht lesbar (fremde Kanzlei), wirft das Repository `JobIdConflictError` und die Route antwortet mit `409`, ohne Inhalt des fremden Jobs. Ein Schlüssel ohne UUID-Format wird mit `400` abgelehnt; ohne Header bleibt das Verhalten unverändert.
+
 ### Analyse-Kontingent
 
 `POST /api/analyze` prüft vor der Wahl zwischen Hintergrund-Job und Live-Stream das Kontingent der Kanzlei ([`src/lib/jobs/analysis-quota.ts`](../../src/lib/jobs/analysis-quota.ts)); gezählt wird in PostgreSQL, nicht im Prozess. Demo-Kanzleien (jede anonyme Sitzung legt eine neue an) haben zusätzlich ein Tageskontingent und eine Obergrenze über alle Demo-Kanzleien als harte Kostengrenze; überschritten antwortet die Route mit 429. Die Zahlen sind Konfiguration, die Berechnung steht in [ARCHITECTURE.md](../ARCHITECTURE.md).

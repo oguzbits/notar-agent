@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { parseSseStream } from '@/lib/sse/parse-sse-stream';
 import { useOptionalAuth } from '@/providers/AuthProvider';
 import { Dossier, CaseType, UploadedFilePayload, PersistenceMeta } from '@/types/dossier';
+import { IDEMPOTENCY_KEY_HEADER } from '@/types/jobs';
 
 export interface AnalysisStreamResult {
   dossier: Dossier;
@@ -89,7 +90,10 @@ export function useAnalysisWorkflow() {
     setStepDetail('Hintergrund-Job wird angelegt...');
     setErrorMessage(null);
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      [IDEMPOTENCY_KEY_HEADER]: crypto.randomUUID(),
+    };
     if (organization?.id) {
       headers['x-organization-id'] = organization.id;
     }

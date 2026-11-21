@@ -57,7 +57,7 @@ describe('API Route: GET /api/jobs/[id]', () => {
   });
 
   it('returns 200 with job details when job exists', async () => {
-    const job = await repo.createJob({
+    const { job } = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: 'Testauftrag',
@@ -88,7 +88,7 @@ describe('API Route: GET /api/jobs/[id]', () => {
   });
 
   it('verändert beim Lesen den Status eines laufenden Jobs nicht, auch bei alter Sperre', async () => {
-    const job = await repo.createJob({
+    const { job } = await repo.createJob({
       caseType: CASE_TYPES.IMMOBILIENKAUF,
       files: [],
       notes: 'Laufender Job',
@@ -122,7 +122,7 @@ describe('API Route: GET /api/jobs/[id]', () => {
       vi.mocked(requirePermission).mockImplementation(
         fakeRequirePermission(NOTARY_ROLES.SACHBEARBEITER)
       );
-      const job = await repo.createJob({
+      const { job } = await repo.createJob({
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
         notes: 'Geschützter Job',
@@ -141,7 +141,7 @@ describe('API Route: GET /api/jobs/[id]', () => {
     });
 
     it('deletes job and returns 200 success', async () => {
-      const job = await repo.createJob({
+      const { job } = await repo.createJob({
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         files: [],
         notes: 'Zu löschender Job',

@@ -20,7 +20,9 @@ beforeAll(async () => {
 });
 
 const newJob = () =>
-  repo.createJob({ caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: randomUUID() }, orgId);
+  repo
+    .createJob({ caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: randomUUID() }, orgId)
+    .then(({ job }) => job);
 
 describe('Atomarer Statusübergang (transitionJob)', () => {
   it('Bei gleichzeitigem Zugriff gewinnt genau ein Aufrufer', async () => {
@@ -149,7 +151,7 @@ describe('Heilung veralteter Jobs (recoverOrphanJobs)', () => {
 
 describe('Übersicht (listJobs)', () => {
   it('liefert Anzeigefelder, aber weder Dateiinhalt noch Zwischenergebnis', async () => {
-    const job = await repo.createJob(
+    const { job } = await repo.createJob(
       {
         caseType: CASE_TYPES.IMMOBILIENKAUF,
         notes: 'Kaufvertrag Müller',

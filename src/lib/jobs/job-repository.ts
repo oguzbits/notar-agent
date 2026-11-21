@@ -11,7 +11,6 @@ import {
   CreateJobPayload,
   DemoAnalysisUsage,
   DossierJob,
-  JobProgressDetails,
   JOB_MAX_RETRIES,
   JOB_STATUS,
   JobStatus,
@@ -20,6 +19,7 @@ import {
 } from '@/types/jobs';
 import { STORAGE_BUCKET_NAMES } from '@/types/storage';
 import { countAnalysisRunsSince, getDemoAnalysisUsage } from './analysis-quota';
+import { mapRowToJob } from './job-row-mapper';
 
 /** Aufbewahrung beendeter Vorgänge samt Dateien (Mandantendaten), danach löscht der Cron. */
 export const JOB_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -46,8 +46,26 @@ export interface JobTransitionGuard {
   stageNot?: JobStage;
 }
 
+/** Die vorgegebene Job-ID gehört einer anderen (nicht lesbaren) Kanzlei. */
+export class JobIdConflictError extends Error {
+  constructor() {
+    super('Job-ID bereits vergeben.');
+    this.name = 'JobIdConflictError';
+  }
+}
+
+const PG_UNIQUE_VIOLATION = '23505';
+
 export interface IJobRepository {
-  createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob>;
+  /**
+   * Legt einen Job an; mit `jobId` (Idempotency-Key) liefert eine Wiederholung den vorhandenen Job
+   * der eigenen Kanzlei (`created: false`). Fremde ID: `JobIdConflictError`.
+   */
+  createJob(
+    payload: CreateJobPayload,
+    organizationId?: string,
+    jobId?: string
+  ): Promise<{ job: DossierJob; created: boolean }>;
   getJobById(id: string, organizationId?: string): Promise<DossierJob | null>;
   updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null>;
   /**
@@ -78,9 +96,13 @@ export interface IJobRepository {
 export class SupabaseJobRepository implements IJobRepository {
   constructor(private supabase: SupabaseClient<Database>) {}
 
-  async createJob(payload: CreateJobPayload, organizationId?: string): Promise<DossierJob> {
+  async createJob(
+    payload: CreateJobPayload,
+    organizationId?: string,
+    jobId?: string
+  ): Promise<{ job: DossierJob; created: boolean }> {
     const insertData: TableInsert<typeof DB_TABLES.DOSSIER_JOBS> = {
-      id: crypto.randomUUID(),
+      id: jobId ?? crypto.randomUUID(),
       status: JOB_STATUS.PENDING,
       payload,
       retry_count: 0,
@@ -94,13 +116,22 @@ export class SupabaseJobRepository implements IJobRepository {
       .select('*')
       .single();
 
+    if (error?.code === PG_UNIQUE_VIOLATION && jobId) {
+      return { job: await this.getOwnJobOrConflict(jobId, organizationId), created: false };
+    }
     if (error || !data) {
       throw new Error(
         `Supabase createJob fehlgeschlagen: ${error?.message ?? 'Unbekannter Fehler'}`
       );
     }
 
-    return this.mapRowToJob(data);
+    return { job: mapRowToJob(data), created: true };
+  }
+
+  private async getOwnJobOrConflict(id: string, organizationId?: string): Promise<DossierJob> {
+    const existing = await this.getJobById(id, organizationId);
+    if (!existing) throw new JobIdConflictError();
+    return existing;
   }
 
   async getJobById(id: string, organizationId?: string): Promise<DossierJob | null> {
@@ -114,7 +145,7 @@ export class SupabaseJobRepository implements IJobRepository {
       return null;
     }
 
-    return this.mapRowToJob(data);
+    return mapRowToJob(data);
   }
 
   async updateJobStatus(id: string, update: UpdateJobParams): Promise<DossierJob | null> {
@@ -132,7 +163,7 @@ export class SupabaseJobRepository implements IJobRepository {
       );
     }
 
-    return this.mapRowToJob(data);
+    return mapRowToJob(data);
   }
 
   async transitionJob(
@@ -161,7 +192,7 @@ export class SupabaseJobRepository implements IJobRepository {
       throw new Error(`Supabase transitionJob fehlgeschlagen: ${error.message}`);
     }
     const row = data?.[0];
-    return row ? this.mapRowToJob(row) : null;
+    return row ? mapRowToJob(row) : null;
   }
 
   private buildUpdateData(update: UpdateJobParams): TableUpdate<typeof DB_TABLES.DOSSIER_JOBS> {
@@ -206,7 +237,7 @@ export class SupabaseJobRepository implements IJobRepository {
       'listJobs'
     );
 
-    return data.map((row) => this.mapRowToJob(toListRow(row), { lightweight: true }));
+    return data.map((row) => mapRowToJob(toListRow(row), { lightweight: true }));
   }
 
   countAnalysisRunsSince(organizationId: string, sinceIso: string): Promise<number> {
@@ -215,43 +246,6 @@ export class SupabaseJobRepository implements IJobRepository {
 
   getDemoAnalysisUsage(organizationId: string, sinceIso: string): Promise<DemoAnalysisUsage> {
     return getDemoAnalysisUsage(this.supabase, organizationId, sinceIso);
-  }
-
-  private mapRowToJob(
-    row: Record<string, unknown>,
-    options?: { lightweight?: boolean }
-  ): DossierJob {
-    const rawPayload = row.payload as CreateJobPayload | undefined;
-    const sanitizedPayload: CreateJobPayload =
-      options?.lightweight && rawPayload
-        ? {
-            ...rawPayload,
-            files: (rawPayload.files || []).map(({ name, size, type, isBase64 }) => ({
-              name,
-              size,
-              type,
-              isBase64,
-            })),
-          }
-        : (rawPayload as CreateJobPayload);
-
-    return {
-      id: String(row.id),
-      organizationId: row.organization_id ? String(row.organization_id) : undefined,
-      status: row.status as JobStatus,
-      stage: row.stage ? (row.stage as JobStage) : undefined,
-      progressDetails: row.progress_details
-        ? (row.progress_details as JobProgressDetails)
-        : undefined,
-      payload: sanitizedPayload,
-      resultDossierId: row.result_dossier_id ? String(row.result_dossier_id) : undefined,
-      errorMessage: row.error_message ? String(row.error_message) : undefined,
-      retryCount: Number(row.retry_count ?? 0),
-      maxRetries: Number(row.max_retries ?? 3),
-      lockedAt: row.locked_at ? String(row.locked_at) : undefined,
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
-    };
   }
 
   /**
