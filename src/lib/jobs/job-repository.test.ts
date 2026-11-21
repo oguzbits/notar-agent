@@ -62,10 +62,12 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
         }),
       });
       const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
-      const eq = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle }) });
+      const orgEq = vi.fn().mockReturnValue({ maybeSingle });
+      const eq = vi.fn().mockReturnValue({ eq: orgEq });
       return {
         from: vi.fn().mockReturnValue({ insert, select: vi.fn().mockReturnValue({ eq }) }),
         insert,
+        orgEq,
       };
     }
 
@@ -90,6 +92,8 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
 
       expect(result.created).toBe(false);
       expect(result.job.id).toBe(JOB_ID);
+      // Der Nachschlag bleibt auf die eigene Kanzlei beschränkt (Schutz vor fremden Jobs)
+      expect(supabase.orgEq).toHaveBeenCalledWith('organization_id', ORG_ID);
     });
 
     it('wirft JobIdConflictError, wenn die ID einer fremden (nicht lesbaren) Kanzlei gehört', async () => {

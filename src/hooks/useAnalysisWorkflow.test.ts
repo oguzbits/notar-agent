@@ -64,6 +64,34 @@ describe('useAnalysisWorkflow', () => {
     expect(keys[1]).not.toBe(keys[0]);
   });
 
+  it('behält den Idempotency-Key bei gleichem Inhalt bis zur Bestätigung, bei anderem Inhalt nicht', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Timeout'))
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ jobId: 'job-1' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = renderHook(() => useAnalysisWorkflow());
+    const files = [{ name: 'doc.pdf', size: 100, type: 'application/pdf', content: 'test' }];
+    const other = [{ name: 'andere.pdf', size: 100, type: 'application/pdf', content: 'x' }];
+    const run = (f: typeof files) =>
+      act(async () => {
+        await result.current
+          .startAsyncAnalysis(f, CASE_TYPES.IMMOBILIENKAUF, '', () => {})
+          .catch(() => {});
+      });
+
+    await run(files); // scheitert (Zeitüberschreitung)
+    await run(files); // Wiederholung, gleicher Inhalt
+    await run(other); // anderer Inhalt
+
+    const keys = fetchMock.mock.calls.map(
+      ([, init]) => (init as { headers: Record<string, string> }).headers[IDEMPOTENCY_KEY_HEADER]
+    );
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).not.toBe(keys[0]);
+  });
+
   it('handles server error response during startAsyncAnalysis properly', async () => {
     vi.stubGlobal(
       'fetch',

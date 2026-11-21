@@ -798,6 +798,34 @@ describe('API Route: POST /api/analyze Idempotency-Key (Hintergrund-Pfad)', () =
     expect(vi.mocked(executeDossierJob)).not.toHaveBeenCalled();
   });
 
+  it('prüft die Berechtigung vor dem Nachschlagen: ohne Recht kein Zugriff auf den Job (403)', async () => {
+    const own = await mockJobRepo.createJob(
+      { notes: 'x', caseType: CASE_TYPES.IMMOBILIENKAUF, files: [] },
+      'a0000000-0000-4000-8000-000000000001',
+      'b1c2d3e4-7f0a-4b96-8e72-5d6f8a0b2c4e'
+    );
+    vi.mocked(mockJobRepo.getJobById).mockClear();
+    vi.mocked(requirePermission).mockRejectedValueOnce(new AuthzError(403, 'Keine Berechtigung.'));
+    const res = await enqueue(own.job.id);
+    expect(res.status).toBe(403);
+    expect(vi.mocked(mockJobRepo.getJobById)).not.toHaveBeenCalled();
+    expect(vi.mocked(executeDossierJob)).not.toHaveBeenCalled();
+  });
+
+  it('der Live-Pfad (ohne ?async=true) ignoriert den Schlüssel und legt keinen Job an', async () => {
+    const spy = vi.spyOn(mockJobRepo, 'createJob');
+    spy.mockClear();
+    const res = await POST(
+      new NextRequest('http://localhost:3000/api/analyze', {
+        method: 'POST',
+        headers: { [IDEMPOTENCY_KEY_HEADER]: 'kein-uuid' },
+        body: JSON.stringify({ notes: 'Testnotiz', caseType: CASE_TYPES.IMMOBILIENKAUF }),
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('ohne Header bleibt das Verhalten unverändert (neue Job-ID, Worker startet)', async () => {
     const res = await enqueue();
     expect(res.status).toBe(202);

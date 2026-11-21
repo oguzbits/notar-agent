@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { parseSseStream } from '@/lib/sse/parse-sse-stream';
 import { useOptionalAuth } from '@/providers/AuthProvider';
 import { Dossier, CaseType, UploadedFilePayload, PersistenceMeta } from '@/types/dossier';
@@ -18,6 +18,16 @@ interface SSEAnalysisEvent {
   error?: string;
   dossier?: Dossier;
   persistence?: PersistenceMeta;
+}
+
+interface PendingSubmission {
+  body: string;
+  key: string;
+}
+
+/** Gleicher Inhalt wie der letzte, nicht bestätigte Versuch: derselbe Schlüssel, sonst ein neuer. */
+function keyForSubmission(pending: PendingSubmission | null, body: string): string {
+  return pending?.body === body ? pending.key : crypto.randomUUID();
 }
 
 function formatFilesForApi(files: UploadedFilePayload[]) {
@@ -38,6 +48,7 @@ export function useAnalysisWorkflow() {
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [stepDetail, setStepDetail] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const pendingSubmission = useRef<PendingSubmission | null>(null);
 
   const processAnalysisStream = async (
     response: Response,
@@ -90,9 +101,18 @@ export function useAnalysisWorkflow() {
     setStepDetail('Hintergrund-Job wird angelegt...');
     setErrorMessage(null);
 
+    const body = JSON.stringify({
+      files: formatFilesForApi(files),
+      caseType,
+      notes,
+      organizationId: organization?.id,
+    });
+    const key = keyForSubmission(pendingSubmission.current, body);
+    pendingSubmission.current = { body, key };
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      [IDEMPOTENCY_KEY_HEADER]: crypto.randomUUID(),
+      [IDEMPOTENCY_KEY_HEADER]: key,
     };
     if (organization?.id) {
       headers['x-organization-id'] = organization.id;
@@ -102,12 +122,7 @@ export function useAnalysisWorkflow() {
       const response = await fetch('/api/analyze?async=true', {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          files: formatFilesForApi(files),
-          caseType,
-          notes,
-          organizationId: organization?.id,
-        }),
+        body,
       });
 
       if (!response.ok) {
@@ -118,6 +133,7 @@ export function useAnalysisWorkflow() {
       }
 
       const data = await response.json();
+      pendingSubmission.current = null;
       onEnqueued(data.jobId);
     } catch (err: unknown) {
       console.error('Async Ingestion Error:', err);
