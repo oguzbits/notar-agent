@@ -76,6 +76,19 @@ USING (
   AND get_user_role((storage.foldername(name))[1]::uuid) IN ('NOTAR', 'NOTARASSESSOR', 'ADMIN')
 );
 
+-- Rate-Grenze für Upload-URLs: abgeschlossene Uploads einer Kanzlei im Zeitfenster (Pfadpräfix = Kanzlei-UUID).
+-- SECURITY INVOKER: die Select-Policy des Buckets begrenzt auf Kanzleien, in denen der Aufrufer Mitglied ist.
+-- shortcut: zählt Objekte, nicht ausgestellte URLs; bei Bedarf eigene Zähltabelle je ausgestellter URL.
+CREATE OR REPLACE FUNCTION count_recent_uploads(p_organization_id UUID, p_window INTERVAL)
+RETURNS INT LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public, pg_temp AS $$
+    SELECT count(*)::int FROM storage.objects o
+    WHERE o.bucket_id = 'dossier-files'
+      AND (storage.foldername(o.name))[1] = p_organization_id::text
+      AND o.created_at >= now() - p_window;
+$$;
+REVOKE EXECUTE ON FUNCTION count_recent_uploads(UUID, INTERVAL) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION count_recent_uploads(UUID, INTERVAL) TO authenticated;
+
 -- Trigger für Realtime / Webhook-Events bei neuen Jobs
 CREATE OR REPLACE FUNCTION notify_dossier_job_pending()
 RETURNS TRIGGER AS $$

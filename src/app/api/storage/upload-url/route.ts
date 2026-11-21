@@ -3,9 +3,10 @@ import { authzErrorResponse } from '@/app/api/authz-error-response';
 import { requirePermission } from '@/lib/auth/require-permission';
 import { logFailure } from '@/lib/observability/logger';
 import { createSignedUploadUrl } from '@/lib/storage/storage-service';
+import { countRecentUploads } from '@/lib/storage/upload-quota';
 import { createServerAuthClient } from '@/lib/supabase/server-auth';
 import { PERMISSION_ACTIONS } from '@/types/auth';
-import { CreateUploadUrlRequestSchema } from '@/types/storage';
+import { CreateUploadUrlRequestSchema, UPLOAD_URL_RATE_LIMIT } from '@/types/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           error: `Die Datei überschreitet das Limit von 50 MB für den Object Storage.`,
         },
         { status: 400 }
+      );
+    }
+
+    // shortcut: gezählt werden abgeschlossene Uploads, nicht ausgestellte URLs; wer URLs ohne Upload sammelt, wird nicht begrenzt.
+    if ((await countRecentUploads(authSupabase, orgId)) >= UPLOAD_URL_RATE_LIMIT.MAX_PER_WINDOW) {
+      return NextResponse.json(
+        { error: 'Zu viele Uploads in kurzer Zeit. Bitte später erneut versuchen.' },
+        { status: 429, headers: { 'Retry-After': String(UPLOAD_URL_RATE_LIMIT.WINDOW_SECONDS) } }
       );
     }
 

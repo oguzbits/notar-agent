@@ -2,10 +2,16 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthzError } from '@/lib/auth/require-permission';
 import { PERMISSION_ACTIONS } from '@/types/auth';
+import { UPLOAD_URL_RATE_LIMIT } from '@/types/storage';
 
 const mockCreateSignedUploadUrl = vi.fn();
 vi.mock('@/lib/storage/storage-service', () => ({
   createSignedUploadUrl: (...args: unknown[]) => mockCreateSignedUploadUrl(...args),
+}));
+
+const mockCountRecentUploads = vi.fn();
+vi.mock('@/lib/storage/upload-quota', () => ({
+  countRecentUploads: (...args: unknown[]) => mockCountRecentUploads(...args),
 }));
 
 const mockGetUser = vi.fn();
@@ -27,6 +33,7 @@ vi.mock('@/lib/supabase/server-auth', () => ({
 describe('API Route: POST /api/storage/upload-url', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCountRecentUploads.mockResolvedValue(0);
   });
 
   it('rejects unauthenticated requests with 401', async () => {
@@ -127,5 +134,59 @@ describe('API Route: POST /api/storage/upload-url', () => {
     const data = await res.json();
     expect(data.uploadUrl).toBe('https://storage.example.com/signed-upload-demo');
     expect(data.storagePath).toBe(`${demoOrgId}/uuid-kaufvertrag.png`);
+  });
+
+  describe('Rate-Grenze je Kanzlei', () => {
+    const orgId = '550e8400-e29b-41d4-a716-446655440000';
+    const request = () =>
+      new NextRequest('http://localhost:3000/api/storage/upload-url', {
+        method: 'POST',
+        body: JSON.stringify({ fileName: 'a.pdf', fileType: 'application/pdf', fileSize: 1024 }),
+      });
+
+    it('antwortet bei erreichter Grenze mit 429 und Retry-After, ohne URL auszustellen', async () => {
+      mockRequirePermission.mockResolvedValue({ organizationId: orgId });
+      mockCountRecentUploads.mockResolvedValue(UPLOAD_URL_RATE_LIMIT.MAX_PER_WINDOW);
+
+      const { POST } = await import('./route');
+      const res = await POST(request());
+
+      expect(res.status).toBe(429);
+      expect(res.headers.get('Retry-After')).toBe(String(UPLOAD_URL_RATE_LIMIT.WINDOW_SECONDS));
+      expect(mockCountRecentUploads).toHaveBeenCalledWith(expect.anything(), orgId);
+      expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
+    });
+
+    it('lässt knapp unter der Grenze noch zu', async () => {
+      mockRequirePermission.mockResolvedValue({ organizationId: orgId });
+      mockCountRecentUploads.mockResolvedValue(UPLOAD_URL_RATE_LIMIT.MAX_PER_WINDOW - 1);
+      mockCreateSignedUploadUrl.mockResolvedValue({ uploadUrl: 'u', storagePath: 'p' });
+
+      const { POST } = await import('./route');
+      const res = await POST(request());
+
+      expect(res.status).toBe(201);
+    });
+
+    it('zählt erst nach der Berechtigungsprüfung', async () => {
+      mockRequirePermission.mockRejectedValue(new AuthzError(403, 'Keine Berechtigung.'));
+
+      const { POST } = await import('./route');
+      const res = await POST(request());
+
+      expect(res.status).toBe(403);
+      expect(mockCountRecentUploads).not.toHaveBeenCalled();
+    });
+
+    it('antwortet bei Fehler der Zählung mit 500, ohne URL auszustellen (fail-fast)', async () => {
+      mockRequirePermission.mockResolvedValue({ organizationId: orgId });
+      mockCountRecentUploads.mockRejectedValue(new Error('db down'));
+
+      const { POST } = await import('./route');
+      const res = await POST(request());
+
+      expect(res.status).toBe(500);
+      expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
+    });
   });
 });

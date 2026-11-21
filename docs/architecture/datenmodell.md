@@ -63,5 +63,5 @@ erDiagram
 
 - **Mandantentrennung:** Alle Tabellen mit `organization_id` haben RLS. Die Zugehörigkeit prüft `is_org_member(organization_id)`; der Server leitet die Kanzlei aus der geprüften Sitzung ab, nie aus dem Request.
 - **Löschverhalten:** `ON DELETE CASCADE` von `organizations` auf die Arbeitsdaten; `audit_logs` verwendet `RESTRICT`, damit der Prüfpfad nicht mit der Kanzlei verschwindet.
-- **Rechnen in der Datenbank:** Kontingente (`dossier_jobs`, `llm_usage`), Listen und Löschläufe laufen als Sichten und Funktionen in PostgreSQL, nicht im Anwendungsspeicher.
+- **Rechnen in der Datenbank:** Kontingente (`dossier_jobs`, `llm_usage`, Uploads je Kanzlei über `count_recent_uploads`), Listen und Löschläufe laufen als Sichten und Funktionen in PostgreSQL, nicht im Anwendungsspeicher.
 - **Speicher:** Dateien liegen im privaten Bucket `dossier-files` mit Kanzleipräfix im Pfad; `dossier_jobs.payload` enthält nur Pfade.

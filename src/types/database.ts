@@ -485,6 +485,10 @@ export interface Database {
         Args: { p_document_id: string };
         Returns: Json;
       };
+      count_recent_uploads: {
+        Args: { p_organization_id: string; p_window: string };
+        Returns: number;
+      };
       count_analysis_runs_since: {
         Args: { p_organization_id: string; p_since: string };
         Returns: number;

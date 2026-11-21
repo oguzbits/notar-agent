@@ -100,5 +100,5 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] **Alarmierung:** Sentry-Alarmregel „neue Issue“ anlegen; externer Erreichbarkeits-Check auf `GET /api/health` (braucht ein Konto bei einem Anbieter).
   - [ ] **Vercel-Region live prüfen:** Nach dem nächsten Produktions-Deployment bestätigen, dass die Funktionen in `fra1` laufen (Vercel → Deployment → Functions).
   - [ ] **Auftragsverarbeitung klären:** AVV/DPA ablegen, Anthropic-ZDR und EU-Frage entscheiden, Gemini-Schlüssel auf bezahlten Zugang prüfen (siehe [auftragsverarbeitung.md](./betrieb/auftragsverarbeitung.md)).
-  - [ ] **Rate-Limit je Route:** Auth-Routen stützen sich auf die Grenzen von Supabase Auth, `/api/storage/upload-url` hat keine eigene Grenze. Bewerten, ob ein PostgreSQL-gestützter Zähler (Migration in `core`) nötig ist, bevor ein externer Dienst angebunden wird.
+  - [ ] **Rate-Limit je Route:** Auth-Routen stützen sich auf die Grenzen von Supabase Auth; `/api/storage/upload-url` ist begrenzt (CHANGELOG). Bewerten, ob weitere Routen einen PostgreSQL-gestützten Zähler brauchen, bevor ein externer Dienst angebunden wird.
   - [ ] **Lasttests:** siehe B.9 (k6).

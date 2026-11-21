@@ -7,6 +7,12 @@ export const STORAGE_BUCKET_NAMES = {
 
 export type StorageBucketName = (typeof STORAGE_BUCKET_NAMES)[keyof typeof STORAGE_BUCKET_NAMES];
 
+/** Rate-Grenze für `POST /api/storage/upload-url`: abgeschlossene Uploads je Kanzlei im gleitenden Zeitfenster. */
+export const UPLOAD_URL_RATE_LIMIT = {
+  MAX_PER_WINDOW: 300,
+  WINDOW_SECONDS: 60 * 60,
+} as const;
+
 export const CreateUploadUrlRequestSchema = z.object({
   fileName: z.string().min(1, 'Dateiname darf nicht leer sein'),
   fileType: z.string().min(1, 'Dateityp darf nicht leer sein'),
