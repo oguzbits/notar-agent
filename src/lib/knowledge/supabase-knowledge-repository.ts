@@ -52,6 +52,10 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
   }
 
   async search(query: HybridSearchQuery): Promise<HybridSearchResult[]> {
+    // Ohne Modellkennung würde die Datenbank alle Dokumentvektoren verwerfen: lieber laut scheitern
+    if (query.queryEmbedding && !query.embeddingModel) {
+      throw new Error('Supabase knowledge search: queryEmbedding braucht embeddingModel.');
+    }
     // Dynamische Gewichtung zwischen Volltext & Vektor ermitteln
     const dynamic = calculateDynamicWeights(query.queryText);
     const textWeight =
@@ -69,6 +73,8 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
       p_vector_weight: vectorWeight,
       p_text_weight: textWeight,
       p_rrf_k: rrfK,
+      // Nur mit Vektor mitgeben: ohne Einbettung läuft die Suche auch gegen eine Datenbank vor der Migration
+      ...(query.embeddingModel ? { p_embedding_model: query.embeddingModel } : {}),
     });
 
     if (error || !data) {
@@ -132,11 +138,24 @@ export class SupabaseKnowledgeRepository implements IKnowledgeRepository {
     return data;
   }
 
-  async saveEmbedding(id: string, vector: number[]): Promise<void> {
+  /** Vektoren, die bei der Suche ignoriert werden: ohne Modellkennung oder von einem anderen Modell als modelId. */
+  async countStaleEmbeddings(modelId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
+      .select('id', { count: 'exact', head: true })
+      .not('embedding', 'is', null)
+      .or(`embedding_model.is.null,embedding_model.neq.${JSON.stringify(modelId)}`);
+    if (error) {
+      throw new Error(`Supabase countStaleEmbeddings fehlgeschlagen: ${error.message}`);
+    }
+    return count ?? 0;
+  }
+
+  async saveEmbedding(id: string, vector: number[], modelId: string): Promise<void> {
     const checked = EmbeddingVectorSchema.parse(vector);
     const { data, error } = await this.supabase
       .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
-      .update({ embedding: checked })
+      .update({ embedding: checked, embedding_model: modelId })
       .eq('id', id)
       .select('id');
     if (error) {

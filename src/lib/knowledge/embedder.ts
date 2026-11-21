@@ -5,6 +5,8 @@ import { EMBEDDING_DIMENSIONS, EmbeddingVectorSchema } from '@/types/knowledge';
 import { formatDocumentForEmbedding, formatQueryForEmbedding } from './embedding-text';
 
 export interface IEmbedder {
+  /** Kennung des Modells; wird mit jedem Dokumentvektor gespeichert und bei der Suche abgeglichen. */
+  readonly modelId: string;
   embedQuery(text: string, abortSignal?: AbortSignal): Promise<number[]>;
   embedDocuments(docs: { title: string; content: string }[]): Promise<number[][]>;
 }
@@ -14,6 +16,7 @@ const providerOptions = { google: { outputDimensionality: EMBEDDING_DIMENSIONS }
 
 export function createEmbedder(model: EmbeddingModel): IEmbedder {
   return {
+    modelId: typeof model === 'string' ? model : model.modelId,
     async embedQuery(text, abortSignal) {
       const { embedding } = await embed({
         model,

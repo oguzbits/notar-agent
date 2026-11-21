@@ -46,18 +46,43 @@ describe('Schreibpfad für Dokumentvektoren', () => {
   });
 
   it('speichert einen Vektor, danach fehlt das Dokument in der Liste', async () => {
-    await repo.saveEmbedding(ids.open, vector(0.25));
+    await repo.saveEmbedding(ids.open, vector(0.25), 'modell-a');
     expect(await storedEmbedding(ids.open)).not.toBeNull();
     const open = (await repo.listForEmbedding({ all: false })).map((d) => d.id);
     expect(open).not.toContain(ids.open);
   });
 
+  it('wertet nur Vektoren des angefragten Modells; Vektoren ohne oder mit anderer Kennung zählen nicht', async () => {
+    const search = (embeddingModel: string) =>
+      repo.search({
+        queryText: 'Testgrundlage',
+        queryEmbedding: vector(0.25),
+        embeddingModel,
+        topK: 50,
+      });
+    const vectorRanked = (results: Awaited<ReturnType<typeof search>>) =>
+      results.filter((r) => r.vectorRank !== null).map((r) => r.document.id);
+
+    expect(vectorRanked(await search('modell-a'))).toEqual([ids.open]);
+    expect(vectorRanked(await search('modell-b'))).toEqual([]);
+  });
+
+  it('meldet Vektoren ohne oder mit anderer Kennung als veraltet', async () => {
+    // ids.filled hat einen Vektor ohne Kennung, ids.open einen von modell-a
+    expect(await repo.countStaleEmbeddings('modell-a')).toBeGreaterThanOrEqual(1);
+    expect(await repo.countStaleEmbeddings('modell-b')).toBeGreaterThanOrEqual(2);
+  });
+
   it('lehnt einen Vektor falscher Länge ab, bevor geschrieben wird', async () => {
-    await expect(repo.saveEmbedding(ids.filled, vector(0.1).slice(1))).rejects.toThrow();
+    await expect(
+      repo.saveEmbedding(ids.filled, vector(0.1).slice(1), 'modell-a')
+    ).rejects.toThrow();
     expect(await storedEmbedding(ids.filled)).toBe(JSON.stringify(vector(0.5)));
   });
 
   it('wirft bei unbekannter ID', async () => {
-    await expect(repo.saveEmbedding(randomUUID(), vector(0.1))).rejects.toThrow(/Dokument/);
+    await expect(repo.saveEmbedding(randomUUID(), vector(0.1), 'modell-a')).rejects.toThrow(
+      /Dokument/
+    );
   });
 });

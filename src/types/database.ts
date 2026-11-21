@@ -257,6 +257,7 @@ export interface Database {
           content: string;
           trigger_keywords: string[];
           embedding: number[] | null;
+          embedding_model: string | null;
           tsv: string | null;
           source_reference: string | null;
           valid_from: string | null;
@@ -278,6 +279,7 @@ export interface Database {
           content: string;
           trigger_keywords?: string[];
           embedding?: number[] | null;
+          embedding_model?: string | null;
           tsv?: string | null;
           source_reference?: string | null;
           valid_from?: string | null;
@@ -299,6 +301,7 @@ export interface Database {
           content?: string;
           trigger_keywords?: string[];
           embedding?: number[] | null;
+          embedding_model?: string | null;
           tsv?: string | null;
           source_reference?: string | null;
           valid_from?: string | null;
@@ -517,6 +520,9 @@ export interface Database {
           p_category?: string | null;
           p_match_count?: number;
           p_vector_weight?: number;
+          p_text_weight?: number;
+          p_rrf_k?: number;
+          p_embedding_model?: string | null;
         };
         Returns: Array<{
           id: string;

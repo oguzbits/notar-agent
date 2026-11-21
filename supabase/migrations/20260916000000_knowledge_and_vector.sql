@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
     content TEXT NOT NULL,
     trigger_keywords TEXT[] NOT NULL DEFAULT '{}',
     embedding vector(1536),
+    embedding_model TEXT,
     tsv tsvector,
     source_reference TEXT,
     valid_from DATE,
@@ -53,6 +54,10 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_knowledge_validity_order CHECK (valid_until IS NULL OR valid_from IS NULL OR valid_until >= valid_from)
 );
+
+-- Kennung des Modells, das den Dokumentvektor erzeugt hat (Vektorräume verschiedener Modelle sind nicht vergleichbar);
+-- die Suche wertet nur Vektoren mit passender Kennung. Für Tabellen, die vor der Spalte angelegt wurden.
+ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS embedding_model TEXT;
 
 -- Trigger-Funktion zur Aktualisierung des tsvectors (deterministisch & immutable-sicher)
 CREATE OR REPLACE FUNCTION update_knowledge_documents_tsv()
@@ -115,6 +120,8 @@ CREATE POLICY p_delete_knowledge_documents ON knowledge_documents
     );
 
 -- 6. Native Hybrid RPC-Funktion mit Reciprocal Rank Fusion (RRF gem. Cormack et al. / notebooklm-klon)
+-- Alte Signatur ohne p_embedding_model entfernen, sonst bleibt eine Überladung neben der neuen Funktion.
+DROP FUNCTION IF EXISTS match_knowledge_documents(TEXT, vector, UUID, knowledge_category, INT, FLOAT, FLOAT, INT);
 CREATE OR REPLACE FUNCTION match_knowledge_documents(
     p_query_text TEXT,
     p_query_embedding vector(1536) DEFAULT NULL,
@@ -123,7 +130,8 @@ CREATE OR REPLACE FUNCTION match_knowledge_documents(
     p_match_count INT DEFAULT 5,
     p_vector_weight FLOAT DEFAULT 0.5,
     p_text_weight FLOAT DEFAULT 0.5,
-    p_rrf_k INT DEFAULT 60
+    p_rrf_k INT DEFAULT 60,
+    p_embedding_model TEXT DEFAULT NULL
 )
 RETURNS TABLE (
     id UUID,
@@ -182,6 +190,8 @@ BEGIN
             p_query_embedding IS NOT NULL
             AND
             kd.embedding IS NOT NULL
+            AND
+            kd.embedding_model = p_embedding_model
             AND
             kd.review_status <> 'ZURUECKGEZOGEN'
             AND
@@ -277,8 +287,8 @@ END;
 $$;
 
 
-REVOKE EXECUTE ON FUNCTION match_knowledge_documents(TEXT, vector, UUID, knowledge_category, INT, FLOAT, FLOAT, INT) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION match_knowledge_documents(TEXT, vector, UUID, knowledge_category, INT, FLOAT, FLOAT, INT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION match_knowledge_documents(TEXT, vector, UUID, knowledge_category, INT, FLOAT, FLOAT, INT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION match_knowledge_documents(TEXT, vector, UUID, knowledge_category, INT, FLOAT, FLOAT, INT, TEXT) TO authenticated;
 
 -- 7. Juristischer Normen- und Richtlinienbestand (Konsolidierte Seeds)
 INSERT INTO knowledge_documents (

@@ -136,7 +136,7 @@ async function main() {
     for (const [i, d] of rows.entries()) {
       const upd = await harness.admin
         .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
-        .update({ embedding: JSON.stringify(docVecs[i]) })
+        .update({ embedding: JSON.stringify(docVecs[i]), embedding_model: MODEL })
         .eq('id', d.id);
       if (upd.error) throw upd.error;
     }
@@ -164,6 +164,7 @@ async function main() {
         repo.search({
           queryText,
           queryEmbedding: withVector ? emb : undefined,
+          embeddingModel: withVector ? MODEL : undefined,
           organizationId: orgId,
           topK: TOP_K,
           vectorWeight,
@@ -235,7 +236,7 @@ async function main() {
     // Produktionszustand wiederherstellen: keine Dokumentvektoren, keine Kopie des Korpus.
     await harness.admin
       .from(DB_TABLES.KNOWLEDGE_DOCUMENTS)
-      .update({ embedding: null })
+      .update({ embedding: null, embedding_model: null })
       .in('id', touched);
     await harness.admin.from(DB_TABLES.KNOWLEDGE_DOCUMENTS).delete().eq('organization_id', orgId);
   }

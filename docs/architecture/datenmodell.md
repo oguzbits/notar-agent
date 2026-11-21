@@ -43,9 +43,9 @@ erDiagram
 
 ### Wissen (`20260916000000_knowledge_and_vector.sql`)
 
-| Tabelle               | Inhalt                                                | Besonderheit                                                                      |
-| :-------------------- | :---------------------------------------------------- | :-------------------------------------------------------------------------------- |
-| `knowledge_documents` | Fachregeln als Daten, mit Einbettung (`vector(1536)`) | `organization_id` leer = allgemeine Regel; Suche über `match_knowledge_documents` |
+| Tabelle               | Inhalt                                                                                                       | Besonderheit                                                                                                                       |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `knowledge_documents` | Fachregeln als Daten, mit Einbettung (`vector(1536)`) und Kennung des Einbettungsmodells (`embedding_model`) | `organization_id` leer = allgemeine Regel; Suche über `match_knowledge_documents`, die nur Vektoren des angefragten Modells wertet |
 
 ### Abläufe (`20260921000000_jobs_and_workflows.sql`)
 

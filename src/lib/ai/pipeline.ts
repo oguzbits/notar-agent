@@ -406,7 +406,7 @@ export async function runAuditorStage(params: AuditorStageParams): Promise<Dossi
 
   const knowledgeResults = await knowledgeRepo.search({
     queryText: searchTerms,
-    ...(queryEmbedding ? { queryEmbedding } : {}),
+    ...(queryEmbedding && embedder ? { queryEmbedding, embeddingModel: embedder.modelId } : {}),
     organizationId,
     topK: 3,
   });

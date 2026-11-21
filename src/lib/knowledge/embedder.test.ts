@@ -1,7 +1,7 @@
 import { MockEmbeddingModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
 import { EMBEDDING_DIMENSIONS } from '@/types/knowledge';
-import { createEmbedder, getEmbedder } from './embedder';
+import { createEmbedder, createGeminiEmbedder, getEmbedder } from './embedder';
 
 const vector = (seed: number, length = EMBEDDING_DIMENSIONS) => Array.from({ length }, () => seed);
 
@@ -34,6 +34,14 @@ describe('createEmbedder', () => {
     expect(result.map((v) => v[0])).toEqual([1, 2, 3, 4, 5]);
     expect(model.doEmbedCalls.length).toBe(3);
     expect(model.doEmbedCalls[0]?.values[0]).toBe('title: t | text: c1');
+  });
+
+  it('trägt die Kennung des Modells (für den Abgleich gespeicherter Vektoren)', () => {
+    const model = modelReturning(() => [vector(0.5)]);
+    expect(createEmbedder(model).modelId).toBe(model.modelId);
+    expect(createGeminiEmbedder('gemini-test-modell', 'schluessel').modelId).toBe(
+      'gemini-test-modell'
+    );
   });
 
   it('wirft bei einem Vektor falscher Länge', async () => {

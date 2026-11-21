@@ -36,7 +36,7 @@ describe('runAnalysisPipeline', () => {
 
   describe('Vektorsuche', () => {
     const run = (
-      embedder?: { embedQuery: (text: string) => Promise<number[]> },
+      embedder?: { embedQuery: (text: string) => Promise<number[]>; modelId?: string },
       abortSignal?: AbortSignal
     ) => {
       mockGenerateText.mockReset().mockResolvedValue({
@@ -56,7 +56,9 @@ describe('runAnalysisPipeline', () => {
         auditorInstructions: { role: 'system', content: 'Audit' },
         onStep: () => undefined,
         abortSignal,
-        ...(embedder ? { embedder: { ...embedder, embedDocuments: vi.fn() } } : {}),
+        ...(embedder
+          ? { embedder: { modelId: 'test-modell', ...embedder, embedDocuments: vi.fn() } }
+          : {}),
       });
     };
 
@@ -73,6 +75,16 @@ describe('runAnalysisPipeline', () => {
       expect(query.queryEmbedding).toEqual([0.1, 0.2]);
     });
 
+    it('übergibt die Kennung des Einbettungsmodells, damit nur passende Vektoren zählen', async () => {
+      await run({ embedQuery: vi.fn().mockResolvedValue([0.1]), modelId: 'modell-a' });
+      expect(mockKnowledgeSearch.mock.calls[0]?.[0].embeddingModel).toBe('modell-a');
+    });
+
+    it('sucht ohne Einbetter auch ohne Modellkennung', async () => {
+      await run();
+      expect(mockKnowledgeSearch.mock.calls[0]?.[0]).not.toHaveProperty('embeddingModel');
+    });
+
     it('reicht das Abbruchsignal an jeden Modellaufruf und an die Einbettung durch', async () => {
       const embedQuery = vi.fn().mockResolvedValue([0.1]);
       const signal = new AbortController().signal;
@@ -84,7 +96,7 @@ describe('runAnalysisPipeline', () => {
 
     it('nutzt den konfigurierten Einbetter, wenn keiner übergeben wird', async () => {
       const embedQuery = vi.fn().mockResolvedValue([0.3]);
-      mockGetEmbedder.mockReturnValue({ embedQuery, embedDocuments: vi.fn() });
+      mockGetEmbedder.mockReturnValue({ embedQuery, embedDocuments: vi.fn(), modelId: 'm' });
       await run();
       expect(mockKnowledgeSearch.mock.calls[0]?.[0].queryEmbedding).toEqual([0.3]);
     });

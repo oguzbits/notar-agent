@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  EMBEDDING_DIMENSIONS,
   KNOWLEDGE_CATEGORIES,
   KNOWLEDGE_REVIEW_STATUS,
   KnowledgeDocument,
@@ -208,5 +209,72 @@ describe('SupabaseKnowledgeRepository', () => {
 
     expect(calls).toContain('neq:review_status,ZURUECKGEZOGEN');
     expect(calls.filter((c) => c.startsWith('or:valid_'))).toHaveLength(2);
+  });
+
+  describe('Einbettungsmodell', () => {
+    const vector = Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0.5);
+
+    it('übergibt Vektor und Modellkennung an die Suche', async () => {
+      const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null });
+      const repo = new SupabaseKnowledgeRepository({ rpc: mockRpc } as never);
+
+      await repo.search({ queryText: 'x', queryEmbedding: [0.1], embeddingModel: 'modell-a' });
+
+      expect(mockRpc.mock.calls[0]?.[1]).toMatchObject({
+        p_query_embedding: [0.1],
+        p_embedding_model: 'modell-a',
+      });
+    });
+
+    it('lässt die Modellkennung ohne Vektor weg (Suche gegen Datenbank vor der Migration)', async () => {
+      const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null });
+      const repo = new SupabaseKnowledgeRepository({ rpc: mockRpc } as never);
+
+      await repo.search({ queryText: 'x' });
+
+      expect(mockRpc.mock.calls[0]?.[1]).not.toHaveProperty('p_embedding_model');
+    });
+
+    it('lehnt einen Anfragevektor ohne Modellkennung ab, statt still ohne Vektortreffer zu suchen', async () => {
+      const mockRpc = vi.fn();
+      const repo = new SupabaseKnowledgeRepository({ rpc: mockRpc } as never);
+
+      await expect(repo.search({ queryText: 'x', queryEmbedding: [0.1] })).rejects.toThrow(
+        /embeddingModel/
+      );
+      expect(mockRpc).not.toHaveBeenCalled();
+    });
+
+    it('schreibt beim Speichern eines Vektors die Modellkennung mit', async () => {
+      const select = vi.fn().mockResolvedValue({ data: [{ id: 'd1' }], error: null });
+      const eq = vi.fn().mockReturnValue({ select });
+      const update = vi.fn().mockReturnValue({ eq });
+      const repo = new SupabaseKnowledgeRepository({ from: () => ({ update }) } as never);
+
+      await repo.saveEmbedding('d1', vector, 'modell-a');
+
+      expect(update).toHaveBeenCalledWith({ embedding: vector, embedding_model: 'modell-a' });
+    });
+
+    it('zählt veraltete Vektoren: vorhanden, aber ohne oder mit anderer Modellkennung', async () => {
+      const or = vi.fn().mockResolvedValue({ count: 4, error: null });
+      const not = vi.fn().mockReturnValue({ or });
+      const select = vi.fn().mockReturnValue({ not });
+      const repo = new SupabaseKnowledgeRepository({ from: () => ({ select }) } as never);
+
+      expect(await repo.countStaleEmbeddings('modell-a')).toBe(4);
+
+      expect(not).toHaveBeenCalledWith('embedding', 'is', null);
+      expect(or).toHaveBeenCalledWith('embedding_model.is.null,embedding_model.neq."modell-a"');
+    });
+
+    it('wirft, wenn das Zählen veralteter Vektoren fehlschlägt', async () => {
+      const or = vi.fn().mockResolvedValue({ count: null, error: { message: 'kaputt' } });
+      const repo = new SupabaseKnowledgeRepository({
+        from: () => ({ select: () => ({ not: () => ({ or }) }) }),
+      } as never);
+
+      await expect(repo.countStaleEmbeddings('m')).rejects.toThrow(/kaputt/);
+    });
   });
 });

@@ -112,6 +112,8 @@ export type HybridSearchResult = z.infer<typeof HybridSearchResultSchema>;
 export const HybridSearchQuerySchema = z.object({
   queryText: z.string().min(1),
   queryEmbedding: z.array(z.number()).optional(),
+  /** Kennung des Modells, das den Anfragevektor erzeugt hat; nur Dokumentvektoren desselben Modells zählen. */
+  embeddingModel: z.string().min(1).optional(),
   category: KnowledgeCategorySchema.optional(),
   organizationId: DbUuidSchema.optional(),
   topK: z.number().int().positive().optional().default(5),
