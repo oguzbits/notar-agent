@@ -165,6 +165,7 @@ ALTER TABLE workflow_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workflow_instances ENABLE ROW LEVEL SECURITY;
 
 -- 4. RLS-Policies für Workflows
+DROP POLICY IF EXISTS "Users can read global or own org workflow definitions" ON workflow_definitions;
 CREATE POLICY "Users can read global or own org workflow definitions"
 ON workflow_definitions
 FOR SELECT
@@ -178,6 +179,7 @@ USING (
     )
 );
 
+DROP POLICY IF EXISTS "Admins can manage own org workflow definitions" ON workflow_definitions;
 CREATE POLICY "Admins can manage own org workflow definitions"
 ON workflow_definitions
 FOR ALL
@@ -199,6 +201,7 @@ WITH CHECK (
     )
 );
 
+DROP POLICY IF EXISTS "Users can manage workflow instances in their organization" ON workflow_instances;
 CREATE POLICY "Users can manage workflow instances in their organization"
 ON workflow_instances
 FOR ALL
