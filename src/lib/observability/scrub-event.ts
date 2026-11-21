@@ -1,6 +1,6 @@
 import type { Breadcrumb, ErrorEvent } from '@sentry/nextjs';
 
-const ALLOWED_TAGS = ['job_id', 'organization_id'] as const;
+const ALLOWED_TAGS = ['job_id', 'organization_id', 'request_id'] as const;
 
 /** Allowlist statt Denylist: nur Fehlertyp, Frames ohne Variablen, Route und IDs verlassen den Server. */
 export function scrubEvent(event: ErrorEvent): ErrorEvent {

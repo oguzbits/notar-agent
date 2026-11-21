@@ -1,4 +1,5 @@
 import { LogEventSchema, type LogEvent } from '@/types/observability';
+import { parseRequestId } from './request-id';
 
 export function logEvent(event: LogEvent): void {
   const parsed = LogEventSchema.parse(event);
@@ -9,12 +10,18 @@ export function errorClassOf(err: unknown): string {
   return err instanceof Error ? err.constructor.name : 'UnbekannterFehler';
 }
 
-export function logFailure(level: LogEvent['level'], event: string, err: unknown): void {
-  logEvent({ level, event, errorClass: errorClassOf(err) });
+/** `requestId` stammt aus dem Request-Header; eine ungültige wird verworfen statt den Log zu stören. */
+export function logFailure(
+  level: LogEvent['level'],
+  event: string,
+  err: unknown,
+  requestId?: string | null
+): void {
+  logEvent({ level, event, errorClass: errorClassOf(err), requestId: parseRequestId(requestId) });
 }
 
 export async function timed<T>(
-  base: Pick<LogEvent, 'event' | 'stage' | 'model' | 'jobId' | 'organizationId'>,
+  base: Pick<LogEvent, 'event' | 'stage' | 'model' | 'jobId' | 'organizationId' | 'requestId'>,
   fn: () => Promise<T>
 ): Promise<T> {
   const start = performance.now();

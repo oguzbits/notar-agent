@@ -24,7 +24,7 @@ const sensitive: ErrorEvent = {
   extra: { text: 'Inhalt' },
   contexts: { os: { name: 'mac' } },
   breadcrumbs: [{ message: 'Inhalt' }],
-  tags: { job_id: 'j1', organization_id: 'o1', sonst: 'x' },
+  tags: { job_id: 'j1', organization_id: 'o1', request_id: 'req-12345678', sonst: 'x' },
 };
 
 describe('scrubEvent', () => {
@@ -36,11 +36,15 @@ describe('scrubEvent', () => {
     }
   });
 
-  it('behält Fehlertyp, Route ohne Query sowie job_id und organization_id', () => {
+  it('behält Fehlertyp, Route ohne Query sowie job_id, organization_id und request_id', () => {
     const out = scrubEvent(structuredClone(sensitive));
     expect(out.exception?.values?.[0]?.type).toBe('TypeError');
     expect(out.request?.url).toBe('https://x.de/api/analyze');
-    expect(out.tags).toEqual({ job_id: 'j1', organization_id: 'o1' });
+    expect(out.tags).toEqual({
+      job_id: 'j1',
+      organization_id: 'o1',
+      request_id: 'req-12345678',
+    });
   });
 
   it('wirft nicht bei Ereignissen ohne Exception und Request', () => {

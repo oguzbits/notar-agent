@@ -12,7 +12,24 @@ describe('LogEventSchema', () => {
   });
 });
 
+describe('requestId im Logformat', () => {
+  it('lehnt eine ungültige Kennung ab (Log-Injection)', () => {
+    const r = LogEventSchema.safeParse({ level: 'info', event: 'x', requestId: 'a\nb' });
+    expect(r.success).toBe(false);
+  });
+});
+
 describe('logEvent', () => {
+  it('gibt die requestId aus', () => {
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    logEvent({ level: 'info', event: 'e', requestId: 'req-12345678' });
+    expect(JSON.parse(String(spy.mock.calls[0]?.[0]))).toEqual({
+      level: 'info',
+      event: 'e',
+      requestId: 'req-12345678',
+    });
+  });
+
   it('schreibt eine JSON-Zeile ohne fehlende Felder', () => {
     const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
     logEvent({ level: 'info', event: 'e', jobId: undefined });
@@ -54,6 +71,17 @@ describe('errorClassOf', () => {
 });
 
 describe('logFailure', () => {
+  it('trägt die Kennung ein und verwirft eine ungültige, ohne zu werfen', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    logFailure('error', 'x_fehlgeschlagen', new Error('a'), 'req-12345678');
+    logFailure('error', 'x_fehlgeschlagen', new Error('a'), 'böse\nZeile');
+    logFailure('error', 'x_fehlgeschlagen', new Error('a'), null);
+    const lines = spy.mock.calls.map((c) => JSON.parse(String(c[0])));
+    expect(lines[0].requestId).toBe('req-12345678');
+    expect(lines[1]).not.toHaveProperty('requestId');
+    expect(lines[2]).not.toHaveProperty('requestId');
+  });
+
   it('loggt nur Ereignis und Fehlerklasse', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     logFailure('warn', 'x_fehlgeschlagen', new Error('Vertrag Müller'));

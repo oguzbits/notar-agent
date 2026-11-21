@@ -1,8 +1,14 @@
 import { type NextRequest } from 'next/server';
+import { REQUEST_ID_HEADER, resolveRequestId } from '@/lib/observability/request-id';
 import { updateSession } from '@/lib/supabase/middleware';
 
 export async function proxy(request: NextRequest) {
-  return await updateSession(request);
+  const requestId = resolveRequestId(request.headers.get(REQUEST_ID_HEADER));
+  // Auf dem Request, damit jede von updateSession erzeugte Antwort (auch in setAll) die Kennung an die Route weitergibt
+  request.headers.set(REQUEST_ID_HEADER, requestId);
+  const response = await updateSession(request);
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
 }
 
 export const config = {

@@ -101,5 +101,5 @@ Detaillierte technische Spezifikationen, Diagramme und Invarianten:
   - [ ] **Vercel-Region live prüfen:** Nach dem nächsten Produktions-Deployment bestätigen, dass die Funktionen in `fra1` laufen (Vercel → Deployment → Functions).
   - [ ] **Auftragsverarbeitung klären:** AVV/DPA ablegen, Anthropic-ZDR und EU-Frage entscheiden, Gemini-Schlüssel auf bezahlten Zugang prüfen (siehe [auftragsverarbeitung.md](./betrieb/auftragsverarbeitung.md)).
   - [ ] **Rate-Limit je Route:** Auth-Routen stützen sich auf die Grenzen von Supabase Auth, `/api/storage/upload-url` hat keine eigene Grenze. Bewerten, ob ein PostgreSQL-gestützter Zähler (Migration in `core`) nötig ist, bevor ein externer Dienst angebunden wird.
-  - [ ] **Request-Kennung und Tracing:** `x-request-id` in [src/proxy.ts](../src/proxy.ts) erzeugen, in Logs und Sentry-Tags führen; Kosten je Lauf liegen bereits in `llm_usage`.
+  - [ ] **Request-Kennung im Worker und Cron:** `x-request-id` steht in Antwort, Logs der Analyse-Route und Sentry-Tag (siehe [CHANGELOG.md](./CHANGELOG.md)). Offen: Die Logs des Hintergrund-Workers und der Cron-Routen tragen noch keine Kennung (Übergabe der Kennung an den Job); Kosten je Lauf liegen bereits in `llm_usage`.
   - [ ] **Lasttests:** siehe B.9 (k6).
