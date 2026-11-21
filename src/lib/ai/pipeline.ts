@@ -5,7 +5,7 @@ import { mergeDossierStages } from '@/lib/ai/dossier-merger';
 import { formatInternalNotes } from '@/lib/ai/internal-notes';
 import { cleanAndParseJson } from '@/lib/ai/parsers/clean-json';
 import { assembleExtractionPromptParts } from '@/lib/ai/payload-assembler';
-import { SourceDocumentText } from '@/lib/ai/verifiable-fact-checker';
+import { countVerificationReasons, SourceDocumentText } from '@/lib/ai/verifiable-fact-checker';
 import { runNotaryVerification } from '@/lib/ai/verification-engine';
 import { normalizeDossier } from '@/lib/dossier';
 import { getEmbedder } from '@/lib/knowledge/embedder';
@@ -302,6 +302,15 @@ Bitte korrigiere ausschließlich die Schema-Fehler und gib das vollständige, va
     referenceDate: new Date(),
   });
   parsedExtractionRaw.fields = verified.fields;
+  if (verified.verificationIssues.length > 0) {
+    // Nur Zähler je Ursachenart: Namen und Textausschnitte der Beanstandungen gehören nicht ins Log
+    logEvent({
+      level: 'info',
+      event: 'verifikation_zusammenfassung',
+      stage: LLM_USAGE_STAGES.EXTRACTION,
+      verificationReasonCounts: countVerificationReasons(verified.verificationIssues),
+    });
+  }
   parsedExtractionRaw[VERIFICATION_FLAGGED_FIELDS_KEY] = [
     ...new Set(verified.verificationIssues.map((issue) => issue.fieldKey)),
   ];

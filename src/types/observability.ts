@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { VerificationReasonCountsSchema } from './verification';
 
 export const LogLevelSchema = z.enum(['info', 'warn', 'error']);
 export const LogOutcomeSchema = z.enum(['ok', 'fehler']);
@@ -19,6 +20,7 @@ export const LogEventSchema = z
     outcome: LogOutcomeSchema.optional(),
     errorClass: z.string().optional(),
     requestId: RequestIdSchema.optional(),
+    verificationReasonCounts: VerificationReasonCountsSchema.optional(),
   })
   .strict();
 

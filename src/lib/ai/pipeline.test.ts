@@ -357,6 +357,35 @@ describe('runExtractionStage: Beleg-Prüfung', () => {
     expect(clean.parsedExtractionRaw[VERIFICATION_FLAGGED_FIELDS_KEY]).toEqual([]);
   });
 
+  describe('Zusammenfassung der Verwerfungsgründe im Log', () => {
+    const summaryLines = (spy: { mock: { calls: unknown[][] } }) =>
+      spy.mock.calls
+        .map((c) => String(c[0]))
+        .filter((line) => line.includes('verifikation_zusammenfassung'));
+
+    it('zählt verworfene Einträge nach Ursachenart und enthält weder Dateinamen noch Textausschnitte', async () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+      await run(stageOutput(verifiedField(2, 'Kaufpreis 450.000 Euro')));
+      const lines = summaryLines(info);
+      expect(lines).toHaveLength(1);
+      const entry = JSON.parse(lines[0] ?? '{}');
+      expect(entry).toMatchObject({
+        level: 'info',
+        event: 'verifikation_zusammenfassung',
+        verificationReasonCounts: { SNIPPET_NOT_FOUND: 1, SOURCE_MISSING: 0 },
+      });
+      expect(lines[0]).not.toMatch(/Datei 2|Kaufpreis 450|a\.txt|b\.txt|Eilt/);
+      info.mockRestore();
+    });
+
+    it('loggt nichts, wenn kein Eintrag verworfen wurde', async () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+      await run(stageOutput(verifiedField(1, 'Kaufpreis 450.000 Euro')));
+      expect(summaryLines(info)).toHaveLength(0);
+      info.mockRestore();
+    });
+  });
+
   it('wirft, wenn die Ausgabe auch nach der Korrektur das Schema verletzt (kein Checkpoint)', async () => {
     await expect(
       run(stageOutput(verifiedField(1, 'Kaufpreis 450.000 Euro'), 'UNGUELTIG'))

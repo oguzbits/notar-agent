@@ -4,6 +4,7 @@ import {
   ExtractionFieldsRecord,
   ExtractionStageOutput,
 } from '@/types/pipeline';
+import { VERIFICATION_REASON, type VerificationReason } from '@/types/verification';
 import { matchCitationSnippet } from './citation-matcher';
 import { numbersOf, findUnsupportedNumbers, extractDomainTextFromData } from './number-verifier';
 import {
@@ -20,6 +21,8 @@ export interface VerificationIssue {
   expectedSnippet?: string;
   fileName?: string;
   reason: string;
+  /** Ursachenart: allein sie darf gezählt und geloggt werden, `reason` kann Zahlen und Namen enthalten */
+  kind: VerificationReason;
 }
 
 export interface VerifyExtractionFactsOptions {
@@ -34,7 +37,7 @@ export interface VerifyExtractionFactsResult extends ExtractionStageOutput {
 function downgradeUnverifiable(
   key: string,
   field: NonNullable<ExtractionFieldsRecord[string]>,
-  reason: string,
+  { kind, reason }: Pick<VerificationIssue, 'kind' | 'reason'>,
   verificationIssues: VerificationIssue[]
 ): NonNullable<ExtractionFieldsRecord[string]> {
   verificationIssues.push({
@@ -42,6 +45,7 @@ function downgradeUnverifiable(
     fileName: field.source?.fileName,
     expectedSnippet: field.source?.snippet,
     reason,
+    kind,
   });
   const appendNote = `Automatische Verifikation: ${reason}`;
   return {
@@ -66,7 +70,10 @@ function verifyCitationField(
     return downgradeUnverifiable(
       key,
       field,
-      'Keine prüfbare Quellenangabe vorhanden',
+      {
+        kind: VERIFICATION_REASON.SOURCE_MISSING,
+        reason: 'Keine prüfbare Quellenangabe vorhanden',
+      },
       verificationIssues
     );
   }
@@ -76,7 +83,10 @@ function verifyCitationField(
     return downgradeUnverifiable(
       key,
       field,
-      'Quelldokument nicht auffindbar oder ohne maschinenlesbaren Text (z. B. Scan)',
+      {
+        kind: VERIFICATION_REASON.DOCUMENT_UNREADABLE,
+        reason: 'Quelldokument nicht auffindbar oder ohne maschinenlesbaren Text (z. B. Scan)',
+      },
       verificationIssues
     );
   }
@@ -101,6 +111,7 @@ function verifyCitationField(
       fileName: canonicalFileName,
       expectedSnippet: field.source.snippet,
       reason: 'Quellen-Snippet nicht wörtlich im Dokument nachweisbar',
+      kind: VERIFICATION_REASON.SNIPPET_NOT_FOUND,
     });
 
     const existingNote = field.note || '';
@@ -136,6 +147,7 @@ function verifyCitationField(
           fileName: canonicalFileName,
           expectedSnippet: field.source.snippet,
           reason,
+          kind: VERIFICATION_REASON.NUMBER_UNSUPPORTED,
         });
 
         const existingNote = updatedField.note || '';
@@ -179,6 +191,7 @@ function verifyKaufpreisArithmetic(
       fileName: field.source?.fileName,
       expectedSnippet: snippetText,
       reason,
+      kind: VERIFICATION_REASON.PRICE_DISCREPANCY,
     });
 
     const notePrefix = field.note ? `${field.note} ` : '';
@@ -222,12 +235,29 @@ function verifyGmbHCapitalArithmetic(
       fileName: gesellschafterField.source?.fileName,
       expectedSnippet: gesellschafterField.source?.snippet,
       reason,
+      kind: VERIFICATION_REASON.CAPITAL_DISCREPANCY,
     });
 
     const notePrefix = gesellschafterField.note ? `${gesellschafterField.note} ` : '';
     gesellschafterField.status = FIELD_STATUS.NEEDS_REVIEW;
     gesellschafterField.note = `${notePrefix}${reason}`.trim();
   }
+}
+
+/** Zählt verworfene Einträge je Ursachenart; ohne Namen, Textausschnitte oder Wortlaut (Berufsgeheimnis). */
+export function countVerificationReasons(
+  issues: VerificationIssue[]
+): Record<VerificationReason, number> {
+  const counts: Record<VerificationReason, number> = {
+    SOURCE_MISSING: 0,
+    DOCUMENT_UNREADABLE: 0,
+    SNIPPET_NOT_FOUND: 0,
+    NUMBER_UNSUPPORTED: 0,
+    PRICE_DISCREPANCY: 0,
+    CAPITAL_DISCREPANCY: 0,
+  };
+  for (const issue of issues) counts[issue.kind] += 1;
+  return counts;
 }
 
 /**

@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { findUnsupportedNumbers, verifyExtractionFacts } from '@/lib/ai/verifiable-fact-checker';
+import {
+  countVerificationReasons,
+  findUnsupportedNumbers,
+  verifyExtractionFacts,
+} from '@/lib/ai/verifiable-fact-checker';
 import { CASE_TYPES, CONTRIBUTION_TYPE, FIELD_STATUS, OVERALL_STATUS } from '@/types/dossier';
 import { ExtractionStageOutput } from '@/types/pipeline';
+import { VERIFICATION_REASON } from '@/types/verification';
 
 describe('verifyExtractionFacts', () => {
   const dummyFileSources = [
@@ -87,6 +92,7 @@ describe('verifyExtractionFacts', () => {
     );
     expect(result.verificationIssues.length).toBe(1);
     expect(result.verificationIssues[0]?.fieldKey).toBe('kaufpreis');
+    expect(result.verificationIssues[0]?.kind).toBe(VERIFICATION_REASON.SNIPPET_NOT_FOUND);
   });
 
   it('tolerates minor whitespace and punctuation differences during snippet verification', () => {
@@ -158,7 +164,9 @@ describe('verifyExtractionFacts', () => {
 
     expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(result.fields.kaufpreis?.note).toContain('Rechnerische Kaufpreisdiskrepanz');
-    expect(result.verificationIssues.some((i) => i.fieldKey === 'kaufpreis')).toBe(true);
+    expect(result.verificationIssues.map((i) => i.kind)).toEqual([
+      VERIFICATION_REASON.PRICE_DISCREPANCY,
+    ]);
   });
 
   it('detects capital discrepancy when sum of GmbH partner shares does not equal nominal capital', () => {
@@ -213,7 +221,9 @@ describe('verifyExtractionFacts', () => {
 
     expect(result.fields.gesellschafter?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(result.fields.gesellschafter?.note).toContain('Rechnerische Kapitaldiskrepanz');
-    expect(result.verificationIssues.some((i) => i.fieldKey === 'gesellschafter')).toBe(true);
+    expect(result.verificationIssues.map((i) => i.kind)).toContain(
+      VERIFICATION_REASON.CAPITAL_DISCREPANCY
+    );
   });
 
   it('verifiziert Quellensnippets trotz harter Zeilenumbrüche und Hyphenation im PDF-Dokument', () => {
@@ -279,9 +289,9 @@ describe('verifyExtractionFacts', () => {
 
     expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     expect(result.fields.kaufpreis?.note).toContain('Nicht belegte Zahlenangabe');
-    expect(
-      result.verificationIssues.some((i) => i.reason.includes('Nicht belegte Zahlenangabe'))
-    ).toBe(true);
+    expect(result.verificationIssues.map((i) => i.kind)).toEqual([
+      VERIFICATION_REASON.NUMBER_UNSUPPORTED,
+    ]);
   });
 
   it('resolves citation via docIndex and backfills canonical fileName', () => {
@@ -411,6 +421,7 @@ describe('findUnsupportedNumbers', () => {
       });
       expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
       expect(result.verificationIssues).toHaveLength(1);
+      expect(result.verificationIssues[0]?.kind).toBe(VERIFICATION_REASON.SOURCE_MISSING);
     });
 
     it('stuft Feld ab, dessen Quelldokument keinen Text hat (Scan)', () => {
@@ -420,6 +431,7 @@ describe('findUnsupportedNumbers', () => {
       });
       expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
       expect(result.verificationIssues).toHaveLength(1);
+      expect(result.verificationIssues[0]?.kind).toBe(VERIFICATION_REASON.DOCUMENT_UNREADABLE);
     });
 
     it('stuft Feld ab, dessen Quelldokument nicht auffindbar ist', () => {
@@ -429,5 +441,42 @@ describe('findUnsupportedNumbers', () => {
       });
       expect(result.fields.kaufpreis?.status).toBe(FIELD_STATUS.NEEDS_REVIEW);
     });
+  });
+});
+
+describe('countVerificationReasons', () => {
+  const issue = (kind: (typeof VERIFICATION_REASON)[keyof typeof VERIFICATION_REASON]) => ({
+    fieldKey: 'kaufpreis',
+    fileName: 'Kaufvertrag_Mueller.pdf',
+    expectedSnippet: 'Kaufpreis 450.000 Euro',
+    reason: 'Freitext, der nie gezählt wird',
+    kind,
+  });
+
+  it('liefert für jede Ursachenart eine Zahl, ohne Einträge überall 0', () => {
+    expect(countVerificationReasons([])).toEqual({
+      SOURCE_MISSING: 0,
+      DOCUMENT_UNREADABLE: 0,
+      SNIPPET_NOT_FOUND: 0,
+      NUMBER_UNSUPPORTED: 0,
+      PRICE_DISCREPANCY: 0,
+      CAPITAL_DISCREPANCY: 0,
+    });
+  });
+
+  it('zählt je Ursachenart, nicht je Feld oder Wortlaut', () => {
+    const counts = countVerificationReasons([
+      issue(VERIFICATION_REASON.SNIPPET_NOT_FOUND),
+      issue(VERIFICATION_REASON.SNIPPET_NOT_FOUND),
+      issue(VERIFICATION_REASON.SOURCE_MISSING),
+      issue(VERIFICATION_REASON.CAPITAL_DISCREPANCY),
+    ]);
+    expect(counts).toMatchObject({
+      SNIPPET_NOT_FOUND: 2,
+      SOURCE_MISSING: 1,
+      CAPITAL_DISCREPANCY: 1,
+      NUMBER_UNSUPPORTED: 0,
+    });
+    expect(Object.keys(counts).sort()).toEqual(Object.values(VERIFICATION_REASON).sort());
   });
 });
