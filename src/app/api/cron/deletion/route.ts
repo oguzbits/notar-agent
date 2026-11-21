@@ -9,6 +9,7 @@ import {
 } from '@/lib/dossier/deletion-worker';
 import { SupabaseJobRepository } from '@/lib/jobs/job-repository';
 import { logFailure } from '@/lib/observability/logger';
+import { REQUEST_ID_HEADER } from '@/lib/observability/request-id';
 import { createServiceRoleClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
     return NextResponse.json({ tasks, retention, jobsHealed, jobsPruned });
   } catch (error: unknown) {
-    logFailure('error', 'cron_deletion_fehlgeschlagen', error);
+    logFailure('error', 'cron_deletion_fehlgeschlagen', error, req.headers.get(REQUEST_ID_HEADER));
     return NextResponse.json({ error: 'Löschlauf fehlgeschlagen.' }, { status: 500 });
   }
 }

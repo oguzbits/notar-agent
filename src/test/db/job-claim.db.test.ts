@@ -116,8 +116,8 @@ describe('Heilung veralteter Jobs (recoverOrphanJobs)', () => {
   };
 
   it('setzt nur PROCESSING/PENDING-Jobs ohne Lebenszeichen auf FAILED', async () => {
-    const [staleProcessing, aliveWithOldLock, stalePending, oldButRequeued, completed] =
-      await Promise.all([newJob(), newJob(), newJob(), newJob(), newJob()]);
+    const [staleProcessing, aliveWithOldLock, stalePending, oldButRequeued, completed, freshLock] =
+      await Promise.all([newJob(), newJob(), newJob(), newJob(), newJob(), newJob()]);
     await setRow(staleProcessing.id, {
       status: JOB_STATUS.PROCESSING,
       locked_at: minutesAgo(10),
@@ -128,6 +128,12 @@ describe('Heilung veralteter Jobs (recoverOrphanJobs)', () => {
       status: JOB_STATUS.PROCESSING,
       locked_at: minutesAgo(10),
       updated_at: minutesAgo(0),
+    });
+    // updated_at alt, aber frisch gesperrt: der Lauf hat gerade begonnen
+    await setRow(freshLock.id, {
+      status: JOB_STATUS.PROCESSING,
+      locked_at: minutesAgo(0),
+      updated_at: minutesAgo(10),
     });
     await setRow(stalePending.id, { updated_at: minutesAgo(10) });
     // Vor langer Zeit angelegt, aber gerade erneut eingereiht
@@ -141,6 +147,7 @@ describe('Heilung veralteter Jobs (recoverOrphanJobs)', () => {
     expect(await statusOf(staleProcessing.id)).toBe(JOB_STATUS.FAILED);
     expect(await statusOf(stalePending.id)).toBe(JOB_STATUS.FAILED);
     expect(await statusOf(aliveWithOldLock.id)).toBe(JOB_STATUS.PROCESSING);
+    expect(await statusOf(freshLock.id)).toBe(JOB_STATUS.PROCESSING);
     expect(await statusOf(oldButRequeued.id)).toBe(JOB_STATUS.PENDING);
     expect(await statusOf(completed.id)).toBe(JOB_STATUS.COMPLETED);
     const failed = await repo.getJobById(staleProcessing.id, orgId);

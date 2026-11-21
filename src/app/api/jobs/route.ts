@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/auth/require-permission';
 import { JOB_RETENTION_MS, type IJobRepository } from '@/lib/jobs/job-repository';
 import { executeDossierJob, type WorkerDependencies } from '@/lib/jobs/job-worker';
 import { logFailure } from '@/lib/observability/logger';
+import { REQUEST_ID_HEADER } from '@/lib/observability/request-id';
 import {
   getAuditRepository,
   getDossierRepository,
@@ -83,14 +84,18 @@ async function requeueFailedJob(
   );
 }
 
-function startRetryInBackground(jobId: string, deps: WorkerDependencies): void {
+function startRetryInBackground(
+  jobId: string,
+  deps: WorkerDependencies,
+  requestId: string | null
+): void {
   try {
     after(async () => {
-      await executeDossierJob(jobId, deps);
+      await executeDossierJob(jobId, deps, requestId);
     });
   } catch (afterErr: unknown) {
-    logFailure('info', 'after_nicht_verfuegbar', afterErr);
-    void executeDossierJob(jobId, deps);
+    logFailure('info', 'after_nicht_verfuegbar', afterErr, requestId);
+    void executeDossierJob(jobId, deps, requestId);
   }
 }
 
@@ -125,14 +130,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     const rejection = await requeueFailedJob(repo, job, orgId);
     if (rejection) return rejection;
 
-    startRetryInBackground(jobId, {
-      jobRepo: repo,
-      dossierRepo: getDossierRepository(authSupabase),
-      knowledgeRepo: getKnowledgeRepository(authSupabase),
-      auditRepo: getAuditRepository(authSupabase),
-      usageRepo: getLlmUsageRepository(authSupabase),
-      storageClient: authSupabase,
-    });
+    startRetryInBackground(
+      jobId,
+      {
+        jobRepo: repo,
+        dossierRepo: getDossierRepository(authSupabase),
+        knowledgeRepo: getKnowledgeRepository(authSupabase),
+        auditRepo: getAuditRepository(authSupabase),
+        usageRepo: getLlmUsageRepository(authSupabase),
+        storageClient: authSupabase,
+      },
+      req.headers.get(REQUEST_ID_HEADER)
+    );
 
     return NextResponse.json(
       {
@@ -145,7 +154,12 @@ export async function POST(req: NextRequest): Promise<Response> {
   } catch (error: unknown) {
     const denied = authzErrorResponse(error);
     if (denied) return denied;
-    logFailure('error', 'job_wiederholung_fehlgeschlagen', error);
+    logFailure(
+      'error',
+      'job_wiederholung_fehlgeschlagen',
+      error,
+      req.headers.get(REQUEST_ID_HEADER)
+    );
     return NextResponse.json({ error: 'Fehler bei der Job-Wiederholung.' }, { status: 500 });
   }
 }

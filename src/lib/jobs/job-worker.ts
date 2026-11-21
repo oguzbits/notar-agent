@@ -87,7 +87,8 @@ export async function cancelDossierJob(
  */
 export async function executeDossierJob(
   jobId: string,
-  deps: WorkerDependencies = {}
+  deps: WorkerDependencies = {},
+  requestId?: string | null
 ): Promise<DossierJob | null> {
   const jobRepo = deps.jobRepo ?? getJobRepository();
   const dossierRepo = deps.dossierRepo ?? getDossierRepository();
@@ -100,7 +101,9 @@ export async function executeDossierJob(
     : internalController.signal;
 
   try {
-    return await limit(() => runJobExecution(jobId, jobRepo, dossierRepo, deps, combinedSignal));
+    return await limit(() =>
+      runJobExecution(jobId, jobRepo, dossierRepo, deps, combinedSignal, requestId)
+    );
   } finally {
     // Ein späterer Lauf desselben Jobs kann schon einen eigenen Controller eingetragen haben
     if (activeJobControllers.get(jobId) === internalController) activeJobControllers.delete(jobId);
@@ -112,7 +115,8 @@ async function runJobExecution(
   jobRepo: IJobRepository,
   dossierRepo: IDossierRepository,
   deps: WorkerDependencies,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  requestId?: string | null
 ): Promise<DossierJob | null> {
   const job = await jobRepo.getJobById(jobId);
   if (!job) {
@@ -130,15 +134,9 @@ async function runJobExecution(
 
   const totalFiles = job.payload.files.length;
   let stage1Output = job.payload.stage1Output;
-  const onStageUsage =
-    deps.usageRepo && (job.organizationId || job.payload.organizationId)
-      ? createUsageRecorder(
-          deps.usageRepo,
-          (job.organizationId || job.payload.organizationId) as string,
-          jobId
-        )
-      : undefined;
   const orgId = job.organizationId || job.payload.organizationId;
+  const onStageUsage =
+    deps.usageRepo && orgId ? createUsageRecorder(deps.usageRepo, orgId, jobId) : undefined;
 
   // Job auf PROCESSING setzen mit aktuellem Lease-Lock.
   // Falls stage1Output bereits vorliegt, direkt in Stufe 2 (AUDITING) einsteigen!
@@ -172,7 +170,7 @@ async function runJobExecution(
   };
   const reportProgress = (update: UpdateJobParams) => {
     whileProcessing(update).catch((err: unknown) => {
-      logFailure('warn', 'fortschritt_fehlgeschlagen', err);
+      logFailure('warn', 'fortschritt_fehlgeschlagen', err, requestId);
     });
   };
 
@@ -358,7 +356,7 @@ async function runJobExecution(
     }
 
     // Rohe Modell-/DB-Texte können Mandantendaten enthalten: Nutzer sehen eine feste Meldung
-    logFailure('error', 'job_fehlgeschlagen', error);
+    logFailure('error', 'job_fehlgeschlagen', error, requestId);
 
     // retryCount zählt allein der Requeue (POST /api/jobs)
     const failed = await whileProcessing({

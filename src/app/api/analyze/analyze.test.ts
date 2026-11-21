@@ -873,6 +873,12 @@ describe('API Route: POST /api/analyze Request-Kennung in Logs', () => {
     );
   });
 
+  it('reicht die Kennung an den Worker des Hintergrund-Pfads weiter', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    await post('http://localhost:3000/api/analyze?async=true', { 'x-request-id': REQ_ID });
+    expect(vi.mocked(executeDossierJob).mock.lastCall?.[2]).toBe(REQ_ID);
+  });
+
   it('verwirft eine ungültige Kennung im Log', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(mockJobRepo.countAnalysisRunsSince).mockRejectedValueOnce(new Error('db'));

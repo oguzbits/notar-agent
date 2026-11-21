@@ -241,6 +241,32 @@ describe('SupabaseJobRepository (Fail-Fast SSOT)', () => {
     expect(written).not.toHaveProperty('result_dossier_id');
   });
 
+  it('heilt nur Vorgänge, deren updated_at UND locked_at (falls gesetzt) veraltet sind', async () => {
+    const calls: Array<[string, ...unknown[]]> = [];
+    const chain: Record<string, unknown> = {};
+    for (const name of ['update', 'in', 'lt', 'or', 'eq']) {
+      chain[name] = (...args: unknown[]) => {
+        calls.push([name, ...args]);
+        return chain;
+      };
+    }
+    chain.select = vi.fn().mockResolvedValue({ data: [{ id: 'a' }, { id: 'b' }], error: null });
+    const { SupabaseJobRepository } = await import('./job-repository');
+    const repo = new SupabaseJobRepository({ from: vi.fn().mockReturnValue(chain) } as never);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:10:00.000Z'));
+    try {
+      expect(await repo.recoverOrphanJobs(3 * 60 * 1000)).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const cutoff = '2026-01-01T00:07:00.000Z';
+    expect(calls).toContainEqual(['lt', 'updated_at', cutoff]);
+    expect(calls).toContainEqual(['or', `locked_at.is.null,locked_at.lt.${cutoff}`]);
+  });
+
   it('fails fast and throws when Supabase delete encounters an error in deleteJob', async () => {
     const mockSupabase = {
       from: vi.fn().mockReturnValue({

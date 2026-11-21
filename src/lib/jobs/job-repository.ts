@@ -334,7 +334,8 @@ export class SupabaseJobRepository implements IJobRepository {
   ): Promise<number> {
     const cutoffIso = new Date(Date.now() - leaseTimeoutMs).toISOString();
 
-    // Ein bedingtes Update: Jedes Fortschritts-Update erneuert updated_at, also gilt nur ein stiller Job als veraltet
+    // Ein bedingtes Update: Jedes Fortschritts-Update erneuert updated_at, also gilt nur ein stiller Job als veraltet.
+    // Eine frische Sperre (locked_at) schützt zusätzlich einen gerade gestarteten Lauf
     let query = this.supabase
       .from(DB_TABLES.DOSSIER_JOBS)
       .update(
@@ -345,7 +346,8 @@ export class SupabaseJobRepository implements IJobRepository {
         })
       )
       .in('status', [JOB_STATUS.PENDING, JOB_STATUS.PROCESSING])
-      .lt('updated_at', cutoffIso);
+      .lt('updated_at', cutoffIso)
+      .or(`locked_at.is.null,locked_at.lt.${cutoffIso}`);
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
     }

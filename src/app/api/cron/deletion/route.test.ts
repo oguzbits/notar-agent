@@ -21,10 +21,10 @@ vi.mock('@/lib/dossier/deletion-worker', async (importOriginal) => ({
   runRetentionSweep: vi.fn(async () => ({ deleted: 0, failed: [] })),
 }));
 
-const call = (auth?: string) =>
+const call = (auth?: string, extra: Record<string, string> = {}) =>
   GET(
     new NextRequest('http://localhost:3000/api/cron/deletion', {
-      headers: auth ? { authorization: auth } : {},
+      headers: { ...(auth ? { authorization: auth } : {}), ...extra },
     })
   );
 
@@ -90,5 +90,20 @@ describe('GET /api/cron/deletion', () => {
   it('meldet nichts, wenn keine Aufgabe fehlgeschlagen ist', async () => {
     await call('Bearer geheim');
     expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it('trägt die Request-Kennung im Fehlerlog des Löschlaufs', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.mocked(worker.runRetentionSweep).mockRejectedValueOnce(new Error('db'));
+    const res = await call('Bearer geheim', { 'x-request-id': 'req-abcdef123456' });
+    expect(res.status).toBe(500);
+    const lines = spy.mock.calls.map((c) => JSON.parse(String(c[0])));
+    expect(lines).toContainEqual(
+      expect.objectContaining({
+        event: 'cron_deletion_fehlgeschlagen',
+        requestId: 'req-abcdef123456',
+      })
+    );
+    spy.mockRestore();
   });
 });

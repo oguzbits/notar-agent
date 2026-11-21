@@ -94,6 +94,74 @@ describe('job-worker (executeDossierJob)', () => {
     expect(failedJob?.lockedAt).toBeUndefined();
   });
 
+  describe('Request-Kennung im Log', () => {
+    const REQ_ID = 'req-abcdef123456';
+    const failing: NonNullable<WorkerDependencies['pipelineFn']> = async () => {
+      throw new Error('Anthropic API 500');
+    };
+    const errorLines = (spy: { mock: { calls: unknown[][] } }) =>
+      spy.mock.calls.map((c) => JSON.parse(String(c[0])) as Record<string, unknown>);
+
+    it('trägt die Kennung im Fehlerlog des Laufs', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { job } = await jobRepo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: '',
+      });
+      await executeDossierJob(job.id, { jobRepo, dossierRepo, pipelineFn: failing }, REQ_ID);
+      expect(errorLines(spy)).toContainEqual(
+        expect.objectContaining({ event: 'job_fehlgeschlagen', requestId: REQ_ID })
+      );
+      spy.mockRestore();
+    });
+
+    it('trägt die Kennung im Warnlog des Fortschritts', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const original = vi.mocked(jobRepo.transitionJob).getMockImplementation()!;
+      vi.mocked(jobRepo.transitionJob).mockImplementation(async (id, from, update, org) => {
+        if (update.stage === JOB_STAGES.EXTRACTION) throw new Error('db');
+        return original(id, from, update, org);
+      });
+      const { job } = await jobRepo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: '',
+      });
+      await executeDossierJob(
+        job.id,
+        {
+          jobRepo,
+          dossierRepo,
+          pipelineFn: async ({ onStep }) => {
+            onStep(1, 'Dokumente aufbereiten');
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return mockResultDossier;
+          },
+        },
+        REQ_ID
+      );
+      expect(errorLines(warn)).toContainEqual(
+        expect.objectContaining({ event: 'fortschritt_fehlgeschlagen', requestId: REQ_ID })
+      );
+      warn.mockRestore();
+    });
+
+    it('lässt das Feld ohne Kennung weg', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { job } = await jobRepo.createJob({
+        caseType: CASE_TYPES.IMMOBILIENKAUF,
+        files: [],
+        notes: '',
+      });
+      await executeDossierJob(job.id, { jobRepo, dossierRepo, pipelineFn: failing });
+      const lines = errorLines(spy);
+      expect(lines.length).toBeGreaterThan(0);
+      expect(lines.every((l) => !('requestId' in l))).toBe(true);
+      spy.mockRestore();
+    });
+  });
+
   describe('Abbruch', () => {
     const payload: CreateJobPayload = {
       caseType: CASE_TYPES.IMMOBILIENKAUF,

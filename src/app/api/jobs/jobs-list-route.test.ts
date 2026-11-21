@@ -174,6 +174,24 @@ describe('API Route: /api/jobs (List & Retry)', () => {
     expect(vi.mocked(executeDossierJob).mock.lastCall?.[1]?.storageClient).toBeDefined();
   });
 
+  it('POST /api/jobs reicht die Request-Kennung an den Worker weiter', async () => {
+    const { job } = await repo.createJob(
+      { caseType: CASE_TYPES.IMMOBILIENKAUF, files: [], notes: 'Kennung' },
+      TEST_ORG_ID
+    );
+    await repo.updateJobStatus(job.id, { status: JOB_STATUS.FAILED, retryCount: 1 });
+
+    await POST(
+      new NextRequest('http://localhost:3000/api/jobs', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req-abcdef123456' },
+        body: JSON.stringify({ jobId: job.id }),
+      })
+    );
+
+    expect(vi.mocked(executeDossierJob).mock.lastCall?.[2]).toBe('req-abcdef123456');
+  });
+
   it.each([JOB_STATUS.PROCESSING, JOB_STATUS.COMPLETED, JOB_STATUS.PENDING])(
     'POST /api/jobs verweigert Wiederholung eines Jobs im Status %s mit 409',
     async (status) => {

@@ -177,12 +177,12 @@ export async function POST(req: NextRequest): Promise<Response> {
       // Starte Hintergrund-Worker entkoppelt und serverless-sicher via Next.js after()
       try {
         after(async () => {
-          await executeDossierJob(job.id, workerDeps);
+          await executeDossierJob(job.id, workerDeps, requestId);
         });
       } catch (afterErr: unknown) {
         // Fallback falls after() im aktuellen Laufzeit-/Testkontext nicht aktiv ist
         logFailure('info', 'after_nicht_verfuegbar', afterErr, requestId);
-        void executeDossierJob(job.id, workerDeps);
+        void executeDossierJob(job.id, workerDeps, requestId);
       }
 
       return enqueuedResponse(job);
