@@ -121,4 +121,28 @@ describe('TeamSettingsModal', () => {
     expect(labels.includes(ROLE_LABELS_DE[NOTARY_ROLES.NOTAR])).toBe(offered);
     session.role = NOTARY_ROLES.NOTAR;
   });
+
+  it.each([
+    [NOTARY_ROLES.ADMIN, false],
+    [NOTARY_ROLES.NOTAR, true],
+  ])('Rolle %s: Notar-Mitglied entfernbar = %s', (role, removable) => {
+    session.role = role;
+    const otherNotar = {
+      id: 'user-3',
+      name: 'Dr. Zweiter',
+      email: 'z@test.de',
+      role: NOTARY_ROLES.NOTAR,
+    };
+    mockTeamMembers.push(otherNotar);
+    try {
+      render(<TeamSettingsModal isOpen={true} onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /Team & Rollen/i }));
+
+      expect(screen.queryByLabelText('Dr. Zweiter entfernen') !== null).toBe(removable);
+      expect(screen.getByLabelText('Max Mustermann entfernen')).toBeDefined();
+    } finally {
+      mockTeamMembers.pop();
+      session.role = NOTARY_ROLES.NOTAR;
+    }
+  });
 });

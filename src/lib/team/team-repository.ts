@@ -27,11 +27,11 @@ export class LastNotarError extends Error {
   }
 }
 
-/** RLS verweigert die Änderung (SQLSTATE 42501), z. B. wenn ein ADMIN die Rolle NOTAR vergeben will. */
+/** Die Datenbank verweigert die Änderung (SQLSTATE 42501), z. B. wenn ein ADMIN die Rolle Notar vergibt oder einen Notar ändert. */
 export class TeamRoleNotPermittedError extends Error {
   constructor() {
     super(
-      'Diese Änderung ist mit Ihrer Rolle nicht erlaubt. Die Rolle Notar vergibt nur ein Notar.'
+      'Diese Änderung ist mit Ihrer Rolle nicht erlaubt. Die Rolle Notar vergibt und ändert nur ein Notar.'
     );
     this.name = 'TeamRoleNotPermittedError';
   }

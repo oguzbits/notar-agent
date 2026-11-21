@@ -55,6 +55,10 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
       (r) => r !== NOTARY_ROLES.NOTAR || currentUser?.role === NOTARY_ROLES.NOTAR || r === current
     );
 
+  // Mitgliedschaften eines Notars ändert oder entfernt nur ein Notar (Datenbankregel)
+  const canEditMember = (role: NotaryRole) =>
+    canManageTeam && (role !== NOTARY_ROLES.NOTAR || currentUser?.role === NOTARY_ROLES.NOTAR);
+
   const [activeTab, setActiveTab] = useState<'stammdaten' | 'team'>('stammdaten');
 
   // Stammdaten State
@@ -419,7 +423,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
 
                     {/* Role & Actions */}
                     <div className="flex shrink-0 items-center gap-3">
-                      {canManageTeam && !isSelf ? (
+                      {canEditMember(member.role) && !isSelf ? (
                         <select
                           value={member.role}
                           onChange={(e) =>
@@ -439,7 +443,7 @@ export const TeamSettingsModal: React.FC<TeamSettingsModalProps> = ({ isOpen, on
                         </span>
                       )}
 
-                      {canManageTeam && !isSelf && (
+                      {canEditMember(member.role) && !isSelf && (
                         <button
                           type="button"
                           onClick={() => removeMember(member.id)}
