@@ -11,6 +11,7 @@
     "src/lib/knowledge/eval-gate.ts",
     "scripts/agent/guards.mjs",
     "src/lib/dossier/state.ts",
+    "src/lib/dossier/readiness.ts",
     "src/lib/auth/rbac.ts",
     "src/lib/audit/audit-crypto.ts"
   ],
