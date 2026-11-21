@@ -117,20 +117,58 @@ describe('Kanzleiteam: Selbständerung und letzter Notar', () => {
     ).not.toThrow();
   });
 
-  it('einen von zwei Notaren herabstufen ist erlaubt', async () => {
-    const second = await addMember(NOTARY_ROLES.NOTAR);
+  it('ein NOTAR darf einen anderen NOTAR herabstufen und entfernen', async () => {
+    const demoted = await addMember(NOTARY_ROLES.NOTAR);
+    const removed = await addMember(NOTARY_ROLES.NOTAR);
 
-    const res = await admin.client
+    const down = await notar.client
       .from(DB_TABLES.ORGANIZATION_MEMBERS)
       .update({ role: NOTARY_ROLES.NOTARASSESSOR })
-      .eq('id', second.memberId);
+      .eq('id', demoted.memberId);
+    const gone = await notar.client
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .delete()
+      .eq('id', removed.memberId);
 
-    expect(res.error).toBeNull();
+    expect([down.error, gone.error]).toEqual([null, null]);
     expect(await notarCount()).toBe(1);
   });
 
-  it('gleichzeitiges Herabstufen beider Notare lässt immer einen übrig', async () => {
-    const ids = [await memberIdOf(notar.id), (await addMember(NOTARY_ROLES.NOTAR)).memberId];
+  it('ein ADMIN darf einen NOTAR weder herabstufen noch entfernen (42501), auch wenn ein weiterer NOTAR bleibt', async () => {
+    const second = await addMember(NOTARY_ROLES.NOTAR);
+
+    const demoted = await admin.client
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .update({ role: NOTARY_ROLES.SACHBEARBEITER })
+      .eq('id', second.memberId);
+    const removed = await admin.client
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .delete()
+      .eq('id', second.memberId);
+
+    expect([demoted.error?.code, removed.error?.code]).toEqual(['42501', '42501']);
+    expect(await notarCount()).toBe(2);
+  });
+
+  it('ein ADMIN darf Mitglieder anderer Rollen weiter ändern und entfernen', async () => {
+    const member = await addMember(NOTARY_ROLES.SACHBEARBEITER);
+    const other = await addMember(NOTARY_ROLES.NOTARASSESSOR);
+
+    const changed = await admin.client
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .update({ role: NOTARY_ROLES.ADMIN })
+      .eq('id', member.memberId);
+    const removed = await admin.client
+      .from(DB_TABLES.ORGANIZATION_MEMBERS)
+      .delete()
+      .eq('id', other.memberId);
+
+    expect([changed.error, removed.error]).toEqual([null, null]);
+  });
+
+  it('gegenseitiges gleichzeitiges Herabstufen zweier Notare lässt immer einen übrig', async () => {
+    const second = await addMember(NOTARY_ROLES.NOTAR);
+    const firstId = await memberIdOf(notar.id);
     const setRole = (client: TestUser['client'], id: string, role: NotaryRole) =>
       client.from(DB_TABLES.ORGANIZATION_MEMBERS).update({ role }).eq('id', id);
 
@@ -140,8 +178,11 @@ describe('Kanzleiteam: Selbständerung und letzter Notar', () => {
       await harness.admin
         .from(DB_TABLES.ORGANIZATION_MEMBERS)
         .update({ role: NOTARY_ROLES.NOTAR })
-        .in('id', ids);
-      await Promise.all(ids.map((id) => setRole(admin.client, id, NOTARY_ROLES.SACHBEARBEITER)));
+        .in('id', [firstId, second.memberId]);
+      await Promise.all([
+        setRole(notar.client, second.memberId, NOTARY_ROLES.SACHBEARBEITER),
+        setRole(second.user.client, firstId, NOTARY_ROLES.SACHBEARBEITER),
+      ]);
       remaining.push(await notarCount());
     }
 

@@ -344,8 +344,8 @@ CREATE POLICY rls_org_members_delete ON public.organization_members FOR DELETE U
 REVOKE UPDATE ON organization_members FROM anon, authenticated;
 GRANT UPDATE (role) ON organization_members TO authenticated;
 
--- Kanzleibesetzung: Niemand ändert oder entfernt die eigene Mitgliedschaft (SQLSTATE TM001), und die Kanzlei
--- behält mindestens einen NOTAR (TM002). Die eigenen SQLSTATEs deutet nur die Anwendung (team-repository.ts).
+-- Kanzleibesetzung: Niemand ändert oder entfernt die eigene Mitgliedschaft (SQLSTATE TM001), die Kanzlei
+-- behält mindestens einen NOTAR (TM002), und eine NOTAR-Mitgliedschaft ändert nur ein NOTAR (42501). Die eigenen SQLSTATEs deutet nur die Anwendung (team-repository.ts).
 -- Gilt für direkte Änderungen angemeldeter Nutzer (auth.uid()). Frei bleiben das Servicekonto und Kaskaden
 -- (pg_trigger_depth() > 1, z. B. Kanzlei oder Konto löschen), auch wenn sie in einer Sitzung ausgelöst werden.
 -- Der Advisory-Lock je Kanzlei serialisiert parallele Änderungen, damit zwei gleichzeitige Herabstufungen nicht
@@ -363,6 +363,10 @@ BEGIN
        AND NOT EXISTS (SELECT 1 FROM organization_members
                        WHERE organization_id = OLD.organization_id AND role = 'NOTAR' AND id <> OLD.id) THEN
         RAISE EXCEPTION 'Die Kanzlei braucht mindestens einen NOTAR' USING ERRCODE = 'TM002';
+    END IF;
+    -- Eine NOTAR-Mitgliedschaft ändert oder entfernt nur ein NOTAR; ein ADMIN stuft sonst einen NOTAR herab (42501 wie RLS).
+    IF OLD.role = 'NOTAR' AND get_user_role(OLD.organization_id) IS DISTINCT FROM 'NOTAR' THEN
+        RAISE EXCEPTION 'Eine NOTAR-Mitgliedschaft ändert nur ein NOTAR' USING ERRCODE = '42501';
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
