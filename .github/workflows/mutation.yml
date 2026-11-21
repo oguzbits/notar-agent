@@ -1,0 +1,45 @@
+name: Mutationstests
+
+# Wöchentlich statt je Push: die Läufe dauern länger als die übrigen Prüfungen.
+# Geprüft werden nur die reinen Kernmodule aus stryker.config.json; die Schwelle `break` gilt als Gate.
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Stryker (reine Kernmodule)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Mutationstests
+        run: npm run mutation
+
+      - name: Bericht sichern
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutation-report
+          path: reports/mutation/mutation.json
+          if-no-files-found: ignore
+          retention-days: 30

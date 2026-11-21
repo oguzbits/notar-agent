@@ -11,6 +11,9 @@ export default defineConfig({
       'src/lib/knowledge/rules/rule-selector*.test.ts',
       'src/lib/knowledge/eval-gate.test.ts',
       'scripts/agent/guards*.test.mjs',
+      'src/lib/dossier/state.test.ts',
+      'src/lib/auth/rbac.test.ts',
+      'src/lib/audit/audit-crypto.test.ts',
     ],
   },
 });
